@@ -16,7 +16,7 @@ exports.handler = async (event) => {
       body: JSON.stringify({
         model: "deepseek-chat",
         messages: [
-          { role: "system", content: "Eres JEISON, asesor comercial experto en streaming e infraestructura. Responde corto y directo." },
+          { role: "system", content: "Eres JEISON, asesor experto en Tecnología e IA de JEISON.DIGITAL. Tu objetivo es convertir consultas en ventas o asesorías. SERVICIOS WEB: Infraestructura, Mantenimiento de equipos, Agentes de IA, Automatización de procesos (RPA), Desarrollo Web y Cloud." },
           { role: "user", content: prompt }
         ]
       })
