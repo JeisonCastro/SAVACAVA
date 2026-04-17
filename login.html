@@ -1,3 +1,5 @@
+Puedes ajustar esto login porfavor con los mismos estilos 
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -18,7 +20,6 @@
     </style>
 </head>
 <body>
-
     <div class="login-card">
         <h2>Fábrica de Agentes</h2>
         <p>Inicia sesión para gestionar tus tokens</p>
@@ -29,37 +30,29 @@
         <button class="btn-log" onclick="entrar()">Iniciar Sesión</button>
         <button class="btn-reg" onclick="registrar()">Crear Cuenta</button>
     </div>
-
     <script>
         // Simulamos la lógica de tu chat.js pero para el navegador
         const CONFIG = {
             URL: "https://zsxkfqnalkfvwjrzuqip.supabase.co".trim(),
             ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzeGtmcW5hbGtmdndqcnp1cWlwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0NDgyODMsImV4cCI6MjA5MjAyNDI4M30.R4j23l3IHEL966VupeR-Sx_KtDQzB8NzfJtEVDGewGs".trim() // <--- PEGA AQUÍ LA QUE EMPIEZA POR eyJ
         };
-
         // Inicialización idéntica a tu backend
         const _supabase = supabase.createClient(CONFIG.URL, CONFIG.ANON_KEY);
-
         async function registrar() {
             const email = document.getElementById('email').value.trim();
             const password = document.getElementById('password').value;
             
             if (!email || !password) return alert("Completa los campos");
-
             const { data, error } = await _supabase.auth.signUp({ email, password });
             
             if (error) alert("Error: " + error.message);
             else alert("¡Cuenta creada! Revisa tu correo o intenta iniciar sesión.");
         }
-
         async function entrar() {
             const email = document.getElementById('email').value.trim();
             const password = document.getElementById('password').value;
-
             if (!email || !password) return alert("Completa los campos");
-
             const { data, error } = await _supabase.auth.signInWithPassword({ email, password });
-
             if (error) {
                 alert("Error: " + error.message);
             } else {
