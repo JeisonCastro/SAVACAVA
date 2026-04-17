@@ -1,235 +1,211 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jeison.Digital | Soluciones Tecnológicas</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JEISON.DIGITAL | Soluciones Tecnológicas</title>
 
-    <!-- Bootstrap -->
-    <link rel="stylesheet" href="css/bootstrap.min.css">
+<link rel="stylesheet" href="css/bootstrap.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 
-    <!-- Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+body{
+    background:#f8f9fa;
+    font-family:'Roboto',sans-serif;
+    color:#2c3e50;
+}
 
-    <!-- Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+.custom-navbar{
+    background:#1c1f26;
+    box-shadow:0 2px 10px rgba(0,0,0,0.1);
+}
 
-    <style>
-        body {
-            background: #f8f9fa;
-            font-family: 'Roboto', sans-serif;
-            color: #2c3e50;
-        }
+.custom-navbar .nav-link{
+    color:#dcdde1;
+}
 
-        .custom-navbar {
-            background: #1c1f26;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
+.custom-navbar .nav-link:hover{
+    color:#00a8ff;
+}
 
-        .custom-navbar .nav-link {
-            color: #dcdde1;
-            font-weight: 500;
-        }
+h1,h2,h5{
+    font-weight:700;
+}
 
-        .custom-navbar .nav-link:hover {
-            color: #00a8ff;
-        }
+.service-card{
+    border:none;
+    border-radius:12px;
+    overflow:hidden;
+    background:#fff;
+    box-shadow:0 4px 15px rgba(0,0,0,0.05);
+    transition:.3s;
+}
 
-        h1, h2, h5 {
-            font-weight: 700;
-        }
+.service-card:hover{
+    transform:translateY(-5px);
+    box-shadow:0 10px 25px rgba(0,0,0,0.1);
+}
 
-        .service-card {
-            border: none;
-            border-radius: 12px;
-            overflow: hidden;
-            transition: all 0.3s ease;
-            background: #ffffff;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-        }
+.card-img-top{
+    height:180px;
+    object-fit:cover;
+}
 
-        .service-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
-        }
+.btn-primary{
+    background:#00a8ff;
+    border:none;
+    border-radius:8px;
+    font-weight:600;
+}
 
-        .card-img-top {
-            height: 180px;
-            object-fit: cover;
-        }
+.btn-primary:hover{
+    background:#0097e6;
+}
 
-        .btn-primary {
-            background: #00a8ff;
-            border: none;
-            border-radius: 8px;
-            font-weight: 600;
-        }
+.table th{
+    background:#2f3640;
+    color:#fff;
+}
 
-        .btn-primary:hover {
-            background: #0097e6;
-        }
+footer{
+    background:#1c1f26;
+    color:#dcdde1;
+}
 
-        .btn-success {
-            background-color: #25d366;
-            border: none;
-            border-radius: 50px;
-            font-weight: 600;
-        }
-
-        footer {
-            background: #1c1f26;
-            color: #dcdde1;
-        }
-
-        .whatsapp-button {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            z-index: 1000;
-        }
-
-        .table th {
-            background: #2f3640;
-            color: #fff;
-        }
-
-        .table-hover tbody tr:hover {
-            background-color: #f5f6fa;
-        }
-    </style>
+.whatsapp-button{
+    position:fixed;
+    bottom:20px;
+    right:20px;
+    z-index:1000;
+}
+</style>
 </head>
 
 <body>
 
 <nav class="navbar navbar-expand-lg navbar-dark custom-navbar fixed-top">
-    <div class="container">
-        <a class="navbar-brand" href="#">SAVACAVA</a>
-    </div>
+<div class="container">
+<a class="navbar-brand" href="#">JEISON.DIGITAL</a>
+</div>
 </nav>
 
 <div class="container" style="margin-top:100px;">
 
-    <h2 class="text-center mb-3">Plataformas de Streaming</h2>
-    <p class="text-center text-muted mb-5">
-        Accede a tus servicios favoritos al mejor precio con activación rápida.
-    </p>
+<!-- DESARROLLO WEB -->
+<section class="my-5">
+<div class="card service-card p-4">
+<h2 class="text-center mb-3">Desarrollo Web a la Medida</h2>
+<p class="text-center text-muted">
+Creamos soluciones digitales personalizadas para optimizar tu negocio.
+</p>
+<div class="text-center">
+<a href="https://api.whatsapp.com/send?phone=573115364647" class="btn btn-primary">
+Solicitar información
+</a>
+</div>
+</div>
+</section>
 
-    <div class="row">
+<!-- MANTENIMIENTO -->
+<section class="my-5">
+<h2 class="text-center mb-4">Servicios de Mantenimiento</h2>
 
-        <!-- NETFLIX -->
-        <div class="col-md-4 mb-4">
-            <div class="card service-card">
-                <img src="img/Productos/netflix.png" class="card-img-top">
-                <div class="card-body text-center">
-                    <h5>Netflix</h5>
-                    <p>$10.000</p>
-                    <a href="https://api.whatsapp.com/send?phone=573115364647&text=Quiero%20comprar%20Netflix" class="btn btn-primary">Activar ahora</a>
-                </div>
-            </div>
-        </div>
+<div class="row">
 
-        <!-- DISNEY -->
-        <div class="col-md-4 mb-4">
-            <div class="card service-card">
-                <img src="img/Productos/disney.jpg" class="card-img-top">
-                <div class="card-body text-center">
-                    <h5>Disney+</h5>
-                    <p>$7.000</p>
-                    <a href="https://api.whatsapp.com/send?phone=573115364647&text=Quiero%20comprar%20Disney" class="btn btn-primary">Activar ahora</a>
-                </div>
-            </div>
-        </div>
+<div class="col-md-4 mb-4">
+<div class="card service-card">
+<img src="img/Productos/revisiongeneral.jpg" class="card-img-top">
+<div class="card-body text-center">
+<h5>Revisión general</h5>
+<p>Diagnóstico y limpieza</p>
+<a href="https://api.whatsapp.com/send?phone=573115364647" class="btn btn-primary">Solicitar</a>
+</div>
+</div>
+</div>
 
-        <!-- AMAZON -->
-        <div class="col-md-4 mb-4">
-            <div class="card service-card">
-                <img src="img/Productos/amazon.jpg" class="card-img-top">
-                <div class="card-body text-center">
-                    <h5>Amazon Prime</h5>
-                    <p>$6.000</p>
-                    <a href="https://api.whatsapp.com/send?phone=573115364647&text=Quiero%20comprar%20Amazon" class="btn btn-primary">Activar ahora</a>
-                </div>
-            </div>
-        </div>
+<div class="col-md-4 mb-4">
+<div class="card service-card">
+<img src="img/Productos/instalacion.jpg" class="card-img-top">
+<div class="card-body text-center">
+<h5>Instalación de software</h5>
+<p>Configuración completa</p>
+<a href="https://api.whatsapp.com/send?phone=573115364647" class="btn btn-primary">Solicitar</a>
+</div>
+</div>
+</div>
 
-        <!-- HBO -->
-        <div class="col-md-4 mb-4">
-            <div class="card service-card">
-                <img src="img/Productos/hbomax.jpg" class="card-img-top">
-                <div class="card-body text-center">
-                    <h5>HBO Max</h5>
-                    <p>$5.000</p>
-                    <a href="https://api.whatsapp.com/send?phone=573115364647&text=Quiero%20comprar%20HBO" class="btn btn-primary">Activar ahora</a>
-                </div>
-            </div>
-        </div>
+<div class="col-md-4 mb-4">
+<div class="card service-card">
+<img src="img/Productos/recuperacion.jpg" class="card-img-top">
+<div class="card-body text-center">
+<h5>Recuperación de datos</h5>
+<p>Recuperamos tu información</p>
+<a href="https://api.whatsapp.com/send?phone=573115364647" class="btn btn-primary">Solicitar</a>
+</div>
+</div>
+</div>
 
-        <!-- CRUNCHYROLL -->
-        <div class="col-md-4 mb-4">
-            <div class="card service-card">
-                <img src="img/Productos/Crunchyroll.jpg" class="card-img-top">
-                <div class="card-body text-center">
-                    <h5>Crunchyroll</h5>
-                    <p>$5.000</p>
-                    <a href="https://api.whatsapp.com/send?phone=573115364647&text=Quiero%20comprar%20Crunchyroll" class="btn btn-primary">Activar ahora</a>
-                </div>
-            </div>
-        </div>
+</div>
+</section>
 
-        <!-- SPOTIFY -->
-        <div class="col-md-4 mb-4">
-            <div class="card service-card">
-                <img src="img/Productos/spotify.png" class="card-img-top">
-                <div class="card-body text-center">
-                    <h5>Spotify</h5>
-                    <p>$18.000</p>
-                    <a href="https://api.whatsapp.com/send?phone=573115364647&text=Quiero%20comprar%20Spotify" class="btn btn-primary">Activar ahora</a>
-                </div>
-            </div>
-        </div>
+<!-- STREAMING -->
+<section class="my-5">
+<h2 class="text-center mb-4">Plataformas de Streaming</h2>
 
-    </div>
+<div class="row">
 
-    <!-- TABLA COMBOS -->
-    <h2 class="text-center mt-5 mb-4">Combos Disponibles</h2>
+<div class="col-md-3 mb-4"><div class="card service-card"><img src="img/Productos/netflix.png" class="card-img-top"><div class="card-body text-center"><h5>Netflix</h5><p>$10.000</p><a href="https://api.whatsapp.com/send?phone=573115364647&text=Netflix" class="btn btn-primary">Activar</a></div></div></div>
 
-    <div class="table-responsive">
-        <table class="table table-bordered table-hover shadow">
-            <thead>
-                <tr>
-                    <th>Combo</th>
-                    <th>Precio</th>
-                    <th>Acción</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td>Netflix + Disney</td>
-                    <td>$18.000</td>
-                    <td><a href="https://api.whatsapp.com/send?phone=573115364647&text=Netflix+Disney" class="btn btn-primary">Comprar</a></td>
-                </tr>
-                <tr>
-                    <td>Netflix + Amazon</td>
-                    <td>$15.500</td>
-                    <td><a href="https://api.whatsapp.com/send?phone=573115364647&text=Netflix+Amazon" class="btn btn-primary">Comprar</a></td>
-                </tr>
-                <tr>
-                    <td>Netflix + HBO</td>
-                    <td>$14.500</td>
-                    <td><a href="https://api.whatsapp.com/send?phone=573115364647&text=Netflix+HBO" class="btn btn-primary">Comprar</a></td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
+<div class="col-md-3 mb-4"><div class="card service-card"><img src="img/Productos/disney.jpg" class="card-img-top"><div class="card-body text-center"><h5>Disney+</h5><p>$7.000</p><a href="https://api.whatsapp.com/send?phone=573115364647&text=Disney" class="btn btn-primary">Activar</a></div></div></div>
+
+<div class="col-md-3 mb-4"><div class="card service-card"><img src="img/Productos/amazon.jpg" class="card-img-top"><div class="card-body text-center"><h5>Amazon</h5><p>$6.000</p><a href="https://api.whatsapp.com/send?phone=573115364647&text=Amazon" class="btn btn-primary">Activar</a></div></div></div>
+
+<div class="col-md-3 mb-4"><div class="card service-card"><img src="img/Productos/hbomax.jpg" class="card-img-top"><div class="card-body text-center"><h5>HBO Max</h5><p>$5.000</p><a href="https://api.whatsapp.com/send?phone=573115364647&text=HBO" class="btn btn-primary">Activar</a></div></div></div>
+
+<div class="col-md-3 mb-4"><div class="card service-card"><img src="img/Productos/Crunchyroll.jpg" class="card-img-top"><div class="card-body text-center"><h5>Crunchyroll</h5><p>$5.000</p><a href="https://api.whatsapp.com/send?phone=573115364647&text=Crunchyroll" class="btn btn-primary">Activar</a></div></div></div>
+
+<div class="col-md-3 mb-4"><div class="card service-card"><img src="img/Productos/Paramount.jpg" class="card-img-top"><div class="card-body text-center"><h5>Paramount+</h5><p>$6.000</p><a href="https://api.whatsapp.com/send?phone=573115364647&text=Paramount" class="btn btn-primary">Activar</a></div></div></div>
+
+<div class="col-md-3 mb-4"><div class="card service-card"><img src="img/Productos/youtube.png" class="card-img-top"><div class="card-body text-center"><h5>YouTube</h5><p>$12.000</p><a href="https://api.whatsapp.com/send?phone=573115364647&text=YouTube" class="btn btn-primary">Activar</a></div></div></div>
+
+<div class="col-md-3 mb-4"><div class="card service-card"><img src="img/Productos/spotify.png" class="card-img-top"><div class="card-body text-center"><h5>Spotify</h5><p>$18.000</p><a href="https://api.whatsapp.com/send?phone=573115364647&text=Spotify" class="btn btn-primary">Activar</a></div></div></div>
+
+</div>
+</section>
+
+<!-- COMBOS COMPLETOS -->
+<section class="my-5">
+<h2 class="text-center mb-4">Combos Disponibles</h2>
+
+<div class="table-responsive">
+<table class="table table-bordered table-hover">
+<thead>
+<tr>
+<th>Combo</th>
+<th>Precio</th>
+<th>Acción</th>
+</tr>
+</thead>
+<tbody>
+
+<tr><td>Netflix + Disney</td><td>$18.000</td><td><a href="#" class="btn btn-primary">Comprar</a></td></tr>
+<tr><td>Netflix + Amazon</td><td>$15.500</td><td><a href="#" class="btn btn-primary">Comprar</a></td></tr>
+<tr><td>Netflix + Max</td><td>$14.500</td><td><a href="#" class="btn btn-primary">Comprar</a></td></tr>
+<tr><td>Netflix + Crunchyroll</td><td>$14.500</td><td><a href="#" class="btn btn-primary">Comprar</a></td></tr>
+<tr><td>Netflix + Paramount</td><td>$14.500</td><td><a href="#" class="btn btn-primary">Comprar</a></td></tr>
+
+</tbody>
+</table>
+</div>
+</section>
 
 </div>
 
-<a href="https://wa.link/msm5dn" target="_blank" class="btn btn-success whatsapp-button">
-    💬 WhatsApp
-</a>
+<a href="https://wa.link/msm5dn" class="btn btn-success whatsapp-button">WhatsApp</a>
 
 <footer class="text-center py-4 mt-5">
-    <p>© 2026 SAVACAVA - Todos los derechos reservados</p>
+<p>© 2026 JEISON.DIGITAL - Todos los derechos reservados</p>
 </footer>
 
 <script src="js/bootstrap.bundle.min.js"></script>
