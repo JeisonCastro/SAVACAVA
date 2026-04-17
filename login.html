@@ -1,54 +1,42 @@
+<script>
+    // 1. Configuramos las credenciales
+    const SUPABASE_URL = "https://zsxkfqnalkfvwjrzuqip.supabase.co";
+    const SUPABASE_KEY = "TU_CLAVE_ANON_PUBLICA_AQUI"; // Pega aquí tu clave anon public
 
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <title>Entrar | Jeison Digital AI</title>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <style>
-        body { font-family: 'Segoe UI', sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; background: #0f172a; color: white; }
-        .login-card { background: #1e293b; padding: 2rem; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); width: 100%; max-width: 350px; text-align: center; }
-        input { width: 100%; padding: 12px; margin: 10px 0; border-radius: 6px; border: 1px solid #334155; background: #0f172a; color: white; box-sizing: border-box; }
-        button { width: 100%; padding: 12px; margin-top: 10px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; transition: 0.3s; }
-        .btn-reg { background: #10b981; color: white; }
-        .btn-log { background: #3b82f6; color: white; }
-        button:hover { opacity: 0.8; }
-    </style>
-</head>
-<body>
-    <div class="login-card">
-        <h2>Fábrica de Agentes</h2>
-        <p>Gestiona tus bots e inventario</p>
-        <input type="email" id="email" placeholder="Tu correo electrónico">
-        <input type="password" id="password" placeholder="Tu contraseña">
-        <button class="btn-log" onclick="entrar()">Iniciar Sesión</button>
-        <button class="btn-reg" onclick="registrar()">Registrarse</button>
-    </div>
+    // 2. Inicializamos el cliente de Supabase una sola vez
+    // Usamos 'window.supabaseClient' para evitar conflictos de nombres
+    const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    <script>
-        // Configuración oficial de tu proyecto
-        const SUPABASE_URL = "https://zsxkfqnalkfvwjrzuqip.supabase.co";
-        const SUPABASE_KEY = "TU_CLAVE_PUBLICA_AQUI"; // Copia la clave "default" de tu captura
-        const supabase = Object.create(supabase).createClient(SUPABASE_URL, SUPABASE_KEY);
+    // 3. Función para registrar nuevos usuarios
+    async function registrar() {
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+        
+        if (!email || !password) return alert("Por favor llena todos los campos");
 
-        async function registrar() {
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
-            const { error } = await supabase.auth.signUp({ email, password });
-            if (error) alert("Error: " + error.message);
-            else alert("¡Usuario creado! Ya puedes iniciar sesión.");
+        const { data, error } = await _supabase.auth.signUp({ email, password });
+        
+        if (error) {
+            alert("Error al registrar: " + error.message);
+        } else {
+            alert("¡Usuario creado con éxito! Ya puedes iniciar sesión.");
         }
+    }
 
-        async function entrar() {
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
-            const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-            if (error) alert("Error de acceso: " + error.message);
-            else {
-                // Si el login es exitoso, nos vamos al panel de control
-                window.location.href = "dashboard.html";
-            }
+    // 4. Función para entrar al sistema
+    async function entrar() {
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+
+        if (!email || !password) return alert("Por favor llena todos los campos");
+
+        const { data, error } = await _supabase.auth.signInWithPassword({ email, password });
+
+        if (error) {
+            alert("Error de acceso: " + error.message);
+        } else {
+            // Si todo sale bien, lo mandamos al dashboard
+            window.location.href = "dashboard.html";
         }
-    </script>
-</body>
-</html>
+    }
+</script>
