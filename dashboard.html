@@ -285,6 +285,19 @@
     }
     document.getElementById('create-loading').style.display = 'none';
 }
+        async function cargarAgentes() {
+    const { data: { session } } = await _supabase.auth.getSession();
+    const { data, error } = await _supabase
+        .from('agentes_ia')
+        .select('*')
+        .eq('user_id', session.user.id);
+
+    if (data) {
+        // Mapeamos los datos de la DB a tu array local
+        agentes = data.map(a => ({ name: a.nombre, prompt: a.prompt_sistema }));
+        renderAgentes();
+    }
+}
 
         function renderAgentes() {
             const container = document.getElementById('lista-agentes');
