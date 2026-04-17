@@ -344,15 +344,16 @@
     `).join('');
 }
 
-// Función para copiar el código al portapapeles
+        // Función para copiar el código al portapapeles
 function copiarCDN(id) {
     const scriptCode = `<script src="https://jeison.digital/widget.js" data-id="${id}"></script>`;
     navigator.clipboard.writeText(scriptCode);
-    alert("¡Código CDN copiado! Pégalo antes del cierre de </body> en tu web.");
+    alert("¡Código CDN copiado! Pégalo antes del cierre de <\/body> en tu web.");
 }
 
         // --- LÓGICA DEL CHAT ---
-        let agenteSeleccionadoId = null;
+    
+    let agenteSeleccionadoId = null;
 
         function abrirChat(id, nombre) {
             agenteSeleccionadoId = id;
@@ -361,8 +362,7 @@ function copiarCDN(id) {
             document.getElementById('chat-modal').style.display = 'flex';
             agregarMensaje("Sistema", `Conectado al agente. Listo para recibir instrucciones.`, "bot");
         }
-
-       async function enviarMensaje() {
+    async function enviarMensaje() {
     const input = document.getElementById('chat-input');
     const mensaje = input.value.trim();
     if (!mensaje || !agenteSeleccionadoId) return;
@@ -424,6 +424,6 @@ function copiarCDN(id) {
         });
 
         verificarSesion();
-    </script>
+</script>
 </body>
 </html>
