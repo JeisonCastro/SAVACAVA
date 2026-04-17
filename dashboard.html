@@ -321,20 +321,34 @@
         function renderAgentes() {
     const container = document.getElementById('lista-agentes');
     if (agentes.length === 0) {
-        container.innerHTML = '<div class="empty-state"><i class="fas fa-robot"></i>Aún no has creado ningún agente.</div>';
+        container.innerHTML = '<div class="empty-state"><i class="fas fa-robot"></i>Aún no hay agentes.</div>';
         return;
     }
     container.innerHTML = agentes.map((a) => `
-        <div class="agent-item">
-            <div style="min-width:0; flex:1;">
-                <div class="agent-name">${a.name}</div>
-                <div class="agent-prompt">${a.prompt}</div>
+        <div class="agent-item" style="flex-direction: column; align-items: stretch;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
+                <div style="min-width:0; flex:1;">
+                    <div class="agent-name">${a.name}</div>
+                    <div class="agent-prompt">${a.prompt}</div>
+                </div>
+                <div style="display: flex; gap: 5px;">
+                    <button onclick="abrirChat('${a.id}', '${a.name}')" title="Probar" style="background:rgba(14,165,233,0.1); color:var(--accent); border:1px solid var(--border); padding:8px; border-radius:8px; cursor:pointer;">
+                        <i class="fas fa-play"></i>
+                    </button>
+                    <button onclick="copiarCDN('${a.id}')" title="Copiar Código CDN" style="background:rgba(34,211,165,0.1); color:var(--green); border:1px solid var(--border); padding:8px; border-radius:8px; cursor:pointer;">
+                        <i class="fas fa-code"></i>
+                    </button>
+                </div>
             </div>
-            <button onclick="abrirChat('${a.id}', '${a.name}')" style="background:rgba(14,165,233,0.1); color:var(--accent); border:1px solid var(--border); padding:8px; border-radius:8px; cursor:pointer;">
-                <i class="fas fa-play-circle"></i> Probando
-            </button>
         </div>
     `).join('');
+}
+
+// Función para copiar el código al portapapeles
+function copiarCDN(id) {
+    const scriptCode = `<script src="https://jeison.digital/widget.js" data-id="${id}"></script>`;
+    navigator.clipboard.writeText(scriptCode);
+    alert("¡Código CDN copiado! Pégalo antes del cierre de </body> en tu web.");
 }
 
         // --- LÓGICA DEL CHAT ---
