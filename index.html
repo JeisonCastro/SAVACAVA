@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,202 +11,309 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 
 <style>
-body{
-    background:#f8f9fa;
-    font-family:'Roboto',sans-serif;
-    color:#2c3e50;
+
+:root {
+    --primary: #2563eb;
+    --secondary: #0f172a;
+    --accent: #22c55e;
 }
 
-.custom-navbar{
-    background:#1c1f26;
-    box-shadow:0 2px 10px rgba(0,0,0,0.1);
+body {
+    font-family: 'Roboto', sans-serif;
+    background: linear-gradient(to bottom, #f8fafc, #ffffff);
+    color: var(--secondary);
 }
 
-.custom-navbar .nav-link{
-    color:#dcdde1;
+/* NAVBAR */
+.navbar {
+    background: rgba(255,255,255,0.9);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid #e5e7eb;
 }
 
-.custom-navbar .nav-link:hover{
-    color:#00a8ff;
+/* HERO */
+.hero {
+    background: var(--secondary);
+    color: white;
+    padding: 120px 20px;
+    text-align: center;
 }
 
-h1,h2,h5{
-    font-weight:700;
+.hero h1 {
+    font-size: 42px;
+    font-weight: 700;
 }
 
-.service-card{
-    border:none;
-    border-radius:12px;
-    overflow:hidden;
-    background:#fff;
-    box-shadow:0 4px 15px rgba(0,0,0,0.05);
-    transition:.3s;
+.hero p {
+    font-size: 18px;
+    opacity: 0.9;
 }
 
-.service-card:hover{
-    transform:translateY(-5px);
-    box-shadow:0 10px 25px rgba(0,0,0,0.1);
+/* SECTIONS */
+section {
+    padding: 80px 0;
 }
 
-.card-img-top{
-    height:180px;
-    object-fit:cover;
+.section-title {
+    text-align: center;
+    margin-bottom: 40px;
 }
 
-.btn-primary{
-    background:#00a8ff;
-    border:none;
-    border-radius:8px;
-    font-weight:600;
+.section-title::after {
+    content: "";
+    width: 50px;
+    height: 4px;
+    background: var(--primary);
+    display: block;
+    margin: 10px auto;
 }
 
-.btn-primary:hover{
-    background:#0097e6;
+/* CARDS */
+.card-pro {
+    border: 1px solid #e5e7eb;
+    border-radius: 16px;
+    padding: 25px;
+    background: white;
+    transition: all 0.3s;
+    height: 100%;
 }
 
-.table th{
-    background:#2f3640;
-    color:#fff;
+.card-pro:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 20px 40px rgba(0,0,0,0.08);
 }
 
-footer{
-    background:#1c1f26;
-    color:#dcdde1;
+/* ICONS */
+.icon {
+    font-size: 40px;
+    color: var(--primary);
+    margin-bottom: 15px;
 }
 
-.whatsapp-button{
-    position:fixed;
-    bottom:20px;
-    right:20px;
-    z-index:1000;
+/* BUTTONS */
+.btn-primary {
+    background: var(--primary);
+    border: none;
+    border-radius: 10px;
+    padding: 12px 20px;
+    font-weight: 500;
 }
+
+.btn-primary:hover {
+    background: #1d4ed8;
+}
+
+.btn-success {
+    background: var(--accent);
+    border-radius: 50px;
+    padding: 12px 25px;
+    font-weight: 600;
+}
+
+/* WHATSAPP */
+.whatsapp {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 1000;
+}
+
+/* FOOTER */
+footer {
+    background: var(--secondary);
+    color: white;
+}
+
 </style>
 </head>
 
 <body>
 
-<nav class="navbar navbar-expand-lg navbar-dark custom-navbar fixed-top">
+<!-- NAVBAR -->
+<nav class="navbar navbar-expand-lg fixed-top">
 <div class="container">
-<a class="navbar-brand" href="#">JEISON.DIGITAL</a>
+<a class="navbar-brand fw-bold" href="#">JEISON.DIGITAL</a>
 </div>
 </nav>
 
-<div class="container" style="margin-top:100px;">
+<!-- HERO -->
+<section class="hero">
+<div class="container">
 
-<!-- DESARROLLO WEB -->
-<section class="my-5">
-<div class="card service-card p-4">
-<h2 class="text-center mb-3">Desarrollo Web a la Medida</h2>
-<p class="text-center text-muted">
-Creamos soluciones digitales personalizadas para optimizar tu negocio.
+<h1>Ingeniería tecnológica para empresas que quieren escalar</h1>
+
+<p>
+Diseño e implementación de soluciones en infraestructura, automatización e inteligencia artificial
+orientadas a optimizar procesos y aumentar la eficiencia operativa.
 </p>
-<div class="text-center">
-<a href="https://api.whatsapp.com/send?phone=573115364647" class="btn btn-primary">
-Solicitar información
+
+<a href="https://wa.link/msm5dn" class="btn btn-success mt-4">
+💬 Agendar asesoría
 </a>
-</div>
+
 </div>
 </section>
 
-<!-- MANTENIMIENTO -->
-<section class="my-5">
-<h2 class="text-center mb-4">Servicios de Mantenimiento</h2>
+<!-- SERVICIOS -->
+<section>
+<div class="container">
+<h2 class="section-title">Servicios</h2>
 
 <div class="row">
 
 <div class="col-md-4 mb-4">
-<div class="card service-card">
-<img src="img/Productos/revisiongeneral.jpg" class="card-img-top">
-<div class="card-body text-center">
-<h5>Revisión general</h5>
-<p>Diagnóstico y limpieza</p>
-<a href="https://api.whatsapp.com/send?phone=573115364647" class="btn btn-primary">Solicitar</a>
-</div>
-</div>
-</div>
-
-<div class="col-md-4 mb-4">
-<div class="card service-card">
-<img src="img/Productos/instalacion.jpg" class="card-img-top">
-<div class="card-body text-center">
-<h5>Instalación de software</h5>
-<p>Configuración completa</p>
-<a href="https://api.whatsapp.com/send?phone=573115364647" class="btn btn-primary">Solicitar</a>
-</div>
+<div class="card-pro text-center">
+<i class="fas fa-laptop icon"></i>
+<h5>Mantenimiento de equipos</h5>
+<p>
+Diagnóstico, optimización y mantenimiento preventivo y correctivo
+para garantizar el rendimiento y la vida útil de tus equipos.
+</p>
 </div>
 </div>
 
 <div class="col-md-4 mb-4">
-<div class="card service-card">
-<img src="img/Productos/recuperacion.jpg" class="card-img-top">
-<div class="card-body text-center">
-<h5>Recuperación de datos</h5>
-<p>Recuperamos tu información</p>
-<a href="https://api.whatsapp.com/send?phone=573115364647" class="btn btn-primary">Solicitar</a>
-</div>
+<div class="card-pro text-center">
+<i class="fas fa-network-wired icon"></i>
+<h5>Infraestructura y redes</h5>
+<p>
+Diseño, implementación y administración de redes, servidores
+y entornos tecnológicos seguros y escalables.
+</p>
 </div>
 </div>
 
+<div class="col-md-4 mb-4">
+<div class="card-pro text-center">
+<i class="fas fa-robot icon"></i>
+<h5>Agentes de inteligencia artificial</h5>
+<p>
+Desarrollo de asistentes inteligentes para automatizar atención,
+ventas y procesos internos en tu negocio.
+</p>
+</div>
+</div>
+
+<div class="col-md-4 mb-4">
+<div class="card-pro text-center">
+<i class="fas fa-cogs icon"></i>
+<h5>Automatización de procesos</h5>
+<p>
+Integración de herramientas y flujos automáticos que reducen
+tiempos operativos y aumentan la productividad.
+</p>
+</div>
+</div>
+
+<div class="col-md-4 mb-4">
+<div class="card-pro text-center">
+<i class="fas fa-code icon"></i>
+<h5>Desarrollo web</h5>
+<p>
+Creación de plataformas web, sistemas a la medida
+y soluciones digitales orientadas a resultados.
+</p>
+</div>
+</div>
+
+<div class="col-md-4 mb-4">
+<div class="card-pro text-center">
+<i class="fas fa-server icon"></i>
+<h5>Servidores y nube</h5>
+<p>
+Configuración y administración de servidores,
+hosting y soluciones cloud para alta disponibilidad.
+</p>
+</div>
+</div>
+
+</div>
 </div>
 </section>
 
-<!-- STREAMING -->
-<section class="my-5">
-<h2 class="text-center mb-4">Plataformas de Streaming</h2>
+<!-- DIFERENCIAL -->
+<section style="background:#f1f5f9;">
+<div class="container text-center">
+<h2 class="section-title">Valor diferencial</h2>
 
 <div class="row">
 
-<div class="col-md-3 mb-4"><div class="card service-card"><img src="img/Productos/netflix.png" class="card-img-top"><div class="card-body text-center"><h5>Netflix</h5><p>$10.000</p><a href="https://api.whatsapp.com/send?phone=573115364647&text=Netflix" class="btn btn-primary">Activar</a></div></div></div>
+<div class="col-md-4">
+<h5>Enfoque estratégico</h5>
+<p>No solo implemento tecnología, desarrollo soluciones alineadas al negocio.</p>
+</div>
 
-<div class="col-md-3 mb-4"><div class="card service-card"><img src="img/Productos/disney.jpg" class="card-img-top"><div class="card-body text-center"><h5>Disney+</h5><p>$7.000</p><a href="https://api.whatsapp.com/send?phone=573115364647&text=Disney" class="btn btn-primary">Activar</a></div></div></div>
+<div class="col-md-4">
+<h5>Experiencia integral</h5>
+<p>Infraestructura, desarrollo y automatización en un solo lugar.</p>
+</div>
 
-<div class="col-md-3 mb-4"><div class="card service-card"><img src="img/Productos/amazon.jpg" class="card-img-top"><div class="card-body text-center"><h5>Amazon</h5><p>$6.000</p><a href="https://api.whatsapp.com/send?phone=573115364647&text=Amazon" class="btn btn-primary">Activar</a></div></div></div>
+<div class="col-md-4">
+<h5>Optimización continua</h5>
+<p>Busco eficiencia, escalabilidad y reducción de costos operativos.</p>
+</div>
 
-<div class="col-md-3 mb-4"><div class="card service-card"><img src="img/Productos/hbomax.jpg" class="card-img-top"><div class="card-body text-center"><h5>HBO Max</h5><p>$5.000</p><a href="https://api.whatsapp.com/send?phone=573115364647&text=HBO" class="btn btn-primary">Activar</a></div></div></div>
+</div>
+</div>
+</section>
 
-<div class="col-md-3 mb-4"><div class="card service-card"><img src="img/Productos/Crunchyroll.jpg" class="card-img-top"><div class="card-body text-center"><h5>Crunchyroll</h5><p>$5.000</p><a href="https://api.whatsapp.com/send?phone=573115364647&text=Crunchyroll" class="btn btn-primary">Activar</a></div></div></div>
+<!-- PROCESO -->
+<section>
+<div class="container">
+<h2 class="section-title">Metodología de trabajo</h2>
 
-<div class="col-md-3 mb-4"><div class="card service-card"><img src="img/Productos/Paramount.jpg" class="card-img-top"><div class="card-body text-center"><h5>Paramount+</h5><p>$6.000</p><a href="https://api.whatsapp.com/send?phone=573115364647&text=Paramount" class="btn btn-primary">Activar</a></div></div></div>
+<div class="row text-center">
 
-<div class="col-md-3 mb-4"><div class="card service-card"><img src="img/Productos/youtube.png" class="card-img-top"><div class="card-body text-center"><h5>YouTube</h5><p>$12.000</p><a href="https://api.whatsapp.com/send?phone=573115364647&text=YouTube" class="btn btn-primary">Activar</a></div></div></div>
+<div class="col-md-3">
+<h5>1. Análisis</h5>
+<p>Evaluación técnica y de negocio</p>
+</div>
 
-<div class="col-md-3 mb-4"><div class="card service-card"><img src="img/Productos/spotify.png" class="card-img-top"><div class="card-body text-center"><h5>Spotify</h5><p>$18.000</p><a href="https://api.whatsapp.com/send?phone=573115364647&text=Spotify" class="btn btn-primary">Activar</a></div></div></div>
+<div class="col-md-3">
+<h5>2. Diseño</h5>
+<p>Arquitectura de solución</p>
+</div>
+
+<div class="col-md-3">
+<h5>3. Implementación</h5>
+<p>Desarrollo y configuración</p>
+</div>
+
+<div class="col-md-3">
+<h5>4. Soporte</h5>
+<p>Monitoreo y mejora continua</p>
+</div>
+
+</div>
+</div>
+</section>
+
+<!-- CTA FINAL -->
+<section style="background:var(--secondary); color:white; text-align:center;">
+<div class="container">
+
+<h2>Transforma tu operación con tecnología inteligente</h2>
+
+<p>
+Agenda una asesoría y descubre cómo optimizar tus procesos
+con soluciones a la medida.
+</p>
+
+<a href="https://wa.link/msm5dn" class="btn btn-success mt-3">
+💬 Contactar ahora
+</a>
 
 </div>
 </section>
 
-<!-- COMBOS COMPLETOS -->
-<section class="my-5">
-<h2 class="text-center mb-4">Combos Disponibles</h2>
+<!-- WHATSAPP -->
+<a href="https://wa.link/msm5dn" class="btn btn-success whatsapp">
+💬
+</a>
 
-<div class="table-responsive">
-<table class="table table-bordered table-hover">
-<thead>
-<tr>
-<th>Combo</th>
-<th>Precio</th>
-<th>Acción</th>
-</tr>
-</thead>
-<tbody>
-
-<tr><td>Netflix + Disney</td><td>$18.000</td><td><a href="#" class="btn btn-primary">Comprar</a></td></tr>
-<tr><td>Netflix + Amazon</td><td>$15.500</td><td><a href="#" class="btn btn-primary">Comprar</a></td></tr>
-<tr><td>Netflix + Max</td><td>$14.500</td><td><a href="#" class="btn btn-primary">Comprar</a></td></tr>
-<tr><td>Netflix + Crunchyroll</td><td>$14.500</td><td><a href="#" class="btn btn-primary">Comprar</a></td></tr>
-<tr><td>Netflix + Paramount</td><td>$14.500</td><td><a href="#" class="btn btn-primary">Comprar</a></td></tr>
-
-</tbody>
-</table>
-</div>
-</section>
-
-</div>
-
-<a href="https://wa.link/msm5dn" class="btn btn-success whatsapp-button">WhatsApp</a>
-
-<footer class="text-center py-4 mt-5">
-<p>© 2026 JEISON.DIGITAL - Todos los derechos reservados</p>
+<!-- FOOTER -->
+<footer class="text-center py-4">
+<p>© 2026 JEISON.DIGITAL - Soluciones Tecnológicas</p>
 </footer>
 
 <script src="js/bootstrap.bundle.min.js"></script>
