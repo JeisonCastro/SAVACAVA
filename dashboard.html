@@ -301,18 +301,22 @@
     document.getElementById('create-loading').style.display = 'none';
 }
         async function cargarAgentes() {
-    const { data: { session } } = await _supabase.auth.getSession();
-    const { data, error } = await _supabase
-        .from('agentes_ia')
-        .select('*')
-        .eq('user_id', session.user.id);
+            const { data: { session } } = await _supabase.auth.getSession();
+            const { data, error } = await _supabase
+                .from('agentes_ia')
+                .select('*')
+                .eq('user_id', session.user.id);
 
-    if (data) {
-        // Mapeamos los datos de la DB a tu array local
-        agentes = data.map(a => ({ name: a.nombre, prompt: a.prompt_sistema }));
-        renderAgentes();
-    }
-}
+            if (data) {
+                // IMPORTANTE: Incluimos el 'id' que viene de Supabase
+                agentes = data.map(a => ({ 
+                    id: a.id, 
+                    name: a.nombre || a.nombre_agente, 
+                    prompt: a.prompt_sistema 
+                }));
+                renderAgentes();
+            }
+        }
 
         function renderAgentes() {
     const container = document.getElementById('lista-agentes');
@@ -332,6 +336,69 @@
         </div>
     `).join('');
 }
+
+        // --- LÓGICA DEL CHAT ---
+        let agenteSeleccionadoId = null;
+
+        function abrirChat(id, nombre) {
+            agenteSeleccionadoId = id;
+            document.getElementById('chat-agent-name').innerText = "Probando: " + nombre;
+            document.getElementById('chat-messages').innerHTML = ''; 
+            document.getElementById('chat-modal').style.display = 'flex';
+            agregarMensaje("Sistema", `Conectado al agente. Listo para recibir instrucciones.`, "bot");
+        }
+
+        async function enviarMensaje() {
+            const input = document.getElementById('chat-input');
+            const mensaje = input.value.trim();
+            if (!mensaje || !agenteSeleccionadoId) return;
+
+            agregarMensaje("Tú", mensaje, "user");
+            input.value = '';
+
+            try {
+                const res = await fetch('/.netlify/functions/chat', {
+                    method: 'POST',
+                    body: JSON.stringify({ 
+                        prompt: mensaje, 
+                        agente_id: agenteSeleccionadoId 
+                    })
+                });
+                const data = await res.json();
+                agregarMensaje("Agente", data.respuesta, "bot");
+            } catch (err) {
+                agregarMensaje("Sistema", "Error conectando con la función de Netlify", "bot");
+            }
+        }
+
+        function agregarMensaje(autor, texto, tipo) {
+            const container = document.getElementById('chat-messages');
+            const div = document.createElement('div');
+            div.style.padding = "10px 12px";
+            div.style.borderRadius = "12px";
+            div.style.maxWidth = "85%";
+            div.style.lineHeight = "1.4";
+            
+            if (tipo === "user") {
+                div.style.alignSelf = "flex-end";
+                div.style.background = "var(--accent)";
+                div.style.color = "white";
+                div.style.marginLeft = "auto";
+            } else {
+                div.style.alignSelf = "flex-start";
+                div.style.background = "var(--border)";
+                div.style.color = "var(--text)";
+            }
+            
+            div.innerHTML = `<strong>${autor}</strong><br>${texto}`;
+            container.appendChild(div);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        // Enviar con Enter
+        document.getElementById('chat-input').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') enviarMensaje();
+        });
 
         verificarSesion();
     </script>
