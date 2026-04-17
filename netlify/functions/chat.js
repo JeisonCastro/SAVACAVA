@@ -7,6 +7,19 @@ const supabase = createClient(
 );
 
 exports.handler = async (event) => {
+  
+  // 1. Recibimos el prompt Y el id del agente
+    const { prompt, agente_id } = JSON.parse(event.body); 
+
+    // 2. Usamos el ID recibido o el maestro de la variable de entorno
+    const targetID = agente_id || process.env.AGENTE_MAESTRO_ID;
+
+    const { data: agente, error } = await supabase
+      .from('agentes_ia')
+      .select('*')
+      .eq('id', targetID)
+      .single();
+  
   if (event.httpMethod !== 'POST') return { statusCode: 405, body: 'Method Not Allowed' };
 
   try {
