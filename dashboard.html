@@ -348,28 +348,37 @@
             agregarMensaje("Sistema", `Conectado al agente. Listo para recibir instrucciones.`, "bot");
         }
 
-        async function enviarMensaje() {
-            const input = document.getElementById('chat-input');
-            const mensaje = input.value.trim();
-            if (!mensaje || !agenteSeleccionadoId) return;
+       async function enviarMensaje() {
+    const input = document.getElementById('chat-input');
+    const mensaje = input.value.trim();
+    if (!mensaje || !agenteSeleccionadoId) return;
 
-            agregarMensaje("Tú", mensaje, "user");
-            input.value = '';
+    agregarMensaje("Tú", mensaje, "user");
+    input.value = '';
 
-            try {
-                const res = await fetch('/.netlify/functions/chat', {
-                    method: 'POST',
-                    body: JSON.stringify({ 
-                        prompt: mensaje, 
-                        agente_id: agenteSeleccionadoId 
-                    })
-                });
-                const data = await res.json();
-                agregarMensaje("Agente", data.respuesta, "bot");
-            } catch (err) {
-                agregarMensaje("Sistema", "Error conectando con la función de Netlify", "bot");
-            }
+    try {
+        const res = await fetch('/.netlify/functions/chat', {
+            method: 'POST',
+            body: JSON.stringify({ 
+                prompt: mensaje, 
+                agente_id: agenteSeleccionadoId 
+            })
+        });
+        
+        const data = await res.json();
+        agregarMensaje("Agente", data.respuesta, "bot");
+
+        // --- AJUSTE AQUÍ: Actualizar el saldo de tokens en la interfaz ---
+        const { data: { session } } = await _supabase.auth.getSession();
+        if (session) {
+            cargarPerfil(session.user.id); 
         }
+        // -------------------------------------------------------------
+
+    } catch (err) {
+        agregarMensaje("Sistema", "Error conectando con la función de Netlify", "bot");
+    }
+}
 
         function agregarMensaje(autor, texto, tipo) {
             const container = document.getElementById('chat-messages');
