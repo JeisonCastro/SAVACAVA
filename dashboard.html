@@ -210,6 +210,18 @@
 
         </div>
     </div>
+    <div id="chat-modal" style="display:none; position: fixed; bottom: 20px; right: 20px; width: 350px; height: 500px; background: var(--surface); border: 1px solid var(--border); border-radius: 15px; flex-direction: column; z-index: 1000; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+    <div style="padding: 15px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: var(--bg2); border-radius: 15px 15px 0 0;">
+        <span id="chat-agent-name" style="font-family: 'Syne', sans-serif; font-weight: 700; font-size: 0.9rem;">Probando Agente</span>
+        <button onclick="document.getElementById('chat-modal').style.display='none'" style="background:none; border:none; color:var(--muted); cursor:pointer;"><i class="fas fa-times"></i></button>
+    </div>
+    <div id="chat-messages" style="flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; font-size: 0.85rem;">
+        </div>
+    <div style="padding: 10px; border-top: 1px solid var(--border); display: flex; gap: 8px;">
+        <input type="text" id="chat-input" placeholder="Escribe un mensaje..." style="flex:1; background:var(--bg); border:1px solid var(--border2); color:white; padding:8px; border-radius:6px; outline:none;">
+        <button onclick="enviarMensaje()" style="background:var(--accent); color:white; border:none; padding:8px 12px; border-radius:6px; cursor:pointer;"><i class="fas fa-paper-plane"></i></button>
+    </div>
+</div>
 
     <script>
         const SUPABASE_URL = "https://zsxkfqnalkfvwjrzuqip.supabase.co";
@@ -303,21 +315,23 @@
 }
 
         function renderAgentes() {
-            const container = document.getElementById('lista-agentes');
-            if (agentes.length === 0) {
-                container.innerHTML = '<div class="empty-state"><i class="fas fa-robot"></i>Aún no has creado ningún agente.</div>';
-                return;
-            }
-            container.innerHTML = agentes.map((a) => `
-                <div class="agent-item">
-                    <div style="min-width:0">
-                        <div class="agent-name">${a.name}</div>
-                        <div class="agent-prompt">${a.prompt}</div>
-                    </div>
-                    <span class="agent-badge"><i class="fas fa-circle" style="font-size:.45rem"></i> Activo</span>
-                </div>
-            `).join('');
-        }
+    const container = document.getElementById('lista-agentes');
+    if (agentes.length === 0) {
+        container.innerHTML = '<div class="empty-state"><i class="fas fa-robot"></i>Aún no has creado ningún agente.</div>';
+        return;
+    }
+    container.innerHTML = agentes.map((a) => `
+        <div class="agent-item">
+            <div style="min-width:0; flex:1;">
+                <div class="agent-name">${a.name}</div>
+                <div class="agent-prompt">${a.prompt}</div>
+            </div>
+            <button onclick="abrirChat('${a.id}', '${a.name}')" style="background:rgba(14,165,233,0.1); color:var(--accent); border:1px solid var(--border); padding:8px; border-radius:8px; cursor:pointer;">
+                <i class="fas fa-play-circle"></i> Probando
+            </button>
+        </div>
+    `).join('');
+}
 
         verificarSesion();
     </script>
