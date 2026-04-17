@@ -226,16 +226,19 @@
 
         // 1. Proteger la ruta: Si no hay sesión, regresa al login
         async function verificarSesion() {
-            const { data: { session } } = await _supabase.auth.getSession();
-            if (!session) {
-                window.location.href = "login.html";
-                return;
-            }
-            const email = session.user.email;
-            document.getElementById('user-email').innerText = email;
-            document.getElementById('user-initials').textContent = email.slice(0, 2).toUpperCase();
-            cargarPerfil(session.user.id);
-        }
+    const { data: { session } } = await _supabase.auth.getSession();
+    if (!session) {
+        window.location.href = "login.html";
+        return;
+    }
+    const email = session.user.email;
+    document.getElementById('user-email').innerText = email;
+    document.getElementById('user-initials').textContent = email.slice(0, 2).toUpperCase();
+    
+    // CARGAR TODO AL INICIAR
+    cargarPerfil(session.user.id);
+    cargarAgentes(); // <--- ESTA LÍNEA ES CLAVE
+}
 
         // 2. Cargar saldo de tokens desde la tabla 'perfiles'
         async function cargarPerfil(userId) {
