@@ -1,355 +1,318 @@
 <!DOCTYPE html>
 <html lang="es">
-
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>JEISON.DIGITAL | Soluciones Tecnológicas</title>
-
-<link rel="stylesheet" href="css/bootstrap.min.css">
-<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <style>
-
-:root {
-    --primary: #2563eb;
-    --secondary: #0f172a;
-    --accent: #22c55e;
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#06090f;
+  --bg2:#0d1117;
+  --bg3:#111820;
+  --surface:#161e2a;
+  --border:#1e2d40;
+  --border2:#253648;
+  --accent:#0ea5e9;
+  --accent2:#38bdf8;
+  --green:#22d3a5;
+  --text:#e8f0f8;
+  --muted:#7a98b8;
+  --dim:#4a6580;
 }
+html{scroll-behavior:smooth}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);overflow-x:hidden;line-height:1.6}
 
-body {
-    font-family: 'Roboto', sans-serif;
-    background: linear-gradient(to bottom, #f8fafc, #ffffff);
-    color: var(--secondary);
-}
+/* SCROLLBAR */
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
 
-/* NAVBAR */
-.navbar {
-    background: rgba(255,255,255,0.9);
-    backdrop-filter: blur(10px);
-    border-bottom: 1px solid #e5e7eb;
+/* NAV */
+nav{position:fixed;top:0;left:0;right:0;z-index:100;padding:0 5vw;height:68px;display:flex;align-items:center;justify-content:space-between;background:rgba(6,9,15,0.85);backdrop-filter:blur(16px);border-bottom:1px solid var(--border)}
+.nav-logo{font-family:'Syne',sans-serif;font-weight:800;font-size:1.1rem;letter-spacing:0.04em;color:var(--text);text-decoration:none;display:flex;align-items:center;gap:10px}
+.nav-logo-dot{width:8px;height:8px;border-radius:50%;background:var(--accent);display:inline-block}
+.nav-links{display:flex;align-items:center;gap:2rem}
+.nav-links a{color:var(--muted);text-decoration:none;font-size:.9rem;font-weight:400;transition:color .2s}
+.nav-links a:hover{color:var(--text)}
+.nav-cta{background:var(--accent);color:#fff;padding:.45rem 1.1rem;border-radius:6px;font-size:.85rem;font-weight:500;text-decoration:none;transition:background .2s,transform .15s}
+.nav-cta:hover{background:var(--accent2);transform:translateY(-1px)}
+.nav-mobile-toggle{display:none;background:none;border:1px solid var(--border2);color:var(--muted);padding:.4rem .6rem;border-radius:6px;cursor:pointer;font-size:1rem}
+@media(max-width:768px){
+  .nav-links{display:none;position:absolute;top:68px;left:0;right:0;background:var(--bg2);flex-direction:column;padding:1rem 5vw 1.5rem;border-bottom:1px solid var(--border);gap:1rem}
+  .nav-links.open{display:flex}
+  .nav-mobile-toggle{display:block}
 }
 
 /* HERO */
-.hero {
-    background: var(--secondary);
-    color: white;
-    padding: 120px 20px;
-    text-align: center;
-}
-
-.hero h1 {
-    font-size: 42px;
-    font-weight: 700;
-}
-
-.hero p {
-    font-size: 18px;
-    opacity: 0.9;
-}
+.hero{min-height:100vh;display:flex;align-items:center;padding:120px 5vw 80px;position:relative;overflow:hidden}
+.hero-grid{position:absolute;inset:0;background-image:linear-gradient(var(--border) 1px,transparent 1px),linear-gradient(90deg,var(--border) 1px,transparent 1px);background-size:60px 60px;opacity:.25}
+.hero-glow{position:absolute;top:10%;left:50%;transform:translateX(-50%);width:600px;height:400px;background:radial-gradient(ellipse,rgba(14,165,233,.12) 0%,transparent 70%);pointer-events:none}
+.hero-content{max-width:760px;position:relative;z-index:1}
+.hero-badge{display:inline-flex;align-items:center;gap:.5rem;background:rgba(14,165,233,.1);border:1px solid rgba(14,165,233,.25);border-radius:20px;padding:.35rem 1rem;font-size:.8rem;color:var(--accent2);margin-bottom:1.5rem;font-family:'DM Sans',sans-serif}
+.hero-badge-dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+h1{font-family:'Syne',sans-serif;font-size:clamp(2.2rem,5vw,3.8rem);font-weight:800;line-height:1.1;letter-spacing:-0.02em;color:var(--text);margin-bottom:1.5rem}
+h1 .highlight{color:var(--accent)}
+.hero-sub{font-size:1.05rem;color:var(--muted);max-width:540px;margin-bottom:2.5rem;font-weight:300;line-height:1.75}
+.hero-actions{display:flex;gap:1rem;flex-wrap:wrap}
+.btn-main{display:inline-flex;align-items:center;gap:.6rem;background:var(--accent);color:#fff;padding:.75rem 1.6rem;border-radius:8px;font-weight:500;text-decoration:none;font-size:.95rem;transition:all .2s}
+.btn-main:hover{background:var(--accent2);transform:translateY(-2px)}
+.btn-ghost{display:inline-flex;align-items:center;gap:.6rem;background:transparent;color:var(--muted);padding:.75rem 1.6rem;border-radius:8px;font-weight:400;text-decoration:none;font-size:.95rem;border:1px solid var(--border2);transition:all .2s}
+.btn-ghost:hover{color:var(--text);border-color:var(--dim)}
+.hero-stats{display:flex;gap:3rem;margin-top:4rem;padding-top:2.5rem;border-top:1px solid var(--border);flex-wrap:wrap}
+.stat-num{font-family:'Syne',sans-serif;font-size:2rem;font-weight:800;color:var(--text)}
+.stat-label{font-size:.82rem;color:var(--muted);margin-top:.1rem}
 
 /* SECTIONS */
-section {
-    padding: 80px 0;
-}
+section{padding:90px 5vw}
+.section-label{font-size:.78rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin-bottom:.75rem}
+.section-title{font-family:'Syne',sans-serif;font-size:clamp(1.6rem,3.5vw,2.4rem);font-weight:700;line-height:1.2;color:var(--text);margin-bottom:1rem}
+.section-sub{color:var(--muted);font-size:1rem;max-width:520px;font-weight:300}
+.section-header{margin-bottom:4rem}
 
-.section-title {
-    text-align: center;
-    margin-bottom: 40px;
-}
+/* SERVICES */
+#servicios{background:var(--bg2)}
+.services-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:1.5px;background:var(--border)}
+.service-card{background:var(--bg2);padding:2rem 2rem;transition:background .25s;cursor:default;position:relative;overflow:hidden}
+.service-card::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(14,165,233,.04),transparent);opacity:0;transition:opacity .3s}
+.service-card:hover{background:var(--surface)}
+.service-card:hover::before{opacity:1}
+.service-icon{width:44px;height:44px;border-radius:10px;background:rgba(14,165,233,.1);border:1px solid rgba(14,165,233,.2);display:flex;align-items:center;justify-content:center;margin-bottom:1.25rem;font-size:1.1rem;color:var(--accent)}
+.service-title{font-family:'Syne',sans-serif;font-size:1rem;font-weight:700;color:var(--text);margin-bottom:.6rem}
+.service-desc{font-size:.88rem;color:var(--muted);line-height:1.65;font-weight:300}
+.service-tag{display:inline-block;margin-top:1rem;font-size:.75rem;color:var(--dim);border:1px solid var(--border);padding:.2rem .65rem;border-radius:20px;font-weight:400}
 
-.section-title::after {
-    content: "";
-    width: 50px;
-    height: 4px;
-    background: var(--primary);
-    display: block;
-    margin: 10px auto;
-}
+/* VALUE */
+#diferencial{background:var(--bg3)}
+.value-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1.5rem}
+.value-card{border:1px solid var(--border);border-radius:12px;padding:1.75rem;background:var(--surface);transition:border-color .25s}
+.value-card:hover{border-color:var(--border2)}
+.value-number{font-family:'Syne',sans-serif;font-size:2.5rem;font-weight:800;color:var(--border2);line-height:1;margin-bottom:1rem}
+.value-title{font-family:'Syne',sans-serif;font-size:1rem;font-weight:700;color:var(--text);margin-bottom:.5rem}
+.value-desc{font-size:.88rem;color:var(--muted);line-height:1.65;font-weight:300}
 
-/* CARDS */
-.card-pro {
-    border: 1px solid #e5e7eb;
-    border-radius: 16px;
-    padding: 25px;
-    background: white;
-    transition: all 0.3s;
-    height: 100%;
-}
+/* PROCESO */
+#proceso{background:var(--bg2)}
+.proceso-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:0;position:relative}
+.proceso-step{padding:2rem 1.75rem;position:relative}
+.proceso-step:not(:last-child)::after{content:'';position:absolute;top:2.5rem;right:-1px;width:1px;height:2rem;background:var(--border2);display:none}
+@media(min-width:600px){.proceso-step:not(:last-child)::after{display:block}}
+.paso-num{font-family:'Syne',sans-serif;font-size:.75rem;font-weight:700;letter-spacing:.1em;color:var(--accent);margin-bottom:.8rem}
+.paso-title{font-family:'Syne',sans-serif;font-size:1.05rem;font-weight:700;color:var(--text);margin-bottom:.5rem}
+.paso-desc{font-size:.85rem;color:var(--muted);font-weight:300;line-height:1.6}
+.paso-bar{width:28px;height:2px;background:var(--accent);margin-bottom:.9rem;border-radius:2px}
 
-.card-pro:hover {
-    transform: translateY(-8px);
-    box-shadow: 0 20px 40px rgba(0,0,0,0.08);
-}
+/* CTA */
+.cta-section{background:var(--bg);padding:90px 5vw;text-align:center;position:relative;overflow:hidden}
+.cta-glow{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:500px;height:300px;background:radial-gradient(ellipse,rgba(14,165,233,.08) 0%,transparent 70%)}
+.cta-section h2{font-family:'Syne',sans-serif;font-size:clamp(1.7rem,4vw,2.8rem);font-weight:800;color:var(--text);margin-bottom:1rem;position:relative}
+.cta-section p{color:var(--muted);font-size:1rem;max-width:480px;margin:0 auto 2.5rem;font-weight:300;position:relative}
+.cta-section .btn-main{position:relative}
 
-/* ICONS */
-.icon {
-    font-size: 40px;
-    color: var(--primary);
-    margin-bottom: 15px;
-}
-
-/* BUTTONS */
-.btn-primary {
-    background: var(--primary);
-    border: none;
-    border-radius: 10px;
-    padding: 12px 20px;
-    font-weight: 500;
-}
-
-.btn-primary:hover {
-    background: #1d4ed8;
-}
-
-.btn-success {
-    background: var(--accent);
-    border-radius: 50px;
-    padding: 12px 25px;
-    font-weight: 600;
-}
-
-/* WHATSAPP */
-.whatsapp {
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    z-index: 1000;
-}
+/* WHATSAPP FLOAT */
+.wa-float{position:fixed;bottom:24px;right:24px;z-index:99;width:50px;height:50px;border-radius:50%;background:#25d366;display:flex;align-items:center;justify-content:center;color:#fff;font-size:1.3rem;text-decoration:none;box-shadow:0 4px 20px rgba(37,211,102,.4);transition:transform .2s}
+.wa-float:hover{transform:scale(1.1)}
 
 /* FOOTER */
-footer {
-    background: var(--secondary);
-    color: white;
-}
+footer{background:var(--bg2);border-top:1px solid var(--border);padding:2rem 5vw;display:flex;align-items:center;justify-content:space-between;flex-wrap:gap;gap:1rem}
+.footer-brand{font-family:'Syne',sans-serif;font-weight:700;font-size:.95rem;color:var(--muted)}
+.footer-copy{font-size:.82rem;color:var(--dim)}
 
+/* ANIMATIONS */
+.fade-up{opacity:0;transform:translateY(24px);transition:opacity .6s ease,transform .6s ease}
+.fade-up.visible{opacity:1;transform:translateY(0)}
 </style>
 </head>
-
 <body>
 
-<!-- NAVBAR -->
-<!-- NAVBAR -->
-<nav class="navbar navbar-expand-lg fixed-top custom-navbar">
-<div class="container">
-
-    <!-- LOGO + NOMBRE -->
-    <a class="navbar-brand d-flex align-items-center fw-bold" href="#">
-        <img src="img/logo.png" alt="JEISON.DIGITAL" height="45" class="me-2">
-        <span class="brand-text">JEISON.DIGITAL</span>
-    </a>
-
-    <!-- BOTÓN MOBILE -->
-    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-        <span class="navbar-toggler-icon"></span>
-    </button>
-
-    <!-- MENÚ -->
-    <div class="collapse navbar-collapse" id="navbarNav">
-
-        <ul class="navbar-nav mx-auto">
-            <li class="nav-item">
-                <a class="nav-link" href="#servicios">Servicios</a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" href="#diferencial">Valor</a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" href="#proceso">Proceso</a>
-            </li>
-        </ul>
-
-        <!-- CTA -->
-        <a href="https://wa.link/msm5dn" class="btn btn-success btn-sm">
-            💬 Contactar
-        </a>
-
-    </div>
-</div>
+<!-- NAV -->
+<nav>
+  <a class="nav-logo" href="#">
+    <span class="nav-logo-dot"></span>
+    JEISON.DIGITAL
+  </a>
+  <button class="nav-mobile-toggle" onclick="document.querySelector('.nav-links').classList.toggle('open')">
+    <i class="fas fa-bars"></i>
+  </button>
+  <div class="nav-links">
+    <a href="#servicios">Servicios</a>
+    <a href="#diferencial">Valor</a>
+    <a href="#proceso">Proceso</a>
+    <a href="https://wa.link/msm5dn" class="nav-cta">💬 Contactar</a>
+  </div>
 </nav>
 
 <!-- HERO -->
-<section class="hero">
-<div class="container">
-
-<h1>Ingeniería tecnológica para empresas que quieren escalar</h1>
-
-<p>
-Diseño e implementación de soluciones en infraestructura, automatización e inteligencia artificial
-orientadas a optimizar procesos y aumentar la eficiencia operativa.
-</p>
-
-<a href="https://wa.link/msm5dn" class="btn btn-success mt-4">
-💬 Agendar asesoría
-</a>
-
-</div>
+<section class="hero" id="inicio">
+  <div class="hero-grid"></div>
+  <div class="hero-glow"></div>
+  <div class="hero-content">
+    <div class="hero-badge">
+      <span class="hero-badge-dot"></span>
+      Disponible para nuevos proyectos
+    </div>
+    <h1>Ingeniería tecnológica para empresas que quieren <span class="highlight">escalar</span></h1>
+    <p class="hero-sub">Diseño e implementación de soluciones en infraestructura, automatización e inteligencia artificial orientadas a optimizar procesos y aumentar la eficiencia operativa.</p>
+    <div class="hero-actions">
+      <a href="https://wa.link/msm5dn" class="btn-main"><i class="fab fa-whatsapp"></i> Agendar asesoría</a>
+      <a href="#servicios" class="btn-ghost">Ver servicios <i class="fas fa-arrow-down"></i></a>
+    </div>
+    <div class="hero-stats">
+      <div>
+        <div class="stat-num">6+</div>
+        <div class="stat-label">Servicios especializados</div>
+      </div>
+      <div>
+        <div class="stat-num">360°</div>
+        <div class="stat-label">Cobertura tecnológica</div>
+      </div>
+      <div>
+        <div class="stat-num">1</div>
+        <div class="stat-label">Solo interlocutor</div>
+      </div>
+    </div>
+  </div>
 </section>
 
 <!-- SERVICIOS -->
-<section>
-<div class="container">
-<h2 class="section-title">Servicios</h2>
-
-<div class="row">
-
-<div class="col-md-4 mb-4">
-<div class="card-pro text-center">
-<i class="fas fa-laptop icon"></i>
-<h5>Mantenimiento de equipos</h5>
-<p>
-Diagnóstico, optimización y mantenimiento preventivo y correctivo
-para garantizar el rendimiento y la vida útil de tus equipos.
-</p>
-</div>
-</div>
-
-<div class="col-md-4 mb-4">
-<div class="card-pro text-center">
-<i class="fas fa-network-wired icon"></i>
-<h5>Infraestructura y redes</h5>
-<p>
-Diseño, implementación y administración de redes, servidores
-y entornos tecnológicos seguros y escalables.
-</p>
-</div>
-</div>
-
-<div class="col-md-4 mb-4">
-<div class="card-pro text-center">
-<i class="fas fa-robot icon"></i>
-<h5>Agentes de inteligencia artificial</h5>
-<p>
-Desarrollo de asistentes inteligentes para automatizar atención,
-ventas y procesos internos en tu negocio.
-</p>
-</div>
-</div>
-
-<div class="col-md-4 mb-4">
-<div class="card-pro text-center">
-<i class="fas fa-cogs icon"></i>
-<h5>Automatización de procesos</h5>
-<p>
-Integración de herramientas y flujos automáticos que reducen
-tiempos operativos y aumentan la productividad.
-</p>
-</div>
-</div>
-
-<div class="col-md-4 mb-4">
-<div class="card-pro text-center">
-<i class="fas fa-code icon"></i>
-<h5>Desarrollo web</h5>
-<p>
-Creación de plataformas web, sistemas a la medida
-y soluciones digitales orientadas a resultados.
-</p>
-</div>
-</div>
-
-<div class="col-md-4 mb-4">
-<div class="card-pro text-center">
-<i class="fas fa-server icon"></i>
-<h5>Servidores y nube</h5>
-<p>
-Configuración y administración de servidores,
-hosting y soluciones cloud para alta disponibilidad.
-</p>
-</div>
-</div>
-
-</div>
-</div>
+<section id="servicios">
+  <div class="section-header fade-up">
+    <div class="section-label">Especialidades</div>
+    <h2 class="section-title">Servicios</h2>
+    <p class="section-sub">Soluciones integrales para cada capa de tu operación tecnológica.</p>
+  </div>
+  <div class="services-grid fade-up">
+    <div class="service-card">
+      <div class="service-icon"><i class="fas fa-laptop"></i></div>
+      <div class="service-title">Mantenimiento de equipos</div>
+      <p class="service-desc">Diagnóstico, optimización y mantenimiento preventivo y correctivo para garantizar el rendimiento y la vida útil de tus equipos.</p>
+      <span class="service-tag">Hardware</span>
+    </div>
+    <div class="service-card">
+      <div class="service-icon"><i class="fas fa-network-wired"></i></div>
+      <div class="service-title">Infraestructura y redes</div>
+      <p class="service-desc">Diseño, implementación y administración de redes, servidores y entornos tecnológicos seguros y escalables.</p>
+      <span class="service-tag">Networking</span>
+    </div>
+    <div class="service-card">
+      <div class="service-icon"><i class="fas fa-robot"></i></div>
+      <div class="service-title">Agentes de inteligencia artificial</div>
+      <p class="service-desc">Desarrollo de asistentes inteligentes para automatizar atención, ventas y procesos internos en tu negocio.</p>
+      <span class="service-tag">IA</span>
+    </div>
+    <div class="service-card">
+      <div class="service-icon"><i class="fas fa-cogs"></i></div>
+      <div class="service-title">Automatización de procesos</div>
+      <p class="service-desc">Integración de herramientas y flujos automáticos que reducen tiempos operativos y aumentan la productividad.</p>
+      <span class="service-tag">RPA</span>
+    </div>
+    <div class="service-card">
+      <div class="service-icon"><i class="fas fa-code"></i></div>
+      <div class="service-title">Desarrollo web</div>
+      <p class="service-desc">Creación de plataformas web, sistemas a la medida y soluciones digitales orientadas a resultados concretos.</p>
+      <span class="service-tag">Dev</span>
+    </div>
+    <div class="service-card">
+      <div class="service-icon"><i class="fas fa-server"></i></div>
+      <div class="service-title">Servidores y nube</div>
+      <p class="service-desc">Configuración y administración de servidores, hosting y soluciones cloud para alta disponibilidad.</p>
+      <span class="service-tag">Cloud</span>
+    </div>
+  </div>
 </section>
 
-<!-- DIFERENCIAL -->
-<section style="background:#f1f5f9;">
-<div class="container text-center">
-<h2 class="section-title">Valor diferencial</h2>
-
-<div class="row">
-
-<div class="col-md-4">
-<h5>Enfoque estratégico</h5>
-<p>No solo implemento tecnología, desarrollo soluciones alineadas al negocio.</p>
-</div>
-
-<div class="col-md-4">
-<h5>Experiencia integral</h5>
-<p>Infraestructura, desarrollo y automatización en un solo lugar.</p>
-</div>
-
-<div class="col-md-4">
-<h5>Optimización continua</h5>
-<p>Busco eficiencia, escalabilidad y reducción de costos operativos.</p>
-</div>
-
-</div>
-</div>
+<!-- VALOR DIFERENCIAL -->
+<section id="diferencial">
+  <div class="section-header fade-up">
+    <div class="section-label">¿Por qué elegirme?</div>
+    <h2 class="section-title">Valor diferencial</h2>
+    <p class="section-sub">Más que un proveedor, un aliado estratégico para tu empresa.</p>
+  </div>
+  <div class="value-grid">
+    <div class="value-card fade-up">
+      <div class="value-number">01</div>
+      <div class="value-title">Enfoque estratégico</div>
+      <p class="value-desc">No solo implemento tecnología. Desarrollo soluciones alineadas a los objetivos reales de tu negocio para generar impacto medible.</p>
+    </div>
+    <div class="value-card fade-up">
+      <div class="value-number">02</div>
+      <div class="value-title">Experiencia integral</div>
+      <p class="value-desc">Infraestructura, desarrollo y automatización en un solo lugar. Sin fragmentar tu operación ni multiplicar proveedores.</p>
+    </div>
+    <div class="value-card fade-up">
+      <div class="value-number">03</div>
+      <div class="value-title">Optimización continua</div>
+      <p class="value-desc">Busco eficiencia, escalabilidad y reducción de costos operativos en cada entrega. La mejora no termina en el lanzamiento.</p>
+    </div>
+  </div>
 </section>
 
 <!-- PROCESO -->
-<section>
-<div class="container">
-<h2 class="section-title">Metodología de trabajo</h2>
-
-<div class="row text-center">
-
-<div class="col-md-3">
-<h5>1. Análisis</h5>
-<p>Evaluación técnica y de negocio</p>
-</div>
-
-<div class="col-md-3">
-<h5>2. Diseño</h5>
-<p>Arquitectura de solución</p>
-</div>
-
-<div class="col-md-3">
-<h5>3. Implementación</h5>
-<p>Desarrollo y configuración</p>
-</div>
-
-<div class="col-md-3">
-<h5>4. Soporte</h5>
-<p>Monitoreo y mejora continua</p>
-</div>
-
-</div>
-</div>
+<section id="proceso">
+  <div class="section-header fade-up">
+    <div class="section-label">Metodología</div>
+    <h2 class="section-title">Cómo trabajo</h2>
+    <p class="section-sub">Un proceso claro y estructurado desde el primer contacto hasta el soporte.</p>
+  </div>
+  <div class="proceso-grid fade-up">
+    <div class="proceso-step">
+      <div class="paso-num">PASO 01</div>
+      <div class="paso-bar"></div>
+      <div class="paso-title">Análisis</div>
+      <p class="paso-desc">Evaluación técnica y de negocio para entender el contexto y definir prioridades.</p>
+    </div>
+    <div class="proceso-step">
+      <div class="paso-num">PASO 02</div>
+      <div class="paso-bar"></div>
+      <div class="paso-title">Diseño</div>
+      <p class="paso-desc">Arquitectura de solución personalizada con tecnologías adecuadas para el caso.</p>
+    </div>
+    <div class="proceso-step">
+      <div class="paso-num">PASO 03</div>
+      <div class="paso-bar"></div>
+      <div class="paso-title">Implementación</div>
+      <p class="paso-desc">Desarrollo, configuración y pruebas con validación constante durante el proceso.</p>
+    </div>
+    <div class="proceso-step">
+      <div class="paso-num">PASO 04</div>
+      <div class="paso-bar"></div>
+      <div class="paso-title">Soporte</div>
+      <p class="paso-desc">Monitoreo, mejora continua y acompañamiento posterior a la entrega.</p>
+    </div>
+  </div>
 </section>
 
 <!-- CTA FINAL -->
-<section style="background:var(--secondary); color:white; text-align:center;">
-<div class="container">
-
-<h2>Transforma tu operación con tecnología inteligente</h2>
-
-<p>
-Agenda una asesoría y descubre cómo optimizar tus procesos
-con soluciones a la medida.
-</p>
-
-<a href="https://wa.link/msm5dn" class="btn btn-success mt-3">
-💬 Contactar ahora
-</a>
-
-</div>
+<section class="cta-section" id="contacto">
+  <div class="cta-glow"></div>
+  <h2>¿Listo para transformar tu operación?</h2>
+  <p>Agenda una asesoría gratuita y descubre cómo optimizar tus procesos con tecnología a la medida.</p>
+  <a href="https://wa.link/msm5dn" class="btn-main"><i class="fab fa-whatsapp"></i> Contactar por WhatsApp</a>
 </section>
 
-<!-- WHATSAPP -->
-<a href="https://wa.link/msm5dn" class="btn btn-success whatsapp">
-💬
+<!-- WHATSAPP FLOTANTE -->
+<a href="https://wa.link/msm5dn" class="wa-float" title="WhatsApp">
+  <i class="fab fa-whatsapp"></i>
 </a>
 
 <!-- FOOTER -->
-<footer class="text-center py-4">
-<p>© 2026 JEISON.DIGITAL - Soluciones Tecnológicas</p>
+<footer>
+  <span class="footer-brand">JEISON.DIGITAL</span>
+  <span class="footer-copy">© 2026 — Soluciones Tecnológicas</span>
 </footer>
 
-<script src="js/bootstrap.bundle.min.js"></script>
-
+<script>
+const obs = new IntersectionObserver((entries) => {
+  entries.forEach((e, i) => {
+    if (e.isIntersecting) {
+      setTimeout(() => e.target.classList.add('visible'), i * 80);
+    }
+  });
+}, { threshold: 0.1 });
+document.querySelectorAll('.fade-up').forEach(el => obs.observe(el));
+</script>
 </body>
 </html>
