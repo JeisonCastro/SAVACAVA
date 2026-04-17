@@ -273,7 +273,7 @@
     const { error } = await _supabase
         .from('agentes_ia')
         .insert([{ 
-            nombre: name, 
+            nombre_agente: name, 
             prompt_sistema: prompt, 
             user_id: session.user.id 
         }]);
