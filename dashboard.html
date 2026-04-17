@@ -1,1 +1,300 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard | Fábrica de Agentes IA</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <style>
+        *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+        :root{
+            --bg:#06090f;
+            --bg2:#0d1117;
+            --surface:#161e2a;
+            --border:#1e2d40;
+            --border2:#253648;
+            --accent:#0ea5e9;
+            --accent2:#38bdf8;
+            --green:#22d3a5;
+            --red:#f87171;
+            --text:#e8f0f8;
+            --muted:#7a98b8;
+            --dim:#4a6580;
+            --sidebar:260px;
+        }
+        html, body { height: 100%; font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); overflow-x: hidden; }
 
+        /* BG GRID */
+        .bg-grid { position: fixed; inset: 0; left: var(--sidebar); background-image: linear-gradient(var(--border) 1px, transparent 1px), linear-gradient(90deg, var(--border) 1px, transparent 1px); background-size: 60px 60px; opacity: .15; pointer-events: none; z-index: 0; }
+
+        /* SIDEBAR */
+        .sidebar { height: 100vh; width: var(--sidebar); position: fixed; left: 0; top: 0; background: var(--bg2); border-right: 1px solid var(--border); display: flex; flex-direction: column; justify-content: space-between; padding: 1.5rem 1rem; z-index: 50; }
+        .sidebar-logo { display: flex; align-items: center; gap: 8px; margin-bottom: 2rem; padding: 0 .5rem; }
+        .logo-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); animation: pulse 2s infinite; flex-shrink: 0; }
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
+        .logo-text { font-family: 'Syne', sans-serif; font-weight: 800; font-size: .9rem; letter-spacing: .04em; color: var(--text); }
+
+        .nav-label { font-size: .7rem; font-weight: 500; letter-spacing: .1em; text-transform: uppercase; color: var(--dim); padding: 0 .75rem; margin-bottom: .5rem; }
+        .sidebar nav a { display: flex; align-items: center; gap: .75rem; padding: .6rem .75rem; border-radius: 8px; color: var(--muted); text-decoration: none; font-size: .875rem; font-weight: 400; transition: all .2s; margin-bottom: .2rem; }
+        .sidebar nav a i { width: 16px; text-align: center; font-size: .85rem; }
+        .sidebar nav a:hover { color: var(--text); background: var(--surface); }
+        .sidebar nav a.active { color: var(--accent); background: rgba(14,165,233,.1); font-weight: 500; }
+        .sidebar nav a.active i { color: var(--accent); }
+
+        .sidebar-bottom { border-top: 1px solid var(--border); padding-top: 1rem; }
+        .user-row { display: flex; align-items: center; gap: .65rem; padding: .5rem .5rem .75rem; }
+        .user-avatar { width: 30px; height: 30px; border-radius: 50%; background: rgba(14,165,233,.15); border: 1px solid rgba(14,165,233,.25); display: flex; align-items: center; justify-content: center; font-size: .75rem; color: var(--accent); flex-shrink: 0; font-family: 'Syne', sans-serif; font-weight: 700; }
+        .user-email-text { font-size: .78rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 160px; }
+        .btn-logout { display: flex; align-items: center; gap: .65rem; width: 100%; padding: .55rem .75rem; border-radius: 8px; background: none; border: none; color: var(--dim); font-size: .82rem; font-family: 'DM Sans', sans-serif; cursor: pointer; transition: all .2s; }
+        .btn-logout:hover { color: var(--red); background: rgba(248,113,113,.07); }
+
+        /* MAIN */
+        .main-content { margin-left: var(--sidebar); min-height: 100vh; padding: 2rem 2rem 3rem; position: relative; z-index: 1; }
+
+        /* TOPBAR */
+        .topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
+        .page-title { font-family: 'Syne', sans-serif; font-size: 1.4rem; font-weight: 800; color: var(--text); }
+        .page-sub { font-size: .82rem; color: var(--muted); margin-top: .2rem; font-weight: 300; }
+        .token-card { display: flex; align-items: center; gap: 1rem; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: .75rem 1.1rem; }
+        .token-icon { width: 36px; height: 36px; border-radius: 8px; background: rgba(34,211,165,.1); border: 1px solid rgba(34,211,165,.2); display: flex; align-items: center; justify-content: center; color: var(--green); font-size: .9rem; }
+        .token-label { font-size: .7rem; font-weight: 500; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+        #token-balance { font-family: 'Syne', sans-serif; font-size: 1.3rem; font-weight: 800; color: var(--green); }
+
+        /* GRID */
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+        @media(max-width:900px){ .grid-2 { grid-template-columns: 1fr; } }
+
+        /* CARDS */
+        .card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 1.75rem; }
+        .card-header { display: flex; align-items: center; gap: .6rem; margin-bottom: 1.5rem; }
+        .card-icon { width: 32px; height: 32px; border-radius: 8px; background: rgba(14,165,233,.1); display: flex; align-items: center; justify-content: center; color: var(--accent); font-size: .85rem; flex-shrink: 0; }
+        .card-title { font-family: 'Syne', sans-serif; font-size: 1rem; font-weight: 700; color: var(--text); }
+
+        /* FORM */
+        .field { margin-bottom: .9rem; }
+        .field label { display: block; font-size: .74rem; font-weight: 500; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-bottom: .4rem; }
+        .field input, .field textarea { width: 100%; padding: 10px 13px; background: var(--bg2); border: 1px solid var(--border2); border-radius: 8px; color: var(--text); font-family: 'DM Sans', sans-serif; font-size: .88rem; outline: none; transition: border-color .2s; resize: none; }
+        .field input:focus, .field textarea:focus { border-color: var(--accent); }
+        .field input::placeholder, .field textarea::placeholder { color: var(--dim); }
+        .btn-main { width: 100%; padding: 11px; background: var(--accent); color: #fff; border: none; border-radius: 8px; font-family: 'DM Sans', sans-serif; font-weight: 500; font-size: .9rem; cursor: pointer; transition: all .2s; margin-top: .25rem; }
+        .btn-main:hover { background: var(--accent2); transform: translateY(-1px); }
+
+        /* AGENT LIST */
+        .empty-state { text-align: center; padding: 2rem 1rem; color: var(--dim); font-size: .875rem; font-weight: 300; }
+        .empty-state i { font-size: 2rem; margin-bottom: .75rem; display: block; color: var(--border2); }
+        .agent-item { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; padding: .9rem 1rem; background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; margin-bottom: .65rem; transition: border-color .2s; }
+        .agent-item:hover { border-color: var(--border2); }
+        .agent-name { font-family: 'Syne', sans-serif; font-size: .88rem; font-weight: 700; color: var(--text); margin-bottom: .25rem; }
+        .agent-prompt { font-size: .78rem; color: var(--muted); line-height: 1.5; font-weight: 300; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        .agent-badge { display: inline-flex; align-items: center; gap: .3rem; font-size: .7rem; padding: .2rem .55rem; border-radius: 20px; background: rgba(34,211,165,.1); color: var(--green); border: 1px solid rgba(34,211,165,.2); white-space: nowrap; flex-shrink: 0; }
+
+        /* MESSAGES */
+        .msg { font-size: .82rem; text-align: center; padding: .55rem .85rem; border-radius: 7px; margin-top: .75rem; display: none; }
+        .msg.error { background: rgba(248,113,113,.1); color: var(--red); border: 1px solid rgba(248,113,113,.2); display: block; }
+        .msg.success { background: rgba(34,211,165,.1); color: var(--green); border: 1px solid rgba(34,211,165,.2); display: block; }
+        .loading-dots { display: none; text-align: center; margin-top: .6rem; }
+        .loading-dot { display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: var(--accent); margin: 0 2px; animation: bounce .8s infinite; }
+        .loading-dot:nth-child(2){ animation-delay: .15s; }
+        .loading-dot:nth-child(3){ animation-delay: .3s; }
+        @keyframes bounce { 0%,100%{transform:translateY(0);opacity:.35} 50%{transform:translateY(-5px);opacity:1} }
+
+        /* MOBILE */
+        .mob-toggle { display: none; position: fixed; top: 1rem; left: 1rem; z-index: 100; width: 36px; height: 36px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; align-items: center; justify-content: center; cursor: pointer; color: var(--muted); }
+        @media(max-width:768px){
+            .sidebar { transform: translateX(-100%); transition: transform .3s; }
+            .sidebar.open { transform: translateX(0); }
+            .main-content { margin-left: 0; }
+            .bg-grid { left: 0; }
+            .mob-toggle { display: flex; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="bg-grid"></div>
+
+    <button class="mob-toggle" onclick="document.querySelector('.sidebar').classList.toggle('open')">
+        <i class="fas fa-bars" style="font-size:.85rem"></i>
+    </button>
+
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+        <div>
+            <div class="sidebar-logo">
+                <span class="logo-dot"></span>
+                <span class="logo-text">JEISON.DIGITAL</span>
+            </div>
+            <div class="nav-label">Menú</div>
+            <nav>
+                <a href="#" class="active">
+                    <i class="fas fa-robot"></i> Mis Agentes
+                </a>
+                <a href="#">
+                    <i class="fas fa-coins"></i> Tokens y Planes
+                </a>
+                <a href="#">
+                    <i class="fas fa-sliders"></i> Configuración
+                </a>
+            </nav>
+        </div>
+        <div class="sidebar-bottom">
+            <div class="user-row">
+                <div class="user-avatar" id="user-initials">—</div>
+                <span class="user-email-text" id="user-email">Cargando...</span>
+            </div>
+            <button class="btn-logout" onclick="cerrarSesion()">
+                <i class="fas fa-arrow-right-from-bracket"></i> Cerrar sesión
+            </button>
+        </div>
+    </div>
+
+    <!-- MAIN -->
+    <div class="main-content">
+
+        <div class="topbar">
+            <div>
+                <h2 class="page-title">Panel de Control</h2>
+                <p class="page-sub">Gestiona tus agentes de inteligencia artificial</p>
+            </div>
+            <div class="token-card">
+                <div class="token-icon"><i class="fas fa-bolt"></i></div>
+                <div>
+                    <div class="token-label">Tokens disponibles</div>
+                    <div id="token-balance">—</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid-2">
+
+            <!-- CREAR AGENTE -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon"><i class="fas fa-plus"></i></div>
+                    <span class="card-title">Crear nuevo agente</span>
+                </div>
+                <div class="field">
+                    <label>Nombre del agente</label>
+                    <input type="text" id="bot-name" placeholder="Ej: Vendedor de Streaming">
+                </div>
+                <div class="field">
+                    <label>Instrucción maestra (System Prompt)</label>
+                    <textarea id="bot-prompt" rows="5" placeholder="Eres un asistente que..."></textarea>
+                </div>
+                <button class="btn-main" onclick="crearAgente()">
+                    <i class="fas fa-floppy-disk" style="margin-right:.4rem"></i> Guardar agente
+                </button>
+                <div class="loading-dots" id="create-loading">
+                    <span class="loading-dot"></span>
+                    <span class="loading-dot"></span>
+                    <span class="loading-dot"></span>
+                </div>
+                <div class="msg" id="create-msg"></div>
+            </div>
+
+            <!-- LISTA AGENTES -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon"><i class="fas fa-layer-group"></i></div>
+                    <span class="card-title">Tus agentes activos</span>
+                </div>
+                <div id="lista-agentes">
+                    <div class="empty-state">
+                        <i class="fas fa-robot"></i>
+                        Aún no has creado ningún agente.
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = "https://zsxkfqnalkfvwjrzuqip.supabase.co";
+        const SUPABASE_KEY = "TU_CLAVE_ANON_PUBLIC_AQUI";
+        const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        let agentes = [];
+
+        function showMsg(id, text, type) {
+            const el = document.getElementById(id);
+            el.textContent = text;
+            el.className = 'msg ' + type;
+        }
+
+        // 1. Proteger la ruta: Si no hay sesión, regresa al login
+        async function verificarSesion() {
+            const { data: { session } } = await _supabase.auth.getSession();
+            if (!session) {
+                window.location.href = "login.html";
+                return;
+            }
+            const email = session.user.email;
+            document.getElementById('user-email').innerText = email;
+            document.getElementById('user-initials').textContent = email.slice(0, 2).toUpperCase();
+            cargarPerfil(session.user.id);
+        }
+
+        // 2. Cargar saldo de tokens desde la tabla 'perfiles'
+        async function cargarPerfil(userId) {
+            const { data, error } = await _supabase
+                .from('perfiles')
+                .select('token_balance')
+                .eq('id', userId)
+                .single();
+            if (data) {
+                document.getElementById('token-balance').innerText = data.token_balance.toLocaleString();
+            } else {
+                document.getElementById('token-balance').innerText = '0';
+            }
+        }
+
+        // 3. Lógica para cerrar sesión
+        async function cerrarSesion() {
+            await _supabase.auth.signOut();
+            window.location.href = "login.html";
+        }
+
+        // 4. Lógica para crear agente
+        async function crearAgente() {
+            const name = document.getElementById('bot-name').value.trim();
+            const prompt = document.getElementById('bot-prompt').value.trim();
+            if (!name || !prompt) return showMsg('create-msg', 'Por favor completa los campos', 'error');
+
+            document.getElementById('create-loading').style.display = 'block';
+            document.getElementById('create-msg').className = 'msg';
+
+            // Aquí iría: await _supabase.from('agentes_ia').insert({ name, prompt, user_id: session.user.id });
+            await new Promise(r => setTimeout(r, 800)); // Simulación
+
+            agentes.push({ name, prompt });
+            renderAgentes();
+            document.getElementById('bot-name').value = '';
+            document.getElementById('bot-prompt').value = '';
+            document.getElementById('create-loading').style.display = 'none';
+            showMsg('create-msg', 'Agente "' + name + '" creado correctamente.', 'success');
+        }
+
+        function renderAgentes() {
+            const container = document.getElementById('lista-agentes');
+            if (agentes.length === 0) {
+                container.innerHTML = '<div class="empty-state"><i class="fas fa-robot"></i>Aún no has creado ningún agente.</div>';
+                return;
+            }
+            container.innerHTML = agentes.map((a) => `
+                <div class="agent-item">
+                    <div style="min-width:0">
+                        <div class="agent-name">${a.name}</div>
+                        <div class="agent-prompt">${a.prompt}</div>
+                    </div>
+                    <span class="agent-badge"><i class="fas fa-circle" style="font-size:.45rem"></i> Activo</span>
+                </div>
+            `).join('');
+        }
+
+        verificarSesion();
+    </script>
+</body>
+</html>
