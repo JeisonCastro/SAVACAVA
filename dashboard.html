@@ -259,23 +259,32 @@
 
         // 4. Lógica para crear agente
         async function crearAgente() {
-            const name = document.getElementById('bot-name').value.trim();
-            const prompt = document.getElementById('bot-prompt').value.trim();
-            if (!name || !prompt) return showMsg('create-msg', 'Por favor completa los campos', 'error');
+    const name = document.getElementById('bot-name').value.trim();
+    const prompt = document.getElementById('bot-prompt').value.trim();
+    if (!name || !prompt) return showMsg('create-msg', 'Por favor completa los campos', 'error');
 
-            document.getElementById('create-loading').style.display = 'block';
-            document.getElementById('create-msg').className = 'msg';
+    document.getElementById('create-loading').style.display = 'block';
+    const { data: { session } } = await _supabase.auth.getSession();
 
-            // Aquí iría: await _supabase.from('agentes_ia').insert({ name, prompt, user_id: session.user.id });
-            await new Promise(r => setTimeout(r, 800)); // Simulación
+    // INSERCIÓN REAL EN SUPABASE
+    const { error } = await _supabase
+        .from('agentes_ia')
+        .insert([{ 
+            nombre: name, 
+            prompt_sistema: prompt, 
+            user_id: session.user.id 
+        }]);
 
-            agentes.push({ name, prompt });
-            renderAgentes();
-            document.getElementById('bot-name').value = '';
-            document.getElementById('bot-prompt').value = '';
-            document.getElementById('create-loading').style.display = 'none';
-            showMsg('create-msg', 'Agente "' + name + '" creado correctamente.', 'success');
-        }
+    if (error) {
+        showMsg('create-msg', 'Error al guardar: ' + error.message, 'error');
+    } else {
+        showMsg('create-msg', 'Agente "' + name + '" creado correctamente.', 'success');
+        document.getElementById('bot-name').value = '';
+        document.getElementById('bot-prompt').value = '';
+        cargarAgentes(); // Recargamos la lista desde la DB
+    }
+    document.getElementById('create-loading').style.display = 'none';
+}
 
         function renderAgentes() {
             const container = document.getElementById('lista-agentes');
