@@ -1,65 +1,147 @@
-Puedes ajustar esto login porfavor con los mismos estilos 
-
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Entrar | Jeison Digital AI</title>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <style>
-        body { font-family: 'Segoe UI', sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; background: #0f172a; color: white; }
-        .login-card { background: #1e293b; padding: 2.5rem; border-radius: 16px; box-shadow: 0 15px 35px rgba(0,0,0,0.6); width: 100%; max-width: 380px; text-align: center; border: 1px solid #334155; }
-        h2 { margin-bottom: 0.5rem; color: #f8fafc; }
-        p { color: #94a3b8; font-size: 0.9rem; margin-bottom: 1.5rem; }
-        input { width: 100%; padding: 12px; margin: 8px 0; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: white; box-sizing: border-box; outline: none; }
-        button { width: 100%; padding: 12px; margin-top: 12px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; transition: all 0.3s ease; font-size: 1rem; }
-        .btn-log { background: #3b82f6; color: white; }
-        .btn-reg { background: transparent; color: #10b981; border: 1px solid #10b981; margin-top: 8px; }
-        button:hover { opacity: 0.8; transform: translateY(-1px); }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Entrar | Jeison Digital AI</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#06090f;
+  --bg2:#0d1117;
+  --surface:#161e2a;
+  --border:#1e2d40;
+  --border2:#253648;
+  --accent:#0ea5e9;
+  --accent2:#38bdf8;
+  --green:#22d3a5;
+  --text:#e8f0f8;
+  --muted:#7a98b8;
+  --dim:#4a6580;
+}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative}
+
+.bg-grid{position:fixed;inset:0;background-image:linear-gradient(var(--border) 1px,transparent 1px),linear-gradient(90deg,var(--border) 1px,transparent 1px);background-size:60px 60px;opacity:.2;pointer-events:none}
+.bg-glow{position:fixed;top:40%;left:50%;transform:translate(-50%,-50%);width:600px;height:400px;background:radial-gradient(ellipse,rgba(14,165,233,.1) 0%,transparent 70%);pointer-events:none}
+
+.card{position:relative;z-index:1;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:2.5rem 2rem;width:100%;max-width:380px;margin:1rem}
+
+.logo-row{display:flex;align-items:center;gap:8px;margin-bottom:2rem;justify-content:center}
+.logo-dot{width:8px;height:8px;border-radius:50%;background:var(--accent);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+.logo-text{font-family:'Syne',sans-serif;font-weight:800;font-size:1rem;letter-spacing:.04em;color:var(--text)}
+
+.card-title{font-family:'Syne',sans-serif;font-size:1.5rem;font-weight:800;color:var(--text);text-align:center;margin-bottom:.4rem}
+.card-sub{font-size:.88rem;color:var(--muted);text-align:center;margin-bottom:2rem;font-weight:300;line-height:1.5}
+
+.field{margin-bottom:.85rem}
+.field label{display:block;font-size:.78rem;font-weight:500;color:var(--muted);letter-spacing:.05em;text-transform:uppercase;margin-bottom:.4rem}
+.field input{width:100%;padding:11px 14px;background:var(--bg2);border:1px solid var(--border2);border-radius:8px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:.9rem;outline:none;transition:border-color .2s}
+.field input:focus{border-color:var(--accent)}
+.field input::placeholder{color:var(--dim)}
+
+.btn-main{width:100%;padding:12px;margin-top:.5rem;background:var(--accent);color:#fff;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-weight:500;font-size:.95rem;cursor:pointer;transition:all .2s;letter-spacing:.01em}
+.btn-main:hover{background:var(--accent2);transform:translateY(-1px)}
+.btn-main:active{transform:translateY(0)}
+
+.btn-ghost{width:100%;padding:11px;margin-top:.6rem;background:transparent;color:var(--green);border:1px solid rgba(34,211,165,.3);border-radius:8px;font-family:'DM Sans',sans-serif;font-weight:400;font-size:.9rem;cursor:pointer;transition:all .2s}
+.btn-ghost:hover{background:rgba(34,211,165,.06);border-color:rgba(34,211,165,.6);transform:translateY(-1px)}
+
+.divider{display:flex;align-items:center;gap:.75rem;margin:1.25rem 0 .5rem}
+.divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--border)}
+.divider span{font-size:.75rem;color:var(--dim);white-space:nowrap}
+
+.msg{font-size:.82rem;text-align:center;margin-top:.85rem;padding:.6rem .85rem;border-radius:7px;display:none}
+.msg.error{background:rgba(226,75,74,.12);color:#f87171;border:1px solid rgba(226,75,74,.2);display:block}
+.msg.success{background:rgba(34,211,165,.1);color:var(--green);border:1px solid rgba(34,211,165,.2);display:block}
+
+.loading{display:none;text-align:center;margin-top:.85rem}
+.loading-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--accent);margin:0 2px;animation:bounce .8s infinite}
+.loading-dot:nth-child(2){animation-delay:.15s}
+.loading-dot:nth-child(3){animation-delay:.3s}
+@keyframes bounce{0%,100%{transform:translateY(0);opacity:.4}50%{transform:translateY(-5px);opacity:1}}
+</style>
 </head>
 <body>
-    <div class="login-card">
-        <h2>Fábrica de Agentes</h2>
-        <p>Inicia sesión para gestionar tus tokens</p>
-        
-        <input type="email" id="email" placeholder="Correo electrónico">
-        <input type="password" id="password" placeholder="Contraseña">
-        
-        <button class="btn-log" onclick="entrar()">Iniciar Sesión</button>
-        <button class="btn-reg" onclick="registrar()">Crear Cuenta</button>
-    </div>
-    <script>
-        // Simulamos la lógica de tu chat.js pero para el navegador
-        const CONFIG = {
-            URL: "https://zsxkfqnalkfvwjrzuqip.supabase.co".trim(),
-            ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzeGtmcW5hbGtmdndqcnp1cWlwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0NDgyODMsImV4cCI6MjA5MjAyNDI4M30.R4j23l3IHEL966VupeR-Sx_KtDQzB8NzfJtEVDGewGs".trim() // <--- PEGA AQUÍ LA QUE EMPIEZA POR eyJ
-        };
-        // Inicialización idéntica a tu backend
-        const _supabase = supabase.createClient(CONFIG.URL, CONFIG.ANON_KEY);
-        async function registrar() {
-            const email = document.getElementById('email').value.trim();
-            const password = document.getElementById('password').value;
-            
-            if (!email || !password) return alert("Completa los campos");
-            const { data, error } = await _supabase.auth.signUp({ email, password });
-            
-            if (error) alert("Error: " + error.message);
-            else alert("¡Cuenta creada! Revisa tu correo o intenta iniciar sesión.");
-        }
-        async function entrar() {
-            const email = document.getElementById('email').value.trim();
-            const password = document.getElementById('password').value;
-            if (!email || !password) return alert("Completa los campos");
-            const { data, error } = await _supabase.auth.signInWithPassword({ email, password });
-            if (error) {
-                alert("Error: " + error.message);
-            } else {
-                // Al loguearte con éxito, redirige al dashboard
-                window.location.href = "dashboard.html";
-            }
-        }
-    </script>
+<div class="bg-grid"></div>
+<div class="bg-glow"></div>
+
+<div class="card">
+  <div class="logo-row">
+    <span class="logo-dot"></span>
+    <span class="logo-text">JEISON.DIGITAL</span>
+  </div>
+
+  <h1 class="card-title">Fábrica de Agentes</h1>
+  <p class="card-sub">Inicia sesión para gestionar tus tokens</p>
+
+  <div class="field">
+    <label>Correo electrónico</label>
+    <input type="email" id="email" placeholder="tu@correo.com" autocomplete="email">
+  </div>
+  <div class="field">
+    <label>Contraseña</label>
+    <input type="password" id="password" placeholder="••••••••" autocomplete="current-password">
+  </div>
+
+  <button class="btn-main" onclick="entrar()">Iniciar sesión</button>
+
+  <div class="divider"><span>¿No tienes cuenta?</span></div>
+
+  <button class="btn-ghost" onclick="registrar()">Crear cuenta nueva</button>
+
+  <div class="loading" id="loading">
+    <span class="loading-dot"></span>
+    <span class="loading-dot"></span>
+    <span class="loading-dot"></span>
+  </div>
+  <div class="msg" id="msg"></div>
+</div>
+
+<script>
+const CONFIG = {
+  URL: "https://zsxkfqnalkfvwjrzuqip.supabase.co".trim(),
+  ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzeGtmcW5hbGtmdndqcnp1cWlwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0NDgyODMsImV4cCI6MjA5MjAyNDI4M30.R4j23l3IHEL966VupeR-Sx_KtDQzB8NzfJtEVDGewGs".trim()
+};
+const _supabase = supabase.createClient(CONFIG.URL, CONFIG.ANON_KEY);
+
+function showMsg(text, type) {
+  const el = document.getElementById('msg');
+  el.textContent = text;
+  el.className = 'msg ' + type;
+}
+function setLoading(on) {
+  document.getElementById('loading').style.display = on ? 'block' : 'none';
+  document.getElementById('msg').className = 'msg';
+}
+
+async function registrar() {
+  const email = document.getElementById('email').value.trim();
+  const password = document.getElementById('password').value;
+  if (!email || !password) return showMsg('Completa todos los campos', 'error');
+  setLoading(true);
+  const { data, error } = await _supabase.auth.signUp({ email, password });
+  setLoading(false);
+  if (error) showMsg('Error: ' + error.message, 'error');
+  else showMsg('¡Cuenta creada! Revisa tu correo para confirmar.', 'success');
+}
+
+async function entrar() {
+  const email = document.getElementById('email').value.trim();
+  const password = document.getElementById('password').value;
+  if (!email || !password) return showMsg('Completa todos los campos', 'error');
+  setLoading(true);
+  const { data, error } = await _supabase.auth.signInWithPassword({ email, password });
+  setLoading(false);
+  if (error) showMsg('Error: ' + error.message, 'error');
+  else window.location.href = 'dashboard.html';
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter') entrar();
+});
+</script>
 </body>
 </html>
