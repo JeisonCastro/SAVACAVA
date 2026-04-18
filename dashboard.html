@@ -321,24 +321,39 @@
         function renderAgentes() {
     const container = document.getElementById('lista-agentes');
     if (agentes.length === 0) {
-        container.innerHTML = '<div class="empty-state"><i class="fas fa-robot"></i>Aún no has creado ningún agente.</div>';
+        container.innerHTML = '<div class="empty-state"><i class="fas fa-robot"></i>Aún no hay agentes.</div>';
         return;
     }
     container.innerHTML = agentes.map((a) => `
-        <div class="agent-item">
-            <div style="min-width:0; flex:1;">
-                <div class="agent-name">${a.name}</div>
-                <div class="agent-prompt">${a.prompt}</div>
+        <div class="agent-item" style="flex-direction: column; align-items: stretch;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
+                <div style="min-width:0; flex:1;">
+                    <div class="agent-name">${a.name}</div>
+                    <div class="agent-prompt">${a.prompt}</div>
+                </div>
+                <div style="display: flex; gap: 5px;">
+                    <button onclick="abrirChat('${a.id}', '${a.name}')" title="Probar" style="background:rgba(14,165,233,0.1); color:var(--accent); border:1px solid var(--border); padding:8px; border-radius:8px; cursor:pointer;">
+                        <i class="fas fa-play"></i>
+                    </button>
+                    <button onclick="copiarCDN('${a.id}')" title="Copiar Código CDN" style="background:rgba(34,211,165,0.1); color:var(--green); border:1px solid var(--border); padding:8px; border-radius:8px; cursor:pointer;">
+                        <i class="fas fa-code"></i>
+                    </button>
+                </div>
             </div>
-            <button onclick="abrirChat('${a.id}', '${a.name}')" style="background:rgba(14,165,233,0.1); color:var(--accent); border:1px solid var(--border); padding:8px; border-radius:8px; cursor:pointer;">
-                <i class="fas fa-play-circle"></i> Probando
-            </button>
         </div>
     `).join('');
 }
 
-        // --- LÓGICA DEL CHAT ---
-        let agenteSeleccionadoId = null;
+        // Función para copiar el código al portapapeles
+function copiarCDN(id) {
+    const scriptCode = `<script src="https://jeison.digital/widget.js" data-id="${id}"><\/script>`;
+    navigator.clipboard.writeText(scriptCode);
+    alert("¡Código CDN copiado! Pégalo antes del cierre de <\/body> en tu web.");
+}
+
+       
+    
+    let agenteSeleccionadoId = null;
 
         function abrirChat(id, nombre) {
             agenteSeleccionadoId = id;
@@ -347,29 +362,37 @@
             document.getElementById('chat-modal').style.display = 'flex';
             agregarMensaje("Sistema", `Conectado al agente. Listo para recibir instrucciones.`, "bot");
         }
+    async function enviarMensaje() {
+    const input = document.getElementById('chat-input');
+    const mensaje = input.value.trim();
+    if (!mensaje || !agenteSeleccionadoId) return;
 
-        async function enviarMensaje() {
-            const input = document.getElementById('chat-input');
-            const mensaje = input.value.trim();
-            if (!mensaje || !agenteSeleccionadoId) return;
+    agregarMensaje("Tú", mensaje, "user");
+    input.value = '';
 
-            agregarMensaje("Tú", mensaje, "user");
-            input.value = '';
+    try {
+        const res = await fetch('/.netlify/functions/chat', {
+            method: 'POST',
+            body: JSON.stringify({ 
+                prompt: mensaje, 
+                agente_id: agenteSeleccionadoId 
+            })
+        });
+        
+        const data = await res.json();
+        agregarMensaje("Agente", data.respuesta, "bot");
 
-            try {
-                const res = await fetch('/.netlify/functions/chat', {
-                    method: 'POST',
-                    body: JSON.stringify({ 
-                        prompt: mensaje, 
-                        agente_id: agenteSeleccionadoId 
-                    })
-                });
-                const data = await res.json();
-                agregarMensaje("Agente", data.respuesta, "bot");
-            } catch (err) {
-                agregarMensaje("Sistema", "Error conectando con la función de Netlify", "bot");
-            }
+        // --- AJUSTE AQUÍ: Actualizar el saldo de tokens en la interfaz ---
+        const { data: { session } } = await _supabase.auth.getSession();
+        if (session) {
+            cargarPerfil(session.user.id); 
         }
+        // -------------------------------------------------------------
+
+    } catch (err) {
+        agregarMensaje("Sistema", "Error conectando con la función de Netlify", "bot");
+    }
+}
 
         function agregarMensaje(autor, texto, tipo) {
             const container = document.getElementById('chat-messages');
@@ -401,6 +424,6 @@
         });
 
         verificarSesion();
-    </script>
+</script>
 </body>
 </html>
