@@ -362,7 +362,7 @@ function copiarCDN(id) {
             document.getElementById('chat-modal').style.display = 'flex';
             agregarMensaje("Sistema", `Conectado al agente. Listo para recibir instrucciones.`, "bot");
         }
-    async function enviarMensaje() {
+   async function enviarMensaje() {
     const input = document.getElementById('chat-input');
     const mensaje = input.value.trim();
     if (!mensaje || !agenteSeleccionadoId) return;
@@ -370,10 +370,25 @@ function copiarCDN(id) {
     agregarMensaje("Tú", mensaje, "user");
     input.value = '';
 
+    // --- NUEVO: Indicador de carga ---
+    const container = document.getElementById('chat-messages');
+    const loadingDiv = document.createElement('div');
+    loadingDiv.id = 'dashboard-loading';
+    loadingDiv.style.padding = "10px 12px";
+    loadingDiv.style.background = "var(--border)";
+    loadingDiv.style.color = "var(--muted)";
+    loadingDiv.style.borderRadius = "12px";
+    loadingDiv.style.alignSelf = "flex-start";
+    loadingDiv.style.fontSize = "0.8rem";
+    loadingDiv.innerHTML = "<em>El agente está pensando...</em>";
+    container.appendChild(loadingDiv);
+    container.scrollTop = container.scrollHeight;
+    // ---------------------------------
+
     try {
         const res = await fetch('/.netlify/functions/chat', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' }, // ← este faltaba
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
                 prompt: mensaje, 
                 agente_id: agenteSeleccionadoId 
@@ -381,13 +396,19 @@ function copiarCDN(id) {
         });
         
         const data = await res.json();
+        
+        // Eliminamos el cargando antes de mostrar la respuesta
+        document.getElementById('dashboard-loading')?.remove();
+        
         agregarMensaje("Agente", data.respuesta, "bot");
 
+        // Actualizamos saldo de tokens
         const { data: { session } } = await _supabase.auth.getSession();
         if (session) cargarPerfil(session.user.id);
 
     } catch (err) {
-        agregarMensaje("Sistema", "Error conectando con la función de Netlify", "bot");
+        document.getElementById('dashboard-loading')?.remove(); // Limpiar si falla
+        agregarMensaje("Sistema", "Error conectando con el servidor", "bot");
     }
 }
 
