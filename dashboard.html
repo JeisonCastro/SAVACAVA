@@ -503,7 +503,6 @@ async function guardarEdicion(btn) { // ← recibe el botón como parámetro
         .update({ 
             nombre_agente: document.getElementById('edit-name').value,
             prompt_sistema: document.getElementById('edit-prompt').value,
-            // ✅ Después — convierte a array
 dominios_permitidos: document.getElementById('edit-domains').value
     .split(',')
     .map(d => d.trim())
