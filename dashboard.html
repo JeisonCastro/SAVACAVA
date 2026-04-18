@@ -371,7 +371,7 @@ function copiarCDN(id) {
     input.value = '';
 
     try {
-        const res = await fetch('/.netlify/functions/chat.js', {
+        const res = await fetch('/netlify/functions/chat.js', {
             method: 'POST',
             body: JSON.stringify({ 
                 prompt: mensaje, 
