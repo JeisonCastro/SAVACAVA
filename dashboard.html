@@ -230,7 +230,7 @@
         <div class="field"><label>Instrucciones</label><textarea id="edit-prompt" rows="3"></textarea></div>
         <div class="field"><label>Dominios (separados por coma)</label><input type="text" id="edit-domains" placeholder="ej: midominio.com, cliente.com"></div>
         <div style="display:flex; gap:10px; margin-top:1rem;">
-            <button class="btn-main" onclick="guardarEdicion()" style="background:var(--green)">Guardar</button>
+            <button class="btn-main" onclick="guardarEdicion(this)" style="background:var(--green)">Guardar</button>
             <button class="btn-main" onclick="document.getElementById('edit-modal').style.display='none'" style="background:var(--red)">Cancelar</button>
         </div>
     </div>
@@ -469,34 +469,34 @@ function copiarCDN(id) {
 
 async function eliminarAgente(id) {
     if (!confirm("¿Estás seguro? Esta acción no se puede deshacer.")) return;
-    
-    // Opcional: Podrías añadir un indicador de carga aquí también
-    const { error } = await _supabase.from('agentes_ia').delete().eq('id', id);
-    
+    const { error } = await _supabase
+        .from('agentes_ia')
+        .delete()
+        .eq('id', parseInt(id)); // ← convierte a número
     if (error) {
         alert("Error al eliminar: " + error.message);
     } else {
-        cargarAgentes(); // Solo recarga si fue exitoso
+        cargarAgentes();
     }
 }
 
 function abrirEdicion(id) {
+    id = parseInt(id); // ← convierte a número
     const agente = agentes.find(a => a.id === id);
+    if (!agente) return;
     document.getElementById('edit-id').value = agente.id;
     document.getElementById('edit-name').value = agente.name;
     document.getElementById('edit-prompt').value = agente.prompt;
-    document.getElementById('edit-domains').value = agente.dominios || ''; // Asegúrate de traer esto en el select
+    document.getElementById('edit-domains').value = agente.dominios || '';
     document.getElementById('edit-modal').style.display = 'flex';
 }
 
-async function guardarEdicion() {
-    const btn = event.target; // Captura el botón
+async function guardarEdicion(btn) { // ← recibe el botón como parámetro
     const originalText = btn.innerText;
-    
     btn.disabled = true;
     btn.innerText = "Guardando...";
 
-    const id = document.getElementById('edit-id').value;
+    const id = parseInt(document.getElementById('edit-id').value);
     const { error } = await _supabase
         .from('agentes_ia')
         .update({ 
@@ -506,15 +506,14 @@ async function guardarEdicion() {
         })
         .eq('id', id);
     
+    btn.disabled = false;
+    btn.innerText = originalText;
+
     if (error) {
         alert("Error al actualizar: " + error.message);
-        btn.disabled = false;
-        btn.innerText = originalText;
     } else {
         document.getElementById('edit-modal').style.display = 'none';
-        btn.disabled = false;
-        btn.innerText = originalText;
-        cargarAgentes(); // Refresca la lista
+        cargarAgentes();
     }
 }
 
