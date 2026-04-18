@@ -46,33 +46,40 @@
         chatWindow.style.display = chatWindow.style.display === 'flex' ? 'none' : 'flex';
     };
 
-    async function sendMessage() {
+   async function sendMessage() {
         const text = input.value.trim();
         if(!text) return;
 
         appendMsg(text, 'user');
         input.value = '';
+        
+        // --- PRO TIP: Agregamos indicador de carga ---
+        const loadingDiv = document.createElement('div');
+        loadingDiv.className = 'msg-bot';
+        loadingDiv.innerText = 'Escribiendo...';
+        loadingDiv.id = 'jt-loading'; // Le ponemos ID para borrarlo luego
+        messages.appendChild(loadingDiv);
+        messages.scrollTop = messages.scrollHeight;
+        // ---------------------------------------------
 
         try {
-    const res = await fetch('https://jeisondigital.netlify.app/.netlify/functions/chat', {
-        method: 'POST',
-        headers: { 
-            'Content-Type': 'application/json' // Necesario para que el backend lea el body
-        },
-        body: JSON.stringify({ 
-            prompt: text, 
-            agente_id: agenteId 
-        })
-    });
-    
-    if (!res.ok) throw new Error('Error en el servidor');
-    
-    const data = await res.json();
-    appendMsg(data.respuesta, 'bot');
-} catch (e) {
-    console.error(e);
-    appendMsg("Error al conectar con el asistente.", 'bot');
-}
+            const res = await fetch('https://jeisondigital.netlify.app/.netlify/functions/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ prompt: text, agente_id: agenteId })
+            });
+            
+            if (!res.ok) throw new Error('Error');
+            const data = await res.json();
+            
+            // Eliminamos el mensaje de "Escribiendo..."
+            document.getElementById('jt-loading')?.remove();
+            
+            appendMsg(data.respuesta, 'bot');
+        } catch (e) {
+            document.getElementById('jt-loading')?.remove(); // Quitamos carga si hay error
+            appendMsg("Error al conectar con el asistente.", 'bot');
+        }
     }
 
     function appendMsg(txt, type) {
