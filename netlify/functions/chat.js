@@ -31,6 +31,10 @@ exports.handler = async (event) => {
             .select('*')
             .eq('id', targetID)
             .single();
+        // --- INSERTA ESTO PARA VER LA VERDAD ---
+        console.log("ID buscado:", targetID);
+        console.log("Datos del agente encontrado:", JSON.stringify(agente));
+        // ---------------------------------------
 
         if (errAgente || !agente) {
             console.error("Error agente:", errAgente);
