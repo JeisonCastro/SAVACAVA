@@ -468,16 +468,17 @@ function copiarCDN(id) {
         // --- FUNCIONES DE GESTIÓN ---
 
 async function eliminarAgente(id) {
-    if (!confirm("¿Estás seguro? Esta acción no se puede deshacer.")) return;
-    const { error } = await _supabase
+    if (!confirm("¿Estás seguro?")) return;
+    console.log("Intentando eliminar ID:", id, typeof id);
+    
+    const { error, data } = await _supabase
         .from('agentes_ia')
         .delete()
-        .eq('id', parseInt(id)); // ← convierte a número
-    if (error) {
-        alert("Error al eliminar: " + error.message);
-    } else {
-        cargarAgentes();
-    }
+        .eq('id', parseInt(id));
+    
+    console.log("Resultado eliminar:", { error, data });
+    if (error) alert("Error: " + error.message);
+    else cargarAgentes();
 }
 
 function abrirEdicion(id) {
@@ -502,7 +503,11 @@ async function guardarEdicion(btn) { // ← recibe el botón como parámetro
         .update({ 
             nombre_agente: document.getElementById('edit-name').value,
             prompt_sistema: document.getElementById('edit-prompt').value,
-            dominios_permitidos: document.getElementById('edit-domains').value 
+            // ✅ Después — convierte a array
+dominios_permitidos: document.getElementById('edit-domains').value
+    .split(',')
+    .map(d => d.trim())
+    .filter(d => d.length > 0)
         })
         .eq('id', id);
     
