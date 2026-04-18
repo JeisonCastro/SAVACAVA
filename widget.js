@@ -55,7 +55,7 @@
 
         try {
             // USAMOS TU MISMA FUNCIÓN DE NETLIFY
-            const res = await fetch('https://jeison.digital.netlify.app/.netlify/functions/chat', {
+            const res = await fetch('https://jeisondigital.netlify.app/.netlify/functions/chat', {
                 method: 'POST',
                 body: JSON.stringify({ prompt: text, agente_id: agenteId })
             });
