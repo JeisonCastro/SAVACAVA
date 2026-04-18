@@ -482,13 +482,15 @@ async function eliminarAgente(id) {
 }
 
 function abrirEdicion(id) {
-    id = parseInt(id); // ← convierte a número
+    id = parseInt(id);
     const agente = agentes.find(a => a.id === id);
     if (!agente) return;
     document.getElementById('edit-id').value = agente.id;
     document.getElementById('edit-name').value = agente.name;
     document.getElementById('edit-prompt').value = agente.prompt;
-    document.getElementById('edit-domains').value = agente.dominios || '';
+    document.getElementById('edit-domains').value = Array.isArray(agente.dominios) 
+        ? agente.dominios.join(', ') 
+        : (agente.dominios || '');
     document.getElementById('edit-modal').style.display = 'flex';
 }
 
