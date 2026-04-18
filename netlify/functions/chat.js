@@ -41,19 +41,27 @@ exports.handler = async (event) => {
             };
         }
 
-        // --- 2.5 Validación de Dominio (Seguridad) ---
+        // --- 2.5 Validación de Dominio (Depuración) ---
 const origin = event.headers.origin; 
-// Nota: Algunos navegadores a veces envían el referer, pero origin es lo estándar.
 
-// Si la lista de dominios no está vacía, verificamos:
-if (agente.dominios_permitidos && agente.dominios_permitidos.length > 0) {
-    if (!agente.dominios_permitidos.includes(origin)) {
-        return {
-            statusCode: 403,
-            headers,
-            body: JSON.stringify({ respuesta: "Este dominio no tiene permiso para usar este asistente." })
-        };
-    }
+console.log("Dominio solicitante:", origin); // <-- Esto te dirá qué está recibiendo
+console.log("Lista permitida:", agente.dominios_permitidos); // <-- Esto te dirá qué hay en la BD
+
+if (!agente.dominios_permitidos || agente.dominios_permitidos.length === 0) {
+    // CAMBIO: Si la lista está vacía, POR SEGURIDAD bloqueamos todo
+    return {
+        statusCode: 403,
+        headers,
+        body: JSON.stringify({ respuesta: "Seguridad: No hay dominios configurados para este agente." })
+    };
+}
+
+if (!agente.dominios_permitidos.includes(origin)) {
+    return {
+        statusCode: 403,
+        headers,
+        body: JSON.stringify({ respuesta: "Este dominio no tiene permiso." })
+    };
 }
 
         // 2. Obtener saldo desde la tabla perfiles (consulta separada)
