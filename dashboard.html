@@ -314,22 +314,23 @@
     document.getElementById('create-loading').style.display = 'none';
 }
         async function cargarAgentes() {
-            const { data: { session } } = await _supabase.auth.getSession();
-            const { data, error } = await _supabase
-                .from('agentes_ia')
-                .select('*')
-                .eq('user_id', session.user.id);
+    const { data: { session } } = await _supabase.auth.getSession();
+    const { data, error } = await _supabase
+        .from('agentes_ia')
+        .select('*')
+        .eq('user_id', session.user.id);
 
-            if (data) {
-                // IMPORTANTE: Incluimos el 'id' que viene de Supabase
-                agentes = data.map(a => ({ 
-                    id: a.id, 
-                    name: a.nombre || a.nombre_agente, 
-                    prompt: a.prompt_sistema 
-                }));
-                renderAgentes();
-            }
-        }
+    if (data) {
+        // Mapeo corregido: incluimos dominios
+        agentes = data.map(a => ({ 
+            id: a.id, 
+            name: a.nombre_agente, 
+            prompt: a.prompt_sistema,
+            dominios: a.dominios_permitidos // <--- ESTO FALTABA
+        }));
+        renderAgentes();
+    }
+}
 
         function renderAgentes() {
     const container = document.getElementById('lista-agentes');
