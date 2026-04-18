@@ -222,6 +222,19 @@
         <button onclick="enviarMensaje()" style="background:var(--accent); color:white; border:none; padding:8px 12px; border-radius:6px; cursor:pointer;"><i class="fas fa-paper-plane"></i></button>
     </div>
 </div>
+    <div id="edit-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:1001; align-items:center; justify-content:center;">
+    <div class="card" style="width:400px; max-width:90%;">
+        <h3 class="card-title" style="margin-bottom:1rem">Editar Agente</h3>
+        <input type="hidden" id="edit-id">
+        <div class="field"><label>Nombre</label><input type="text" id="edit-name"></div>
+        <div class="field"><label>Instrucciones</label><textarea id="edit-prompt" rows="3"></textarea></div>
+        <div class="field"><label>Dominios (separados por coma)</label><input type="text" id="edit-domains" placeholder="ej: midominio.com, cliente.com"></div>
+        <div style="display:flex; gap:10px; margin-top:1rem;">
+            <button class="btn-main" onclick="guardarEdicion()" style="background:var(--green)">Guardar</button>
+            <button class="btn-main" onclick="document.getElementById('edit-modal').style.display='none'" style="background:var(--red)">Cancelar</button>
+        </div>
+    </div>
+</div>
 
     <script>
         const SUPABASE_URL = "https://zsxkfqnalkfvwjrzuqip.supabase.co";
@@ -338,6 +351,8 @@
                     <button onclick="copiarCDN('${a.id}')" title="Copiar Código CDN" style="background:rgba(34,211,165,0.1); color:var(--green); border:1px solid var(--border); padding:8px; border-radius:8px; cursor:pointer;">
                         <i class="fas fa-code"></i>
                     </button>
+                    <button onclick="abrirEdicion('${a.id}')" title="Editar" style="background:transparent; border:none; color:var(--muted); cursor:pointer;"><i class="fas fa-edit"></i></button>
+                <button onclick="eliminarAgente('${a.id}')" title="Borrar" style="background:transparent; border:none; color:var(--red); cursor:pointer;"><i class="fas fa-trash"></i></button>
                 </div>
             </div>
         </div>
@@ -440,6 +455,42 @@ function copiarCDN(id) {
         document.getElementById('chat-input').addEventListener('keypress', (e) => {
             if (e.key === 'Enter') enviarMensaje();
         });
+
+        // --- FUNCIONES DE GESTIÓN ---
+
+async function eliminarAgente(id) {
+    if (!confirm("¿Estás seguro? Esta acción no se puede deshacer.")) return;
+    const { error } = await _supabase.from('agentes_ia').delete().eq('id', id);
+    if (!error) cargarAgentes();
+}
+
+function abrirEdicion(id) {
+    const agente = agentes.find(a => a.id === id);
+    document.getElementById('edit-id').value = agente.id;
+    document.getElementById('edit-name').value = agente.name;
+    document.getElementById('edit-prompt').value = agente.prompt;
+    document.getElementById('edit-domains').value = agente.dominios || ''; // Asegúrate de traer esto en el select
+    document.getElementById('edit-modal').style.display = 'flex';
+}
+
+async function guardarEdicion() {
+    const id = document.getElementById('edit-id').value;
+    const { error } = await _supabase
+        .from('agentes_ia')
+        .update({ 
+            nombre_agente: document.getElementById('edit-name').value,
+            prompt_sistema: document.getElementById('edit-prompt').value,
+            dominios_permitidos: document.getElementById('edit-domains').value 
+        })
+        .eq('id', id);
+    
+    if (error) {
+        alert("Error al actualizar: " + error.message);
+    } else {
+        document.getElementById('edit-modal').style.display = 'none';
+        cargarAgentes();
+    }
+}
 
         verificarSesion();
 </script>
