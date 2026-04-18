@@ -41,6 +41,21 @@ exports.handler = async (event) => {
             };
         }
 
+        // --- 2.5 Validación de Dominio (Seguridad) ---
+const origin = event.headers.origin; 
+// Nota: Algunos navegadores a veces envían el referer, pero origin es lo estándar.
+
+// Si la lista de dominios no está vacía, verificamos:
+if (agente.dominios_permitidos && agente.dominios_permitidos.length > 0) {
+    if (!agente.dominios_permitidos.includes(origin)) {
+        return {
+            statusCode: 403,
+            headers,
+            body: JSON.stringify({ respuesta: "Este dominio no tiene permiso para usar este asistente." })
+        };
+    }
+}
+
         // 2. Obtener saldo desde la tabla perfiles (consulta separada)
         const { data: perfil, error: errPerfil } = await supabase
             .from('perfiles')
