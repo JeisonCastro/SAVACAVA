@@ -54,16 +54,25 @@
         input.value = '';
 
         try {
-            // USAMOS TU MISMA FUNCIÓN DE NETLIFY
-            const res = await fetch('https://jeisondigital.netlify.app/.netlify/functions/chat', {
-                method: 'POST',
-                body: JSON.stringify({ prompt: text, agente_id: agenteId })
-            });
-            const data = await res.json();
-            appendMsg(data.respuesta, 'bot');
-        } catch (e) {
-            appendMsg("Error de conexión.", 'bot');
-        }
+    const res = await fetch('https://jeisondigital.netlify.app/.netlify/functions/chat', {
+        method: 'POST',
+        headers: { 
+            'Content-Type': 'application/json' // Necesario para que el backend lea el body
+        },
+        body: JSON.stringify({ 
+            prompt: text, 
+            agente_id: agenteId 
+        })
+    });
+    
+    if (!res.ok) throw new Error('Error en el servidor');
+    
+    const data = await res.json();
+    appendMsg(data.respuesta, 'bot');
+} catch (e) {
+    console.error(e);
+    appendMsg("Error al conectar con el asistente.", 'bot');
+}
     }
 
     function appendMsg(txt, type) {
