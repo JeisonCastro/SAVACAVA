@@ -10,149 +10,187 @@
     <style>
         *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
         :root{
-            --bg:#06090f;
-            --bg2:#0d1117;
-            --surface:#161e2a;
-            --border:#1e2d40;
-            --border2:#253648;
-            --accent:#0ea5e9;
-            --accent2:#38bdf8;
-            --green:#22d3a5;
-            --red:#f87171;
-            --text:#e8f0f8;
-            --muted:#7a98b8;
-            --dim:#4a6580;
-            --sidebar:260px;
+            --bg:#06090f;--bg2:#0d1117;--surface:#161e2a;--border:#1e2d40;--border2:#253648;
+            --accent:#0ea5e9;--accent2:#38bdf8;--green:#22d3a5;--red:#f87171;--yellow:#fbbf24;
+            --text:#e8f0f8;--muted:#7a98b8;--dim:#4a6580;--sidebar:260px;
         }
-        html, body { height: 100%; font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); overflow-x: hidden; }
-
-        /* BG GRID */
-        .bg-grid { position: fixed; inset: 0; left: var(--sidebar); background-image: linear-gradient(var(--border) 1px, transparent 1px), linear-gradient(90deg, var(--border) 1px, transparent 1px); background-size: 60px 60px; opacity: .15; pointer-events: none; z-index: 0; }
+        html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);overflow-x:hidden}
+        .bg-grid{position:fixed;inset:0;left:var(--sidebar);background-image:linear-gradient(var(--border) 1px,transparent 1px),linear-gradient(90deg,var(--border) 1px,transparent 1px);background-size:60px 60px;opacity:.15;pointer-events:none;z-index:0}
 
         /* SIDEBAR */
-        .sidebar { height: 100vh; width: var(--sidebar); position: fixed; left: 0; top: 0; background: var(--bg2); border-right: 1px solid var(--border); display: flex; flex-direction: column; justify-content: space-between; padding: 1.5rem 1rem; z-index: 50; }
-        .sidebar-logo { display: flex; align-items: center; gap: 8px; margin-bottom: 2rem; padding: 0 .5rem; }
-        .logo-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); animation: pulse 2s infinite; flex-shrink: 0; }
-        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
-        .logo-text { font-family: 'Syne', sans-serif; font-weight: 800; font-size: .9rem; letter-spacing: .04em; color: var(--text); }
-
-        .nav-label { font-size: .7rem; font-weight: 500; letter-spacing: .1em; text-transform: uppercase; color: var(--dim); padding: 0 .75rem; margin-bottom: .5rem; }
-        .sidebar nav a { display: flex; align-items: center; gap: .75rem; padding: .6rem .75rem; border-radius: 8px; color: var(--muted); text-decoration: none; font-size: .875rem; font-weight: 400; transition: all .2s; margin-bottom: .2rem; }
-        .sidebar nav a i { width: 16px; text-align: center; font-size: .85rem; }
-        .sidebar nav a:hover { color: var(--text); background: var(--surface); }
-        .sidebar nav a.active { color: var(--accent); background: rgba(14,165,233,.1); font-weight: 500; }
-        .sidebar nav a.active i { color: var(--accent); }
-
-        .sidebar-bottom { border-top: 1px solid var(--border); padding-top: 1rem; }
-        .user-row { display: flex; align-items: center; gap: .65rem; padding: .5rem .5rem .75rem; }
-        .user-avatar { width: 30px; height: 30px; border-radius: 50%; background: rgba(14,165,233,.15); border: 1px solid rgba(14,165,233,.25); display: flex; align-items: center; justify-content: center; font-size: .75rem; color: var(--accent); flex-shrink: 0; font-family: 'Syne', sans-serif; font-weight: 700; }
-        .user-email-text { font-size: .78rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 160px; }
-        .btn-logout { display: flex; align-items: center; gap: .65rem; width: 100%; padding: .55rem .75rem; border-radius: 8px; background: none; border: none; color: var(--dim); font-size: .82rem; font-family: 'DM Sans', sans-serif; cursor: pointer; transition: all .2s; }
-        .btn-logout:hover { color: var(--red); background: rgba(248,113,113,.07); }
+        .sidebar{height:100vh;width:var(--sidebar);position:fixed;left:0;top:0;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;justify-content:space-between;padding:1.5rem 1rem;z-index:50}
+        .sidebar-logo{display:flex;align-items:center;gap:8px;margin-bottom:2rem;padding:0 .5rem}
+        .logo-dot{width:7px;height:7px;border-radius:50%;background:var(--accent);animation:pulse 2s infinite;flex-shrink:0}
+        @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+        .logo-text{font-family:'Syne',sans-serif;font-weight:800;font-size:.9rem;letter-spacing:.04em;color:var(--text)}
+        .nav-label{font-size:.7rem;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);padding:0 .75rem;margin-bottom:.5rem}
+        .sidebar nav a{display:flex;align-items:center;gap:.75rem;padding:.6rem .75rem;border-radius:8px;color:var(--muted);text-decoration:none;font-size:.875rem;font-weight:400;transition:all .2s;margin-bottom:.2rem;cursor:pointer}
+        .sidebar nav a i{width:16px;text-align:center;font-size:.85rem}
+        .sidebar nav a:hover{color:var(--text);background:var(--surface)}
+        .sidebar nav a.active{color:var(--accent);background:rgba(14,165,233,.1);font-weight:500}
+        .sidebar nav a.active i{color:var(--accent)}
+        .sidebar-bottom{border-top:1px solid var(--border);padding-top:1rem}
+        .user-row{display:flex;align-items:center;gap:.65rem;padding:.5rem .5rem .75rem}
+        .user-avatar{width:30px;height:30px;border-radius:50%;background:rgba(14,165,233,.15);border:1px solid rgba(14,165,233,.25);display:flex;align-items:center;justify-content:center;font-size:.75rem;color:var(--accent);flex-shrink:0;font-family:'Syne',sans-serif;font-weight:700}
+        .user-email-text{font-size:.78rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px}
+        .btn-logout{display:flex;align-items:center;gap:.65rem;width:100%;padding:.55rem .75rem;border-radius:8px;background:none;border:none;color:var(--dim);font-size:.82rem;font-family:'DM Sans',sans-serif;cursor:pointer;transition:all .2s}
+        .btn-logout:hover{color:var(--red);background:rgba(248,113,113,.07)}
 
         /* MAIN */
-        .main-content { margin-left: var(--sidebar); min-height: 100vh; padding: 2rem 2rem 3rem; position: relative; z-index: 1; }
+        .main-content{margin-left:var(--sidebar);min-height:100vh;padding:2rem 2rem 3rem;position:relative;z-index:1}
+        .view{display:none}
+        .view.active{display:block}
 
         /* TOPBAR */
-        .topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
-        .page-title { font-family: 'Syne', sans-serif; font-size: 1.4rem; font-weight: 800; color: var(--text); }
-        .page-sub { font-size: .82rem; color: var(--muted); margin-top: .2rem; font-weight: 300; }
-        .token-card { display: flex; align-items: center; gap: 1rem; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: .75rem 1.1rem; }
-        .token-icon { width: 36px; height: 36px; border-radius: 8px; background: rgba(34,211,165,.1); border: 1px solid rgba(34,211,165,.2); display: flex; align-items: center; justify-content: center; color: var(--green); font-size: .9rem; }
-        .token-label { font-size: .7rem; font-weight: 500; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
-        #token-balance { font-family: 'Syne', sans-serif; font-size: 1.3rem; font-weight: 800; color: var(--green); }
+        .topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:2rem}
+        .page-title{font-family:'Syne',sans-serif;font-size:1.4rem;font-weight:800;color:var(--text)}
+        .page-sub{font-size:.82rem;color:var(--muted);margin-top:.2rem;font-weight:300}
+        .token-card{display:flex;align-items:center;gap:1rem;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:.75rem 1.1rem}
+        .token-icon{width:36px;height:36px;border-radius:8px;background:rgba(34,211,165,.1);border:1px solid rgba(34,211,165,.2);display:flex;align-items:center;justify-content:center;color:var(--green);font-size:.9rem}
+        .token-label{font-size:.7rem;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+        #token-balance,#token-balance-2{font-family:'Syne',sans-serif;font-size:1.3rem;font-weight:800;color:var(--green)}
 
-        /* GRID */
-        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
-        @media(max-width:900px){ .grid-2 { grid-template-columns: 1fr; } }
+        /* GRIDS */
+        .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem}
+        .grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1.5rem;margin-bottom:1.5rem}
+        @media(max-width:900px){.grid-2,.grid-3{grid-template-columns:1fr}}
 
         /* CARDS */
-        .card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 1.75rem; }
-        .card-header { display: flex; align-items: center; gap: .6rem; margin-bottom: 1.5rem; }
-        .card-icon { width: 32px; height: 32px; border-radius: 8px; background: rgba(14,165,233,.1); display: flex; align-items: center; justify-content: center; color: var(--accent); font-size: .85rem; flex-shrink: 0; }
-        .card-title { font-family: 'Syne', sans-serif; font-size: 1rem; font-weight: 700; color: var(--text); }
+        .card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:1.75rem}
+        .card-header{display:flex;align-items:center;gap:.6rem;margin-bottom:1.5rem}
+        .card-icon{width:32px;height:32px;border-radius:8px;background:rgba(14,165,233,.1);display:flex;align-items:center;justify-content:center;color:var(--accent);font-size:.85rem;flex-shrink:0}
+        .card-icon.green{background:rgba(34,211,165,.1);color:var(--green)}
+        .card-icon.yellow{background:rgba(251,191,36,.1);color:var(--yellow)}
+        .card-title{font-family:'Syne',sans-serif;font-size:1rem;font-weight:700;color:var(--text)}
+
+        /* STATS */
+        .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.25rem 1.5rem}
+        .stat-label{font-size:.72rem;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:.4rem}
+        .stat-value{font-family:'Syne',sans-serif;font-size:1.8rem;font-weight:800;color:var(--text)}
+        .stat-value.green{color:var(--green)}
+        .stat-value.accent{color:var(--accent)}
+        .stat-value.yellow{color:var(--yellow)}
+        .stat-sub{font-size:.75rem;color:var(--dim);margin-top:.3rem}
 
         /* FORM */
-        .field { margin-bottom: .9rem; }
-        .field label { display: block; font-size: .74rem; font-weight: 500; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-bottom: .4rem; }
-        .field input, .field textarea { width: 100%; padding: 10px 13px; background: var(--bg2); border: 1px solid var(--border2); border-radius: 8px; color: var(--text); font-family: 'DM Sans', sans-serif; font-size: .88rem; outline: none; transition: border-color .2s; resize: none; }
-        .field input:focus, .field textarea:focus { border-color: var(--accent); }
-        .field input::placeholder, .field textarea::placeholder { color: var(--dim); }
-        .btn-main { width: 100%; padding: 11px; background: var(--accent); color: #fff; border: none; border-radius: 8px; font-family: 'DM Sans', sans-serif; font-weight: 500; font-size: .9rem; cursor: pointer; transition: all .2s; margin-top: .25rem; }
-        .btn-main:hover { background: var(--accent2); transform: translateY(-1px); }
+        .field{margin-bottom:.9rem}
+        .field label{display:block;font-size:.74rem;font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:.4rem}
+        .field input,.field textarea{width:100%;padding:10px 13px;background:var(--bg2);border:1px solid var(--border2);border-radius:8px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:.88rem;outline:none;transition:border-color .2s;resize:none}
+        .field input:focus,.field textarea:focus{border-color:var(--accent)}
+        .field input::placeholder,.field textarea::placeholder{color:var(--dim)}
+        .field input:disabled{opacity:.5;cursor:not-allowed}
+        .field-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+        @media(max-width:600px){.field-row{grid-template-columns:1fr}}
+        .btn-main{width:100%;padding:11px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-weight:500;font-size:.9rem;cursor:pointer;transition:all .2s;margin-top:.25rem}
+        .btn-main:hover{background:var(--accent2);transform:translateY(-1px)}
+        .btn-main:disabled{opacity:.5;cursor:not-allowed;transform:none}
+        .btn-green{background:var(--green) !important;color:#06090f !important}
+        .btn-green:hover{background:#1db891 !important}
+        .btn-wa{background:#25d366 !important;display:flex;align-items:center;justify-content:center;gap:.5rem}
+        .btn-wa:hover{background:#1fb855 !important}
 
-        /* AGENT LIST */
-        .empty-state { text-align: center; padding: 2rem 1rem; color: var(--dim); font-size: .875rem; font-weight: 300; }
-        .empty-state i { font-size: 2rem; margin-bottom: .75rem; display: block; color: var(--border2); }
-        .agent-item { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; padding: .9rem 1rem; background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; margin-bottom: .65rem; transition: border-color .2s; }
-        .agent-item:hover { border-color: var(--border2); }
-        .agent-name { font-family: 'Syne', sans-serif; font-size: .88rem; font-weight: 700; color: var(--text); margin-bottom: .25rem; }
-        .agent-prompt { font-size: .78rem; color: var(--muted); line-height: 1.5; font-weight: 300; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-        .agent-badge { display: inline-flex; align-items: center; gap: .3rem; font-size: .7rem; padding: .2rem .55rem; border-radius: 20px; background: rgba(34,211,165,.1); color: var(--green); border: 1px solid rgba(34,211,165,.2); white-space: nowrap; flex-shrink: 0; }
+        /* AGENTS */
+        .empty-state{text-align:center;padding:2rem 1rem;color:var(--dim);font-size:.875rem;font-weight:300}
+        .empty-state i{font-size:2rem;margin-bottom:.75rem;display:block;color:var(--border2)}
+        .agent-item{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;padding:.9rem 1rem;background:var(--bg2);border:1px solid var(--border);border-radius:10px;margin-bottom:.65rem;transition:border-color .2s}
+        .agent-item:hover{border-color:var(--border2)}
+        .agent-name{font-family:'Syne',sans-serif;font-size:.88rem;font-weight:700;color:var(--text);margin-bottom:.25rem}
+        .agent-prompt{font-size:.78rem;color:var(--muted);line-height:1.5;font-weight:300;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+
+        /* TABLE */
+        .table-wrap{overflow-x:auto}
+        table{width:100%;border-collapse:collapse;font-size:.85rem}
+        thead th{padding:.6rem 1rem;text-align:left;font-size:.7rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);border-bottom:1px solid var(--border)}
+        tbody td{padding:.75rem 1rem;color:var(--muted);border-bottom:1px solid var(--border)}
+        tbody tr:last-child td{border-bottom:none}
+        tbody tr:hover td{background:rgba(255,255,255,.02);color:var(--text)}
+        .badge{display:inline-flex;align-items:center;gap:.3rem;font-size:.7rem;padding:.2rem .6rem;border-radius:20px;font-weight:500}
+        .badge-green{background:rgba(34,211,165,.1);color:var(--green);border:1px solid rgba(34,211,165,.2)}
+        .badge-accent{background:rgba(14,165,233,.1);color:var(--accent);border:1px solid rgba(14,165,233,.2)}
 
         /* MESSAGES */
-        .msg { font-size: .82rem; text-align: center; padding: .55rem .85rem; border-radius: 7px; margin-top: .75rem; display: none; }
-        .msg.error { background: rgba(248,113,113,.1); color: var(--red); border: 1px solid rgba(248,113,113,.2); display: block; }
-        .msg.success { background: rgba(34,211,165,.1); color: var(--green); border: 1px solid rgba(34,211,165,.2); display: block; }
-        .loading-dots { display: none; text-align: center; margin-top: .6rem; }
-        .loading-dot { display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: var(--accent); margin: 0 2px; animation: bounce .8s infinite; }
-        .loading-dot:nth-child(2){ animation-delay: .15s; }
-        .loading-dot:nth-child(3){ animation-delay: .3s; }
-        @keyframes bounce { 0%,100%{transform:translateY(0);opacity:.35} 50%{transform:translateY(-5px);opacity:1} }
+        .msg{font-size:.82rem;text-align:center;padding:.55rem .85rem;border-radius:7px;margin-top:.75rem;display:none}
+        .msg.error{background:rgba(248,113,113,.1);color:var(--red);border:1px solid rgba(248,113,113,.2);display:block}
+        .msg.success{background:rgba(34,211,165,.1);color:var(--green);border:1px solid rgba(34,211,165,.2);display:block}
+        .loading-dots{display:none;text-align:center;margin-top:.6rem}
+        .loading-dot{display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--accent);margin:0 2px;animation:bounce .8s infinite}
+        .loading-dot:nth-child(2){animation-delay:.15s}
+        .loading-dot:nth-child(3){animation-delay:.3s}
+        @keyframes bounce{0%,100%{transform:translateY(0);opacity:.35}50%{transform:translateY(-5px);opacity:1}}
+
+        /* TOAST */
+        .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--surface);border:1px solid var(--border2);border-radius:10px;padding:.75rem 1.25rem;font-size:.88rem;color:var(--text);z-index:9999;transition:transform .3s ease;display:flex;align-items:center;gap:.6rem;white-space:nowrap}
+        .toast.show{transform:translateX(-50%) translateY(0)}
+        .toast.success{border-color:rgba(34,211,165,.4);color:var(--green)}
+        .toast.error{border-color:rgba(248,113,113,.4);color:var(--red)}
+
+        /* PLANS */
+        .plan-card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:1.25rem;text-align:center;transition:all .2s;cursor:pointer}
+        .plan-card:hover{border-color:var(--border2)}
+        .plan-card.selected{outline:2px solid var(--accent)}
+        .plan-card.featured{border-color:rgba(14,165,233,.35);background:rgba(14,165,233,.04)}
+        .plan-name{font-family:'Syne',sans-serif;font-size:.8rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.4rem}
+        .plan-tokens{font-family:'Syne',sans-serif;font-size:1.6rem;font-weight:800;color:var(--text)}
+        .plan-tokens span{font-size:.8rem;color:var(--muted);font-weight:400}
+        .plan-price{font-size:.82rem;color:var(--green);margin:.4rem 0 0;font-weight:500}
+        .plan-badge{display:inline-block;font-size:.65rem;padding:.15rem .5rem;border-radius:20px;background:rgba(14,165,233,.15);color:var(--accent);border:1px solid rgba(14,165,233,.3);margin-bottom:.5rem}
 
         /* MOBILE */
-        .mob-toggle { display: none; position: fixed; top: 1rem; left: 1rem; z-index: 100; width: 36px; height: 36px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; align-items: center; justify-content: center; cursor: pointer; color: var(--muted); }
+        .mob-toggle{display:none;position:fixed;top:1rem;left:1rem;z-index:100;width:36px;height:36px;background:var(--surface);border:1px solid var(--border);border-radius:8px;align-items:center;justify-content:center;cursor:pointer;color:var(--muted)}
         @media(max-width:768px){
-            .sidebar { transform: translateX(-100%); transition: transform .3s; }
-            .sidebar.open { transform: translateX(0); }
-            .main-content { margin-left: 0; }
-            .bg-grid { left: 0; }
-            .mob-toggle { display: flex; }
+            .sidebar{transform:translateX(-100%);transition:transform .3s}
+            .sidebar.open{transform:translateX(0)}
+            .main-content{margin-left:0}
+            .bg-grid{left:0}
+            .mob-toggle{display:flex}
         }
     </style>
 </head>
 <body>
 
-    <div class="bg-grid"></div>
+<div class="bg-grid"></div>
+<div class="toast" id="toast"></div>
 
-    <button class="mob-toggle" onclick="document.querySelector('.sidebar').classList.toggle('open')">
-        <i class="fas fa-bars" style="font-size:.85rem"></i>
-    </button>
+<button class="mob-toggle" onclick="document.querySelector('.sidebar').classList.toggle('open')">
+    <i class="fas fa-bars" style="font-size:.85rem"></i>
+</button>
 
-    <!-- SIDEBAR -->
-    <div class="sidebar">
-        <div>
-            <div class="sidebar-logo">
-                <span class="logo-dot"></span>
-                <span class="logo-text">JEISON.DIGITAL</span>
-            </div>
-            <div class="nav-label">Menú</div>
-            <nav>
-                <a href="#" class="active">
-                    <i class="fas fa-robot"></i> Mis Agentes
-                </a>
-                <a href="#">
-                    <i class="fas fa-coins"></i> Tokens y Planes
-                </a>
-                <a href="#">
-                    <i class="fas fa-sliders"></i> Configuración
-                </a>
-            </nav>
+<!-- SIDEBAR -->
+<div class="sidebar">
+    <div>
+        <div class="sidebar-logo">
+            <span class="logo-dot"></span>
+            <span class="logo-text">JEISON.DIGITAL</span>
         </div>
-        <div class="sidebar-bottom">
-            <div class="user-row">
-                <div class="user-avatar" id="user-initials">—</div>
-                <span class="user-email-text" id="user-email">Cargando...</span>
-            </div>
-            <button class="btn-logout" onclick="cerrarSesion()">
-                <i class="fas fa-arrow-right-from-bracket"></i> Cerrar sesión
-            </button>
-        </div>
+        <div class="nav-label">Menú</div>
+        <nav>
+            <a onclick="mostrarVista('agentes')" id="nav-agentes" class="active">
+                <i class="fas fa-robot"></i> Mis Agentes
+            </a>
+            <a onclick="mostrarVista('tokens')" id="nav-tokens">
+                <i class="fas fa-coins"></i> Tokens y Planes
+            </a>
+            <a onclick="mostrarVista('config')" id="nav-config">
+                <i class="fas fa-sliders"></i> Configuración
+            </a>
+        </nav>
     </div>
+    <div class="sidebar-bottom">
+        <div class="user-row">
+            <div class="user-avatar" id="user-initials">—</div>
+            <span class="user-email-text" id="user-email">Cargando...</span>
+        </div>
+        <button class="btn-logout" onclick="cerrarSesion()">
+            <i class="fas fa-arrow-right-from-bracket"></i> Cerrar sesión
+        </button>
+    </div>
+</div>
 
-    <!-- MAIN -->
-    <div class="main-content">
+<!-- MAIN -->
+<div class="main-content">
 
+    <!-- ===== VISTA AGENTES ===== -->
+    <div class="view active" id="view-agentes">
         <div class="topbar">
             <div>
                 <h2 class="page-title">Panel de Control</h2>
@@ -166,364 +204,422 @@
                 </div>
             </div>
         </div>
-
         <div class="grid-2">
-
-            <!-- CREAR AGENTE -->
             <div class="card">
                 <div class="card-header">
                     <div class="card-icon"><i class="fas fa-plus"></i></div>
                     <span class="card-title">Crear nuevo agente</span>
                 </div>
-                <div class="field">
-                    <label>Nombre del agente</label>
-                    <input type="text" id="bot-name" placeholder="Ej: Vendedor de Streaming">
-                </div>
-                <div class="field">
-                    <label>Instrucción maestra (System Prompt)</label>
-                    <textarea id="bot-prompt" rows="5" placeholder="Eres un asistente que..."></textarea>
-                </div>
-                <button class="btn-main" onclick="crearAgente()">
-                    <i class="fas fa-floppy-disk" style="margin-right:.4rem"></i> Guardar agente
-                </button>
-                <div class="loading-dots" id="create-loading">
-                    <span class="loading-dot"></span>
-                    <span class="loading-dot"></span>
-                    <span class="loading-dot"></span>
-                </div>
+                <div class="field"><label>Nombre del agente</label><input type="text" id="bot-name" placeholder="Ej: Vendedor de Streaming"></div>
+                <div class="field"><label>Instrucción maestra (System Prompt)</label><textarea id="bot-prompt" rows="5" placeholder="Eres un asistente que..."></textarea></div>
+                <button class="btn-main" onclick="crearAgente()"><i class="fas fa-floppy-disk" style="margin-right:.4rem"></i> Guardar agente</button>
+                <div class="loading-dots" id="create-loading"><span class="loading-dot"></span><span class="loading-dot"></span><span class="loading-dot"></span></div>
                 <div class="msg" id="create-msg"></div>
             </div>
-
-            <!-- LISTA AGENTES -->
             <div class="card">
                 <div class="card-header">
                     <div class="card-icon"><i class="fas fa-layer-group"></i></div>
                     <span class="card-title">Tus agentes activos</span>
                 </div>
-                <div id="lista-agentes">
-                    <div class="empty-state">
-                        <i class="fas fa-robot"></i>
-                        Aún no has creado ningún agente.
+                <div id="lista-agentes"><div class="empty-state"><i class="fas fa-robot"></i>Aún no has creado ningún agente.</div></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== VISTA TOKENS ===== -->
+    <div class="view" id="view-tokens">
+        <div class="topbar">
+            <div>
+                <h2 class="page-title">Tokens y Planes</h2>
+                <p class="page-sub">Gestiona tu saldo y revisa tu historial de consumo</p>
+            </div>
+        </div>
+        <div class="grid-3">
+            <div class="stat-card"><div class="stat-label">Balance actual</div><div class="stat-value green" id="token-balance-2">—</div><div class="stat-sub">tokens disponibles</div></div>
+            <div class="stat-card"><div class="stat-label">Consumido este mes</div><div class="stat-value accent" id="tokens-mes">—</div><div class="stat-sub">tokens usados</div></div>
+            <div class="stat-card"><div class="stat-label">Interacciones</div><div class="stat-value yellow" id="total-logs">—</div><div class="stat-sub">conversaciones totales</div></div>
+        </div>
+        <div class="grid-2" style="margin-bottom:1.5rem">
+            <div class="card">
+                <div class="card-header"><div class="card-icon green"><i class="fas fa-bolt"></i></div><span class="card-title">Recargar tokens</span></div>
+                <p style="font-size:.85rem;color:var(--muted);margin-bottom:1.25rem;line-height:1.6;font-weight:300">Selecciona un plan y te contactaremos por WhatsApp para activarlo de inmediato.</p>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:1.25rem">
+                    <div class="plan-card" onclick="seleccionarPlan(this,100000,'5.000')">
+                        <div class="plan-name">Básico</div>
+                        <div class="plan-tokens">100K <span>tokens</span></div>
+                        <div class="plan-price">$ 5.000 COP</div>
+                    </div>
+                    <div class="plan-card featured selected" onclick="seleccionarPlan(this,500000,'20.000')">
+                        <div class="plan-badge">Popular</div>
+                        <div class="plan-name">Pro</div>
+                        <div class="plan-tokens">500K <span>tokens</span></div>
+                        <div class="plan-price">$ 20.000 COP</div>
+                    </div>
+                    <div class="plan-card" onclick="seleccionarPlan(this,1000000,'35.000')">
+                        <div class="plan-name">Business</div>
+                        <div class="plan-tokens">1M <span>tokens</span></div>
+                        <div class="plan-price">$ 35.000 COP</div>
+                    </div>
+                    <div class="plan-card" onclick="seleccionarPlan(this,0,'personalizado')">
+                        <div class="plan-name">Custom</div>
+                        <div class="plan-tokens" style="font-size:1.3rem">A medida</div>
+                        <div class="plan-price">Cotizar</div>
+                    </div>
+                </div>
+                <button class="btn-main btn-wa" onclick="recargarTokens()"><i class="fab fa-whatsapp"></i> Recargar por WhatsApp</button>
+            </div>
+            <div class="card">
+                <div class="card-header"><div class="card-icon yellow"><i class="fas fa-clock-rotate-left"></i></div><span class="card-title">Últimas actividades</span></div>
+                <div class="table-wrap">
+                    <table>
+                        <thead><tr><th>Agente</th><th>Tokens</th><th>Fecha</th></tr></thead>
+                        <tbody id="logs-recientes"><tr><td colspan="3" style="text-align:center;color:var(--dim);padding:1.5rem">Cargando...</td></tr></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-header"><div class="card-icon"><i class="fas fa-list"></i></div><span class="card-title">Historial completo de consumo</span></div>
+            <div class="table-wrap">
+                <table>
+                    <thead><tr><th>#</th><th>Agente</th><th>Tokens usados</th><th>Fecha y hora</th><th>Estado</th></tr></thead>
+                    <tbody id="logs-completos"><tr><td colspan="5" style="text-align:center;color:var(--dim);padding:2rem">Cargando historial...</td></tr></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== VISTA CONFIG ===== -->
+    <div class="view" id="view-config">
+        <div class="topbar">
+            <div>
+                <h2 class="page-title">Configuración</h2>
+                <p class="page-sub">Administra tu perfil y preferencias de cuenta</p>
+            </div>
+        </div>
+        <div class="grid-2">
+            <div class="card">
+                <div class="card-header"><div class="card-icon"><i class="fas fa-user"></i></div><span class="card-title">Datos del perfil</span></div>
+                <div class="field-row">
+                    <div class="field"><label>Nombre</label><input type="text" id="cfg-nombre" placeholder="Tu nombre"></div>
+                    <div class="field"><label>Apellido</label><input type="text" id="cfg-apellido" placeholder="Tu apellido"></div>
+                </div>
+                <div class="field"><label>Teléfono</label><input type="tel" id="cfg-telefono" placeholder="+57 300 000 0000"></div>
+                <div class="field"><label>Correo electrónico</label><input type="email" id="cfg-email" disabled></div>
+                <button class="btn-main" id="btn-guardar-perfil" onclick="guardarPerfil()"><i class="fas fa-floppy-disk" style="margin-right:.4rem"></i> Guardar cambios</button>
+                <div class="msg" id="config-msg"></div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:1.5rem">
+                <div class="card">
+                    <div class="card-header"><div class="card-icon"><i class="fas fa-shield-halved"></i></div><span class="card-title">Seguridad</span></div>
+                    <p style="font-size:.85rem;color:var(--muted);margin-bottom:1.25rem;font-weight:300;line-height:1.6">Para cambiar tu contraseña recibirás un correo con el enlace de restablecimiento.</p>
+                    <button class="btn-main" style="background:var(--surface);border:1px solid var(--border2);color:var(--text)" onclick="enviarResetPassword()"><i class="fas fa-key" style="margin-right:.4rem"></i> Enviar enlace de cambio de contraseña</button>
+                    <div class="msg" id="security-msg"></div>
+                </div>
+                <div class="card">
+                    <div class="card-header"><div class="card-icon green"><i class="fas fa-circle-info"></i></div><span class="card-title">Información de cuenta</span></div>
+                    <div style="display:flex;flex-direction:column;gap:.65rem">
+                        <div style="display:flex;justify-content:space-between;font-size:.85rem;padding:.5rem 0;border-bottom:1px solid var(--border)">
+                            <span style="color:var(--muted)">User ID</span>
+                            <span style="color:var(--dim);font-size:.72rem;font-family:monospace" id="cfg-uid">—</span>
+                        </div>
+                        <div style="display:flex;justify-content:space-between;font-size:.85rem;padding:.5rem 0;border-bottom:1px solid var(--border)">
+                            <span style="color:var(--muted)">Miembro desde</span>
+                            <span style="color:var(--text)" id="cfg-created">—</span>
+                        </div>
+                        <div style="display:flex;justify-content:space-between;font-size:.85rem;padding:.5rem 0">
+                            <span style="color:var(--muted)">Estado</span>
+                            <span class="badge badge-green">Activo</span>
+                        </div>
                     </div>
                 </div>
             </div>
+        </div>
+    </div>
 
-        </div>
+</div>
+
+<!-- CHAT MODAL -->
+<div id="chat-modal" style="display:none;position:fixed;bottom:20px;right:20px;width:350px;height:500px;background:var(--surface);border:1px solid var(--border);border-radius:15px;flex-direction:column;z-index:1000;box-shadow:0 10px 30px rgba(0,0,0,0.5);">
+    <div style="padding:15px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;background:var(--bg2);border-radius:15px 15px 0 0;">
+        <span id="chat-agent-name" style="font-family:'Syne',sans-serif;font-weight:700;font-size:0.9rem;">Probando Agente</span>
+        <button onclick="document.getElementById('chat-modal').style.display='none'" style="background:none;border:none;color:var(--muted);cursor:pointer;"><i class="fas fa-times"></i></button>
     </div>
-    <div id="chat-modal" style="display:none; position: fixed; bottom: 20px; right: 20px; width: 350px; height: 500px; background: var(--surface); border: 1px solid var(--border); border-radius: 15px; flex-direction: column; z-index: 1000; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
-    <div style="padding: 15px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: var(--bg2); border-radius: 15px 15px 0 0;">
-        <span id="chat-agent-name" style="font-family: 'Syne', sans-serif; font-weight: 700; font-size: 0.9rem;">Probando Agente</span>
-        <button onclick="document.getElementById('chat-modal').style.display='none'" style="background:none; border:none; color:var(--muted); cursor:pointer;"><i class="fas fa-times"></i></button>
-    </div>
-    <div id="chat-messages" style="flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; font-size: 0.85rem;">
-        </div>
-    <div style="padding: 10px; border-top: 1px solid var(--border); display: flex; gap: 8px;">
-        <input type="text" id="chat-input" placeholder="Escribe un mensaje..." style="flex:1; background:var(--bg); border:1px solid var(--border2); color:white; padding:8px; border-radius:6px; outline:none;">
-        <button onclick="enviarMensaje()" style="background:var(--accent); color:white; border:none; padding:8px 12px; border-radius:6px; cursor:pointer;"><i class="fas fa-paper-plane"></i></button>
+    <div id="chat-messages" style="flex:1;padding:15px;overflow-y:auto;display:flex;flex-direction:column;gap:10px;font-size:0.85rem;"></div>
+    <div style="padding:10px;border-top:1px solid var(--border);display:flex;gap:8px;">
+        <input type="text" id="chat-input" placeholder="Escribe un mensaje..." style="flex:1;background:var(--bg);border:1px solid var(--border2);color:white;padding:8px;border-radius:6px;outline:none;">
+        <button onclick="enviarMensaje()" style="background:var(--accent);color:white;border:none;padding:8px 12px;border-radius:6px;cursor:pointer;"><i class="fas fa-paper-plane"></i></button>
     </div>
 </div>
-    <div id="edit-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:1001; align-items:center; justify-content:center;">
-    <div class="card" style="width:400px; max-width:90%;">
+
+<!-- EDIT MODAL -->
+<div id="edit-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:1001;align-items:center;justify-content:center;">
+    <div class="card" style="width:400px;max-width:90%;">
         <h3 class="card-title" style="margin-bottom:1rem">Editar Agente</h3>
         <input type="hidden" id="edit-id">
         <div class="field"><label>Nombre</label><input type="text" id="edit-name"></div>
         <div class="field"><label>Instrucciones</label><textarea id="edit-prompt" rows="3"></textarea></div>
         <div class="field"><label>Dominios (separados por coma)</label><input type="text" id="edit-domains" placeholder="ej: midominio.com, cliente.com"></div>
-        <div style="display:flex; gap:10px; margin-top:1rem;">
-            <button class="btn-main" onclick="guardarEdicion(this)" style="background:var(--green)">Guardar</button>
+        <div style="display:flex;gap:10px;margin-top:1rem;">
+            <button class="btn-main btn-green" onclick="guardarEdicion(this)">Guardar</button>
             <button class="btn-main" onclick="document.getElementById('edit-modal').style.display='none'" style="background:var(--red)">Cancelar</button>
         </div>
     </div>
 </div>
 
-    <script>
-        const SUPABASE_URL = "https://zsxkfqnalkfvwjrzuqip.supabase.co";
-        const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzeGtmcW5hbGtmdndqcnp1cWlwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0NDgyODMsImV4cCI6MjA5MjAyNDI4M30.R4j23l3IHEL966VupeR-Sx_KtDQzB8NzfJtEVDGewGs";
-        const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+<script>
+    const SUPABASE_URL = "https://zsxkfqnalkfvwjrzuqip.supabase.co";
+    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzeGtmcW5hbGtmdndqcnp1cWlwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0NDgyODMsImV4cCI6MjA5MjAyNDI4M30.R4j23l3IHEL966VupeR-Sx_KtDQzB8NzfJtEVDGewGs";
+    const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        let agentes = [];
+    let agentes = [];
+    let currentUser = null;
+    let planSeleccionado = { tokens: 500000, precio: '20.000' };
 
-        function showMsg(id, text, type) {
-            const el = document.getElementById(id);
-            el.textContent = text;
-            el.className = 'msg ' + type;
-        }
-
-        // 1. Proteger la ruta: Si no hay sesión, regresa al login
-        async function verificarSesion() {
-    const { data: { session } } = await _supabase.auth.getSession();
-    if (!session) {
-        window.location.href = "login.html";
-        return;
+    // ── TOAST ──
+    function showToast(msg, type = 'success') {
+        const t = document.getElementById('toast');
+        t.textContent = (type === 'success' ? '✓  ' : '✕  ') + msg;
+        t.className = `toast ${type} show`;
+        setTimeout(() => t.classList.remove('show'), 3200);
     }
-    const email = session.user.email;
-    document.getElementById('user-email').innerText = email;
-    document.getElementById('user-initials').textContent = email.slice(0, 2).toUpperCase();
-    
-    // CARGAR TODO AL INICIAR
-    cargarPerfil(session.user.id);
-    cargarAgentes(); // <--- ESTA LÍNEA ES CLAVE
-}
-
-        // 2. Cargar saldo de tokens desde la tabla 'perfiles'
-        async function cargarPerfil(userId) {
-            const { data, error } = await _supabase
-                .from('perfiles')
-                .select('token_balance')
-                .eq('id', userId)
-                .single();
-            if (data) {
-                document.getElementById('token-balance').innerText = data.token_balance.toLocaleString();
-            } else {
-                document.getElementById('token-balance').innerText = '0';
-            }
-        }
-
-        // 3. Lógica para cerrar sesión
-        async function cerrarSesion() {
-            await _supabase.auth.signOut();
-            window.location.href = "login.html";
-        }
-
-        // 4. Lógica para crear agente
-        async function crearAgente() {
-    const name = document.getElementById('bot-name').value.trim();
-    const prompt = document.getElementById('bot-prompt').value.trim();
-    if (!name || !prompt) return showMsg('create-msg', 'Por favor completa los campos', 'error');
-
-    document.getElementById('create-loading').style.display = 'block';
-    const { data: { session } } = await _supabase.auth.getSession();
-
-    // INSERCIÓN REAL EN SUPABASE
-    const { error } = await _supabase
-        .from('agentes_ia')
-        .insert([{ 
-            nombre_agente: name, 
-            prompt_sistema: prompt, 
-            user_id: session.user.id 
-        }]);
-
-    if (error) {
-        showMsg('create-msg', 'Error al guardar: ' + error.message, 'error');
-    } else {
-        showMsg('create-msg', 'Agente "' + name + '" creado correctamente.', 'success');
-        document.getElementById('bot-name').value = '';
-        document.getElementById('bot-prompt').value = '';
-        cargarAgentes(); // Recargamos la lista desde la DB
+    function showMsg(id, text, type) {
+        const el = document.getElementById(id);
+        el.textContent = text; el.className = 'msg ' + type;
     }
-    document.getElementById('create-loading').style.display = 'none';
-}
-        async function cargarAgentes() {
-    const { data: { session } } = await _supabase.auth.getSession();
-    const { data, error } = await _supabase
-        .from('agentes_ia')
-        .select('*')
-        .eq('user_id', session.user.id);
 
-    if (data) {
-        // Mapeo corregido: incluimos dominios
-        agentes = data.map(a => ({ 
-            id: a.id, 
-            name: a.nombre_agente, 
-            prompt: a.prompt_sistema,
-            dominios: a.dominios_permitidos // <--- ESTO FALTABA
-        }));
-        renderAgentes();
+    // ── NAVEGACIÓN ──
+    function mostrarVista(vista) {
+        document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+        document.querySelectorAll('nav a').forEach(a => a.classList.remove('active'));
+        document.getElementById('view-' + vista).classList.add('active');
+        document.getElementById('nav-' + vista).classList.add('active');
+        if (vista === 'tokens') cargarLogs();
+        if (vista === 'config') cargarPerfil();
     }
-}
 
-        function renderAgentes() {
-    const container = document.getElementById('lista-agentes');
-    if (agentes.length === 0) {
-        container.innerHTML = '<div class="empty-state"><i class="fas fa-robot"></i>Aún no hay agentes.</div>';
-        return;
-    }
-    container.innerHTML = agentes.map((a) => `
-        <div class="agent-item" style="flex-direction: column; align-items: stretch;">
-            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
-                <div style="min-width:0; flex:1;">
-                    <div class="agent-name">${a.name}</div>
-                    <div class="agent-prompt">${a.prompt}</div>
-                </div>
-               <div style="display:flex; gap:5px;">
-    <button onclick="abrirChat('${a.id}', '${a.name}')" title="Probar"
-        style="background:rgba(14,165,233,0.1); color:var(--accent); border:1px solid var(--border); padding:8px; border-radius:8px; cursor:pointer;">
-        <i class="fas fa-play"></i>
-    </button>
-    <button onclick="copiarCDN('${a.id}')" title="Copiar Código CDN"
-        style="background:rgba(34,211,165,0.1); color:var(--green); border:1px solid var(--border); padding:8px; border-radius:8px; cursor:pointer;">
-        <i class="fas fa-code"></i>
-    </button>
-    <button onclick="abrirEdicion('${a.id}')" title="Editar"
-        style="background:rgba(122,152,184,0.1); color:var(--muted); border:1px solid var(--border); padding:8px; border-radius:8px; cursor:pointer;">
-        <i class="fas fa-edit"></i>
-    </button>
-    <button onclick="eliminarAgente('${a.id}')" title="Borrar"
-        style="background:rgba(248,113,113,0.1); color:var(--red); border:1px solid var(--border); padding:8px; border-radius:8px; cursor:pointer;">
-        <i class="fas fa-trash"></i>
-    </button>
-</div>
-            </div>
-        </div>
-    `).join('');
-}
-
-        // Función para copiar el código al portapapeles
-function copiarCDN(id) {
-    const scriptCode = `<script src="https://jeisondigital.netlify.app/widget.js" data-id="${id}"><\/script>`;
-    navigator.clipboard.writeText(scriptCode);
-    alert("¡Código CDN copiado! Pégalo antes del cierre de <\/body> en tu web.");
-}
-
-       
-    
-    let agenteSeleccionadoId = null;
-
-        function abrirChat(id, nombre) {
-            agenteSeleccionadoId = id;
-            document.getElementById('chat-agent-name').innerText = "Probando: " + nombre;
-            document.getElementById('chat-messages').innerHTML = ''; 
-            document.getElementById('chat-modal').style.display = 'flex';
-            agregarMensaje("Sistema", `Conectado al agente. Listo para recibir instrucciones.`, "bot");
-        }
-   async function enviarMensaje() {
-    const input = document.getElementById('chat-input');
-    const mensaje = input.value.trim();
-    if (!mensaje || !agenteSeleccionadoId) return;
-
-    agregarMensaje("Tú", mensaje, "user");
-    input.value = '';
-
-    // --- NUEVO: Indicador de carga ---
-    const container = document.getElementById('chat-messages');
-    const loadingDiv = document.createElement('div');
-    loadingDiv.id = 'dashboard-loading';
-    loadingDiv.style.padding = "10px 12px";
-    loadingDiv.style.background = "var(--border)";
-    loadingDiv.style.color = "var(--muted)";
-    loadingDiv.style.borderRadius = "12px";
-    loadingDiv.style.alignSelf = "flex-start";
-    loadingDiv.style.fontSize = "0.8rem";
-    loadingDiv.innerHTML = "<em>El agente está pensando...</em>";
-    container.appendChild(loadingDiv);
-    container.scrollTop = container.scrollHeight;
-    // ---------------------------------
-
-    try {
-        const res = await fetch('/.netlify/functions/chat', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                prompt: mensaje, 
-                agente_id: agenteSeleccionadoId 
-            })
-        });
-        
-        const data = await res.json();
-        
-        // Eliminamos el cargando antes de mostrar la respuesta
-        document.getElementById('dashboard-loading')?.remove();
-        
-        agregarMensaje("Agente", data.respuesta, "bot");
-
-        // Actualizamos saldo de tokens
+    // ── SESIÓN ──
+    async function verificarSesion() {
         const { data: { session } } = await _supabase.auth.getSession();
-        if (session) cargarPerfil(session.user.id);
-
-    } catch (err) {
-        document.getElementById('dashboard-loading')?.remove(); // Limpiar si falla
-        agregarMensaje("Sistema", "Error conectando con el servidor", "bot");
-    }
-}
-
-        function agregarMensaje(autor, texto, tipo) {
-            const container = document.getElementById('chat-messages');
-            const div = document.createElement('div');
-            div.style.padding = "10px 12px";
-            div.style.borderRadius = "12px";
-            div.style.maxWidth = "85%";
-            div.style.lineHeight = "1.4";
-            
-            if (tipo === "user") {
-                div.style.alignSelf = "flex-end";
-                div.style.background = "var(--accent)";
-                div.style.color = "white";
-                div.style.marginLeft = "auto";
-            } else {
-                div.style.alignSelf = "flex-start";
-                div.style.background = "var(--border)";
-                div.style.color = "var(--text)";
-            }
-            
-            div.innerHTML = `<strong>${autor}</strong><br>${texto}`;
-            container.appendChild(div);
-            container.scrollTop = container.scrollHeight;
-        }
-
-        // Enviar con Enter
-        document.getElementById('chat-input').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') enviarMensaje();
-        });
-
-        // --- FUNCIONES DE GESTIÓN ---
-
-async function eliminarAgente(id) {
-    if (!confirm("¿Estás seguro?")) return;
-    console.log("Intentando eliminar ID:", id, typeof id);
-    
-    const { error, data } = await _supabase
-        .from('agentes_ia')
-        .delete()
-        .eq('id', parseInt(id));
-    
-    console.log("Resultado eliminar:", { error, data });
-    if (error) alert("Error: " + error.message);
-    else cargarAgentes();
-}
-
-function abrirEdicion(id) {
-    id = parseInt(id);
-    const agente = agentes.find(a => a.id === id);
-    if (!agente) return;
-    document.getElementById('edit-id').value = agente.id;
-    document.getElementById('edit-name').value = agente.name;
-    document.getElementById('edit-prompt').value = agente.prompt;
-    document.getElementById('edit-domains').value = Array.isArray(agente.dominios) 
-        ? agente.dominios.join(', ') 
-        : (agente.dominios || '');
-    document.getElementById('edit-modal').style.display = 'flex';
-}
-
-async function guardarEdicion(btn) { // ← recibe el botón como parámetro
-    const originalText = btn.innerText;
-    btn.disabled = true;
-    btn.innerText = "Guardando...";
-
-    const id = parseInt(document.getElementById('edit-id').value);
-    const { error } = await _supabase
-        .from('agentes_ia')
-        .update({ 
-            nombre_agente: document.getElementById('edit-name').value,
-            prompt_sistema: document.getElementById('edit-prompt').value,
-dominios_permitidos: document.getElementById('edit-domains').value
-    .split(',')
-    .map(d => d.trim())
-    .filter(d => d.length > 0)
-        })
-        .eq('id', id);
-    
-    btn.disabled = false;
-    btn.innerText = originalText;
-
-    if (error) {
-        alert("Error al actualizar: " + error.message);
-    } else {
-        document.getElementById('edit-modal').style.display = 'none';
+        if (!session) { window.location.href = "login.html"; return; }
+        currentUser = session.user;
+        document.getElementById('user-email').innerText = currentUser.email;
+        document.getElementById('user-initials').textContent = currentUser.email.slice(0, 2).toUpperCase();
+        cargarBalance(currentUser.id);
         cargarAgentes();
     }
-}
 
-        verificarSesion();
+    // ── BALANCE ──
+    async function cargarBalance(userId) {
+        const { data } = await _supabase.from('perfiles').select('token_balance').eq('id', userId).single();
+        const val = data?.token_balance ?? 0;
+        document.getElementById('token-balance').innerText = val.toLocaleString();
+        document.getElementById('token-balance-2').innerText = val.toLocaleString();
+    }
+
+    async function cerrarSesion() {
+        await _supabase.auth.signOut();
+        window.location.href = "login.html";
+    }
+
+    // ── AGENTES ──
+    async function crearAgente() {
+        const name = document.getElementById('bot-name').value.trim();
+        const prompt = document.getElementById('bot-prompt').value.trim();
+        if (!name || !prompt) return showMsg('create-msg', 'Por favor completa los campos', 'error');
+        document.getElementById('create-loading').style.display = 'block';
+        const { error } = await _supabase.from('agentes_ia').insert([{ nombre_agente: name, prompt_sistema: prompt, user_id: currentUser.id }]);
+        document.getElementById('create-loading').style.display = 'none';
+        if (error) { showMsg('create-msg', 'Error: ' + error.message, 'error'); return; }
+        showMsg('create-msg', 'Agente "' + name + '" creado.', 'success');
+        document.getElementById('bot-name').value = '';
+        document.getElementById('bot-prompt').value = '';
+        cargarAgentes();
+    }
+
+    async function cargarAgentes() {
+        const { data } = await _supabase.from('agentes_ia').select('*').eq('user_id', currentUser.id);
+        if (data) {
+            agentes = data.map(a => ({ id: a.id, name: a.nombre_agente, prompt: a.prompt_sistema, dominios: a.dominios_permitidos }));
+            renderAgentes();
+        }
+    }
+
+    function renderAgentes() {
+        const container = document.getElementById('lista-agentes');
+        if (agentes.length === 0) { container.innerHTML = '<div class="empty-state"><i class="fas fa-robot"></i>Aún no hay agentes.</div>'; return; }
+        container.innerHTML = agentes.map(a => `
+            <div class="agent-item" style="flex-direction:column;align-items:stretch;">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
+                    <div style="min-width:0;flex:1;">
+                        <div class="agent-name">${a.name}</div>
+                        <div class="agent-prompt">${a.prompt}</div>
+                    </div>
+                    <div style="display:flex;gap:5px;flex-shrink:0;margin-left:8px;">
+                        <button onclick="abrirChat('${a.id}','${a.name}')" title="Probar" style="background:rgba(14,165,233,0.1);color:var(--accent);border:1px solid var(--border);padding:8px;border-radius:8px;cursor:pointer;"><i class="fas fa-play"></i></button>
+                        <button onclick="copiarCDN('${a.id}')" title="Copiar CDN" style="background:rgba(34,211,165,0.1);color:var(--green);border:1px solid var(--border);padding:8px;border-radius:8px;cursor:pointer;"><i class="fas fa-code"></i></button>
+                        <button onclick="abrirEdicion('${a.id}')" title="Editar" style="background:rgba(122,152,184,0.1);color:var(--muted);border:1px solid var(--border);padding:8px;border-radius:8px;cursor:pointer;"><i class="fas fa-edit"></i></button>
+                        <button onclick="eliminarAgente('${a.id}')" title="Borrar" style="background:rgba(248,113,113,0.1);color:var(--red);border:1px solid var(--border);padding:8px;border-radius:8px;cursor:pointer;"><i class="fas fa-trash"></i></button>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function copiarCDN(id) {
+        navigator.clipboard.writeText(`<script src="https://jeisondigital.netlify.app/widget.js" data-id="${id}"><\/script>`);
+        showToast('Código CDN copiado al portapapeles');
+    }
+
+    async function eliminarAgente(id) {
+        if (!confirm("¿Estás seguro? Esta acción no se puede deshacer.")) return;
+        const { error } = await _supabase.from('agentes_ia').delete().eq('id', parseInt(id));
+        if (error) showToast('Error al eliminar: ' + error.message, 'error');
+        else { showToast('Agente eliminado'); cargarAgentes(); }
+    }
+
+    function abrirEdicion(id) {
+        id = parseInt(id);
+        const a = agentes.find(a => a.id === id);
+        if (!a) return;
+        document.getElementById('edit-id').value = a.id;
+        document.getElementById('edit-name').value = a.name;
+        document.getElementById('edit-prompt').value = a.prompt;
+        document.getElementById('edit-domains').value = Array.isArray(a.dominios) ? a.dominios.join(', ') : (a.dominios || '');
+        document.getElementById('edit-modal').style.display = 'flex';
+    }
+
+    async function guardarEdicion(btn) {
+        const orig = btn.innerText;
+        btn.disabled = true; btn.innerText = 'Guardando...';
+        const id = parseInt(document.getElementById('edit-id').value);
+        const { error } = await _supabase.from('agentes_ia').update({
+            nombre_agente: document.getElementById('edit-name').value,
+            prompt_sistema: document.getElementById('edit-prompt').value,
+            dominios_permitidos: document.getElementById('edit-domains').value.split(',').map(d => d.trim()).filter(d => d.length > 0)
+        }).eq('id', id);
+        btn.disabled = false; btn.innerText = orig;
+        if (error) { showToast('Error: ' + error.message, 'error'); return; }
+        document.getElementById('edit-modal').style.display = 'none';
+        showToast('Agente actualizado');
+        cargarAgentes();
+    }
+
+    // ── CHAT ──
+    let agenteSeleccionadoId = null;
+
+    function abrirChat(id, nombre) {
+        agenteSeleccionadoId = id;
+        document.getElementById('chat-agent-name').innerText = "Probando: " + nombre;
+        document.getElementById('chat-messages').innerHTML = '';
+        document.getElementById('chat-modal').style.display = 'flex';
+        agregarMensaje("Sistema", "Conectado al agente. Listo para recibir instrucciones.", "bot");
+    }
+
+    async function enviarMensaje() {
+        const input = document.getElementById('chat-input');
+        const mensaje = input.value.trim();
+        if (!mensaje || !agenteSeleccionadoId) return;
+        agregarMensaje("Tú", mensaje, "user");
+        input.value = '';
+        const container = document.getElementById('chat-messages');
+        const ld = document.createElement('div');
+        ld.id = 'dashboard-loading';
+        ld.style.cssText = "padding:10px 12px;background:var(--border);color:var(--muted);border-radius:12px;align-self:flex-start;font-size:0.8rem;";
+        ld.innerHTML = "<em>El agente está pensando...</em>";
+        container.appendChild(ld); container.scrollTop = container.scrollHeight;
+        try {
+            const res = await fetch('/.netlify/functions/chat', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ prompt: mensaje, agente_id: agenteSeleccionadoId }) });
+            const data = await res.json();
+            document.getElementById('dashboard-loading')?.remove();
+            agregarMensaje("Agente", data.respuesta, "bot");
+            cargarBalance(currentUser.id);
+        } catch (err) {
+            document.getElementById('dashboard-loading')?.remove();
+            agregarMensaje("Sistema", "Error conectando con el servidor", "bot");
+        }
+    }
+
+    function agregarMensaje(autor, texto, tipo) {
+        const container = document.getElementById('chat-messages');
+        const div = document.createElement('div');
+        div.style.cssText = `padding:10px 12px;border-radius:12px;max-width:85%;line-height:1.4;${tipo==='user'?'align-self:flex-end;background:var(--accent);color:white;margin-left:auto;':'align-self:flex-start;background:var(--border);color:var(--text);'}`;
+        div.innerHTML = `<strong>${autor}</strong><br>${texto}`;
+        container.appendChild(div); container.scrollTop = container.scrollHeight;
+    }
+
+    document.getElementById('chat-input').addEventListener('keypress', e => { if (e.key === 'Enter') enviarMensaje(); });
+
+    // ── TOKENS Y PLANES ──
+    async function cargarLogs() {
+        const userId = currentUser.id;
+        const inicioMes = new Date(); inicioMes.setDate(1); inicioMes.setHours(0,0,0,0);
+        const { data: logsMes } = await _supabase.from('logs_consumo').select('tokens_usados').eq('user_id', userId).gte('created_at', inicioMes.toISOString());
+        document.getElementById('tokens-mes').innerText = (logsMes?.reduce((s,l) => s + (l.tokens_usados||0), 0) ?? 0).toLocaleString();
+        const { count } = await _supabase.from('logs_consumo').select('id', { count:'exact', head:true }).eq('user_id', userId);
+        document.getElementById('total-logs').innerText = (count ?? 0).toLocaleString();
+
+        const { data: recientes } = await _supabase.from('logs_consumo').select('nombre_agente,tokens_usados,created_at').eq('user_id', userId).order('created_at', { ascending:false }).limit(5);
+        const tbR = document.getElementById('logs-recientes');
+        tbR.innerHTML = (!recientes || recientes.length === 0)
+            ? '<tr><td colspan="3" style="text-align:center;color:var(--dim);padding:1.5rem">Sin actividad reciente</td></tr>'
+            : recientes.map(l => `<tr><td>${l.nombre_agente||'—'}</td><td><span class="badge badge-accent">${(l.tokens_usados||0).toLocaleString()}</span></td><td>${new Date(l.created_at).toLocaleDateString('es-CO')}</td></tr>`).join('');
+
+        const { data: todos } = await _supabase.from('logs_consumo').select('*').eq('user_id', userId).order('created_at', { ascending:false }).limit(50);
+        const tbT = document.getElementById('logs-completos');
+        tbT.innerHTML = (!todos || todos.length === 0)
+            ? '<tr><td colspan="5" style="text-align:center;color:var(--dim);padding:2rem">No hay registros de consumo aún.</td></tr>'
+            : todos.map((l,i) => `<tr><td style="color:var(--dim)">${i+1}</td><td>${l.nombre_agente||'—'}</td><td><span class="badge badge-accent">${(l.tokens_usados||0).toLocaleString()}</span></td><td>${new Date(l.created_at).toLocaleString('es-CO')}</td><td><span class="badge badge-green">Completado</span></td></tr>`).join('');
+    }
+
+    function seleccionarPlan(el, tokens, precio) {
+        document.querySelectorAll('.plan-card').forEach(c => c.classList.remove('selected'));
+        el.classList.add('selected');
+        planSeleccionado = { tokens, precio };
+    }
+
+    function recargarTokens() {
+        const email = currentUser?.email || 'mi cuenta';
+        const plan = planSeleccionado.precio === 'personalizado' ? 'un plan personalizado' : `${planSeleccionado.tokens.toLocaleString()} tokens por $${planSeleccionado.precio} COP`;
+        const msg = encodeURIComponent(`Hola Jeison, quiero recargar tokens para mi cuenta [${email}]. Plan: ${plan}.`);
+        window.open(`https://wa.me/573115364647?text=${msg}`, '_blank');
+    }
+
+    // ── CONFIGURACIÓN ──
+    async function cargarPerfil() {
+        const { data } = await _supabase.from('perfiles').select('*').eq('id', currentUser.id).single();
+        if (data) {
+            document.getElementById('cfg-nombre').value = data.nombre || '';
+            document.getElementById('cfg-apellido').value = data.apellido || '';
+            document.getElementById('cfg-telefono').value = data.telefono || '';
+        }
+        document.getElementById('cfg-email').value = currentUser.email;
+        document.getElementById('cfg-uid').textContent = currentUser.id.slice(0,18) + '...';
+        document.getElementById('cfg-created').textContent = new Date(currentUser.created_at).toLocaleDateString('es-CO', { year:'numeric', month:'long', day:'numeric' });
+    }
+
+    async function guardarPerfil() {
+        const btn = document.getElementById('btn-guardar-perfil');
+        const orig = btn.innerText;
+        btn.disabled = true; btn.innerText = 'Guardando...';
+        const { error } = await _supabase.from('perfiles').update({
+            nombre: document.getElementById('cfg-nombre').value.trim(),
+            apellido: document.getElementById('cfg-apellido').value.trim(),
+            telefono: document.getElementById('cfg-telefono').value.trim()
+        }).eq('id', currentUser.id);
+        btn.disabled = false; btn.innerText = orig;
+        if (error) { showMsg('config-msg', 'Error: ' + error.message, 'error'); return; }
+        showMsg('config-msg', 'Perfil actualizado correctamente.', 'success');
+        showToast('Perfil guardado');
+    }
+
+    async function enviarResetPassword() {
+        const { error } = await _supabase.auth.resetPasswordForEmail(currentUser.email, { redirectTo: window.location.origin + '/login.html' });
+        if (error) showMsg('security-msg', 'Error: ' + error.message, 'error');
+        else showMsg('security-msg', 'Correo enviado. Revisa tu bandeja.', 'success');
+    }
+
+    verificarSesion();
 </script>
 </body>
 </html>
