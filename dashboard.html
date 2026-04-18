@@ -371,8 +371,9 @@ function copiarCDN(id) {
     input.value = '';
 
     try {
-        const res = await fetch('/netlify/functions/chat.js', {
+        const res = await fetch('/.netlify/functions/chat', {
             method: 'POST',
+            headers: { 'Content-Type': 'application/json' }, // ← este faltaba
             body: JSON.stringify({ 
                 prompt: mensaje, 
                 agente_id: agenteSeleccionadoId 
@@ -382,12 +383,8 @@ function copiarCDN(id) {
         const data = await res.json();
         agregarMensaje("Agente", data.respuesta, "bot");
 
-        // --- AJUSTE AQUÍ: Actualizar el saldo de tokens en la interfaz ---
         const { data: { session } } = await _supabase.auth.getSession();
-        if (session) {
-            cargarPerfil(session.user.id); 
-        }
-        // -------------------------------------------------------------
+        if (session) cargarPerfil(session.user.id);
 
     } catch (err) {
         agregarMensaje("Sistema", "Error conectando con la función de Netlify", "bot");
