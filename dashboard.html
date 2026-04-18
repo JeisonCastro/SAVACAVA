@@ -469,8 +469,15 @@ function copiarCDN(id) {
 
 async function eliminarAgente(id) {
     if (!confirm("¿Estás seguro? Esta acción no se puede deshacer.")) return;
+    
+    // Opcional: Podrías añadir un indicador de carga aquí también
     const { error } = await _supabase.from('agentes_ia').delete().eq('id', id);
-    if (!error) cargarAgentes();
+    
+    if (error) {
+        alert("Error al eliminar: " + error.message);
+    } else {
+        cargarAgentes(); // Solo recarga si fue exitoso
+    }
 }
 
 function abrirEdicion(id) {
@@ -483,6 +490,12 @@ function abrirEdicion(id) {
 }
 
 async function guardarEdicion() {
+    const btn = event.target; // Captura el botón
+    const originalText = btn.innerText;
+    
+    btn.disabled = true;
+    btn.innerText = "Guardando...";
+
     const id = document.getElementById('edit-id').value;
     const { error } = await _supabase
         .from('agentes_ia')
@@ -495,9 +508,13 @@ async function guardarEdicion() {
     
     if (error) {
         alert("Error al actualizar: " + error.message);
+        btn.disabled = false;
+        btn.innerText = originalText;
     } else {
         document.getElementById('edit-modal').style.display = 'none';
-        cargarAgentes();
+        btn.disabled = false;
+        btn.innerText = originalText;
+        cargarAgentes(); // Refresca la lista
     }
 }
 
