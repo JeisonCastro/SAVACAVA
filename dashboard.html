@@ -775,6 +775,42 @@
         else showMsg('security-msg', 'Correo enviado. Revisa tu bandeja.', 'success');
     }
 
+    // --- FUNCIÓN PARA CARGAR ACTIVIDADES ---
+async function cargarUltimasActividades() {
+    const tbody = document.getElementById('logs-recientes');
+    if (!tbody) return;
+
+    // Consultamos la tabla logs_consumo
+    const { data, error } = await _supabase
+        .from('logs_consumo')
+        .select('nombre_agente, tokens_usados, created_at')
+        .order('created_at', { ascending: false })
+        .limit(5); // Traemos las 5 más recientes
+
+    if (error) {
+        console.error("Error al cargar logs:", error);
+        tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; color:var(--red)">Error al cargar</td></tr>';
+        return;
+    }
+
+    if (!data || data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; color:var(--muted)">Sin actividad reciente.</td></tr>';
+        return;
+    }
+
+    // Dibujamos los resultados
+    tbody.innerHTML = data.map(log => {
+        const fecha = new Date(log.created_at).toLocaleDateString();
+        return `
+            <tr>
+                <td>${log.nombre_agente || 'Agente'}</td>
+                <td>${log.tokens_usados}</td>
+                <td>${fecha}</td>
+            </tr>
+        `;
+    }).join('');
+}
+
     verificarSesion();
 </script>
 </body>
