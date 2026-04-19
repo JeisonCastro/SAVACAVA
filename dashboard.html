@@ -480,9 +480,16 @@
     }
 
     async function cerrarSesion() {
-        await _supabase.auth.signOut();
-        window.location.href = "login.html";
-    }
+    // 1. Cerrar sesión en Supabase
+    await _supabase.auth.signOut();
+    
+    // 2. Limpiar almacenamiento
+    localStorage.clear();
+    sessionStorage.clear();
+    
+    // 3. Redirección segura a tu sitio de producción
+    window.location.replace('https://jeisondigital.netlify.app/'); 
+}
 
     // ── CREAR AGENTE — LLAMA AL BACKEND ──
     async function crearAgente() {
