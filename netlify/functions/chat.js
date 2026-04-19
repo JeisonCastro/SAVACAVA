@@ -44,37 +44,29 @@ exports.handler = async (event) => {
                 body: JSON.stringify({ respuesta: "Agente no encontrado." })
             };
         }
-// --- 2.5 Validación de Dominio (Corregida y Robusta) ---
-const originHeader = event.headers.origin || "";
+// --- 2.5 Validación de Dominio (Corregida) ---
+const origin = event.headers.origin || ""; 
+const esDashboard = origin.includes("jeisondigital.netlify.app");
 
-// 1. Extraemos el hostname limpio (quita https://, http:// y www.)
-let host = "";
-try {
-    const url = new URL(originHeader);
-    host = url.hostname.replace("www.", "");
-} catch (e) {
-    host = originHeader; // Fallback si no es una URL válida
+console.log("Dominio solicitante:", origin);
+console.log("Lista permitida:", agente.dominios_permitidos);
+
+// Si la lista está vacía, bloqueamos (excepto si es el dashboard)
+if (!esDashboard && (!agente.dominios_permitidos || agente.dominios_permitidos.length === 0)) {
+    return {
+        statusCode: 403,
+        headers,
+        body: JSON.stringify({ respuesta: "Seguridad: No hay dominios configurados para este agente." })
+    };
 }
 
-console.log("Dominio solicitante (limpio):", host);
-console.log("Lista permitida en BD:", agente.dominios_permitidos);
-
-// 2. "Llave Maestra" para tu Dashboard
-// Si estás probando desde tu dashboard, esto permite el paso aunque el host sea distinto
-const isDashboard = originHeader.includes("jeisondigital.netlify.app");
-
-if (!isDashboard) {
-    // 3. Validación estricta para clientes reales
-    if (!agente.dominios_permitidos || agente.dominios_permitidos.length === 0) {
-        return { statusCode: 403, headers, body: JSON.stringify({ respuesta: "Configuración inválida en agente." }) };
-    }
-
-    // Comprobamos si el host limpio está en la lista de la BD
-    if (!agente.dominios_permitidos.includes(host)) {
-        return { statusCode: 403, headers, body: JSON.stringify({ respuesta: "Este dominio no tiene permiso." }) };
-    }
-} else {
-    console.log("Acceso concedido vía Dashboard (Admin).");
+// LÓGICA CLAVE: Solo bloqueamos si (NO es el dashboard) Y (el origen NO está en la lista)
+if (!esDashboard && !agente.dominios_permitidos.includes(origin)) {
+    return {
+        statusCode: 403,
+        headers,
+        body: JSON.stringify({ respuesta: "Este dominio no tiene permiso." })
+    };
 }
         
 
