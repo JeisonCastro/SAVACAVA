@@ -140,6 +140,15 @@ if (!esDashboard && !agente.dominios_permitidos.includes(origin)) {
             agent_id: targetID,
             tokens: tokensUsados
         });
+        // 8. Registrar en Logs de Consumo (NUEVO)
+        await supabase
+            .from('logs_consumo')
+            .insert([{
+                user_id: agente.user_id,
+                agente_id: targetID,
+                nombre_agente: agente.nombre_agente, // <--- REVISAR NOTA ABAJO
+                tokens_usados: tokensUsados
+            }]);
 
         return {
             statusCode: 200,
