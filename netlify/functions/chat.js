@@ -44,43 +44,29 @@ exports.handler = async (event) => {
                 body: JSON.stringify({ respuesta: "Agente no encontrado." })
             };
         }
+// --- 2.5 Validación de Dominio (Depuración) ---
+const origin = event.headers.origin; 
 
-        // --- 2.5 Validación de Dominio (Corregida) ---
-        const originHeader = event.headers.origin || "";
+console.log("Dominio solicitante:", origin); // <-- Esto te dirá qué está recibiendo
+console.log("Lista permitida:", agente.dominios_permitidos); // <-- Esto te dirá qué hay en la BD
+
+if (!agente.dominios_permitidos || agente.dominios_permitidos.length === 0) {
+    // CAMBIO: Si la lista está vacía, POR SEGURIDAD bloqueamos todo
+    return {
+        statusCode: 403,
+        headers,
+        body: JSON.stringify({ respuesta: "Seguridad: No hay dominios configurados para este agente." })
+    };
+}
+
+if (!agente.dominios_permitidos.includes(origin)) {
+    return {
+        statusCode: 403,
+        headers,
+        body: JSON.stringify({ respuesta: "Este dominio no tiene permiso." })
+    };
+}
         
-        // 1. Limpiar el origen para extraer solo el dominio (sin https:// ni www.)
-        const host = originHeader
-            .replace(/^https?:\/\//, '') // Quita http:// o https://
-            .replace(/^www\./, '')       // Quita www.
-            .replace(/\/$/, '');         // Quita barra al final si existe
-
-        console.log("Dominio solicitante limpio:", host);
-        console.log("Lista permitida en BD:", agente.dominios_permitidos);
-
-        // 2. Lógica de excepción para tu Dashboard
-        // Esto permite que el botón "Probar" funcione siempre, aunque no sea el dominio del cliente
-        const esMiDashboard = originHeader.includes("jeisondigital.netlify.app");
-
-        if (!esMiDashboard) {
-            // Si NO es tu dashboard, aplicamos seguridad estricta
-            if (!agente.dominios_permitidos || agente.dominios_permitidos.length === 0) {
-                return {
-                    statusCode: 403,
-                    headers,
-                    body: JSON.stringify({ respuesta: "Seguridad: No hay dominios configurados para este agente." })
-                };
-            }
-
-            if (!agente.dominios_permitidos.includes(host)) {
-                return {
-                    statusCode: 403,
-                    headers,
-                    body: JSON.stringify({ respuesta: "Este dominio no tiene permiso." })
-                };
-            }
-        } else {
-            console.log("Acceso concedido vía Dashboard (Admin).");
-        }
 
         // 2. Obtener saldo desde la tabla perfiles (consulta separada)
         const { data: perfil, error: errPerfil } = await supabase
