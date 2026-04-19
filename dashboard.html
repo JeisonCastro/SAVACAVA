@@ -29,6 +29,7 @@
         .sidebar nav a:hover{color:var(--text);background:var(--surface)}
         .sidebar nav a.active{color:var(--accent);background:rgba(14,165,233,.1);font-weight:500}
         .sidebar nav a.active i{color:var(--accent)}
+        .plan-badge-sidebar{display:inline-flex;align-items:center;gap:.35rem;font-size:.7rem;padding:.25rem .6rem;border-radius:20px;background:rgba(14,165,233,.1);color:var(--accent);border:1px solid rgba(14,165,233,.2);margin:0 .5rem .75rem;font-weight:500}
         .sidebar-bottom{border-top:1px solid var(--border);padding-top:1rem}
         .user-row{display:flex;align-items:center;gap:.65rem;padding:.5rem .5rem .75rem}
         .user-avatar{width:30px;height:30px;border-radius:50%;background:rgba(14,165,233,.15);border:1px solid rgba(14,165,233,.25);display:flex;align-items:center;justify-content:center;font-size:.75rem;color:var(--accent);flex-shrink:0;font-family:'Syne',sans-serif;font-weight:700}
@@ -38,17 +39,26 @@
 
         /* MAIN */
         .main-content{margin-left:var(--sidebar);min-height:100vh;padding:2rem 2rem 3rem;position:relative;z-index:1}
-        .view{display:none}
-        .view.active{display:block}
+        .view{display:none}.view.active{display:block}
 
         /* TOPBAR */
-        .topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:2rem}
+        .topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:2rem;flex-wrap:wrap;gap:1rem}
         .page-title{font-family:'Syne',sans-serif;font-size:1.4rem;font-weight:800;color:var(--text)}
         .page-sub{font-size:.82rem;color:var(--muted);margin-top:.2rem;font-weight:300}
+        .topbar-right{display:flex;align-items:center;gap:.75rem;flex-wrap:wrap}
         .token-card{display:flex;align-items:center;gap:1rem;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:.75rem 1.1rem}
         .token-icon{width:36px;height:36px;border-radius:8px;background:rgba(34,211,165,.1);border:1px solid rgba(34,211,165,.2);display:flex;align-items:center;justify-content:center;color:var(--green);font-size:.9rem}
         .token-label{font-size:.7rem;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
         #token-balance,#token-balance-2{font-family:'Syne',sans-serif;font-size:1.3rem;font-weight:800;color:var(--green)}
+
+        /* PLAN INDICATOR */
+        .plan-indicator{display:flex;align-items:center;gap:.75rem;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:.65rem 1rem}
+        .plan-info-label{font-size:.7rem;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+        .plan-info-value{font-family:'Syne',sans-serif;font-size:.95rem;font-weight:700;color:var(--text)}
+        .plan-progress-wrap{width:80px;height:5px;background:var(--border);border-radius:3px;margin-top:3px}
+        .plan-progress-bar{height:5px;border-radius:3px;background:var(--accent);transition:width .4s}
+        .plan-progress-bar.warning{background:var(--yellow)}
+        .plan-progress-bar.danger{background:var(--red)}
 
         /* GRIDS */
         .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem}
@@ -67,9 +77,7 @@
         .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.25rem 1.5rem}
         .stat-label{font-size:.72rem;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:.4rem}
         .stat-value{font-family:'Syne',sans-serif;font-size:1.8rem;font-weight:800;color:var(--text)}
-        .stat-value.green{color:var(--green)}
-        .stat-value.accent{color:var(--accent)}
-        .stat-value.yellow{color:var(--yellow)}
+        .stat-value.green{color:var(--green)}.stat-value.accent{color:var(--accent)}.stat-value.yellow{color:var(--yellow)}
         .stat-sub{font-size:.75rem;color:var(--dim);margin-top:.3rem}
 
         /* FORM */
@@ -84,10 +92,10 @@
         .btn-main{width:100%;padding:11px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-weight:500;font-size:.9rem;cursor:pointer;transition:all .2s;margin-top:.25rem}
         .btn-main:hover{background:var(--accent2);transform:translateY(-1px)}
         .btn-main:disabled{opacity:.5;cursor:not-allowed;transform:none}
-        .btn-green{background:var(--green) !important;color:#06090f !important}
-        .btn-green:hover{background:#1db891 !important}
-        .btn-wa{background:#25d366 !important;display:flex;align-items:center;justify-content:center;gap:.5rem}
-        .btn-wa:hover{background:#1fb855 !important}
+        .btn-green{background:var(--green)!important;color:#06090f!important}
+        .btn-green:hover{background:#1db891!important}
+        .btn-wa{background:#25d366!important;display:flex;align-items:center;justify-content:center;gap:.5rem}
+        .btn-wa:hover{background:#1fb855!important}
 
         /* AGENTS */
         .empty-state{text-align:center;padding:2rem 1rem;color:var(--dim);font-size:.875rem;font-weight:300}
@@ -107,6 +115,7 @@
         .badge{display:inline-flex;align-items:center;gap:.3rem;font-size:.7rem;padding:.2rem .6rem;border-radius:20px;font-weight:500}
         .badge-green{background:rgba(34,211,165,.1);color:var(--green);border:1px solid rgba(34,211,165,.2)}
         .badge-accent{background:rgba(14,165,233,.1);color:var(--accent);border:1px solid rgba(14,165,233,.2)}
+        .badge-yellow{background:rgba(251,191,36,.1);color:var(--yellow);border:1px solid rgba(251,191,36,.2)}
 
         /* MESSAGES */
         .msg{font-size:.82rem;text-align:center;padding:.55rem .85rem;border-radius:7px;margin-top:.75rem;display:none}
@@ -114,8 +123,7 @@
         .msg.success{background:rgba(34,211,165,.1);color:var(--green);border:1px solid rgba(34,211,165,.2);display:block}
         .loading-dots{display:none;text-align:center;margin-top:.6rem}
         .loading-dot{display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--accent);margin:0 2px;animation:bounce .8s infinite}
-        .loading-dot:nth-child(2){animation-delay:.15s}
-        .loading-dot:nth-child(3){animation-delay:.3s}
+        .loading-dot:nth-child(2){animation-delay:.15s}.loading-dot:nth-child(3){animation-delay:.3s}
         @keyframes bounce{0%,100%{transform:translateY(0);opacity:.35}50%{transform:translateY(-5px);opacity:1}}
 
         /* TOAST */
@@ -133,7 +141,22 @@
         .plan-tokens{font-family:'Syne',sans-serif;font-size:1.6rem;font-weight:800;color:var(--text)}
         .plan-tokens span{font-size:.8rem;color:var(--muted);font-weight:400}
         .plan-price{font-size:.82rem;color:var(--green);margin:.4rem 0 0;font-weight:500}
-        .plan-badge{display:inline-block;font-size:.65rem;padding:.15rem .5rem;border-radius:20px;background:rgba(14,165,233,.15);color:var(--accent);border:1px solid rgba(14,165,233,.3);margin-bottom:.5rem}
+        .plan-badge-card{display:inline-block;font-size:.65rem;padding:.15rem .5rem;border-radius:20px;background:rgba(14,165,233,.15);color:var(--accent);border:1px solid rgba(14,165,233,.3);margin-bottom:.5rem}
+        .plan-limit{font-size:.75rem;color:var(--muted);margin-top:.3rem}
+
+        /* UPGRADE MODAL */
+        .upgrade-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:1002;align-items:center;justify-content:center}
+        .upgrade-card{background:var(--surface);border:1px solid var(--border2);border-radius:16px;padding:2rem;width:460px;max-width:92%;text-align:center}
+        .upgrade-icon{width:56px;height:56px;border-radius:50%;background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.3);display:flex;align-items:center;justify-content:center;margin:0 auto 1.25rem;font-size:1.4rem;color:var(--yellow)}
+        .upgrade-title{font-family:'Syne',sans-serif;font-size:1.2rem;font-weight:800;color:var(--text);margin-bottom:.6rem}
+        .upgrade-msg{font-size:.9rem;color:var(--muted);line-height:1.65;margin-bottom:1.75rem;font-weight:300}
+        .upgrade-plans{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.65rem;margin-bottom:1.5rem}
+        .upgrade-plan-item{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:.85rem .5rem;cursor:pointer;transition:all .2s}
+        .upgrade-plan-item:hover{border-color:var(--border2)}
+        .upgrade-plan-item.selected{border-color:var(--accent);background:rgba(14,165,233,.06)}
+        .upgrade-plan-name{font-family:'Syne',sans-serif;font-size:.78rem;font-weight:700;color:var(--text);margin-bottom:.2rem}
+        .upgrade-plan-agents{font-size:.72rem;color:var(--accent);margin-bottom:.2rem}
+        .upgrade-plan-price{font-size:.72rem;color:var(--green)}
 
         /* MOBILE */
         .mob-toggle{display:none;position:fixed;top:1rem;left:1rem;z-index:100;width:36px;height:36px;background:var(--surface);border:1px solid var(--border);border-radius:8px;align-items:center;justify-content:center;cursor:pointer;color:var(--muted)}
@@ -162,17 +185,15 @@
             <span class="logo-dot"></span>
             <span class="logo-text">JEISON.DIGITAL</span>
         </div>
+        <div class="plan-badge-sidebar" id="sidebar-plan-badge">
+            <i class="fas fa-crown" style="font-size:.6rem"></i>
+            <span id="sidebar-plan-nombre">Cargando...</span>
+        </div>
         <div class="nav-label">Menú</div>
         <nav>
-            <a onclick="mostrarVista('agentes')" id="nav-agentes" class="active">
-                <i class="fas fa-robot"></i> Mis Agentes
-            </a>
-            <a onclick="mostrarVista('tokens')" id="nav-tokens">
-                <i class="fas fa-coins"></i> Tokens y Planes
-            </a>
-            <a onclick="mostrarVista('config')" id="nav-config">
-                <i class="fas fa-sliders"></i> Configuración
-            </a>
+            <a onclick="mostrarVista('agentes')" id="nav-agentes" class="active"><i class="fas fa-robot"></i> Mis Agentes</a>
+            <a onclick="mostrarVista('tokens')" id="nav-tokens"><i class="fas fa-coins"></i> Tokens y Planes</a>
+            <a onclick="mostrarVista('config')" id="nav-config"><i class="fas fa-sliders"></i> Configuración</a>
         </nav>
     </div>
     <div class="sidebar-bottom">
@@ -189,18 +210,30 @@
 <!-- MAIN -->
 <div class="main-content">
 
-    <!-- ===== VISTA AGENTES ===== -->
+    <!-- VISTA AGENTES -->
     <div class="view active" id="view-agentes">
         <div class="topbar">
             <div>
                 <h2 class="page-title">Panel de Control</h2>
                 <p class="page-sub">Gestiona tus agentes de inteligencia artificial</p>
             </div>
-            <div class="token-card">
-                <div class="token-icon"><i class="fas fa-bolt"></i></div>
-                <div>
-                    <div class="token-label">Tokens disponibles</div>
-                    <div id="token-balance">—</div>
+            <div class="topbar-right">
+                <!-- Indicador de plan y agentes -->
+                <div class="plan-indicator" id="plan-indicator" style="display:none">
+                    <div>
+                        <div class="plan-info-label">Plan <span id="pi-nombre" style="color:var(--accent)"></span></div>
+                        <div class="plan-info-value"><span id="pi-actual">0</span> / <span id="pi-limite">0</span> agentes</div>
+                        <div class="plan-progress-wrap">
+                            <div class="plan-progress-bar" id="pi-bar" style="width:0%"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="token-card">
+                    <div class="token-icon"><i class="fas fa-bolt"></i></div>
+                    <div>
+                        <div class="token-label">Tokens disponibles</div>
+                        <div id="token-balance">—</div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -212,7 +245,7 @@
                 </div>
                 <div class="field"><label>Nombre del agente</label><input type="text" id="bot-name" placeholder="Ej: Vendedor de Streaming"></div>
                 <div class="field"><label>Instrucción maestra (System Prompt)</label><textarea id="bot-prompt" rows="5" placeholder="Eres un asistente que..."></textarea></div>
-                <button class="btn-main" onclick="crearAgente()"><i class="fas fa-floppy-disk" style="margin-right:.4rem"></i> Guardar agente</button>
+                <button class="btn-main" id="btn-crear-agente" onclick="crearAgente()"><i class="fas fa-floppy-disk" style="margin-right:.4rem"></i> Guardar agente</button>
                 <div class="loading-dots" id="create-loading"><span class="loading-dot"></span><span class="loading-dot"></span><span class="loading-dot"></span></div>
                 <div class="msg" id="create-msg"></div>
             </div>
@@ -226,14 +259,9 @@
         </div>
     </div>
 
-    <!-- ===== VISTA TOKENS ===== -->
+    <!-- VISTA TOKENS -->
     <div class="view" id="view-tokens">
-        <div class="topbar">
-            <div>
-                <h2 class="page-title">Tokens y Planes</h2>
-                <p class="page-sub">Gestiona tu saldo y revisa tu historial de consumo</p>
-            </div>
-        </div>
+        <div class="topbar"><div><h2 class="page-title">Tokens y Planes</h2><p class="page-sub">Gestiona tu saldo y revisa tu historial de consumo</p></div></div>
         <div class="grid-3">
             <div class="stat-card"><div class="stat-label">Balance actual</div><div class="stat-value green" id="token-balance-2">—</div><div class="stat-sub">tokens disponibles</div></div>
             <div class="stat-card"><div class="stat-label">Consumido este mes</div><div class="stat-value accent" id="tokens-mes">—</div><div class="stat-sub">tokens usados</div></div>
@@ -244,59 +272,40 @@
                 <div class="card-header"><div class="card-icon green"><i class="fas fa-bolt"></i></div><span class="card-title">Recargar tokens</span></div>
                 <p style="font-size:.85rem;color:var(--muted);margin-bottom:1.25rem;line-height:1.6;font-weight:300">Selecciona un plan y te contactaremos por WhatsApp para activarlo de inmediato.</p>
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:1.25rem">
-                    <div class="plan-card" onclick="seleccionarPlan(this,100000,'5.000')">
-                        <div class="plan-name">Básico</div>
-                        <div class="plan-tokens">100K <span>tokens</span></div>
-                        <div class="plan-price">$ 5.000 COP</div>
-                    </div>
-                    <div class="plan-card featured selected" onclick="seleccionarPlan(this,500000,'20.000')">
-                        <div class="plan-badge">Popular</div>
-                        <div class="plan-name">Pro</div>
-                        <div class="plan-tokens">500K <span>tokens</span></div>
-                        <div class="plan-price">$ 20.000 COP</div>
-                    </div>
-                    <div class="plan-card" onclick="seleccionarPlan(this,1000000,'35.000')">
-                        <div class="plan-name">Business</div>
-                        <div class="plan-tokens">1M <span>tokens</span></div>
-                        <div class="plan-price">$ 35.000 COP</div>
-                    </div>
-                    <div class="plan-card" onclick="seleccionarPlan(this,0,'personalizado')">
-                        <div class="plan-name">Custom</div>
-                        <div class="plan-tokens" style="font-size:1.3rem">A medida</div>
-                        <div class="plan-price">Cotizar</div>
-                    </div>
+                    <div class="plan-card" onclick="seleccionarPlan(this,100000,'5.000')"><div class="plan-name">Básico</div><div class="plan-tokens">100K <span>tokens</span></div><div class="plan-price">$ 5.000 COP</div></div>
+                    <div class="plan-card featured selected" onclick="seleccionarPlan(this,500000,'20.000')"><div class="plan-badge-card">Popular</div><div class="plan-name">Pro</div><div class="plan-tokens">500K <span>tokens</span></div><div class="plan-price">$ 20.000 COP</div></div>
+                    <div class="plan-card" onclick="seleccionarPlan(this,1000000,'35.000')"><div class="plan-name">Business</div><div class="plan-tokens">1M <span>tokens</span></div><div class="plan-price">$ 35.000 COP</div></div>
+                    <div class="plan-card" onclick="seleccionarPlan(this,0,'personalizado')"><div class="plan-name">Custom</div><div class="plan-tokens" style="font-size:1.3rem">A medida</div><div class="plan-price">Cotizar</div></div>
                 </div>
                 <button class="btn-main btn-wa" onclick="recargarTokens()"><i class="fab fa-whatsapp"></i> Recargar por WhatsApp</button>
             </div>
             <div class="card">
                 <div class="card-header"><div class="card-icon yellow"><i class="fas fa-clock-rotate-left"></i></div><span class="card-title">Últimas actividades</span></div>
-                <div class="table-wrap">
-                    <table>
-                        <thead><tr><th>Agente</th><th>Tokens</th><th>Fecha</th></tr></thead>
-                        <tbody id="logs-recientes"><tr><td colspan="3" style="text-align:center;color:var(--dim);padding:1.5rem">Cargando...</td></tr></tbody>
-                    </table>
-                </div>
+                <div class="table-wrap"><table><thead><tr><th>Agente</th><th>Tokens</th><th>Fecha</th></tr></thead><tbody id="logs-recientes"><tr><td colspan="3" style="text-align:center;color:var(--dim);padding:1.5rem">Cargando...</td></tr></tbody></table></div>
             </div>
         </div>
-        <div class="card">
-            <div class="card-header"><div class="card-icon"><i class="fas fa-list"></i></div><span class="card-title">Historial completo de consumo</span></div>
+
+        <!-- Tabla de planes de suscripción -->
+        <div class="card" style="margin-bottom:1.5rem">
+            <div class="card-header"><div class="card-icon"><i class="fas fa-crown"></i></div><span class="card-title">Planes de suscripción</span></div>
             <div class="table-wrap">
                 <table>
-                    <thead><tr><th>#</th><th>Agente</th><th>Tokens usados</th><th>Fecha y hora</th><th>Estado</th></tr></thead>
-                    <tbody id="logs-completos"><tr><td colspan="5" style="text-align:center;color:var(--dim);padding:2rem">Cargando historial...</td></tr></tbody>
+                    <thead><tr><th>Plan</th><th>Agentes</th><th>Precio/mes</th><th>Estado</th></tr></thead>
+                    <tbody id="tabla-planes"><tr><td colspan="4" style="text-align:center;color:var(--dim);padding:1.5rem">Cargando...</td></tr></tbody>
                 </table>
             </div>
+            <p style="font-size:.8rem;color:var(--dim);margin-top:1rem">Para cambiar de plan contáctanos por WhatsApp.</p>
+        </div>
+
+        <div class="card">
+            <div class="card-header"><div class="card-icon"><i class="fas fa-list"></i></div><span class="card-title">Historial completo de consumo</span></div>
+            <div class="table-wrap"><table><thead><tr><th>#</th><th>Agente</th><th>Tokens usados</th><th>Fecha y hora</th><th>Estado</th></tr></thead><tbody id="logs-completos"><tr><td colspan="5" style="text-align:center;color:var(--dim);padding:2rem">Cargando historial...</td></tr></tbody></table></div>
         </div>
     </div>
 
-    <!-- ===== VISTA CONFIG ===== -->
+    <!-- VISTA CONFIG -->
     <div class="view" id="view-config">
-        <div class="topbar">
-            <div>
-                <h2 class="page-title">Configuración</h2>
-                <p class="page-sub">Administra tu perfil y preferencias de cuenta</p>
-            </div>
-        </div>
+        <div class="topbar"><div><h2 class="page-title">Configuración</h2><p class="page-sub">Administra tu perfil y preferencias de cuenta</p></div></div>
         <div class="grid-2">
             <div class="card">
                 <div class="card-header"><div class="card-icon"><i class="fas fa-user"></i></div><span class="card-title">Datos del perfil</span></div>
@@ -319,24 +328,15 @@
                 <div class="card">
                     <div class="card-header"><div class="card-icon green"><i class="fas fa-circle-info"></i></div><span class="card-title">Información de cuenta</span></div>
                     <div style="display:flex;flex-direction:column;gap:.65rem">
-                        <div style="display:flex;justify-content:space-between;font-size:.85rem;padding:.5rem 0;border-bottom:1px solid var(--border)">
-                            <span style="color:var(--muted)">User ID</span>
-                            <span style="color:var(--dim);font-size:.72rem;font-family:monospace" id="cfg-uid">—</span>
-                        </div>
-                        <div style="display:flex;justify-content:space-between;font-size:.85rem;padding:.5rem 0;border-bottom:1px solid var(--border)">
-                            <span style="color:var(--muted)">Miembro desde</span>
-                            <span style="color:var(--text)" id="cfg-created">—</span>
-                        </div>
-                        <div style="display:flex;justify-content:space-between;font-size:.85rem;padding:.5rem 0">
-                            <span style="color:var(--muted)">Estado</span>
-                            <span class="badge badge-green">Activo</span>
-                        </div>
+                        <div style="display:flex;justify-content:space-between;font-size:.85rem;padding:.5rem 0;border-bottom:1px solid var(--border)"><span style="color:var(--muted)">User ID</span><span style="color:var(--dim);font-size:.72rem;font-family:monospace" id="cfg-uid">—</span></div>
+                        <div style="display:flex;justify-content:space-between;font-size:.85rem;padding:.5rem 0;border-bottom:1px solid var(--border)"><span style="color:var(--muted)">Miembro desde</span><span style="color:var(--text)" id="cfg-created">—</span></div>
+                        <div style="display:flex;justify-content:space-between;font-size:.85rem;padding:.5rem 0;border-bottom:1px solid var(--border)"><span style="color:var(--muted)">Plan actual</span><span class="badge badge-accent" id="cfg-plan-nombre">—</span></div>
+                        <div style="display:flex;justify-content:space-between;font-size:.85rem;padding:.5rem 0"><span style="color:var(--muted)">Estado</span><span class="badge badge-green">Activo</span></div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-
 </div>
 
 <!-- CHAT MODAL -->
@@ -367,6 +367,22 @@
     </div>
 </div>
 
+<!-- UPGRADE MODAL -->
+<div class="upgrade-modal" id="upgrade-modal">
+    <div class="upgrade-card">
+        <div class="upgrade-icon"><i class="fas fa-rocket"></i></div>
+        <div class="upgrade-title">Límite de plan alcanzado</div>
+        <div class="upgrade-msg" id="upgrade-msg">Has alcanzado el límite de agentes de tu plan.</div>
+        <div class="upgrade-plans" id="upgrade-plans-grid"></div>
+        <button class="btn-main btn-wa" onclick="contactarUpgrade()" style="margin-bottom:.75rem">
+            <i class="fab fa-whatsapp"></i> Mejorar plan por WhatsApp
+        </button>
+        <button onclick="document.getElementById('upgrade-modal').style.display='none'" style="background:none;border:none;color:var(--dim);font-size:.85rem;cursor:pointer;font-family:'DM Sans',sans-serif">
+            Cerrar
+        </button>
+    </div>
+</div>
+
 <script>
     const SUPABASE_URL = "https://zsxkfqnalkfvwjrzuqip.supabase.co";
     const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzeGtmcW5hbGtmdndqcnp1cWlwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0NDgyODMsImV4cCI6MjA5MjAyNDI4M30.R4j23l3IHEL966VupeR-Sx_KtDQzB8NzfJtEVDGewGs";
@@ -374,7 +390,11 @@
 
     let agentes = [];
     let currentUser = null;
+    let currentSession = null;
+    let planActual = { nombre: 'Free', limite_agentes: 1 };
     let planSeleccionado = { tokens: 500000, precio: '20.000' };
+    let upgradeWhatsappUrl = '';
+    let todosLosPlanes = [];
 
     // ── TOAST ──
     function showToast(msg, type = 'success') {
@@ -403,9 +423,14 @@
         const { data: { session } } = await _supabase.auth.getSession();
         if (!session) { window.location.href = "login.html"; return; }
         currentUser = session.user;
+        currentSession = session;
         document.getElementById('user-email').innerText = currentUser.email;
         document.getElementById('user-initials').textContent = currentUser.email.slice(0, 2).toUpperCase();
-        cargarBalance(currentUser.id);
+        await Promise.all([
+            cargarBalance(currentUser.id),
+            cargarPlanUsuario(currentUser.id),
+            cargarTodosLosPlanes()
+        ]);
         cargarAgentes();
     }
 
@@ -417,31 +442,143 @@
         document.getElementById('token-balance-2').innerText = val.toLocaleString();
     }
 
+    // ── PLAN DEL USUARIO ──
+    async function cargarPlanUsuario(userId) {
+        const { data } = await _supabase
+            .from('perfiles')
+            .select('planes(id, nombre, limite_agentes, precio)')
+            .eq('id', userId)
+            .single();
+
+        if (data?.planes) {
+            planActual = data.planes;
+            document.getElementById('sidebar-plan-nombre').textContent = planActual.nombre;
+            if (document.getElementById('cfg-plan-nombre')) {
+                document.getElementById('cfg-plan-nombre').textContent = planActual.nombre;
+            }
+        }
+    }
+
+    // ── TODOS LOS PLANES ──
+    async function cargarTodosLosPlanes() {
+        const { data } = await _supabase.from('planes').select('*').order('precio');
+        if (data) todosLosPlanes = data;
+    }
+
+    // ── INDICADOR DE PLAN EN TOPBAR ──
+    function actualizarIndicadorPlan(totalAgentes) {
+        const limite = planActual.limite_agentes;
+        const pct = limite >= 999 ? 10 : Math.round((totalAgentes / limite) * 100);
+        const indicator = document.getElementById('plan-indicator');
+        indicator.style.display = 'flex';
+        document.getElementById('pi-nombre').textContent = planActual.nombre;
+        document.getElementById('pi-actual').textContent = totalAgentes;
+        document.getElementById('pi-limite').textContent = limite >= 999 ? '∞' : limite;
+        const bar = document.getElementById('pi-bar');
+        bar.style.width = Math.min(pct, 100) + '%';
+        bar.className = 'plan-progress-bar' + (pct >= 100 ? ' danger' : pct >= 75 ? ' warning' : '');
+    }
+
     async function cerrarSesion() {
         await _supabase.auth.signOut();
         window.location.href = "login.html";
     }
 
-    // ── AGENTES ──
+    // ── CREAR AGENTE — LLAMA AL BACKEND ──
     async function crearAgente() {
         const name = document.getElementById('bot-name').value.trim();
         const prompt = document.getElementById('bot-prompt').value.trim();
         if (!name || !prompt) return showMsg('create-msg', 'Por favor completa los campos', 'error');
+
+        const btn = document.getElementById('btn-crear-agente');
+        btn.disabled = true;
         document.getElementById('create-loading').style.display = 'block';
-        const { error } = await _supabase.from('agentes_ia').insert([{ nombre_agente: name, prompt_sistema: prompt, user_id: currentUser.id }]);
-        document.getElementById('create-loading').style.display = 'none';
-        if (error) { showMsg('create-msg', 'Error: ' + error.message, 'error'); return; }
-        showMsg('create-msg', 'Agente "' + name + '" creado.', 'success');
-        document.getElementById('bot-name').value = '';
-        document.getElementById('bot-prompt').value = '';
-        cargarAgentes();
+        document.getElementById('create-msg').className = 'msg';
+
+        try {
+            // Obtener token JWT actualizado para enviarlo al backend
+            const { data: { session } } = await _supabase.auth.getSession();
+            const token = session?.access_token;
+
+            const res = await fetch('/.netlify/functions/crear-agente', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ nombre_agente: name, prompt_sistema: prompt })
+            });
+
+            const data = await res.json();
+
+            if (res.status === 403 && data.codigo === 'LIMITE_PLAN_ALCANZADO') {
+                // Mostrar modal de upgrade
+                mostrarUpgradeModal(data);
+                document.getElementById('create-loading').style.display = 'none';
+                btn.disabled = false;
+                return;
+            }
+
+            if (!res.ok) {
+                showMsg('create-msg', data.error || 'Error al crear el agente', 'error');
+                return;
+            }
+
+            showMsg('create-msg', `Agente "${name}" creado. Quedan ${data.agentes_restantes} espacio(s) en tu plan.`, 'success');
+            document.getElementById('bot-name').value = '';
+            document.getElementById('bot-prompt').value = '';
+            cargarAgentes();
+
+        } catch (err) {
+            showMsg('create-msg', 'Error de conexión con el servidor', 'error');
+        } finally {
+            document.getElementById('create-loading').style.display = 'none';
+            btn.disabled = false;
+        }
     }
 
+    // ── MODAL DE UPGRADE ──
+    function mostrarUpgradeModal(data) {
+        upgradeWhatsappUrl = data.whatsapp || '';
+        document.getElementById('upgrade-msg').textContent = data.error;
+
+        // Renderizar planes disponibles (excluyendo el actual)
+        const grid = document.getElementById('upgrade-plans-grid');
+        const planesSuperiores = todosLosPlanes.filter(p => p.limite_agentes > planActual.limite_agentes);
+        grid.innerHTML = planesSuperiores.map((p, i) => `
+            <div class="upgrade-plan-item ${i === 0 ? 'selected' : ''}" onclick="seleccionarPlanUpgrade(this, '${p.nombre}', ${p.limite_agentes}, ${p.precio})">
+                <div class="upgrade-plan-name">${p.nombre}</div>
+                <div class="upgrade-plan-agents">${p.limite_agentes >= 999 ? 'Ilimitados' : p.limite_agentes + ' agentes'}</div>
+                <div class="upgrade-plan-price">$${p.precio.toLocaleString()} COP</div>
+            </div>
+        `).join('');
+
+        if (planesSuperiores.length > 0) {
+            const primer = planesSuperiores[0];
+            upgradeWhatsappUrl = `https://wa.me/573115364647?text=${encodeURIComponent(`Hola Jeison, quiero mejorar al plan ${primer.nombre} (${primer.limite_agentes} agentes) por $${primer.precio.toLocaleString()} COP. Mi cuenta: ${currentUser.email}`)}`;
+        }
+
+        document.getElementById('upgrade-modal').style.display = 'flex';
+    }
+
+    function seleccionarPlanUpgrade(el, nombre, limite, precio) {
+        document.querySelectorAll('.upgrade-plan-item').forEach(i => i.classList.remove('selected'));
+        el.classList.add('selected');
+        const limiteText = limite >= 999 ? 'ilimitados' : limite;
+        upgradeWhatsappUrl = `https://wa.me/573115364647?text=${encodeURIComponent(`Hola Jeison, quiero mejorar al plan ${nombre} (${limiteText} agentes) por $${precio.toLocaleString()} COP. Mi cuenta: ${currentUser.email}`)}`;
+    }
+
+    function contactarUpgrade() {
+        if (upgradeWhatsappUrl) window.open(upgradeWhatsappUrl, '_blank');
+    }
+
+    // ── CARGAR Y RENDERIZAR AGENTES ──
     async function cargarAgentes() {
         const { data } = await _supabase.from('agentes_ia').select('*').eq('user_id', currentUser.id);
         if (data) {
             agentes = data.map(a => ({ id: a.id, name: a.nombre_agente, prompt: a.prompt_sistema, dominios: a.dominios_permitidos }));
             renderAgentes();
+            actualizarIndicadorPlan(agentes.length);
         }
     }
 
@@ -570,6 +707,24 @@
         tbT.innerHTML = (!todos || todos.length === 0)
             ? '<tr><td colspan="5" style="text-align:center;color:var(--dim);padding:2rem">No hay registros de consumo aún.</td></tr>'
             : todos.map((l,i) => `<tr><td style="color:var(--dim)">${i+1}</td><td>${l.nombre_agente||'—'}</td><td><span class="badge badge-accent">${(l.tokens_usados||0).toLocaleString()}</span></td><td>${new Date(l.created_at).toLocaleString('es-CO')}</td><td><span class="badge badge-green">Completado</span></td></tr>`).join('');
+
+        // Tabla de planes
+        const tbPlanes = document.getElementById('tabla-planes');
+        if (todosLosPlanes.length === 0) await cargarTodosLosPlanes();
+        tbPlanes.innerHTML = todosLosPlanes.map(p => `
+            <tr>
+                <td style="font-family:'Syne',sans-serif;font-weight:700;color:var(--text)">${p.nombre} ${p.nombre === planActual.nombre ? '<span class="badge badge-accent" style="margin-left:.4rem">Tu plan</span>' : ''}</td>
+                <td>${p.limite_agentes >= 999 ? 'Ilimitados' : p.limite_agentes}</td>
+                <td style="color:var(--green)">$${p.precio.toLocaleString()} COP/mes</td>
+                <td>${p.nombre === planActual.nombre ? '<span class="badge badge-green">Activo</span>' : `<button onclick="contactarPlan('${p.nombre}',${p.limite_agentes},${p.precio})" style="background:rgba(14,165,233,.1);color:var(--accent);border:1px solid rgba(14,165,233,.2);padding:4px 10px;border-radius:6px;font-size:.75rem;cursor:pointer;font-family:'DM Sans',sans-serif">Contratar</button>`}</td>
+            </tr>
+        `).join('');
+    }
+
+    function contactarPlan(nombre, limite, precio) {
+        const limiteText = limite >= 999 ? 'ilimitados' : limite;
+        const url = `https://wa.me/573115364647?text=${encodeURIComponent(`Hola Jeison, quiero contratar el plan ${nombre} (${limiteText} agentes) por $${precio.toLocaleString()} COP/mes. Mi cuenta: ${currentUser.email}`)}`;
+        window.open(url, '_blank');
     }
 
     function seleccionarPlan(el, tokens, precio) {
@@ -596,6 +751,7 @@
         document.getElementById('cfg-email').value = currentUser.email;
         document.getElementById('cfg-uid').textContent = currentUser.id.slice(0,18) + '...';
         document.getElementById('cfg-created').textContent = new Date(currentUser.created_at).toLocaleDateString('es-CO', { year:'numeric', month:'long', day:'numeric' });
+        if (document.getElementById('cfg-plan-nombre')) document.getElementById('cfg-plan-nombre').textContent = planActual.nombre;
     }
 
     async function guardarPerfil() {
