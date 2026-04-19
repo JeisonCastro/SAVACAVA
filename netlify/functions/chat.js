@@ -44,27 +44,37 @@ exports.handler = async (event) => {
                 body: JSON.stringify({ respuesta: "Agente no encontrado." })
             };
         }
-// --- 2.5 Validación de Dominio (Depuración) ---
-const origin = event.headers.origin; 
+// --- 2.5 Validación de Dominio (Corregida y Robusta) ---
+const originHeader = event.headers.origin || "";
 
-console.log("Dominio solicitante:", origin); // <-- Esto te dirá qué está recibiendo
-console.log("Lista permitida:", agente.dominios_permitidos); // <-- Esto te dirá qué hay en la BD
-
-if (!agente.dominios_permitidos || agente.dominios_permitidos.length === 0) {
-    // CAMBIO: Si la lista está vacía, POR SEGURIDAD bloqueamos todo
-    return {
-        statusCode: 403,
-        headers,
-        body: JSON.stringify({ respuesta: "Seguridad: No hay dominios configurados para este agente." })
-    };
+// 1. Extraemos el hostname limpio (quita https://, http:// y www.)
+let host = "";
+try {
+    const url = new URL(originHeader);
+    host = url.hostname.replace("www.", "");
+} catch (e) {
+    host = originHeader; // Fallback si no es una URL válida
 }
 
-if (!agente.dominios_permitidos.includes(origin)) {
-    return {
-        statusCode: 403,
-        headers,
-        body: JSON.stringify({ respuesta: "Este dominio no tiene permiso." })
-    };
+console.log("Dominio solicitante (limpio):", host);
+console.log("Lista permitida en BD:", agente.dominios_permitidos);
+
+// 2. "Llave Maestra" para tu Dashboard
+// Si estás probando desde tu dashboard, esto permite el paso aunque el host sea distinto
+const isDashboard = originHeader.includes("jeisondigital.netlify.app");
+
+if (!isDashboard) {
+    // 3. Validación estricta para clientes reales
+    if (!agente.dominios_permitidos || agente.dominios_permitidos.length === 0) {
+        return { statusCode: 403, headers, body: JSON.stringify({ respuesta: "Configuración inválida en agente." }) };
+    }
+
+    // Comprobamos si el host limpio está en la lista de la BD
+    if (!agente.dominios_permitidos.includes(host)) {
+        return { statusCode: 403, headers, body: JSON.stringify({ respuesta: "Este dominio no tiene permiso." }) };
+    }
+} else {
+    console.log("Acceso concedido vía Dashboard (Admin).");
 }
         
 
