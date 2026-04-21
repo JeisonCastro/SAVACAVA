@@ -838,7 +838,17 @@ async function conectarToolkit(toolkit) {
             })
         });
 
-        const data = await res.json();
+        const raw = await res.text();
+        console.log('Respuesta cruda conectar-composio:', raw);
+
+        let data;
+        try {
+            data = JSON.parse(raw);
+        } catch (e) {
+            console.error('La respuesta no es JSON:', raw);
+            showToast('La función devolvió HTML o texto, revisa consola', 'error');
+            return;
+        }
 
         if (!res.ok) {
             showToast(data.error || 'No se pudo iniciar la conexión', 'error');
@@ -852,6 +862,7 @@ async function conectarToolkit(toolkit) {
 
         window.location.href = data.redirectUrl;
     } catch (error) {
+        console.error('Error conectarToolkit:', error);
         showToast('Error iniciando conexión con Composio', 'error');
     }
 }
