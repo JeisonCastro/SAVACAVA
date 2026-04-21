@@ -96,9 +96,70 @@ Si no necesitas herramientas, responde normalmente.
 `;
 }
 
+function getMissingFields(toolKey, data = {}) {
+  const def = TOOL_DEFINITIONS[toolKey];
+  if (!def) return [];
+
+  return (def.requiredFields || []).filter(field => {
+    const value = data[field];
+    if (value === null || value === undefined) return true;
+    if (typeof value === 'string' && value.trim() === '') return true;
+    if (Array.isArray(value) && value.length === 0) return true;
+    return false;
+  });
+}
+
+function buildMissingFieldsQuestion(toolKey, missingFields = []) {
+  if (!missingFields.length) return null;
+
+  if (toolKey === 'GOOGLECALENDAR_CREATE_EVENT') {
+    const labels = {
+      contact_name: 'tu nombre',
+      contact_email: 'tu correo',
+      summary: 'el título de la reunión',
+      start: 'la fecha y hora de inicio',
+      end: 'la fecha y hora de finalización'
+    };
+
+    const faltantesLegibles = missingFields.map(f => labels[f] || f);
+
+    if (faltantesLegibles.length === 1) {
+      return `Antes de agendar la reunión, compárteme ${faltantesLegibles[0]}.`;
+    }
+
+    const ultima = faltantesLegibles.pop();
+    return `Antes de agendar la reunión, compárteme ${faltantesLegibles.join(', ')} y ${ultima}.`;
+  }
+
+  if (toolKey === 'GMAIL_SEND_EMAIL') {
+    const labels = {
+      to: 'el correo destino',
+      subject: 'el asunto',
+      body: 'el contenido del correo'
+    };
+
+    const faltantesLegibles = missingFields.map(f => labels[f] || f);
+
+    if (faltantesLegibles.length === 1) {
+      return `Antes de enviar el correo, compárteme ${faltantesLegibles[0]}.`;
+    }
+
+    const ultima = faltantesLegibles.pop();
+    return `Antes de enviar el correo, compárteme ${faltantesLegibles.join(', ')} y ${ultima}.`;
+  }
+
+  if (toolKey === 'GOOGLEDRIVE_FIND_FILE') {
+    return `Indícame qué archivo o documento quieres buscar.`;
+  }
+
+  return `Faltan datos para completar esta acción: ${missingFields.join(', ')}.`;
+}
+
 module.exports = {
   TOOL_DEFINITIONS,
   esConfirmacion,
   esCancelacion,
-  construirToolsDescription
+  construirToolsDescription,
+  getMissingFields,
+  buildMissingFieldsQuestion
 };
