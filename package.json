@@ -1,10 +1,10 @@
-
 {
   "name": "jeison-digital-saas",
   "version": "1.0.0",
   "description": "Plataforma de Agentes de IA",
   "main": "index.html",
   "dependencies": {
-    "@supabase/supabase-js": "^2.39.0"
+    "@supabase/supabase-js": "^2.39.0",
+    "@composio/core": "^0.33.0"
   }
 }
