@@ -1,12 +1,12 @@
 const TOOL_DEFINITIONS = {
   GOOGLECALENDAR_CREATE_EVENT: {
-    toolkit: 'googlecalendar',
-    label: 'Crear eventos en Google Calendar',
-    workflow: 'collect_confirm_execute',
-    requiredFields: ['summary', 'start', 'end'],
-    optionalFields: ['description', 'attendees', 'contact_name', 'contact_email', 'contact_phone', 'meeting_reason'],
-    confirmationRequired: true
-  },
+  toolkit: 'googlecalendar',
+  label: 'Crear eventos en Google Calendar',
+  workflow: 'collect_confirm_execute',
+  requiredFields: ['summary', 'start', 'end', 'contact_name', 'contact_email'],
+  optionalFields: ['description', 'attendees', 'contact_phone', 'meeting_reason'],
+  confirmationRequired: true
+},
 
   GMAIL_SEND_EMAIL: {
     toolkit: 'gmail',
