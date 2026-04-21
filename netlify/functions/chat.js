@@ -377,6 +377,29 @@ NO expliques nada adicional fuera del JSON.
             actionPayload = null;
         }
 
+
+        // Detectar si DeepSeek habló de agendar sin generar JSON todavía
+const mencionaCalendar = 
+    !actionPayload &&
+    !pendingAction &&
+    toolsDisponibles.some(t => t.tool_key === 'GOOGLECALENDAR_CREATE_EVENT') &&
+    /agend|reuni[oó]n|cita|calendar|evento|invitaci[oó]n/i.test(prompt + " " + respuestaIA);
+
+if (mencionaCalendar) {
+    // Crear pending action vacío para mantener contexto
+    await supabase
+        .from('pending_tool_actions')
+        .insert([{
+            user_id: agente.user_id,
+            agente_id: targetID,
+            action: 'GOOGLECALENDAR_CREATE_EVENT',
+            payload: {},   // vacío, se llenará en próximos turnos
+            status: 'pending',
+            expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString()
+        }]);
+    console.log("Pending action vacío creado por intención textual detectada");
+}
+
         // Ejecutar Google Calendar si el modelo pidió esa tool
 
         if (actionPayload && actionPayload.action === 'GOOGLECALENDAR_CREATE_EVENT') {
