@@ -140,7 +140,38 @@ if (!esDashboard && !agente.dominios_permitidos.includes(origin)) {
                 body: JSON.stringify({ respuesta: "Saldo insuficiente en Jeison.Digital. Por favor, recarga tu cuenta." })
             };
         }
+// Construir descripción de herramientas disponibles
+let toolsDescription = "";
 
+if (toolsDisponibles.length > 0) {
+    toolsDescription = `
+## HERRAMIENTAS DISPONIBLES
+
+Puedes usar las siguientes acciones si el usuario lo requiere:
+
+- GOOGLECALENDAR_CREATE_EVENT:
+  Crear eventos en el calendario del usuario.
+
+- GMAIL_SEND_EMAIL:
+  Enviar correos electrónicos.
+
+- GOOGLEDRIVE_FIND_FILE:
+  Buscar archivos en Google Drive.
+
+## IMPORTANTE
+Si necesitas usar una herramienta, responde SOLO en formato JSON así:
+
+{
+  "action": "NOMBRE_TOOL",
+  "data": { ... }
+}
+
+NO expliques nada adicional.
+Si no necesitas herramientas, responde normalmente.
+`;
+}
+
+const systemFinal = agente.prompt_sistema + "\n" + toolsDescription;
         // 4. Llamada a DeepSeek
         const aiResponse = await fetch('https://api.deepseek.com/v1/chat/completions', {
             method: 'POST',
@@ -151,7 +182,7 @@ if (!esDashboard && !agente.dominios_permitidos.includes(origin)) {
             body: JSON.stringify({
                 model: "deepseek-chat",
                 messages: [
-                    { role: "system", content: agente.prompt_sistema },
+                    { role: "system", content: systemFinal },
                     { role: "user", content: prompt }
                 ]
             })
