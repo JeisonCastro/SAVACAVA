@@ -304,7 +304,44 @@ if (!esDashboard && !agente.dominios_permitidos.includes(origin)) {
         }
 // Construir descripción de herramientas disponibles
 const toolsDescription = construirToolsDescription(toolsDisponibles);
-const systemFinal = agente.prompt_sistema + "\n" + toolsDescription;
+
+let systemFinal = agente.prompt_sistema + "\n" + toolsDescription;
+
+if (pendingAction) {
+    systemFinal = `
+${agente.prompt_sistema}
+
+## CONTEXTO IMPORTANTE
+Existe una acción pendiente que NO debes olvidar.
+
+Acción pendiente actual:
+${JSON.stringify(pendingAction.payload || {}, null, 2)}
+
+Tipo de acción pendiente:
+${pendingAction.action}
+
+## INSTRUCCIONES OBLIGATORIAS
+- NO reinicies la conversación.
+- NO vuelvas a saludar.
+- NO preguntes cosas que ya fueron respondidas.
+- Tu tarea es continuar completando la acción pendiente.
+- Si el usuario proporciona datos faltantes, actualiza la acción pendiente.
+- Si aún faltan datos, responde SOLO preguntando por esos datos faltantes.
+- Si ya no falta nada, responde SOLO en JSON con la misma action pendiente y el payload completo actualizado.
+- Si el usuario confirma con "sí", "si", "ok", etc., NO generes un nuevo JSON: el backend ejecutará la acción pendiente.
+- Si el usuario cancela, responde normal indicando cancelación.
+
+## FORMATO
+Si necesitas actualizar la acción pendiente, responde SOLO en JSON así:
+
+{
+  "action": "${pendingAction.action}",
+  "data": { ...payload actualizado... }
+}
+
+NO expliques nada adicional fuera del JSON.
+`;
+}
 
         // 4. Llamada a DeepSeek
         const aiResponse = await fetch('https://api.deepseek.com/v1/chat/completions', {
