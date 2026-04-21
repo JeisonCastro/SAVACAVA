@@ -269,11 +269,11 @@ const systemFinal = agente.prompt_sistema + "\n" + toolsDescription;
             const eventData = actionPayload.data || {};
 
             const argumentos = {
-                summary: eventData.summary || eventData.title || "Evento agendado desde el chat",
-                description: eventData.description || "",
-                start_datetime: eventData.start,
-                end_datetime: eventData.end
-            };
+    summary: eventData.summary || eventData.title || "Evento agendado desde el chat",
+    description: eventData.description || "",
+    start_datetime: eventData.start + "-05:00",
+    end_datetime: eventData.end + "-05:00"
+};
 
             console.log("Ejecutando GOOGLECALENDAR_CREATE_EVENT con argumentos:", JSON.stringify(argumentos));
 
