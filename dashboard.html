@@ -382,53 +382,7 @@
         </button>
     </div>
 </div>
-<!-- COPISIO MODAL -->
-    <div id="modalIntegraciones" class="modal fade" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content bg-dark text-light border-secondary">
-            <div class="modal-header border-secondary">
-                <h5 class="modal-title font-weight-bold">Conectar Herramientas</h5>
-                <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
-            </div>
-            <div class="modal-body">
-                <p class="small text-muted">Selecciona las herramientas que este agente podrá utilizar.</p>
-                
-                <div class="list-group list-group-flush" id="listaApps">
-                    <div class="list-group-item bg-transparent border-secondary d-flex justify-content-between align-items-center">
-                        <div class="d-flex align-items-center">
-                            <img src="https://www.gstatic.com/images/branding/product/1x/calendar_2020q4_48dp.png" width="30" class="mr-3">
-                            <div>
-                                <h6 class="mb-0">Google Calendar</h6>
-                                <small class="text-muted">Agendar y ver citas</small>
-                            </div>
-                        </div>
-                        <div class="custom-control custom-switch">
-                            <input type="checkbox" class="custom-control-input app-toggle" id="toggleCalendar" data-toolkit="googlecalendar" data-key="GOOGLECALENDAR_CREATE_EVENT">
-                            <label class="custom-control-label" for="toggleCalendar"></label>
-                        </div>
-                    </div>
 
-                    <div class="list-group-item bg-transparent border-secondary d-flex justify-content-between align-items-center">
-                        <div class="d-flex align-items-center">
-                            <img src="https://www.gstatic.com/images/branding/product/1x/gmail_2020q4_48dp.png" width="30" class="mr-3">
-                            <div>
-                                <h6 class="mb-0">Gmail</h6>
-                                <small class="text-muted">Enviar y leer correos</small>
-                            </div>
-                        </div>
-                        <div class="custom-control custom-switch">
-                            <input type="checkbox" class="custom-control-input app-toggle" id="toggleGmail" data-toolkit="gmail" data-key="GMAIL_SEND_EMAIL">
-                            <label class="custom-control-label" for="toggleGmail"></label>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="modal-footer border-secondary">
-                <button type="button" class="btn btn-primary btn-block" id="btnGuardarIntegraciones">Guardar Cambios</button>
-            </div>
-        </div>
-    </div>
-</div>
 
 <script>
     const SUPABASE_URL = "https://zsxkfqnalkfvwjrzuqip.supabase.co";
