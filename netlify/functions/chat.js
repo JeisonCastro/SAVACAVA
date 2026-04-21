@@ -1,4 +1,10 @@
 const { createClient } = require('@supabase/supabase-js');
+const {
+    TOOL_DEFINITIONS,
+    esConfirmacion,
+    esCancelacion,
+    construirToolsDescription
+} = require('./lib/tool-workflows');
 
 const supabase = createClient(
     process.env.SUPABASE_URL,
@@ -38,19 +44,11 @@ async function ejecutarToolComposio(toolSlug, connectedAccountId, userId, args) 
 
     return data;
 }
-function esConfirmacion(texto = "") {
-    const t = texto.trim().toLowerCase();
-    return [
-        "si", "sí", "confirmo", "ok", "dale", "hazlo", "hacerlo", "adelante", "confirmado"
-    ].includes(t);
-}
 
-function esCancelacion(texto = "") {
-    const t = texto.trim().toLowerCase();
-    return [
-        "no", "cancelar", "cancela", "detener", "mejor no"
-    ].includes(t);
-}
+
+
+
+
 exports.handler = async (event) => {
 
     const headers = {
@@ -303,46 +301,8 @@ if (!esDashboard && !agente.dominios_permitidos.includes(origin)) {
             };
         }
 // Construir descripción de herramientas disponibles
-let toolsDescription = "";
-
-if (toolsDisponibles.length > 0) {
-    toolsDescription = `
-## HERRAMIENTAS DISPONIBLES
-
-Puedes usar las siguientes acciones si el usuario lo requiere:
-
-- GOOGLECALENDAR_CREATE_EVENT:
-  Crear eventos en el calendario del usuario.
-
-- GMAIL_SEND_EMAIL:
-  Enviar correos electrónicos.
-
-- GOOGLEDRIVE_FIND_FILE:
-  Buscar archivos en Google Drive.
-
-## IMPORTANTE
-Si necesitas usar una herramienta, responde SOLO en formato JSON así:
-
-{
-  "action": "NOMBRE_TOOL",
-  "data": {
-    "summary": "Título del evento",
-    "description": "Descripción",
-    "start": "YYYY-MM-DDTHH:MM:SS",
-    "end": "YYYY-MM-DDTHH:MM:SS"
-  }
-}
-
-## REGLAS DE FECHA (CRÍTICO)
-- SIEMPRE convierte fechas a formato ISO 8601
-- Ejemplo: "mañana a las 3pm" → "2026-04-22T15:00:00"
-- NO uses texto como "mañana", "hoy", etc.
-- SIEMPRE devuelve fechas completas
-
-NO expliques nada adicional.
-Si no necesitas herramientas, responde normalmente.
-`;
-}
+const toolsDescription = construirToolsDescription(toolsDisponibles);
+const systemFinal = agente.prompt_sistema + "\n" + toolsDescription;
 
 const systemFinal = agente.prompt_sistema + "\n" + toolsDescription;
         // 4. Llamada a DeepSeek
