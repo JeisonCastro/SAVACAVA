@@ -2,7 +2,9 @@ const { createClient } = require('@supabase/supabase-js');
 const {
     esConfirmacion,
     esCancelacion,
-    construirToolsDescription
+    construirToolsDescription,
+    getMissingFields,
+    buildMissingFieldsQuestion
 } = require('./tool-workflows');
 
 const supabase = createClient(
