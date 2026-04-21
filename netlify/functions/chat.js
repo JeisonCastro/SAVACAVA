@@ -38,7 +38,19 @@ async function ejecutarToolComposio(toolSlug, connectedAccountId, userId, args) 
 
     return data;
 }
+function esConfirmacion(texto = "") {
+    const t = texto.trim().toLowerCase();
+    return [
+        "si", "sí", "confirmo", "ok", "dale", "hazlo", "hacerlo", "adelante", "confirmado"
+    ].includes(t);
+}
 
+function esCancelacion(texto = "") {
+    const t = texto.trim().toLowerCase();
+    return [
+        "no", "cancelar", "cancela", "detener", "mejor no"
+    ].includes(t);
+}
 exports.handler = async (event) => {
 
     const headers = {
@@ -174,6 +186,122 @@ if (!esDashboard && !agente.dominios_permitidos.includes(origin)) {
                 body: JSON.stringify({ respuesta: "Saldo insuficiente en Jeison.Digital. Por favor, recarga tu cuenta." })
             };
         }
+                // 3.5 Revisar si hay una acción pendiente de confirmación
+        const { data: pendingAction, error: errPending } = await supabase
+            .from('pending_tool_actions')
+            .select('*')
+            .eq('user_id', agente.user_id)
+            .eq('agente_id', targetID)
+            .eq('status', 'pending')
+            .gte('expires_at', new Date().toISOString())
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+        if (errPending) {
+            console.error("Error pending_tool_actions:", errPending);
+            return {
+                statusCode: 500,
+                headers,
+                body: JSON.stringify({ respuesta: "No se pudo consultar la acción pendiente." })
+            };
+        }
+
+        if (pendingAction && esConfirmacion(prompt)) {
+            console.log("Confirmación recibida para acción pendiente:", JSON.stringify(pendingAction));
+
+            if (pendingAction.action === 'GOOGLECALENDAR_CREATE_EVENT') {
+                const calendarConnection = (userConnections || []).find(
+                    c => String(c.toolkit).toLowerCase() === 'googlecalendar'
+                );
+
+                if (!calendarConnection?.composio_entity_id) {
+                    return {
+                        statusCode: 400,
+                        headers,
+                        body: JSON.stringify({
+                            respuesta: "Google Calendar no está conectado para este usuario."
+                        })
+                    };
+                }
+
+                const payload = pendingAction.payload || {};
+
+                const argumentos = {
+                    summary: payload.summary || "Evento agendado desde el chat",
+                    description: payload.description || "",
+                    start_datetime: String(payload.start).includes("-05:00") ? payload.start : payload.start + "-05:00",
+                    end_datetime: String(payload.end).includes("-05:00") ? payload.end : payload.end + "-05:00"
+                };
+
+                console.log("Ejecutando acción confirmada GOOGLECALENDAR_CREATE_EVENT:", JSON.stringify(argumentos));
+
+                const resultadoComposio = await ejecutarToolComposio(
+                    'GOOGLECALENDAR_CREATE_EVENT',
+                    calendarConnection.composio_entity_id,
+                    agente.user_id,
+                    argumentos
+                );
+
+                console.log("Resultado Composio Calendar:", JSON.stringify(resultadoComposio));
+
+                await supabase
+                    .from('pending_tool_actions')
+                    .update({ status: 'executed' })
+                    .eq('id', pendingAction.id);
+
+                const respuestaIA = `Listo, agendé el evento "${argumentos.summary}" en tu Google Calendar.`;
+
+                const totalCaracteres =
+                    (agente.prompt_sistema || "").length +
+                    (prompt || "").length +
+                    (respuestaIA || "").length;
+                const tokensUsados = Math.ceil(totalCaracteres / 4) + 10;
+
+                await supabase
+                    .from('perfiles')
+                    .update({ token_balance: saldoActual - tokensUsados })
+                    .eq('id', agente.user_id);
+
+                await supabase.rpc('increment_agent_consumption', {
+                    agent_id: targetID,
+                    tokens: tokensUsados
+                });
+
+                await supabase
+                    .from('logs_consumo')
+                    .insert([{
+                        user_id: agente.user_id,
+                        agente_id: targetID,
+                        nombre_agente: agente.nombre_agente,
+                        tokens_usados: tokensUsados
+                    }]);
+
+                return {
+                    statusCode: 200,
+                    headers,
+                    body: JSON.stringify({
+                        respuesta: respuestaIA,
+                        tokens_consumidos: tokensUsados
+                    })
+                };
+            }
+        }
+
+        if (pendingAction && esCancelacion(prompt)) {
+            await supabase
+                .from('pending_tool_actions')
+                .update({ status: 'cancelled' })
+                .eq('id', pendingAction.id);
+
+            return {
+                statusCode: 200,
+                headers,
+                body: JSON.stringify({
+                    respuesta: "Entendido, cancelé la acción pendiente."
+                })
+            };
+        }
 // Construir descripción de herramientas disponibles
 let toolsDescription = "";
 
@@ -251,7 +379,7 @@ const systemFinal = agente.prompt_sistema + "\n" + toolsDescription;
         }
 
         // Ejecutar Google Calendar si el modelo pidió esa tool
-        if (actionPayload && actionPayload.action === 'GOOGLECALENDAR_CREATE_EVENT') {
+                if (actionPayload && actionPayload.action === 'GOOGLECALENDAR_CREATE_EVENT') {
             const calendarConnection = (userConnections || []).find(
                 c => String(c.toolkit).toLowerCase() === 'googlecalendar'
             );
@@ -268,25 +396,44 @@ const systemFinal = agente.prompt_sistema + "\n" + toolsDescription;
 
             const eventData = actionPayload.data || {};
 
-            const argumentos = {
-    summary: eventData.summary || eventData.title || "Evento agendado desde el chat",
-    description: eventData.description || "",
-    start_datetime: eventData.start + "-05:00",
-    end_datetime: eventData.end + "-05:00"
-};
+            const payloadPendiente = {
+                summary: eventData.summary || eventData.title || "Evento agendado desde el chat",
+                description: eventData.description || "",
+                start: eventData.start,
+                end: eventData.end
+            };
 
-            console.log("Ejecutando GOOGLECALENDAR_CREATE_EVENT con argumentos:", JSON.stringify(argumentos));
+            // Cancelar cualquier pendiente anterior de este agente/usuario
+            await supabase
+                .from('pending_tool_actions')
+                .update({ status: 'cancelled' })
+                .eq('user_id', agente.user_id)
+                .eq('agente_id', targetID)
+                .eq('status', 'pending');
 
-            const resultadoComposio = await ejecutarToolComposio(
-    'GOOGLECALENDAR_CREATE_EVENT',
-    calendarConnection.composio_entity_id,
-    agente.user_id,
-    argumentos
-);
+            // Guardar nueva acción pendiente
+            const { error: errInsertPending } = await supabase
+                .from('pending_tool_actions')
+                .insert([{
+                    user_id: agente.user_id,
+                    agente_id: targetID,
+                    action: 'GOOGLECALENDAR_CREATE_EVENT',
+                    payload: payloadPendiente,
+                    status: 'pending'
+                }]);
 
-            console.log("Resultado Composio Calendar:", JSON.stringify(resultadoComposio));
+            if (errInsertPending) {
+                console.error("Error guardando pending_tool_actions:", errInsertPending);
+                return {
+                    statusCode: 500,
+                    headers,
+                    body: JSON.stringify({
+                        respuesta: "No pude preparar la confirmación del evento."
+                    })
+                };
+            }
 
-            respuestaIA = `Listo, agendé el evento "${argumentos.summary}" en tu Google Calendar.`;
+            respuestaIA = `Voy a agendar "${payloadPendiente.summary}" desde ${payloadPendiente.start} hasta ${payloadPendiente.end}. Responde "sí" para confirmar o "no" para cancelar.`;
         }
 
         // 5. Calcular tokens usados
