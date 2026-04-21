@@ -821,7 +821,7 @@
     showToast(isEnabled ? 'Herramienta activada' : 'Herramienta desactivada');
 }
 
-    async function conectarToolkit(toolkit) {
+async function conectarToolkit(toolkit) {
     try {
         const { data: { session } } = await _supabase.auth.getSession();
         const token = session?.access_token;
