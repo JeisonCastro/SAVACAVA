@@ -393,7 +393,25 @@
         </div>
     </div>
 </div>
+<!-- INTEGRATIONS MODAL -->
+<div id="integrations-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:1001;align-items:center;justify-content:center;">
+    <div class="card" style="width:520px;max-width:92%;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+            <h3 class="card-title" style="margin-bottom:0;">Integraciones del agente</h3>
+            <button onclick="cerrarIntegraciones()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1rem;">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
 
+        <input type="hidden" id="integrations-agent-id">
+        <div class="field">
+            <label>Agente seleccionado</label>
+            <input type="text" id="integrations-agent-name" disabled>
+        </div>
+
+        <div id="integrations-apps-container" style="display:flex;flex-direction:column;gap:.75rem;margin-top:1rem;"></div>
+    </div>
+</div>
 <!-- UPGRADE MODAL -->
 <div class="upgrade-modal" id="upgrade-modal">
     <div class="upgrade-card">
@@ -419,6 +437,7 @@
     let currentUser = null;
     let currentSession = null;
     let planActual = { nombre: 'Free', limite_agentes: 1 };
+    let agenteIntegracionesActual = null;
     let planSeleccionado = { tokens: 500000, precio: '20.000' };
     let upgradeWhatsappUrl = '';
     let todosLosPlanes = [];
@@ -630,6 +649,7 @@
                         <button onclick="abrirChat('${a.id}','${a.name}')" title="Probar" style="background:rgba(14,165,233,0.1);color:var(--accent);border:1px solid var(--border);padding:8px;border-radius:8px;cursor:pointer;"><i class="fas fa-play"></i></button>
                         <button onclick="copiarCDN('${a.id}')" title="Copiar CDN" style="background:rgba(34,211,165,0.1);color:var(--green);border:1px solid var(--border);padding:8px;border-radius:8px;cursor:pointer;"><i class="fas fa-code"></i></button>
                         <button onclick="abrirEdicion('${a.id}')" title="Editar" style="background:rgba(122,152,184,0.1);color:var(--muted);border:1px solid var(--border);padding:8px;border-radius:8px;cursor:pointer;"><i class="fas fa-edit"></i></button>
+                        <button onclick="abrirIntegraciones('${a.id}','${a.name}')" title="Integraciones" style="background:rgba(251,191,36,0.1);color:var(--yellow);border:1px solid var(--border);padding:8px;border-radius:8px;cursor:pointer;"><i class="fas fa-plug"></i></button>
                         <button onclick="eliminarAgente('${a.id}')" title="Borrar" style="background:rgba(248,113,113,0.1);color:var(--red);border:1px solid var(--border);padding:8px;border-radius:8px;cursor:pointer;"><i class="fas fa-trash"></i></button>
                     </div>
                 </div>
@@ -659,6 +679,20 @@
         document.getElementById('edit-domains').value = Array.isArray(a.dominios) ? a.dominios.join(', ') : (a.dominios || '');
         document.getElementById('edit-modal').style.display = 'flex';
     }
+    async function abrirIntegraciones(id, nombre) {
+    agenteIntegracionesActual = id;
+    document.getElementById('integrations-agent-id').value = id;
+    document.getElementById('integrations-agent-name').value = nombre;
+    document.getElementById('integrations-modal').style.display = 'flex';
+    await cargarIntegracionesAgente(id);
+}
+    function cerrarIntegraciones() {
+    document.getElementById('integrations-modal').style.display = 'none';
+    document.getElementById('integrations-agent-id').value = '';
+    document.getElementById('integrations-agent-name').value = '';
+    document.getElementById('integrations-apps-container').innerHTML = '';
+    agenteIntegracionesActual = null;
+}
 
     async function guardarEdicion(btn) {
         const orig = btn.innerText;
