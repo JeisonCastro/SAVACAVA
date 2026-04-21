@@ -260,13 +260,24 @@ if (!esDashboard && !agente.dominios_permitidos.includes(origin)) {
     return `${fecha.getFullYear()}-${pad(fecha.getMonth()+1)}-${pad(fecha.getDate())}T${pad(fecha.getHours())}:${pad(fecha.getMinutes())}:00-05:00`;
 }
 
+// Construir lista de invitados combinando attendees + contact_email
+const attendeesBase = Array.isArray(payload.attendees) ? payload.attendees : [];
+const contactEmail = payload.contact_email || "";
+
+const attendeesFinal = [...new Set([
+    ...attendeesBase,
+    ...(contactEmail ? [contactEmail] : [])
+])].filter(e => e && e.includes('@'));
+
 const argumentos = {
     summary: payload.summary || "Evento agendado desde el chat",
     description: payload.description || "",
     start_datetime: resolverFecha(payload.start),
     end_datetime: resolverFecha(payload.end),
-    attendees: Array.isArray(payload.attendees) ? payload.attendees : []
+    attendees: attendeesFinal
 };
+
+console.log("Invitados al evento:", attendeesFinal);
 
 console.log("Fechas resueltas:", argumentos.start_datetime, argumentos.end_datetime);
 
