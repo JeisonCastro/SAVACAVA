@@ -456,13 +456,15 @@
 
     // ── NAVEGACIÓN ──
     function mostrarVista(vista) {
-        document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-        document.querySelectorAll('nav a').forEach(a => a.classList.remove('active'));
-        document.getElementById('view-' + vista).classList.add('active');
-        document.getElementById('nav-' + vista).classList.add('active');
-        if (vista === 'tokens') cargarLogs();
-        if (vista === 'config') cargarPerfil();
-    }
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    document.querySelectorAll('nav a').forEach(a => a.classList.remove('active'));
+    document.getElementById('view-' + vista).classList.add('active');
+    document.getElementById('nav-' + vista).classList.add('active');
+
+    if (vista === 'tokens') cargarLogs();
+    if (vista === 'config') cargarPerfil();
+    if (vista === 'integraciones') cargarIntegraciones();
+}
 
     // ── SESIÓN ──
     async function verificarSesion() {
@@ -1103,7 +1105,62 @@ async function toggleHerramienta(agenteId, toolkit, isEnabled) {
         await _supabase.from('agente_tools').delete().match({ agente_id: agenteId, toolkit: toolkit });
     }
 }
-    verificarSesion();
+
+    async function procesarCallbackComposio() {
+    const params = new URLSearchParams(window.location.search);
+    const esCallback = params.get('composio_callback');
+    const toolkit = params.get('toolkit');
+
+    if (esCallback !== '1' || !toolkit) return;
+
+    try {
+        const { data: { session } } = await _supabase.auth.getSession();
+        const token = session?.access_token;
+
+        const res = await fetch('/.netlify/functions/guardar-composio-callback', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ toolkit })
+        });
+
+        const raw = await res.text();
+        console.log('Respuesta guardar-composio-callback:', raw);
+
+        let data;
+        try {
+            data = JSON.parse(raw);
+        } catch (e) {
+            showToast('El callback devolvió una respuesta inválida', 'error');
+            return;
+        }
+
+        if (!res.ok) {
+            const errorMsg =
+                typeof data.error === 'string'
+                    ? data.error
+                    : data.error?.message || 'No se pudo guardar la conexión';
+            showToast(errorMsg, 'error');
+            return;
+        }
+
+        showToast(`${toolkit} conectado correctamente`);
+
+        const nuevaUrl = window.location.pathname;
+        window.history.replaceState({}, document.title, nuevaUrl);
+
+        await cargarIntegraciones();
+    } catch (error) {
+        console.error('Error procesando callback Composio:', error);
+        showToast('Error procesando la conexión', 'error');
+    }
+}
+    (async () => {
+    await verificarSesion();
+    await procesarCallbackComposio();
+})();
 </script>
 </body>
 </html>
