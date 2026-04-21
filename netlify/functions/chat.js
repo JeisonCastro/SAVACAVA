@@ -3,7 +3,7 @@ const {
     esConfirmacion,
     esCancelacion,
     construirToolsDescription
-} = require('./lib/tool-workflows');
+} = require('./tool-workflows');
 
 const supabase = createClient(
     process.env.SUPABASE_URL,
