@@ -193,6 +193,7 @@
         <nav>
             <a onclick="mostrarVista('agentes')" id="nav-agentes" class="active"><i class="fas fa-robot"></i> Mis Agentes</a>
             <a onclick="mostrarVista('tokens')" id="nav-tokens"><i class="fas fa-coins"></i> Tokens y Planes</a>
+            <a onclick="mostrarVista('integraciones')" id="nav-integraciones"><i class="fas fa-plug"></i> Integraciones</a>
             <a onclick="mostrarVista('config')" id="nav-config"><i class="fas fa-sliders"></i> Configuración</a>
         </nav>
     </div>
@@ -303,6 +304,32 @@
         </div>
     </div>
 
+     <!-- VISTA INTEGRACIONES -->
+</div> <div class="view" id="view-integraciones">
+        <div class="topbar"><div><h2 class="page-title">Integraciones</h2><p class="page-sub">Conexiones y herramientas de IA</p></div></div>
+        
+        <div class="card" style="margin-bottom:1.5rem">
+            <div class="card-header">
+                <div class="card-icon"><i class="fas fa-plug"></i></div>
+                <span class="card-title">Conexiones OAuth Activas</span>
+            </div>
+            <div class="table-wrap">
+                <table id="table-connections">
+                    <thead><tr><th>Toolkit</th><th>Fecha Conexión</th><th>Estado</th></tr></thead>
+                    <tbody id="connections-body"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header"><div class="card-icon"><i class="fas fa-robot"></i></div><span class="card-title">Configuración de Herramientas</span></div>
+            <div class="field">
+                <label>Seleccionar Agente</label>
+                <select id="select-agente-tools" onchange="cargarHerramientasAgente()"><option value="">Selecciona un agente...</option></select>
+            </div>
+            <div id="tools-container" style="margin-top:1rem"></div>
+        </div>
+    </div>
     <!-- VISTA CONFIG -->
     <div class="view" id="view-config">
         <div class="topbar"><div><h2 class="page-title">Configuración</h2><p class="page-sub">Administra tu perfil y preferencias de cuenta</p></div></div>
@@ -817,7 +844,58 @@ async function cargarUltimasActividades() {
         `;
     }).join('');
 }
+// --- FUNCIONES PARA INTEGRACIONES (COMPOSIO) ---
 
+// 1. Cargar datos al abrir la vista
+async function cargarIntegraciones() {
+    // Cargar Conexiones OAuth
+    const { data: conns, error } = await _supabase.from('composio_connections').select('*');
+    const tbody = document.getElementById('connections-body');
+    
+    if (conns && conns.length > 0) {
+        tbody.innerHTML = conns.map(c => `
+            <tr>
+                <td>${c.toolkit}</td>
+                <td>${new Date(c.connected_at).toLocaleDateString()}</td>
+                <td><span class="badge badge-green">Conectado</span></td>
+            </tr>
+        `).join('');
+    } else {
+        tbody.innerHTML = '<tr><td colspan="3" style="text-align:center">Sin conexiones.</td></tr>';
+    }
+
+    // Cargar Lista de Agentes para el Select
+    const { data: agentes } = await _supabase.from('agentes_ia').select('id, nombre');
+    const select = document.getElementById('select-agente-tools');
+    select.innerHTML = '<option value="">Selecciona un agente...</option>' + 
+                       agentes.map(a => `<option value="${a.id}">${a.nombre}</option>`).join('');
+}
+
+// 2. Cargar herramientas según agente seleccionado
+async function cargarHerramientasAgente() {
+    const agenteId = document.getElementById('select-agente-tools').value;
+    const container = document.getElementById('tools-container');
+    if (!agenteId) return;
+
+    // Aquí consultamos las herramientas (ejemplo de lista fija que luego guardaremos en BD)
+    const herramientasDisponibles = ['googlecalendar', 'gmail', 'whatsapp']; 
+    
+    container.innerHTML = herramientasDisponibles.map(tool => `
+        <div style="display:flex; justify-content:space-between; padding:10px; border-bottom:1px solid var(--border)">
+            <span>${tool.toUpperCase()}</span>
+            <input type="checkbox" onchange="toggleHerramienta('${agenteId}', '${tool}', this.checked)">
+        </div>
+    `).join('');
+}
+
+// 3. Guardar estado en Supabase (Toggle)
+async function toggleHerramienta(agenteId, toolkit, isEnabled) {
+    if (isEnabled) {
+        await _supabase.from('agente_tools').insert({ agente_id: agenteId, toolkit: toolkit, tool_key: toolkit + '_default' });
+    } else {
+        await _supabase.from('agente_tools').delete().match({ agente_id: agenteId, toolkit: toolkit });
+    }
+}
     verificarSesion();
 </script>
 </body>
