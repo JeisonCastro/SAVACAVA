@@ -197,8 +197,19 @@ Si necesitas usar una herramienta, responde SOLO en formato JSON así:
 
 {
   "action": "NOMBRE_TOOL",
-  "data": { ... }
+  "data": {
+    "summary": "Título del evento",
+    "description": "Descripción",
+    "start": "YYYY-MM-DDTHH:MM:SS",
+    "end": "YYYY-MM-DDTHH:MM:SS"
+  }
 }
+
+## REGLAS DE FECHA (CRÍTICO)
+- SIEMPRE convierte fechas a formato ISO 8601
+- Ejemplo: "mañana a las 3pm" → "2026-04-22T15:00:00"
+- NO uses texto como "mañana", "hoy", etc.
+- SIEMPRE devuelve fechas completas
 
 NO expliques nada adicional.
 Si no necesitas herramientas, responde normalmente.
