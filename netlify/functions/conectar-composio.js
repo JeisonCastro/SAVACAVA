@@ -14,6 +14,7 @@ exports.handler = async (event) => {
 
   try {
     const authHeader = event.headers.authorization || event.headers.Authorization;
+
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return {
         statusCode: 401,
@@ -22,7 +23,6 @@ exports.handler = async (event) => {
     }
 
     const token = authHeader.replace('Bearer ', '');
-
     const supabase = createClient(supabaseUrl, supabaseAnonKey, {
       global: {
         headers: {
@@ -58,79 +58,95 @@ exports.handler = async (event) => {
       };
     }
 
-    // 1) Crear o recuperar sesión de usuario en Composio
-    const sessionRes = await fetch('https://backend.composio.dev/api/v3/sessions', {
+    // 1) Buscar auth config del toolkit
+    const authConfigsRes = await fetch(
+      `https://backend.composio.dev/api/v3/auth_configs?toolkit=${encodeURIComponent(toolkit)}`,
+      {
+        method: 'GET',
+        headers: {
+          'x-api-key': composioApiKey,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+
+    const authConfigsRaw = await authConfigsRes.text();
+
+    let authConfigsData;
+    try {
+      authConfigsData = JSON.parse(authConfigsRaw);
+    } catch (e) {
+      return {
+        statusCode: 500,
+        body: JSON.stringify({
+          error: 'Composio devolvió una respuesta no JSON al listar auth configs',
+          debug: authConfigsRaw
+        })
+      };
+    }
+
+    if (!authConfigsRes.ok) {
+      return {
+        statusCode: authConfigsRes.status,
+        body: JSON.stringify({
+          error: authConfigsData?.error || authConfigsData?.message || 'No se pudieron consultar auth configs',
+          debug: authConfigsData
+        })
+      };
+    }
+
+    const authConfigs = authConfigsData?.items || [];
+    const authConfig = authConfigs.find(
+      (cfg) =>
+        cfg?.toolkit?.slug?.toLowerCase() === toolkit.toLowerCase() &&
+        (cfg?.status === 'ENABLED' || !cfg?.status)
+    );
+
+    if (!authConfig?.id) {
+      return {
+        statusCode: 400,
+        body: JSON.stringify({
+          error: `No existe un auth config habilitado para ${toolkit} en Composio`,
+          debug: authConfigsData
+        })
+      };
+    }
+
+    // 2) Crear link OAuth para el usuario
+    const linkRes = await fetch('https://backend.composio.dev/api/v3/connected_accounts/link', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': composioApiKey
+        'x-api-key': composioApiKey,
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        userId: user.id
+        auth_config_id: authConfig.id,
+        user_id: user.id,
+        callback_url: callbackUrl
       })
     });
 
-    const sessionData = await sessionRes.json();
+    const linkRaw = await linkRes.text();
 
-    if (!sessionRes.ok) {
+    let linkData;
+    try {
+      linkData = JSON.parse(linkRaw);
+    } catch (e) {
       return {
         statusCode: 500,
         body: JSON.stringify({
-          error: sessionData?.message || sessionData?.error || 'No se pudo crear la sesión en Composio',
-          debug: sessionData
+          error: 'Composio devolvió una respuesta no JSON al crear el auth link',
+          debug: linkRaw
         })
       };
     }
 
-    const sessionId = sessionData?.id || sessionData?.sessionId || sessionData?.data?.id;
-
-    if (!sessionId) {
+    if (!linkRes.ok) {
       return {
-        statusCode: 500,
+        statusCode: linkRes.status,
         body: JSON.stringify({
-          error: 'Composio no devolvió sessionId',
-          debug: sessionData
-        })
-      };
-    }
-
-    // 2) Iniciar autenticación del toolkit
-    const authRes = await fetch(`https://backend.composio.dev/api/v3/sessions/${sessionId}/connections`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': composioApiKey
-      },
-      body: JSON.stringify({
-        toolkit,
-        callbackUrl
-      })
-    });
-
-    const authData = await authRes.json();
-
-    if (!authRes.ok) {
-      return {
-        statusCode: 500,
-        body: JSON.stringify({
-          error: authData?.message || authData?.error || 'No se pudo iniciar la autenticación en Composio',
-          debug: authData
-        })
-      };
-    }
-
-    const redirectUrl =
-      authData?.redirectUrl ||
-      authData?.url ||
-      authData?.data?.redirectUrl ||
-      authData?.data?.url;
-
-    if (!redirectUrl) {
-      return {
-        statusCode: 500,
-        body: JSON.stringify({
-          error: 'Composio no devolvió URL de autenticación',
-          debug: authData
+          error: linkData?.error || linkData?.message || 'No se pudo crear el link OAuth',
+          debug: linkData
         })
       };
     }
@@ -140,8 +156,9 @@ exports.handler = async (event) => {
       body: JSON.stringify({
         ok: true,
         toolkit,
-        sessionId,
-        redirectUrl
+        authConfigId: authConfig.id,
+        connectedAccountId: linkData.connected_account_id || null,
+        redirectUrl: linkData.redirect_url || null
       })
     };
   } catch (error) {
