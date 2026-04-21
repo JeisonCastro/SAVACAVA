@@ -359,17 +359,20 @@ const systemFinal = agente.prompt_sistema + "\n" + toolsDescription;
 
     const eventData = actionPayload.data || {};
 
-    const payloadPendiente = {
-        summary: eventData.summary || eventData.title || "Evento agendado desde el chat",
-        description: eventData.description || "",
-        start: eventData.start,
-        end: eventData.end,
-        attendees: Array.isArray(eventData.attendees) ? eventData.attendees : [],
-        contact_name: eventData.contact_name || "",
-        contact_email: eventData.contact_email || "",
-        contact_phone: eventData.contact_phone || "",
-        meeting_reason: eventData.meeting_reason || ""
-    };
+    const attendees = Array.isArray(eventData.attendees) ? eventData.attendees : [];
+const inferredEmail = eventData.contact_email || attendees[0] || "";
+
+const payloadPendiente = {
+    summary: eventData.summary || eventData.title || "Evento agendado desde el chat",
+    description: eventData.description || "",
+    start: eventData.start,
+    end: eventData.end,
+    attendees,
+    contact_name: eventData.contact_name || "",
+    contact_email: inferredEmail,
+    contact_phone: eventData.contact_phone || "",
+    meeting_reason: eventData.meeting_reason || ""
+};
 
     const missingFields = getMissingFields('GOOGLECALENDAR_CREATE_EVENT', payloadPendiente);
 
