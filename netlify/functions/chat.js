@@ -225,11 +225,12 @@ if (!esDashboard && !agente.dominios_permitidos.includes(origin)) {
                 const payload = pendingAction.payload || {};
 
                 const argumentos = {
-                    summary: payload.summary || "Evento agendado desde el chat",
-                    description: payload.description || "",
-                    start_datetime: String(payload.start).includes("-05:00") ? payload.start : payload.start + "-05:00",
-                    end_datetime: String(payload.end).includes("-05:00") ? payload.end : payload.end + "-05:00"
-                };
+    summary: payload.summary || "Evento agendado desde el chat",
+    description: payload.description || "",
+    start_datetime: String(payload.start).includes("-05:00") ? payload.start : payload.start + "-05:00",
+    end_datetime: String(payload.end).includes("-05:00") ? payload.end : payload.end + "-05:00",
+    attendees: Array.isArray(payload.attendees) ? payload.attendees : []
+};
 
                 console.log("Ejecutando acción confirmada GOOGLECALENDAR_CREATE_EVENT:", JSON.stringify(argumentos));
 
@@ -355,11 +356,12 @@ const systemFinal = agente.prompt_sistema + "\n" + toolsDescription;
             const eventData = actionPayload.data || {};
 
             const payloadPendiente = {
-                summary: eventData.summary || eventData.title || "Evento agendado desde el chat",
-                description: eventData.description || "",
-                start: eventData.start,
-                end: eventData.end
-            };
+    summary: eventData.summary || eventData.title || "Evento agendado desde el chat",
+    description: eventData.description || "",
+    start: eventData.start,
+    end: eventData.end,
+    attendees: Array.isArray(eventData.attendees) ? eventData.attendees : []
+};
 
             // Cancelar cualquier pendiente anterior de este agente/usuario
             await supabase
