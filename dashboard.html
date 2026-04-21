@@ -821,8 +821,39 @@
     showToast(isEnabled ? 'Herramienta activada' : 'Herramienta desactivada');
 }
 
-    function conectarToolkit(toolkit) {
-    showToast(`Siguiente paso: conectar ${toolkit} con Composio`);
+    async function conectarToolkit(toolkit) {
+    try {
+        const { data: { session } } = await _supabase.auth.getSession();
+        const token = session?.access_token;
+
+        const res = await fetch('/.netlify/functions/conectar-composio', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({
+                toolkit,
+                callbackUrl: `${window.location.origin}/dashboard.html?composio_callback=1&toolkit=${encodeURIComponent(toolkit)}`
+            })
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+            showToast(data.error || 'No se pudo iniciar la conexión', 'error');
+            return;
+        }
+
+        if (!data.redirectUrl) {
+            showToast('Composio no devolvió URL de conexión', 'error');
+            return;
+        }
+
+        window.location.href = data.redirectUrl;
+    } catch (error) {
+        showToast('Error iniciando conexión con Composio', 'error');
+    }
 }
     
     async function guardarEdicion(btn) {
