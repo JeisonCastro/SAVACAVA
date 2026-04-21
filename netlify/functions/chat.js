@@ -226,13 +226,49 @@ if (!esDashboard && !agente.dominios_permitidos.includes(origin)) {
 
                 const payload = pendingAction.payload || {};
 
-                const argumentos = {
+               function resolverFecha(texto) {
+    if (!texto) return null;
+    // Si ya es ISO válido, solo asegurar timezone
+    if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(texto)) {
+        return texto.includes('+') || texto.includes('Z') || /\d{2}:\d{2}$/.test(texto)
+            ? texto
+            : texto + '-05:00';
+    }
+    // Resolver "mañana", "hoy" a fecha real
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+    
+    const horaMatch = texto.match(/(\d{1,2}):(\d{2})/);
+    const hora = horaMatch ? parseInt(horaMatch[1]) : 10;
+    const min = horaMatch ? parseInt(horaMatch[2]) : 0;
+    
+    let fecha = new Date(hoy);
+    
+    if (/ma[ñn]ana/i.test(texto)) {
+        fecha.setDate(fecha.getDate() + 1);
+    } else if (/hoy/i.test(texto)) {
+        // fecha = hoy
+    } else if (/lunes/i.test(texto))    { while(fecha.getDay()!==1) fecha.setDate(fecha.getDate()+1); }
+    else if (/martes/i.test(texto))     { while(fecha.getDay()!==2) fecha.setDate(fecha.getDate()+1); }
+    else if (/mi[eé]rcoles/i.test(texto)){ while(fecha.getDay()!==3) fecha.setDate(fecha.getDate()+1); }
+    else if (/jueves/i.test(texto))     { while(fecha.getDay()!==4) fecha.setDate(fecha.getDate()+1); }
+    else if (/viernes/i.test(texto))    { while(fecha.getDay()!==5) fecha.setDate(fecha.getDate()+1); }
+    
+    fecha.setHours(hora, min, 0, 0);
+    
+    const pad = n => String(n).padStart(2, '0');
+    return `${fecha.getFullYear()}-${pad(fecha.getMonth()+1)}-${pad(fecha.getDate())}T${pad(fecha.getHours())}:${pad(fecha.getMinutes())}:00-05:00`;
+}
+
+const argumentos = {
     summary: payload.summary || "Evento agendado desde el chat",
     description: payload.description || "",
-    start_datetime: String(payload.start).includes("-05:00") ? payload.start : payload.start + "-05:00",
-    end_datetime: String(payload.end).includes("-05:00") ? payload.end : payload.end + "-05:00",
+    start_datetime: resolverFecha(payload.start),
+    end_datetime: resolverFecha(payload.end),
     attendees: Array.isArray(payload.attendees) ? payload.attendees : []
 };
+
+console.log("Fechas resueltas:", argumentos.start_datetime, argumentos.end_datetime);
 
                 console.log("Ejecutando acción confirmada GOOGLECALENDAR_CREATE_EVENT:", JSON.stringify(argumentos));
 
