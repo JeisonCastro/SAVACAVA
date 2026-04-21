@@ -59,6 +59,14 @@ function construirToolsDescription(toolsDisponibles = []) {
     return `- ${Object.keys(TOOL_DEFINITIONS).find(k => TOOL_DEFINITIONS[k] === def)}:\n  ${def.label}.`;
   }).join("\n\n");
 
+  // Fechas dinámicas Colombia
+  const ahora = new Date();
+  const opcionesFecha = { timeZone: 'America/Bogota', year: 'numeric', month: '2-digit', day: '2-digit' };
+  const partes = new Intl.DateTimeFormat('en-CA', opcionesFecha).format(ahora); // YYYY-MM-DD
+  const mananaDate = new Date(ahora);
+  mananaDate.setDate(mananaDate.getDate() + 1);
+  const partesManana = new Intl.DateTimeFormat('en-CA', opcionesFecha).format(mananaDate);
+
   return `
 ## HERRAMIENTAS DISPONIBLES
 
@@ -74,24 +82,6 @@ Si necesitas usar una herramienta, responde SOLO en formato JSON así:
   "data": { ... }
 }
 
-## REGLAS DE FECHA (CRÍTICO)
-- SIEMPRE convierte fechas a formato ISO 8601
-- Ejemplo: "mañana a las 3pm" → "2026-04-22T15:00:00"
-- NO uses texto como "mañana", "hoy", etc.
-- SIEMPRE devuelve fechas completas
-
-## REGLAS ESPECÍFICAS PARA CALENDAR
-- Si el objetivo es agendar una reunión, prioriza GOOGLECALENDAR_CREATE_EVENT.
-- Si el usuario comparte correo para una reunión, úsalo como invitado del evento, no como correo separado.
-- Si falta información para agendar, pide los datos faltantes antes de confirmar.
-- No envíes un email separado si lo que corresponde es crear o completar el evento.
-
-## REGLA DE FECHA ACTUAL
-- Usa como fecha actual: 2026-04-21
-- Si el usuario dice "mañana", corresponde a 2026-04-22
-- Nunca uses años pasados salvo que el usuario los mencione explícitamente
-
-// En construirToolsDescription, agrega esta regla:
 ## FLUJO CORRECTO PARA AGENDAR
 1. Si el usuario quiere agendar y NO tienes todos los datos → pregunta en texto normal
 2. Cuando el usuario te dé los datos faltantes → genera el JSON inmediatamente
@@ -99,14 +89,18 @@ Si necesitas usar una herramienta, responde SOLO en formato JSON así:
 4. NUNCA generes JSON con campos vacíos o inventados
 
 ## REGLAS DE FECHA (CRÍTICO)
-- SIEMPRE convierte fechas relativas a ISO 8601 COMPLETO antes de generar el JSON
-- La fecha actual es: ${new Date().toLocaleDateString('es-CO', {timeZone:'America/Bogota'})}
-- "mañana" = calcula la fecha exacta y escríbela en formato YYYY-MM-DDTHH:MM:00
-- "hoy" = la fecha de hoy en formato YYYY-MM-DDTHH:MM:00  
-- NUNCA escribas "mañana", "hoy", "el jueves" en los campos start o end
-- SIEMPRE escribe la fecha numérica completa: "2026-04-22T10:00:00"
-- Ejemplo CORRECTO: "start": "2026-04-22T10:00:00"
+- La fecha actual en Colombia es: ${partes}
+- Si el usuario dice "mañana", corresponde a: ${partesManana}
+- NUNCA escribas palabras como "mañana", "hoy", "el jueves" en los campos start o end del JSON
+- SIEMPRE escribe la fecha numérica completa en formato: YYYY-MM-DDTHH:MM:00
+- Ejemplo CORRECTO: "start": "${partesManana}T10:00:00"
 - Ejemplo INCORRECTO: "start": "mañana 10:00"
+
+## REGLAS ESPECÍFICAS PARA CALENDAR
+- Si el objetivo es agendar una reunión, prioriza GOOGLECALENDAR_CREATE_EVENT.
+- Si el usuario comparte correo para una reunión, úsalo como invitado del evento.
+- Si falta información para agendar, pide los datos faltantes antes de confirmar.
+- No envíes un email separado si lo que corresponde es crear o completar el evento.
 
 NO expliques nada adicional.
 Si no necesitas herramientas, responde normalmente.
