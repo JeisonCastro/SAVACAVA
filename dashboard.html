@@ -383,7 +383,6 @@
     </div>
 </div>
 
-
 <script>
     const SUPABASE_URL = "https://zsxkfqnalkfvwjrzuqip.supabase.co";
     const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzeGtmcW5hbGtmdndqcnp1cWlwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0NDgyODMsImV4cCI6MjA5MjAyNDI4M30.R4j23l3IHEL966VupeR-Sx_KtDQzB8NzfJtEVDGewGs";
@@ -605,7 +604,6 @@
                         <button onclick="copiarCDN('${a.id}')" title="Copiar CDN" style="background:rgba(34,211,165,0.1);color:var(--green);border:1px solid var(--border);padding:8px;border-radius:8px;cursor:pointer;"><i class="fas fa-code"></i></button>
                         <button onclick="abrirEdicion('${a.id}')" title="Editar" style="background:rgba(122,152,184,0.1);color:var(--muted);border:1px solid var(--border);padding:8px;border-radius:8px;cursor:pointer;"><i class="fas fa-edit"></i></button>
                         <button onclick="eliminarAgente('${a.id}')" title="Borrar" style="background:rgba(248,113,113,0.1);color:var(--red);border:1px solid var(--border);padding:8px;border-radius:8px;cursor:pointer;"><i class="fas fa-trash"></i></button>
-                        <button onclick="abrirIntegraciones('${a.id}')" title="Integraciones" style="background:rgba(59,130,246,0.1);color:var(--blue);border:1px solid var(--border);padding:8px;border-radius:8px;cursor:pointer;"><i class="fas fa-plug"></i></button>
                     </div>
                 </div>
             </div>
@@ -819,38 +817,6 @@ async function cargarUltimasActividades() {
         `;
     }).join('');
 }
-    // Variable para saber qué agente estamos editando
-let agenteSeleccionadoId = null;
-
-// Función para abrir el modal (llámala desde el botón de tu tarjeta de agente)
-function abrirIntegraciones(idAgente) {
-    agenteSeleccionadoId = idAgente;
-    $('#modalIntegraciones').modal('show');
-    // Aquí podrías cargar el estado actual de las herramientas desde Supabase
-}
-
-// Guardar en Supabase
-document.getElementById('btnGuardarIntegraciones').addEventListener('click', async () => {
-    const toggles = document.querySelectorAll('.app-toggle');
-    
-    for (let t of toggles) {
-        if (t.checked) {
-            const { error } = await supabase
-                .from('agente_tools')
-                .insert([{
-                    agente_id: agenteSeleccionadoId,
-                    tool_key: t.getAttribute('data-key'),
-                    toolkit: t.getAttribute('data-toolkit'),
-                    enabled: true
-                }]);
-            
-            if (error) console.error("Error guardando tool:", error);
-        }
-    }
-    
-    alert("¡Herramientas configuradas! Ahora tu agente es más inteligente.");
-    $('#modalIntegraciones').modal('hide');
-});
 
     verificarSesion();
 </script>
