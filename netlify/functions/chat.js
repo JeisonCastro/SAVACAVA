@@ -88,6 +88,50 @@ if (!esDashboard && !agente.dominios_permitidos.includes(origin)) {
 
         const saldoActual = perfil.token_balance ?? 0;
 
+                // 2.5 Obtener herramientas activas del agente
+        const { data: agentTools, error: errTools } = await supabase
+            .from('agente_tools')
+            .select('tool_key, toolkit, enabled')
+            .eq('agente_id', targetID)
+            .eq('enabled', true);
+
+        if (errTools) {
+            console.error("Error agente_tools:", errTools);
+            return {
+                statusCode: 500,
+                headers,
+                body: JSON.stringify({ respuesta: "No se pudieron cargar las herramientas del agente." })
+            };
+        }
+
+        // 2.6 Obtener conexiones activas del usuario
+        const { data: userConnections, error: errConnections } = await supabase
+            .from('composio_connections')
+            .select('toolkit, composio_entity_id, connected_at')
+            .eq('user_id', agente.user_id);
+
+        if (errConnections) {
+            console.error("Error composio_connections:", errConnections);
+            return {
+                statusCode: 500,
+                headers,
+                body: JSON.stringify({ respuesta: "No se pudieron cargar las conexiones del usuario." })
+            };
+        }
+
+        // 2.7 Cruzar tools activas del agente con conexiones del usuario
+        const toolkitsConectados = new Set(
+            (userConnections || []).map(c => String(c.toolkit).toLowerCase())
+        );
+
+        const toolsDisponibles = (agentTools || []).filter(tool =>
+            toolkitsConectados.has(String(tool.toolkit).toLowerCase())
+        );
+
+        console.log("Herramientas activas del agente:", JSON.stringify(agentTools || []));
+        console.log("Conexiones del usuario:", JSON.stringify(userConnections || []));
+        console.log("Tools disponibles para ejecutar:", JSON.stringify(toolsDisponibles || []));
+
         // 3. Verificar si tiene saldo suficiente
         if (saldoActual < 100) {
             return {
