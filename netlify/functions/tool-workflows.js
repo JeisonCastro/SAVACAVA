@@ -91,6 +91,13 @@ Si necesitas usar una herramienta, responde SOLO en formato JSON así:
 - Si el usuario dice "mañana", corresponde a 2026-04-22
 - Nunca uses años pasados salvo que el usuario los mencione explícitamente
 
+// En construirToolsDescription, agrega esta regla:
+## FLUJO CORRECTO PARA AGENDAR
+1. Si el usuario quiere agendar y NO tienes todos los datos → pregunta en texto normal
+2. Cuando el usuario te dé los datos faltantes → genera el JSON inmediatamente
+3. NUNCA sigas pidiendo datos si ya los tienes
+4. NUNCA generes JSON con campos vacíos o inventados
+
 NO expliques nada adicional.
 Si no necesitas herramientas, responde normalmente.
 `;
