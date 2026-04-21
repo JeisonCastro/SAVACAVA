@@ -328,6 +328,7 @@ const systemFinal = agente.prompt_sistema + "\n" + toolsDescription;
         }
 
         let respuestaIA = aiData.choices[0].message.content;
+        console.log("Respuesta raw DeepSeek:", respuestaIA);
 
         // Intentar interpretar respuesta como acción JSON
         let actionPayload = null;
