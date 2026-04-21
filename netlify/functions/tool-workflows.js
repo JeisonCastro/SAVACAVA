@@ -98,6 +98,16 @@ Si necesitas usar una herramienta, responde SOLO en formato JSON así:
 3. NUNCA sigas pidiendo datos si ya los tienes
 4. NUNCA generes JSON con campos vacíos o inventados
 
+## REGLAS DE FECHA (CRÍTICO)
+- SIEMPRE convierte fechas relativas a ISO 8601 COMPLETO antes de generar el JSON
+- La fecha actual es: ${new Date().toLocaleDateString('es-CO', {timeZone:'America/Bogota'})}
+- "mañana" = calcula la fecha exacta y escríbela en formato YYYY-MM-DDTHH:MM:00
+- "hoy" = la fecha de hoy en formato YYYY-MM-DDTHH:MM:00  
+- NUNCA escribas "mañana", "hoy", "el jueves" en los campos start o end
+- SIEMPRE escribe la fecha numérica completa: "2026-04-22T10:00:00"
+- Ejemplo CORRECTO: "start": "2026-04-22T10:00:00"
+- Ejemplo INCORRECTO: "start": "mañana 10:00"
+
 NO expliques nada adicional.
 Si no necesitas herramientas, responde normalmente.
 `;
