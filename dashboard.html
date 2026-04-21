@@ -304,8 +304,8 @@
         </div>
     </div>
 
-    <!-- VISTA INTEGRACIONES -->
-    <div class="view" id="view-integraciones">
+     <!-- VISTA INTEGRACIONES -->
+</div> <div class="view" id="view-integraciones">
         <div class="topbar"><div><h2 class="page-title">Integraciones</h2><p class="page-sub">Conexiones y herramientas de IA</p></div></div>
         
         <div class="card" style="margin-bottom:1.5rem">
@@ -436,14 +436,13 @@
     }
 
     // ── NAVEGACIÓN ──
-    async function mostrarVista(vista) {
+    function mostrarVista(vista) {
         document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
         document.querySelectorAll('nav a').forEach(a => a.classList.remove('active'));
         document.getElementById('view-' + vista).classList.add('active');
         document.getElementById('nav-' + vista).classList.add('active');
-        if (vista === 'tokens') await cargarLogs();
-        if (vista === 'config') await cargarPerfil();
-        if (vista === 'integraciones') await cargarIntegraciones();
+        if (vista === 'tokens') cargarLogs();
+        if (vista === 'config') cargarPerfil();
     }
 
     // ── SESIÓN ──
@@ -609,7 +608,7 @@
 
     // ── CARGAR Y RENDERIZAR AGENTES ──
     async function cargarAgentes() {
-        const { data } = await _supabase.from('agentes_ia').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: false });
+        const { data } = await _supabase.from('agentes_ia').select('*').eq('user_id', currentUser.id);
         if (data) {
             agentes = data.map(a => ({ id: a.id, name: a.nombre_agente, prompt: a.prompt_sistema, dominios: a.dominios_permitidos }));
             renderAgentes();
@@ -847,167 +846,56 @@ async function cargarUltimasActividades() {
 }
 // --- FUNCIONES PARA INTEGRACIONES (COMPOSIO) ---
 
-const HERRAMIENTAS_DISPONIBLES = [
-    {
-        toolkit: 'googlecalendar',
-        tool_key: 'GOOGLECALENDAR_CREATE_EVENT',
-        label: 'Google Calendar · Crear eventos'
-    },
-    {
-        toolkit: 'gmail',
-        tool_key: 'GMAIL_SEND_EMAIL',
-        label: 'Gmail · Enviar correos'
-    },
-    {
-        toolkit: 'googledrive',
-        tool_key: 'GOOGLEDRIVE_FIND_FILE',
-        label: 'Google Drive · Buscar archivos'
-    }
-];
-
 // 1. Cargar datos al abrir la vista
 async function cargarIntegraciones() {
+    // Cargar Conexiones OAuth
+    const { data: conns, error } = await _supabase.from('composio_connections').select('*');
     const tbody = document.getElementById('connections-body');
-    const select = document.getElementById('select-agente-tools');
-    const container = document.getElementById('tools-container');
-
-    container.innerHTML = '';
-    select.innerHTML = '<option value="">Selecciona un agente...</option>';
-
-    const [connectionsRes, agentesRes] = await Promise.all([
-        _supabase
-            .from('composio_connections')
-            .select('id, toolkit, composio_entity_id, connected_at')
-            .order('connected_at', { ascending: false }),
-        _supabase
-            .from('agentes_ia')
-            .select('id, nombre_agente')
-            .eq('user_id', currentUser.id)
-            .order('created_at', { ascending: false })
-    ]);
-
-    const conns = connectionsRes.data || [];
-    const agentesLista = agentesRes.data || [];
-
-    if (connectionsRes.error) {
-        console.error('Error al cargar conexiones:', connectionsRes.error);
-        tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:var(--red)">Error al cargar conexiones.</td></tr>';
-    } else if (conns.length > 0) {
+    
+    if (conns && conns.length > 0) {
         tbody.innerHTML = conns.map(c => `
             <tr>
                 <td>${c.toolkit}</td>
-                <td>${new Date(c.connected_at).toLocaleString('es-CO')}</td>
+                <td>${new Date(c.connected_at).toLocaleDateString()}</td>
                 <td><span class="badge badge-green">Conectado</span></td>
             </tr>
         `).join('');
     } else {
-        tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:var(--dim);padding:1rem">Sin conexiones activas.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="3" style="text-align:center">Sin conexiones.</td></tr>';
     }
 
-    if (agentesRes.error) {
-        console.error('Error al cargar agentes para integraciones:', agentesRes.error);
-        select.innerHTML = '<option value="">No se pudieron cargar los agentes</option>';
-        return;
-    }
-
-    select.innerHTML += agentesLista.map(a => `<option value="${a.id}">${a.nombre_agente}</option>`).join('');
+    // Cargar Lista de Agentes para el Select
+    const { data: agentes } = await _supabase.from('agentes_ia').select('id, nombre');
+    const select = document.getElementById('select-agente-tools');
+    select.innerHTML = '<option value="">Selecciona un agente...</option>' + 
+                       agentes.map(a => `<option value="${a.id}">${a.nombre}</option>`).join('');
 }
 
 // 2. Cargar herramientas según agente seleccionado
 async function cargarHerramientasAgente() {
-    const agenteId = Number(document.getElementById('select-agente-tools').value);
+    const agenteId = document.getElementById('select-agente-tools').value;
     const container = document.getElementById('tools-container');
-    container.innerHTML = '';
-
     if (!agenteId) return;
 
-    const [toolsRes, connectionsRes] = await Promise.all([
-        _supabase
-            .from('agente_tools')
-            .select('id, toolkit, tool_key, enabled')
-            .eq('agente_id', agenteId),
-        _supabase
-            .from('composio_connections')
-            .select('toolkit')
-            .order('connected_at', { ascending: false })
-    ]);
-
-    if (toolsRes.error) {
-        console.error('Error al cargar herramientas:', toolsRes.error);
-        container.innerHTML = '<div style="color:var(--red);font-size:.85rem">No se pudieron cargar las herramientas.</div>';
-        return;
-    }
-
-    const toolsActivas = new Map((toolsRes.data || []).map(t => [t.tool_key, t]));
-    const toolkitsConectados = new Set((connectionsRes.data || []).map(c => c.toolkit));
-
-    container.innerHTML = HERRAMIENTAS_DISPONIBLES.map(tool => {
-        const toolGuardada = toolsActivas.get(tool.tool_key);
-        const checked = toolGuardada?.enabled ? 'checked' : '';
-        const connected = toolkitsConectados.has(tool.toolkit);
-        const disabled = connected ? '' : 'disabled';
-        const estado = connected
-            ? '<span class="badge badge-green">OAuth conectado</span>'
-            : '<span class="badge badge-yellow">Conecta primero la app</span>';
-
-        return `
-            <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px;border-bottom:1px solid var(--border)">
-                <div>
-                    <div style="color:var(--text);font-size:.88rem">${tool.label}</div>
-                    <div style="font-size:.75rem;color:var(--muted);margin-top:4px">${estado}</div>
-                </div>
-                <input type="checkbox" ${checked} ${disabled} onchange="toggleHerramienta(${agenteId}, '${tool.tool_key}', '${tool.toolkit}', this.checked)">
-            </div>
-        `;
-    }).join('');
+    // Aquí consultamos las herramientas (ejemplo de lista fija que luego guardaremos en BD)
+    const herramientasDisponibles = ['googlecalendar', 'gmail', 'whatsapp']; 
+    
+    container.innerHTML = herramientasDisponibles.map(tool => `
+        <div style="display:flex; justify-content:space-between; padding:10px; border-bottom:1px solid var(--border)">
+            <span>${tool.toUpperCase()}</span>
+            <input type="checkbox" onchange="toggleHerramienta('${agenteId}', '${tool}', this.checked)">
+        </div>
+    `).join('');
 }
 
-// 3. Guardar estado en Supabase (Toggle) sin duplicados
-async function toggleHerramienta(agenteId, toolKey, toolkit, isEnabled) {
-    const payload = {
-        agente_id: Number(agenteId),
-        tool_key: toolKey,
-        toolkit,
-        enabled: isEnabled
-    };
-
-    const { data: existente, error: findError } = await _supabase
-        .from('agente_tools')
-        .select('id, enabled')
-        .eq('agente_id', Number(agenteId))
-        .eq('tool_key', toolKey)
-        .maybeSingle();
-
-    if (findError) {
-        console.error('Error verificando herramienta:', findError);
-        showToast('No se pudo actualizar la herramienta', 'error');
-        await cargarHerramientasAgente();
-        return;
-    }
-
-    let error = null;
-
-    if (existente) {
-        ({ error } = await _supabase
-            .from('agente_tools')
-            .update({ enabled: isEnabled, toolkit })
-            .eq('id', existente.id));
+// 3. Guardar estado en Supabase (Toggle)
+async function toggleHerramienta(agenteId, toolkit, isEnabled) {
+    if (isEnabled) {
+        await _supabase.from('agente_tools').insert({ agente_id: agenteId, toolkit: toolkit, tool_key: toolkit + '_default' });
     } else {
-        ({ error } = await _supabase
-            .from('agente_tools')
-            .insert(payload));
+        await _supabase.from('agente_tools').delete().match({ agente_id: agenteId, toolkit: toolkit });
     }
-
-    if (error) {
-        console.error('Error guardando herramienta:', error);
-        showToast('No se pudo guardar el cambio', 'error');
-        await cargarHerramientasAgente();
-        return;
-    }
-
-    showToast(isEnabled ? 'Herramienta activada' : 'Herramienta desactivada');
 }
-
     verificarSesion();
 </script>
 </body>
