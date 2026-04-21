@@ -86,6 +86,11 @@ Si necesitas usar una herramienta, responde SOLO en formato JSON así:
 - Si falta información para agendar, pide los datos faltantes antes de confirmar.
 - No envíes un email separado si lo que corresponde es crear o completar el evento.
 
+## REGLA DE FECHA ACTUAL
+- Usa como fecha actual: 2026-04-21
+- Si el usuario dice "mañana", corresponde a 2026-04-22
+- Nunca uses años pasados salvo que el usuario los mencione explícitamente
+
 NO expliques nada adicional.
 Si no necesitas herramientas, responde normalmente.
 `;
