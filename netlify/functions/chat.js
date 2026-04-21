@@ -400,6 +400,11 @@ if (mencionaCalendar) {
     console.log("Pending action vacío creado por intención textual detectada");
 }
 
+        // Logs de diagnóstico
+console.log("Pending action al inicio del request:", JSON.stringify(pendingAction));
+console.log("Action payload parseado:", JSON.stringify(actionPayload));
+console.log("Menciona calendar (intención textual):", mencionaCalendar);
+
         // Ejecutar Google Calendar si el modelo pidió esa tool
 
         if (actionPayload && actionPayload.action === 'GOOGLECALENDAR_CREATE_EVENT') {
