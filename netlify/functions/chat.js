@@ -5,6 +5,39 @@ const supabase = createClient(
     process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
+async function ejecutarToolComposio(toolSlug, connectedAccountId, args) {
+    const res = await fetch(`https://backend.composio.dev/api/v3.1/tools/execute/${toolSlug}`, {
+        method: 'POST',
+        headers: {
+            'x-api-key': process.env.COMPOSIO_API_KEY,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            connected_account_id: connectedAccountId,
+            arguments: args
+        })
+    });
+
+    const raw = await res.text();
+
+    let data;
+    try {
+        data = JSON.parse(raw);
+    } catch (e) {
+        throw new Error(`Respuesta inválida de Composio: ${raw}`);
+    }
+
+    if (!res.ok) {
+        const msg =
+            typeof data.error === 'string'
+                ? data.error
+                : data.error?.message || 'Error ejecutando tool en Composio';
+        throw new Error(msg);
+    }
+
+    return data;
+}
+
 exports.handler = async (event) => {
 
     const headers = {
@@ -188,14 +221,60 @@ const systemFinal = agente.prompt_sistema + "\n" + toolsDescription;
             })
         });
 
-        const aiData = await aiResponse.json();
+                const aiData = await aiResponse.json();
 
         if (!aiData.choices) {
             console.error("Error DeepSeek:", aiData);
             throw new Error("Error en la respuesta de la IA");
         }
 
-        const respuestaIA = aiData.choices[0].message.content;
+        let respuestaIA = aiData.choices[0].message.content;
+
+        // Intentar interpretar respuesta como acción JSON
+        let actionPayload = null;
+        try {
+            actionPayload = JSON.parse(respuestaIA);
+        } catch (_) {
+            actionPayload = null;
+        }
+
+        // Ejecutar Google Calendar si el modelo pidió esa tool
+        if (actionPayload && actionPayload.action === 'GOOGLECALENDAR_CREATE_EVENT') {
+            const calendarConnection = (userConnections || []).find(
+                c => String(c.toolkit).toLowerCase() === 'googlecalendar'
+            );
+
+            if (!calendarConnection?.composio_entity_id) {
+                return {
+                    statusCode: 400,
+                    headers,
+                    body: JSON.stringify({
+                        respuesta: "Google Calendar no está conectado para este usuario."
+                    })
+                };
+            }
+
+            const eventData = actionPayload.data || {};
+
+            const argumentos = {
+                summary: eventData.summary || eventData.title || "Evento agendado desde el chat",
+                description: eventData.description || "",
+                start_datetime: eventData.start,
+                end_datetime: eventData.end
+            };
+
+            console.log("Ejecutando GOOGLECALENDAR_CREATE_EVENT con argumentos:", JSON.stringify(argumentos));
+
+            const resultadoComposio = await ejecutarToolComposio(
+                'GOOGLECALENDAR_CREATE_EVENT',
+                calendarConnection.composio_entity_id,
+                argumentos
+            );
+
+            console.log("Resultado Composio Calendar:", JSON.stringify(resultadoComposio));
+
+            respuestaIA = `Listo, agendé el evento "${argumentos.summary}" en tu Google Calendar.`;
+        }
 
         // 5. Calcular tokens usados
         const totalCaracteres =
