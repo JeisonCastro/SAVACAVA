@@ -1,6 +1,5 @@
 const { createClient } = require('@supabase/supabase-js');
 const {
-    TOOL_DEFINITIONS,
     esConfirmacion,
     esCancelacion,
     construirToolsDescription
@@ -304,7 +303,6 @@ if (!esDashboard && !agente.dominios_permitidos.includes(origin)) {
 const toolsDescription = construirToolsDescription(toolsDisponibles);
 const systemFinal = agente.prompt_sistema + "\n" + toolsDescription;
 
-const systemFinal = agente.prompt_sistema + "\n" + toolsDescription;
         // 4. Llamada a DeepSeek
         const aiResponse = await fetch('https://api.deepseek.com/v1/chat/completions', {
             method: 'POST',
