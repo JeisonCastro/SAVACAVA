@@ -5,7 +5,7 @@ const supabase = createClient(
     process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-async function ejecutarToolComposio(toolSlug, connectedAccountId, args) {
+async function ejecutarToolComposio(toolSlug, connectedAccountId, userId, args) {
     const res = await fetch(`https://backend.composio.dev/api/v3.1/tools/execute/${toolSlug}`, {
         method: 'POST',
         headers: {
@@ -14,6 +14,7 @@ async function ejecutarToolComposio(toolSlug, connectedAccountId, args) {
         },
         body: JSON.stringify({
             connected_account_id: connectedAccountId,
+            user_id: userId,
             arguments: args
         })
     });
@@ -266,10 +267,11 @@ const systemFinal = agente.prompt_sistema + "\n" + toolsDescription;
             console.log("Ejecutando GOOGLECALENDAR_CREATE_EVENT con argumentos:", JSON.stringify(argumentos));
 
             const resultadoComposio = await ejecutarToolComposio(
-                'GOOGLECALENDAR_CREATE_EVENT',
-                calendarConnection.composio_entity_id,
-                argumentos
-            );
+    'GOOGLECALENDAR_CREATE_EVENT',
+    calendarConnection.composio_entity_id,
+    agente.user_id,
+    argumentos
+);
 
             console.log("Resultado Composio Calendar:", JSON.stringify(resultadoComposio));
 
