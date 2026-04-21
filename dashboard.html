@@ -286,6 +286,40 @@
         </div>
 
         <!-- Tabla de planes de suscripción -->
+        <div id="view-integraciones" style="display:none;">
+    <h2 class="section-title" style="margin-bottom:1rem">Centro de Integraciones (Composio)</h2>
+    
+    <div class="card" style="margin-bottom:1.5rem">
+        <div class="card-header">
+            <div class="card-icon"><i class="fas fa-plug"></i></div>
+            <span class="card-title">Conexiones OAuth Activas</span>
+        </div>
+        <div class="table-wrap">
+            <table id="table-connections">
+                <thead>
+                    <tr><th>Toolkit</th><th>Fecha Conexión</th><th>Estado</th></tr>
+                </thead>
+                <tbody id="connections-body">
+                    </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <div class="card-icon"><i class="fas fa-robot"></i></div>
+            <span class="card-title">Configuración de Herramientas</span>
+        </div>
+        <div class="field">
+            <label>Seleccionar Agente</label>
+            <select id="select-agente-tools" onchange="cargarHerramientasAgente()">
+                <option value="">Selecciona un agente...</option>
+            </select>
+        </div>
+        <div id="tools-container" style="margin-top:1rem">
+            </div>
+    </div>
+</div>
         <div class="card" style="margin-bottom:1.5rem">
             <div class="card-header"><div class="card-icon"><i class="fas fa-crown"></i></div><span class="card-title">Planes de suscripción</span></div>
             <div class="table-wrap">
