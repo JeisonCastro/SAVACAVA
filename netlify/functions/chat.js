@@ -427,7 +427,7 @@ INSTRUCCIONES:
         console.log("Llamando a DeepSeek...");
 
 const controller = new AbortController();
-const timeout = setTimeout(() => controller.abort(), 20000);
+const timeout = setTimeout(() => controller.abort(), 12000);
 
 let aiResponse;
 try {
@@ -449,14 +449,13 @@ try {
 
 console.log("DeepSeek respondió con status:", aiResponse.status);
 
-        const aiRaw = await aiResponse.text();
-console.log("Respuesta cruda DeepSeek:", aiRaw);
-
-let aiData;
-try {
-    aiData = JSON.parse(aiRaw);
-} catch (e) {
-    throw new Error(`DeepSeek devolvió una respuesta no JSON: ${aiRaw}`);
+        async function leerTextoConTimeout(response, ms = 8000) {
+    return await Promise.race([
+        response.text(),
+        new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Timeout leyendo respuesta de DeepSeek')), ms)
+        )
+    ]);
 }
 
 if (!aiResponse.ok || !aiData.choices) {
@@ -698,13 +697,18 @@ if (!aiResponse.ok || !aiData.choices) {
             })
         };
 
-    } catch (err) {
+   } catch (err) {
     console.error("Error general:", err);
 
-    const mensaje =
-        err.name === 'AbortError'
-            ? "La IA tardó demasiado en responder. Intenta de nuevo."
-            : (err.message || "Error procesando la solicitud.");
+    let mensaje = "Error procesando la solicitud.";
+
+    if (err.name === 'AbortError') {
+        mensaje = "La IA tardó demasiado en responder. Intenta de nuevo.";
+    } else if (String(err.message || "").includes("Timeout leyendo respuesta de DeepSeek")) {
+        mensaje = "La IA respondió, pero tardó demasiado en entregar el contenido. Intenta de nuevo.";
+    } else if (err.message) {
+        mensaje = err.message;
+    }
 
     return {
         statusCode: 500,
