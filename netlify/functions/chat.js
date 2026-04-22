@@ -6,7 +6,8 @@ const {
     getMissingFields,
     buildMissingFieldsQuestion,
     enrichCalendarPayloadFromText,
-    seemsContactInfo
+    seemsContactInfo,
+    detectWorkflowIntent
 } = require('./tool-workflows');
 
 const supabase = createClient(
