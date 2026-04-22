@@ -434,9 +434,11 @@ INSTRUCCIONES:
         console.log("Llamando a DeepSeek...");
 
 const controller = new AbortController();
-const timeout = setTimeout(() => controller.abort(), 12000);
+const timeout = setTimeout(() => controller.abort(), 20000);
 
 let aiResponse;
+let aiData;
+
 try {
     aiResponse = await fetch('https://api.deepseek.com/v1/chat/completions', {
         method: 'POST',
@@ -445,38 +447,22 @@ try {
             'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-    model: "deepseek-chat",
-    messages: mensajes,
-    temperature: 0.2
-}),
+            model: "deepseek-chat",
+            messages: mensajes,
+            temperature: 0.2
+        }),
         signal: controller.signal
     });
+
+    console.log("DeepSeek respondió con status:", aiResponse.status);
+
+    aiData = await aiResponse.json();
+    console.log("Respuesta JSON DeepSeek:", JSON.stringify(aiData));
 } finally {
     clearTimeout(timeout);
 }
 
-console.log("DeepSeek respondió con status:", aiResponse.status);
-
-async function leerTextoConTimeout(response, ms = 8000) {
-    return await Promise.race([
-        response.text(),
-        new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('Timeout leyendo respuesta de DeepSeek')), ms)
-        )
-    ]);
-}
-
-const aiRaw = await leerTextoConTimeout(aiResponse, 15000);
-console.log("Respuesta cruda DeepSeek:", aiRaw);
-
-let aiData;
-try {
-    aiData = JSON.parse(aiRaw);
-} catch (e) {
-    throw new Error(`DeepSeek devolvió una respuesta no JSON: ${aiRaw}`);
-}
-
-if (!aiResponse.ok || !aiData.choices) {
+if (!aiResponse.ok || !aiData?.choices) {
     console.error("Error DeepSeek:", aiData);
     throw new Error(aiData?.error?.message || "Error en la respuesta de la IA");
 }
@@ -715,15 +701,13 @@ console.log("Respuesta raw DeepSeek:", respuestaIA);
             })
         };
 
-   } catch (err) {
+  } catch (err) {
     console.error("Error general:", err);
 
     let mensaje = "Error procesando la solicitud.";
 
     if (err.name === 'AbortError') {
         mensaje = "La IA tardó demasiado en responder. Intenta de nuevo.";
-    } else if (String(err.message || "").includes("Timeout leyendo respuesta de DeepSeek")) {
-        mensaje = "La IA respondió, pero tardó demasiado en entregar el contenido. Intenta de nuevo.";
     } else if (err.message) {
         mensaje = err.message;
     }
