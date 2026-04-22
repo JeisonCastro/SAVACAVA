@@ -554,7 +554,7 @@ INSTRUCCIÓN ADICIONAL:
 }
 
         if (pendingAction) {
-            systemFinal += `
+    systemFinal += `
 
 ## ACCIÓN PENDIENTE EN CURSO
 Hay una acción pendiente que debes continuar completando:
@@ -566,12 +566,13 @@ INSTRUCCIONES:
 - Si el usuario te da datos faltantes, actualiza el JSON con esos datos.
 - Si ya tienes todos los campos requeridos, genera el JSON final y pide confirmación.
 - Responde SOLO en JSON si vas a actualizar la acción.`;
-        }
+}
 
-        const mensajes = [
-            { role: "system", content: systemFinal },
-            ...historial.slice(-12)
-        ];
+const mensajes = [
+    { role: "system", content: systemFinal },
+    ...historial.slice(-12),
+    { role: "user", content: prompt }
+];
 
         console.log("Turnos de historial enviados a DeepSeek:", historial.length);
         console.log("Llamando a DeepSeek...");
