@@ -730,7 +730,7 @@ INSTRUCCIONES:
             const resultado = await ejecutarToolComposio(
                 'GOOGLEDRIVE_FIND_FILE',
                 driveConn.composio_entity_id,
-                agente.user.id,
+                agente.user_id,
                 {
                     query: driveData.query,
                     folder: driveData.folder || "",
