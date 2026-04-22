@@ -214,6 +214,43 @@ exports.handler = async (event) => {
 
 console.log("Workflow detectado:", workflowDetectado ? workflowDetectado.key : 'ninguno');
 
+        if (workflowDetectado?.key === 'schedule_meeting') {
+    const { data: existingSchedulePending } = await supabase
+        .from('pending_tool_actions')
+        .select('*')
+        .eq('user_id', agente.user_id)
+        .eq('agente_id', targetID)
+        .eq('status', 'pending')
+        .eq('action', 'GOOGLECALENDAR_CREATE_EVENT')
+        .gte('expires_at', new Date().toISOString())
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+    if (!existingSchedulePending) {
+        await supabase
+            .from('pending_tool_actions')
+            .insert([{
+                user_id: agente.user_id,
+                agente_id: targetID,
+                action: 'GOOGLECALENDAR_CREATE_EVENT',
+                payload: {},
+                status: 'pending',
+                expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString()
+            }]);
+
+        console.log("Pending action de schedule_meeting creada desde workflow nativo");
+    }
+
+    return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({
+            respuesta: "Claro. Para agendar la reunión, compárteme la fecha y hora, tu nombre y tu correo."
+        })
+    };
+}
+
         const { data: pendingAction } = await supabase
             .from('pending_tool_actions')
             .select('*')
