@@ -121,11 +121,32 @@ function esConfirmacion(texto = "") {
   ].includes(t);
 }
 
-function esCancelacion(texto = "") {
-  const t = String(texto).trim().toLowerCase();
+function esCancelacion(text = "") {
+  const t = String(text || "").trim().toLowerCase();
+
+  if (!t) return false;
+
   return [
-    "no", "cancelar", "cancela", "detener", "mejor no"
-  ].includes(t);
+    /^no$/,
+    /^cancelar$/,
+    /^cancela$/,
+    /^cancelalo$/,
+    /^cancelalo por favor$/,
+    /^detener$/,
+    /^deten eso$/,
+    /^olvidalo$/,
+    /^olvídalo$/,
+    /^ya no$/,
+    /^ya no quiero$/,
+    /^ya no quiero agendar$/,
+    /^ya no quiero agendar nada$/,
+    /^no quiero agendar$/,
+    /^no quiero agendar nada$/,
+    /^no deseo agendar$/,
+    /^mejor no$/,
+    /^mejor ya no$/,
+    /^ya no necesito eso$/
+  ].some(rx => rx.test(t));
 }
 
 function construirToolsDescription(toolsDisponibles = []) {
@@ -354,15 +375,26 @@ function seemsSchedulingData(text = "") {
   const t = String(text || "").trim();
   if (!t) return false;
 
+  // Si parece cancelación, nunca tratarlo como dato de agenda
+  if (esCancelacion(t)) return false;
+
+  // Si parece conversación casual corta, tampoco
+  if (/^(hola|buenas|gracias|ok|vale|entiendo)$/i.test(t)) return false;
+
   const hasEmail = !!extractEmail(t);
   const hasPhone = !!extractPhone(t);
-  const hasName = !!extractName(t);
+
+  // Nombre solo cuenta si NO contiene frases de rechazo/cancelación
+  const hasValidName =
+    !!extractName(t) &&
+    !/\b(no|ya no|cancelar|cancelalo|cancelalo por favor|no quiero|ya no quiero|nada)\b/i.test(t);
+
   const hasDateHint =
     /\b(hoy|mañana|pasado mañana|lunes|martes|miércoles|miercoles|jueves|viernes|sábado|sabado|domingo)\b/i.test(t) ||
     /\b\d{1,2}(:\d{2})?\s*(am|pm)\b/i.test(t) ||
     /\b(a las?\s+\d{1,2}(:\d{2})?\s*(am|pm)?)\b/i.test(t);
 
-  return hasEmail || hasPhone || hasName || hasDateHint;
+  return hasEmail || hasPhone || hasValidName || hasDateHint;
 }
 
 function classifyMessageRoute({ pendingAction, text = "" }) {
@@ -371,12 +403,13 @@ function classifyMessageRoute({ pendingAction, text = "" }) {
   if (!t) return 'chat';
 
   if (pendingAction) {
-    if (seemsWorkflowConfirmation(t)) return 'workflow_confirm';
+  if (esCancelacion(t)) return 'workflow_confirm';
+  if (seemsWorkflowConfirmation(t)) return 'workflow_confirm';
 
-    if (pendingAction.action === 'GOOGLECALENDAR_CREATE_EVENT') {
-      if (seemsSchedulingData(t)) return 'workflow_collect';
-      return 'chat';
-    }
+  if (pendingAction.action === 'GOOGLECALENDAR_CREATE_EVENT') {
+    if (seemsSchedulingData(t)) return 'workflow_collect';
+    return 'chat';
+  }
 
     if (pendingAction.action === 'GMAIL_SEND_EMAIL') {
       const hasEmail = !!extractEmail(t);
