@@ -699,11 +699,17 @@ if (!aiResponse.ok || !aiData.choices) {
         };
 
     } catch (err) {
-        console.error("Error general:", err);
-        return {
-            statusCode: 500,
-            headers,
-            body: JSON.stringify({ error: "Error procesando la solicitud." })
-        };
-    }
+    console.error("Error general:", err);
+
+    const mensaje =
+        err.name === 'AbortError'
+            ? "La IA tardó demasiado en responder. Intenta de nuevo."
+            : (err.message || "Error procesando la solicitud.");
+
+    return {
+        statusCode: 500,
+        headers,
+        body: JSON.stringify({ error: mensaje })
+    };
+}
 };
