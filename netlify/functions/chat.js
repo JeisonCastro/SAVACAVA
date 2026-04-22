@@ -126,8 +126,15 @@ exports.handler = async (event) => {
 
     try {
         const body = JSON.parse(event.body || '{}');
-        const { prompt, agente_id, historial = [] } = body;
+        const { prompt, agente_id, historial = [], conversation_id = null } = body;
         const targetID = agente_id || process.env.AGENTE_MAESTRO_ID;
+        if (!conversation_id) {
+    return {
+        statusCode: 400,
+        headers,
+        body: JSON.stringify({ error: "Falta conversation_id." })
+    };
+}
 
         const { data: agente, error: errAgente } = await supabase
             .from('agentes_ia')
@@ -207,10 +214,16 @@ exports.handler = async (event) => {
 
         console.log("Tools disponibles:", toolsDisponibles.map(t => t.tool_key));
 
-        const workflowDetectado = detectWorkflowIntent(
-    prompt,
-    toolsDisponibles.map(t => t.tool_key)
-);
+        let workflowDetectado = null;
+        
+console.log("Workflow detectado:", workflowDetectado ? workflowDetectado.key : 'ninguno');
+
+        if (!pendingAction) {
+    workflowDetectado = detectWorkflowIntent(
+        prompt,
+        toolsDisponibles.map(t => t.tool_key)
+    );
+}
 
 console.log("Workflow detectado:", workflowDetectado ? workflowDetectado.key : 'ninguno');
 
@@ -220,12 +233,14 @@ console.log("Workflow detectado:", workflowDetectado ? workflowDetectado.key : '
         .select('*')
         .eq('user_id', agente.user_id)
         .eq('agente_id', targetID)
+        .eq('convesation_id', conversation_id)
         .eq('status', 'pending')
         .eq('action', 'GOOGLECALENDAR_CREATE_EVENT')
         .gte('expires_at', new Date().toISOString())
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
+        
 
     if (!existingSchedulePending) {
         await supabase
@@ -233,6 +248,7 @@ console.log("Workflow detectado:", workflowDetectado ? workflowDetectado.key : '
             .insert([{
                 user_id: agente.user_id,
                 agente_id: targetID,
+                conversation_id: conversation_id,
                 action: 'GOOGLECALENDAR_CREATE_EVENT',
                 payload: {},
                 status: 'pending',
@@ -252,15 +268,16 @@ console.log("Workflow detectado:", workflowDetectado ? workflowDetectado.key : '
 }
 
         const { data: pendingAction } = await supabase
-            .from('pending_tool_actions')
-            .select('*')
-            .eq('user_id', agente.user_id)
-            .eq('agente_id', targetID)
-            .eq('status', 'pending')
-            .gte('expires_at', new Date().toISOString())
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .maybeSingle();
+    .from('pending_tool_actions')
+    .select('*')
+    .eq('user_id', agente.user_id)
+    .eq('agente_id', targetID)
+    .eq('conversation_id', conversation_id)
+    .eq('status', 'pending')
+    .gte('expires_at', new Date().toISOString())
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
 
         console.log("Pending action:", pendingAction ? pendingAction.action : 'ninguno');
 
@@ -534,6 +551,7 @@ console.log("Respuesta raw DeepSeek:", respuestaIA);
                 .insert([{
                     user_id: agente.user_id,
                     agente_id: targetID,
+                    conversation_id: conversation_id,
                     action: 'GOOGLECALENDAR_CREATE_EVENT',
                     payload: {},
                     status: 'pending',
@@ -579,15 +597,16 @@ console.log("Respuesta raw DeepSeek:", respuestaIA);
             const payloadPendiente = enrichCalendarPayloadFromText(basePayloadPendiente, prompt);
             const missingFields = getMissingFields('GOOGLECALENDAR_CREATE_EVENT', payloadPendiente);
 
-            const { data: existingPending } = await supabase
-                .from('pending_tool_actions')
-                .select('*')
-                .eq('user_id', agente.user_id)
-                .eq('agente_id', targetID)
-                .eq('status', 'pending')
-                .order('created_at', { ascending: false })
-                .limit(1)
-                .maybeSingle();
+           const { data: existingPending } = await supabase
+    .from('pending_tool_actions')
+    .select('*')
+    .eq('user_id', agente.user_id)
+    .eq('agente_id', targetID)
+    .eq('conversation_id', conversation_id)
+    .eq('status', 'pending')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
 
             if (existingPending) {
                 const mergedPayload = enrichCalendarPayloadFromText({
@@ -615,6 +634,7 @@ console.log("Respuesta raw DeepSeek:", respuestaIA);
                     .insert([{
                         user_id: agente.user_id,
                         agente_id: targetID,
+                        conversation_id: conversation_id,
                         action: 'GOOGLECALENDAR_CREATE_EVENT',
                         payload: payloadPendiente,
                         status: 'pending',
@@ -657,6 +677,7 @@ console.log("Respuesta raw DeepSeek:", respuestaIA);
                 .select('*')
                 .eq('user_id', agente.user_id)
                 .eq('agente_id', targetID)
+                .eq('conversation_id', conversation_id)
                 .eq('status', 'pending')
                 .order('created_at', { ascending: false })
                 .limit(1)
@@ -684,6 +705,7 @@ console.log("Respuesta raw DeepSeek:", respuestaIA);
                     .insert([{
                         user_id: agente.user_id,
                         agente_id: targetID,
+                        conversation_id: conversation_id,
                         action: 'GMAIL_SEND_EMAIL',
                         payload: payloadEmail,
                         status: 'pending',
