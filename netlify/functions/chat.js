@@ -531,15 +531,26 @@ payloadEnriquecido.end = sumarMinutos(payloadEnriquecido.start, durationMinutes)
 
         // ── PROMPT PARA DEEPSEEK ──────────────────────────────────────────────
         const toolsDescription = construirToolsDescription(toolsDisponibles);
-        let systemFinal = agente.prompt_sistema + "\n" + toolsDescription + `
+        const esSaludoSimple = /^(hola|buenas|buenos dias|buen día|buen dia|buenas tardes|buenas noches|hey|hi)\s*$/i.test((prompt || "").trim());
+
+let systemFinal = agente.prompt_sistema + "\n" + toolsDescription + `
 
 REGLAS DE CONVERSACIÓN:
-- Si el usuario hace una pregunta concreta, responde directamente esa pregunta.
-- No repitas el saludo base en cada turno.
-- Usa el saludo base solo al inicio de una conversación realmente nueva o si el usuario solo dice "hola".
-- Si ya hay historial conversacional, continúa la conversación con naturalidad.
-- No reinicies la conversación salvo que el usuario lo pida explícitamente.
+- Responde primero a la intención concreta del usuario.
+- Si el usuario pregunta por servicios, precios, ayuda o soluciones, responde esa pregunta directamente.
+- NO repitas el saludo base en cada turno.
+- Usa el saludo base solo si el mensaje actual es únicamente un saludo simple y no contiene una solicitud concreta.
+- Si el usuario ya expresó una necesidad, continúa desde esa necesidad sin reiniciar la conversación.
+- Si hay historial conversacional, continúa con naturalidad y no vuelvas a presentarte.
+- Evita responder con "¿en qué necesitas apoyo hoy?" si el usuario ya dijo lo que necesita.
 `;
+
+if (!esSaludoSimple) {
+    systemFinal += `
+INSTRUCCIÓN ADICIONAL:
+- El mensaje actual NO es un saludo simple. No uses el saludo base. Responde directamente a lo que el usuario pidió.
+`;
+}
 
         if (pendingAction) {
             systemFinal += `
