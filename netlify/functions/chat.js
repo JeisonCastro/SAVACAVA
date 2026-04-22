@@ -262,7 +262,17 @@ exports.handler = async (event) => {
                         agente_id: targetID,
                         conversation_id: conversation_id,
                         action: 'GOOGLECALENDAR_CREATE_EVENT',
-                        payload: {},
+                        payload: {
+    summary: "Reunión agendada desde el chat",
+    description: "Reunión generada desde el asistente del agente.",
+    start: "",
+    end: "",
+    attendees: [],
+    contact_name: "",
+    contact_email: "",
+    contact_phone: "",
+    meeting_reason: ""
+},
                         status: 'pending',
                         expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString()
                     }]);
