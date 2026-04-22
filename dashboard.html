@@ -1096,12 +1096,9 @@ async function cargarHerramientasAgente() {
 }
 
 // 3. Guardar estado en Supabase (Toggle)
-async function toggleHerramienta(agenteId, toolkit, isEnabled) {
-    if (isEnabled) {
-        await _supabase.from('agente_tools').insert({ agente_id: agenteId, toolkit: toolkit, tool_key: toolkit + '_default' });
-    } else {
-        await _supabase.from('agente_tools').delete().match({ agente_id: agenteId, toolkit: toolkit });
-    }
+async function toggleHerramienta() {
+    console.warn('toggleHerramienta() está deshabilitada. Usa el modal de integraciones por agente.');
+    showToast('Esta configuración ahora se hace desde Integraciones del agente', 'error');
 }
 
     async function procesarCallbackComposio() {
