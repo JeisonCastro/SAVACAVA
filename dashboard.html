@@ -440,6 +440,7 @@
     let upgradeWhatsappUrl = '';
     let todosLosPlanes = [];
     let currentConversationId = null;
+    let currentChatHistory = [];
 
     // ── TOAST ──
     function showToast(msg, type = 'success') {
@@ -890,6 +891,7 @@ async function conectarToolkit(toolkit) {
     function abrirChat(id, nombre) {
     agenteSeleccionadoId = id;
     currentConversationId = crypto.randomUUID();
+    currentChatHistory = [];    
     document.getElementById('chat-agent-name').innerText = "Probando: " + nombre;
     document.getElementById('chat-messages').innerHTML = '';
     document.getElementById('chat-modal').style.display = 'flex';
@@ -900,27 +902,47 @@ async function conectarToolkit(toolkit) {
         const input = document.getElementById('chat-input');
         const mensaje = input.value.trim();
         if (!mensaje || !agenteSeleccionadoId) return;
+
         agregarMensaje("Tú", mensaje, "user");
         input.value = '';
+
         const container = document.getElementById('chat-messages');
         const ld = document.createElement('div');
         ld.id = 'dashboard-loading';
         ld.style.cssText = "padding:10px 12px;background:var(--border);color:var(--muted);border-radius:12px;align-self:flex-start;font-size:0.8rem;";
         ld.innerHTML = "<em>El agente está pensando...</em>";
-        container.appendChild(ld); container.scrollTop = container.scrollHeight;
+        container.appendChild(ld);
+        container.scrollTop = container.scrollHeight;
+
         try {
+            const historialParaEnviar = [...currentChatHistory];
+
             const res = await fetch('/.netlify/functions/chat', {
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({
-        prompt: mensaje,
-        agente_id: agenteSeleccionadoId,
-        conversation_id: currentConversationId
-    })
-});
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    prompt: mensaje,
+                    agente_id: agenteSeleccionadoId,
+                    conversation_id: currentConversationId,
+                    historial: historialParaEnviar
+                })
+            });
+
+            currentChatHistory.push({
+                role: "user",
+                content: mensaje
+            });
+
             const data = await res.json();
+            const respuestaTexto = data.respuesta || data.error || "No se recibió una respuesta válida.";
+
+            currentChatHistory.push({
+                role: "assistant",
+                content: respuestaTexto
+            });
+
             document.getElementById('dashboard-loading')?.remove();
-            agregarMensaje("Agente", data.respuesta || data.error || "No se recibió una respuesta válida.", "bot");
+            agregarMensaje("Agente", respuestaTexto, "bot");
             cargarBalance(currentUser.id);
         } catch (err) {
             document.getElementById('dashboard-loading')?.remove();
@@ -1068,7 +1090,13 @@ async function cargarIntegraciones() {
     // Cargar Conexiones OAuth
     const { data: conns, error } = await _supabase.from('composio_connections').select('*');
     const tbody = document.getElementById('connections-body');
-    
+
+    if (error) {
+        console.error("Error cargando conexiones:", error);
+        tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:var(--red)">Error al cargar conexiones.</td></tr>';
+        return;
+    }
+
     if (conns && conns.length > 0) {
         tbody.innerHTML = conns.map(c => `
             <tr>
@@ -1081,11 +1109,7 @@ async function cargarIntegraciones() {
         tbody.innerHTML = '<tr><td colspan="3" style="text-align:center">Sin conexiones.</td></tr>';
     }
 
-    // Cargar Lista de Agentes para el Select
-    const { data: agentes } = await _supabase.from('agentes_ia').select('id, nombre_agente');
-    const select = document.getElementById('select-agente-tools');
-    select.innerHTML = '<option value="">Selecciona un agente...</option>' + 
-                       agentes.map(a => `<option value="${a.id}">${a.nombre_agente}</option>`).join('');
+    // La configuración de herramientas ahora se gestiona desde el modal de integraciones por agente.
 }
 
 // 2. Cargar herramientas según agente seleccionado
