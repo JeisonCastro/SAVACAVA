@@ -266,43 +266,32 @@ function extractName(text = "") {
   let cleaned = String(text).trim();
   if (!cleaned) return "";
 
+  // quitar correo
   cleaned = cleaned.replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/ig, " ");
+
+  // quitar teléfono
   cleaned = cleaned.replace(/(?:\+?\d[\d\s-]{7,}\d)/g, " ");
+
+  // quitar expresiones comunes de fecha/hora
+  cleaned = cleaned.replace(/\b(hoy|mañana|pasado mañana|lunes|martes|miércoles|miercoles|jueves|viernes|sábado|sabado|domingo)\b/ig, " ");
+  cleaned = cleaned.replace(/\b(a las?\s+\d{1,2}(:\d{2})?\s*(am|pm)?)\b/ig, " ");
+  cleaned = cleaned.replace(/\b\d{1,2}(:\d{2})?\s*(am|pm)\b/ig, " ");
+
+  // quitar frases operativas comunes
+  cleaned = cleaned.replace(/\b(quiero|agendar|agenda|reunión|reunion|correo|email|enviar|envía|envia|mensaje|cita|para|una|de|el|la)\b/ig, " ");
+
+  // limpiar puntuación y espacios
   cleaned = cleaned.replace(/[,:;]/g, " ");
   cleaned = cleaned.replace(/\s+/g, " ").trim();
 
   if (!cleaned || cleaned.length < 3) return "";
 
-  const frasesInvalidas = [
-    /quiero agendar/i,
-    /quiero reunir/i,
-    /necesito agendar/i,
-    /una reunión/i,
-    /una reunion/i,
-    /mañana/i,
-    /hoy/i,
-    /desarrollo web/i,
-    /automatización/i,
-    /automatizacion/i,
-    /soporte/i,
-    /pagina web/i,
-    /página web/i,
-    /reunión/i,
-    /reunion/i,
-    /agenda/i,
-    /agendar/i
-  ];
-
-  if (frasesInvalidas.some(rx => rx.test(cleaned))) {
-    return "";
-  }
-
-  if (!/^[a-záéíóúñü\s]+$/i.test(cleaned)) {
-    return "";
-  }
+  // solo letras y espacios
+  if (!/^[a-záéíóúñü\s]+$/i.test(cleaned)) return "";
 
   const partes = cleaned.split(" ").filter(Boolean);
 
+  // mínimo nombre y apellido
   if (partes.length < 2) return "";
 
   return partes.join(" ");
