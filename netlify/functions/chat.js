@@ -7,7 +7,8 @@ const {
     buildMissingFieldsQuestion,
     enrichCalendarPayloadFromText,
     seemsContactInfo,
-    detectWorkflowIntent
+    detectWorkflowIntent,
+    getWorkflowConfig
 } = require('./tool-workflows');
 
 const supabase = createClient(
@@ -253,6 +254,7 @@ exports.handler = async (event) => {
         console.log("Workflow detectado:", workflowDetectado ? workflowDetectado.key : 'ninguno');
 
         if (workflowDetectado?.key === 'schedule_meeting') {
+            const scheduleConfig = getWorkflowConfig('schedule_meeting');
             const { data: existingSchedulePending } = await supabase
                 .from('pending_tool_actions')
                 .select('*')
@@ -275,8 +277,8 @@ exports.handler = async (event) => {
                         conversation_id: conversation_id,
                         action: 'GOOGLECALENDAR_CREATE_EVENT',
                         payload: {
-    summary: "Reunión agendada desde el chat",
-    description: "Reunión generada desde el asistente del agente.",
+    summary: scheduleConfig?.defaults?.summary || "Reunión agendada desde el chat",
+    description: scheduleConfig?.defaults?.description || "Reunión generada desde el asistente del agente.",
     start: "",
     end: "",
     attendees: [],
@@ -296,7 +298,7 @@ exports.handler = async (event) => {
                 statusCode: 200,
                 headers,
                 body: JSON.stringify({
-                    respuesta: "Claro. Para agendar la reunión, compárteme la fecha y hora, tu nombre y tu correo."
+                   respuesta: scheduleConfig?.prompts?.initial || "Claro. Para agendar la reunión, compárteme la fecha y hora, tu nombre y tu correo."
                 })
             };
         }
@@ -325,7 +327,9 @@ exports.handler = async (event) => {
     }
 
     if (payloadEnriquecido.start && !payloadEnriquecido.end) {
-        payloadEnriquecido.end = sumarMinutos(payloadEnriquecido.start, 30);
+       const scheduleConfig = getWorkflowConfig('schedule_meeting');
+const durationMinutes = scheduleConfig?.defaults?.durationMinutes || 30;
+payloadEnriquecido.end = sumarMinutos(payloadEnriquecido.start, durationMinutes);
     }
 
     const missingFields = getMissingFields('GOOGLECALENDAR_CREATE_EVENT', payloadEnriquecido);
