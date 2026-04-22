@@ -531,7 +531,8 @@ payloadEnriquecido.end = sumarMinutos(payloadEnriquecido.start, durationMinutes)
 
         // ── PROMPT PARA DEEPSEEK ──────────────────────────────────────────────
         const toolsDescription = construirToolsDescription(toolsDisponibles);
-        const esSaludoSimple = /^(hola|buenas|buenos dias|buen día|buen dia|buenas tardes|buenas noches|hey|hi)\s*$/i.test((prompt || "").trim());
+
+const esSaludoSimple = /^(hola|buenas|buenos días|buenos dias|buen día|buen dia|buenas tardes|buenas noches|hey|hi)\s*$/i.test((prompt || "").trim());
 
 let systemFinal = agente.prompt_sistema + "\n" + toolsDescription + `
 
