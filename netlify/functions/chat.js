@@ -449,7 +449,7 @@ try {
 
 console.log("DeepSeek respondió con status:", aiResponse.status);
 
-        async function leerTextoConTimeout(response, ms = 8000) {
+async function leerTextoConTimeout(response, ms = 8000) {
     return await Promise.race([
         response.text(),
         new Promise((_, reject) =>
@@ -458,13 +458,23 @@ console.log("DeepSeek respondió con status:", aiResponse.status);
     ]);
 }
 
+const aiRaw = await leerTextoConTimeout(aiResponse, 8000);
+console.log("Respuesta cruda DeepSeek:", aiRaw);
+
+let aiData;
+try {
+    aiData = JSON.parse(aiRaw);
+} catch (e) {
+    throw new Error(`DeepSeek devolvió una respuesta no JSON: ${aiRaw}`);
+}
+
 if (!aiResponse.ok || !aiData.choices) {
     console.error("Error DeepSeek:", aiData);
     throw new Error(aiData?.error?.message || "Error en la respuesta de la IA");
 }
 
-        let respuestaIA = aiData.choices[0].message.content;
-        console.log("Respuesta raw DeepSeek:", respuestaIA);
+let respuestaIA = aiData.choices[0].message.content;
+console.log("Respuesta raw DeepSeek:", respuestaIA);
 
         let actionPayload = null;
         try {
