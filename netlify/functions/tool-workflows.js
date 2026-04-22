@@ -121,8 +121,8 @@ function esConfirmacion(texto = "") {
   ].includes(t);
 }
 
-function esCancelacion(text = "") {
-  const t = String(text || "").trim().toLowerCase();
+function esCancelacion(texto = "") {
+  const t = String(texto || "").trim().toLowerCase();
 
   if (!t) return false;
 
