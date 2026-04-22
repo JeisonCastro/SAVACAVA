@@ -207,6 +207,13 @@ exports.handler = async (event) => {
 
         console.log("Tools disponibles:", toolsDisponibles.map(t => t.tool_key));
 
+        const workflowDetectado = detectWorkflowIntent(
+    prompt,
+    toolsDisponibles.map(t => t.tool_key)
+);
+
+console.log("Workflow detectado:", workflowDetectado ? workflowDetectado.key : 'ninguno');
+
         const { data: pendingAction } = await supabase
             .from('pending_tool_actions')
             .select('*')
