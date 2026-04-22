@@ -8,7 +8,8 @@ const {
     enrichCalendarPayloadFromText,
     seemsContactInfo,
     detectWorkflowIntent,
-    getWorkflowConfig
+    getWorkflowConfig,
+    classifyMessageRoute
 } = require('./tool-workflows');
 
 const supabase = createClient(
@@ -262,6 +263,13 @@ exports.handler = async (event) => {
 
         console.log("Pending action:", pendingAction ? pendingAction.action : 'ninguno');
 
+        const messageRoute = classifyMessageRoute({
+    pendingAction,
+    text: prompt
+});
+
+console.log("Message route:", messageRoute);
+
         let workflowDetectado = null;
 
         if (!pendingAction) {
@@ -328,8 +336,7 @@ exports.handler = async (event) => {
         if (
     pendingAction &&
     pendingAction.action === 'GOOGLECALENDAR_CREATE_EVENT' &&
-    !esConfirmacion(prompt) &&
-    !esCancelacion(prompt)
+    messageRoute === 'workflow_collect'
 ) {
     const payloadActual = pendingAction.payload || {};
 
@@ -384,7 +391,7 @@ payloadEnriquecido.end = sumarMinutos(payloadEnriquecido.start, durationMinutes)
 }
 
         // ── CONFIRMAR ACCIÓN PENDIENTE ───────────────────────────────────────
-        if (pendingAction && esConfirmacion(prompt)) {
+        if (pendingAction && messageRoute === 'workflow_confirm' && esConfirmacion(prompt)) {
             console.log("Confirmación recibida para:", pendingAction.action);
 
             if (pendingAction.action === 'GOOGLECALENDAR_CREATE_EVENT') {
@@ -509,7 +516,7 @@ payloadEnriquecido.end = sumarMinutos(payloadEnriquecido.start, durationMinutes)
             }
         }
 
-        if (pendingAction && esCancelacion(prompt)) {
+       if (pendingAction && messageRoute === 'workflow_confirm' && esCancelacion(prompt)) {
             await supabase
                 .from('pending_tool_actions')
                 .update({ status: 'cancelled' })
