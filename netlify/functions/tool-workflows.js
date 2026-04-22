@@ -346,6 +346,51 @@ function getWorkflowConfig(workflowKey) {
   return WORKFLOW_CONFIG[workflowKey] || null;
 }
 
+function seemsWorkflowConfirmation(text = "") {
+  return esConfirmacion(text) || esCancelacion(text);
+}
+
+function seemsSchedulingData(text = "") {
+  const t = String(text || "").trim();
+  if (!t) return false;
+
+  const hasEmail = !!extractEmail(t);
+  const hasPhone = !!extractPhone(t);
+  const hasName = !!extractName(t);
+  const hasDateHint =
+    /\b(hoy|mañana|pasado mañana|lunes|martes|miércoles|miercoles|jueves|viernes|sábado|sabado|domingo)\b/i.test(t) ||
+    /\b\d{1,2}(:\d{2})?\s*(am|pm)\b/i.test(t) ||
+    /\b(a las?\s+\d{1,2}(:\d{2})?\s*(am|pm)?)\b/i.test(t);
+
+  return hasEmail || hasPhone || hasName || hasDateHint;
+}
+
+function classifyMessageRoute({ pendingAction, text = "" }) {
+  const t = String(text || "").trim();
+
+  if (!t) return 'chat';
+
+  if (pendingAction) {
+    if (seemsWorkflowConfirmation(t)) return 'workflow_confirm';
+
+    if (pendingAction.action === 'GOOGLECALENDAR_CREATE_EVENT') {
+      if (seemsSchedulingData(t)) return 'workflow_collect';
+      return 'chat';
+    }
+
+    if (pendingAction.action === 'GMAIL_SEND_EMAIL') {
+      const hasEmail = !!extractEmail(t);
+      const hasLikelyEmailIntent = /\b(correo|email|asunto|mensaje|contenido)\b/i.test(t);
+      if (hasEmail || hasLikelyEmailIntent) return 'workflow_collect';
+      return 'chat';
+    }
+
+    return 'chat';
+  }
+
+  return 'chat';
+}
+
 module.exports = {
   TOOL_DEFINITIONS,
   WORKFLOW_DEFINITIONS,
@@ -361,5 +406,8 @@ module.exports = {
   enrichCalendarPayloadFromText,
   seemsContactInfo,
   detectWorkflowIntent,
-  getWorkflowConfig
+  getWorkflowConfig,
+  seemsWorkflowConfirmation,
+  seemsSchedulingData,
+  classifyMessageRoute
 };
