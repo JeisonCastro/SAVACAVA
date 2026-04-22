@@ -531,7 +531,15 @@ payloadEnriquecido.end = sumarMinutos(payloadEnriquecido.start, durationMinutes)
 
         // ── PROMPT PARA DEEPSEEK ──────────────────────────────────────────────
         const toolsDescription = construirToolsDescription(toolsDisponibles);
-        let systemFinal = agente.prompt_sistema + "\n" + toolsDescription;
+        let systemFinal = agente.prompt_sistema + "\n" + toolsDescription + `
+
+REGLAS DE CONVERSACIÓN:
+- Si el usuario hace una pregunta concreta, responde directamente esa pregunta.
+- No repitas el saludo base en cada turno.
+- Usa el saludo base solo al inicio de una conversación realmente nueva o si el usuario solo dice "hola".
+- Si ya hay historial conversacional, continúa la conversación con naturalidad.
+- No reinicies la conversación salvo que el usuario lo pida explícitamente.
+`;
 
         if (pendingAction) {
             systemFinal += `
