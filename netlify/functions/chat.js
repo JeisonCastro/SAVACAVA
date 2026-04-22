@@ -128,13 +128,14 @@ exports.handler = async (event) => {
         const body = JSON.parse(event.body || '{}');
         const { prompt, agente_id, historial = [], conversation_id = null } = body;
         const targetID = agente_id || process.env.AGENTE_MAESTRO_ID;
+
         if (!conversation_id) {
-    return {
-        statusCode: 400,
-        headers,
-        body: JSON.stringify({ error: "Falta conversation_id." })
-    };
-}
+            return {
+                statusCode: 400,
+                headers,
+                body: JSON.stringify({ error: "Falta conversation_id." })
+            };
+        }
 
         const { data: agente, error: errAgente } = await supabase
             .from('agentes_ia')
@@ -214,119 +215,113 @@ exports.handler = async (event) => {
 
         console.log("Tools disponibles:", toolsDisponibles.map(t => t.tool_key));
 
-        let workflowDetectado = null;
-        
-console.log("Workflow detectado:", workflowDetectado ? workflowDetectado.key : 'ninguno');
-
-        if (!pendingAction) {
-    workflowDetectado = detectWorkflowIntent(
-        prompt,
-        toolsDisponibles.map(t => t.tool_key)
-    );
-}
-
-console.log("Workflow detectado:", workflowDetectado ? workflowDetectado.key : 'ninguno');
-
-        if (workflowDetectado?.key === 'schedule_meeting') {
-    const { data: existingSchedulePending } = await supabase
-        .from('pending_tool_actions')
-        .select('*')
-        .eq('user_id', agente.user_id)
-        .eq('agente_id', targetID)
-        .eq('convesation_id', conversation_id)
-        .eq('status', 'pending')
-        .eq('action', 'GOOGLECALENDAR_CREATE_EVENT')
-        .gte('expires_at', new Date().toISOString())
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-        
-
-    if (!existingSchedulePending) {
-        await supabase
-            .from('pending_tool_actions')
-            .insert([{
-                user_id: agente.user_id,
-                agente_id: targetID,
-                conversation_id: conversation_id,
-                action: 'GOOGLECALENDAR_CREATE_EVENT',
-                payload: {},
-                status: 'pending',
-                expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString()
-            }]);
-
-        console.log("Pending action de schedule_meeting creada desde workflow nativo");
-    }
-
-    return {
-        statusCode: 200,
-        headers,
-        body: JSON.stringify({
-            respuesta: "Claro. Para agendar la reunión, compárteme la fecha y hora, tu nombre y tu correo."
-        })
-    };
-}
-
         const { data: pendingAction } = await supabase
-    .from('pending_tool_actions')
-    .select('*')
-    .eq('user_id', agente.user_id)
-    .eq('agente_id', targetID)
-    .eq('conversation_id', conversation_id)
-    .eq('status', 'pending')
-    .gte('expires_at', new Date().toISOString())
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
+            .from('pending_tool_actions')
+            .select('*')
+            .eq('user_id', agente.user_id)
+            .eq('agente_id', targetID)
+            .eq('conversation_id', conversation_id)
+            .eq('status', 'pending')
+            .gte('expires_at', new Date().toISOString())
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
 
         console.log("Pending action:", pendingAction ? pendingAction.action : 'ninguno');
 
-        // ── COMPLETAR PENDING DE CALENDAR DESDE BACKEND ──────────────────────
-        if (
-    pendingAction &&
-    pendingAction.action === 'GOOGLECALENDAR_CREATE_EVENT' &&
-    !esConfirmacion(prompt) &&
-    !esCancelacion(prompt)
-) {
-    const payloadActual = pendingAction.payload || {};
+        let workflowDetectado = null;
 
-    // Solo completar desde backend si el mensaje parece dato de contacto.
-    if (seemsContactInfo(prompt)) {
-        const payloadEnriquecido = enrichCalendarPayloadFromText(payloadActual, prompt);
-        const missingFields = getMissingFields('GOOGLECALENDAR_CREATE_EVENT', payloadEnriquecido);
-
-        const huboCambios = JSON.stringify(payloadActual) !== JSON.stringify(payloadEnriquecido);
-
-        if (huboCambios) {
-            await supabase
-                .from('pending_tool_actions')
-                .update({ payload: payloadEnriquecido })
-                .eq('id', pendingAction.id);
-
-            console.log("Pending action Calendar enriquecida desde texto:", JSON.stringify(payloadEnriquecido));
+        if (!pendingAction) {
+            workflowDetectado = detectWorkflowIntent(
+                prompt,
+                toolsDisponibles.map(t => t.tool_key)
+            );
         }
 
-        if (missingFields.length > 0) {
+        console.log("Workflow detectado:", workflowDetectado ? workflowDetectado.key : 'ninguno');
+
+        if (workflowDetectado?.key === 'schedule_meeting') {
+            const { data: existingSchedulePending } = await supabase
+                .from('pending_tool_actions')
+                .select('*')
+                .eq('user_id', agente.user_id)
+                .eq('agente_id', targetID)
+                .eq('conversation_id', conversation_id)
+                .eq('status', 'pending')
+                .eq('action', 'GOOGLECALENDAR_CREATE_EVENT')
+                .gte('expires_at', new Date().toISOString())
+                .order('created_at', { ascending: false })
+                .limit(1)
+                .maybeSingle();
+
+            if (!existingSchedulePending) {
+                await supabase
+                    .from('pending_tool_actions')
+                    .insert([{
+                        user_id: agente.user_id,
+                        agente_id: targetID,
+                        conversation_id: conversation_id,
+                        action: 'GOOGLECALENDAR_CREATE_EVENT',
+                        payload: {},
+                        status: 'pending',
+                        expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString()
+                    }]);
+
+                console.log("Pending action de schedule_meeting creada desde workflow nativo");
+            }
+
             return {
                 statusCode: 200,
                 headers,
                 body: JSON.stringify({
-                    respuesta: buildMissingFieldsQuestion('GOOGLECALENDAR_CREATE_EVENT', missingFields)
+                    respuesta: "Claro. Para agendar la reunión, compárteme la fecha y hora, tu nombre y tu correo."
                 })
             };
         }
 
-        return {
-            statusCode: 200,
-            headers,
-            body: JSON.stringify({
-                respuesta: `Voy a agendar "${payloadEnriquecido.summary}" el ${resolverFecha(payloadEnriquecido.start)?.split('T')[0]} a las ${resolverFecha(payloadEnriquecido.start)?.split('T')[1]?.substring(0, 5)} para ${payloadEnriquecido.contact_name} (${payloadEnriquecido.contact_email}). Responde "sí" para confirmar o "no" para cancelar.`
-            })
-        };
-    }
+        // ── COMPLETAR PENDING DE CALENDAR DESDE BACKEND ──────────────────────
+        if (
+            pendingAction &&
+            pendingAction.action === 'GOOGLECALENDAR_CREATE_EVENT' &&
+            !esConfirmacion(prompt) &&
+            !esCancelacion(prompt)
+        ) {
+            const payloadActual = pendingAction.payload || {};
 
-    // Si no parece dato de contacto, deja que continúe el flujo normal hacia el modelo.
-}
+            if (seemsContactInfo(prompt)) {
+                const payloadEnriquecido = enrichCalendarPayloadFromText(payloadActual, prompt);
+                const missingFields = getMissingFields('GOOGLECALENDAR_CREATE_EVENT', payloadEnriquecido);
+
+                const huboCambios = JSON.stringify(payloadActual) !== JSON.stringify(payloadEnriquecido);
+
+                if (huboCambios) {
+                    await supabase
+                        .from('pending_tool_actions')
+                        .update({ payload: payloadEnriquecido })
+                        .eq('id', pendingAction.id);
+
+                    console.log("Pending action Calendar enriquecida desde texto:", JSON.stringify(payloadEnriquecido));
+                }
+
+                if (missingFields.length > 0) {
+                    return {
+                        statusCode: 200,
+                        headers,
+                        body: JSON.stringify({
+                            respuesta: buildMissingFieldsQuestion('GOOGLECALENDAR_CREATE_EVENT', missingFields)
+                        })
+                    };
+                }
+
+                return {
+                    statusCode: 200,
+                    headers,
+                    body: JSON.stringify({
+                        respuesta: `Voy a agendar "${payloadEnriquecido.summary}" el ${resolverFecha(payloadEnriquecido.start)?.split('T')[0]} a las ${resolverFecha(payloadEnriquecido.start)?.split('T')[1]?.substring(0, 5)} para ${payloadEnriquecido.contact_name} (${payloadEnriquecido.contact_email}). Responde "sí" para confirmar o "no" para cancelar.`
+                    })
+                };
+            }
+        }
 
         // ── CONFIRMAR ACCIÓN PENDIENTE ───────────────────────────────────────
         if (pendingAction && esConfirmacion(prompt)) {
@@ -492,45 +487,44 @@ INSTRUCCIONES:
         ];
 
         console.log("Turnos de historial enviados a DeepSeek:", historial.length);
-
         console.log("Llamando a DeepSeek...");
 
-const controller = new AbortController();
-const timeout = setTimeout(() => controller.abort(), 20000);
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 20000);
 
-let aiResponse;
-let aiData;
+        let aiResponse;
+        let aiData;
 
-try {
-    aiResponse = await fetch('https://api.deepseek.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-            'Authorization': `Bearer ${process.env.DEEPSEEK_API_KEY}`,
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            model: "deepseek-chat",
-            messages: mensajes,
-            temperature: 0.2
-        }),
-        signal: controller.signal
-    });
+        try {
+            aiResponse = await fetch('https://api.deepseek.com/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${process.env.DEEPSEEK_API_KEY}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    model: "deepseek-chat",
+                    messages: mensajes,
+                    temperature: 0.2
+                }),
+                signal: controller.signal
+            });
 
-    console.log("DeepSeek respondió con status:", aiResponse.status);
+            console.log("DeepSeek respondió con status:", aiResponse.status);
 
-    aiData = await aiResponse.json();
-    console.log("Respuesta JSON DeepSeek:", JSON.stringify(aiData));
-} finally {
-    clearTimeout(timeout);
-}
+            aiData = await aiResponse.json();
+            console.log("Respuesta JSON DeepSeek:", JSON.stringify(aiData));
+        } finally {
+            clearTimeout(timeout);
+        }
 
-if (!aiResponse.ok || !aiData?.choices) {
-    console.error("Error DeepSeek:", aiData);
-    throw new Error(aiData?.error?.message || "Error en la respuesta de la IA");
-}
+        if (!aiResponse.ok || !aiData?.choices) {
+            console.error("Error DeepSeek:", aiData);
+            throw new Error(aiData?.error?.message || "Error en la respuesta de la IA");
+        }
 
-let respuestaIA = aiData.choices[0].message.content;
-console.log("Respuesta raw DeepSeek:", respuestaIA);
+        let respuestaIA = aiData.choices[0].message.content;
+        console.log("Respuesta raw DeepSeek:", respuestaIA);
 
         let actionPayload = null;
         try {
@@ -597,16 +591,16 @@ console.log("Respuesta raw DeepSeek:", respuestaIA);
             const payloadPendiente = enrichCalendarPayloadFromText(basePayloadPendiente, prompt);
             const missingFields = getMissingFields('GOOGLECALENDAR_CREATE_EVENT', payloadPendiente);
 
-           const { data: existingPending } = await supabase
-    .from('pending_tool_actions')
-    .select('*')
-    .eq('user_id', agente.user_id)
-    .eq('agente_id', targetID)
-    .eq('conversation_id', conversation_id)
-    .eq('status', 'pending')
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
+            const { data: existingPending } = await supabase
+                .from('pending_tool_actions')
+                .select('*')
+                .eq('user_id', agente.user_id)
+                .eq('agente_id', targetID)
+                .eq('conversation_id', conversation_id)
+                .eq('status', 'pending')
+                .order('created_at', { ascending: false })
+                .limit(1)
+                .maybeSingle();
 
             if (existingPending) {
                 const mergedPayload = enrichCalendarPayloadFromText({
@@ -736,7 +730,7 @@ console.log("Respuesta raw DeepSeek:", respuestaIA);
             const resultado = await ejecutarToolComposio(
                 'GOOGLEDRIVE_FIND_FILE',
                 driveConn.composio_entity_id,
-                agente.user_id,
+                agente.user.id,
                 {
                     query: driveData.query,
                     folder: driveData.folder || "",
@@ -768,21 +762,21 @@ console.log("Respuesta raw DeepSeek:", respuestaIA);
             })
         };
 
-  } catch (err) {
-    console.error("Error general:", err);
+    } catch (err) {
+        console.error("Error general:", err);
 
-    let mensaje = "Error procesando la solicitud.";
+        let mensaje = "Error procesando la solicitud.";
 
-    if (err.name === 'AbortError') {
-        mensaje = "La IA tardó demasiado en responder. Intenta de nuevo.";
-    } else if (err.message) {
-        mensaje = err.message;
+        if (err.name === 'AbortError') {
+            mensaje = "La IA tardó demasiado en responder. Intenta de nuevo.";
+        } else if (err.message) {
+            mensaje = err.message;
+        }
+
+        return {
+            statusCode: 500,
+            headers,
+            body: JSON.stringify({ error: mensaje })
+        };
     }
-
-    return {
-        statusCode: 500,
-        headers,
-        body: JSON.stringify({ error: mensaje })
-    };
-}
 };
