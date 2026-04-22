@@ -438,9 +438,10 @@ try {
             'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-            model: "deepseek-chat",
-            messages: mensajes
-        }),
+    model: "deepseek-chat",
+    messages: mensajes,
+    temperature: 0.2
+}),
         signal: controller.signal
     });
 } finally {
