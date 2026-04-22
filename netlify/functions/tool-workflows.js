@@ -1,12 +1,12 @@
 const TOOL_DEFINITIONS = {
   GOOGLECALENDAR_CREATE_EVENT: {
-  toolkit: 'googlecalendar',
-  label: 'Crear eventos en Google Calendar',
-  workflow: 'collect_confirm_execute',
-  requiredFields: ['summary', 'start', 'end', 'contact_name', 'contact_email'],
-  optionalFields: ['description', 'attendees', 'contact_phone', 'meeting_reason'],
-  confirmationRequired: true
-},
+    toolkit: 'googlecalendar',
+    label: 'Crear eventos en Google Calendar',
+    workflow: 'collect_confirm_execute',
+    requiredFields: ['summary', 'start', 'end', 'contact_name', 'contact_email'],
+    optionalFields: ['description', 'attendees', 'contact_phone', 'meeting_reason', 'location'],
+    confirmationRequired: true
+  },
 
   GMAIL_SEND_EMAIL: {
     toolkit: 'gmail',
@@ -59,13 +59,12 @@ function construirToolsDescription(toolsDisponibles = []) {
     return `- ${Object.keys(TOOL_DEFINITIONS).find(k => TOOL_DEFINITIONS[k] === def)}:\n  ${def.label}.`;
   }).join("\n\n");
 
-  // Fechas dinámicas Colombia
   const ahora = new Date();
   const opcionesFecha = { timeZone: 'America/Bogota', year: 'numeric', month: '2-digit', day: '2-digit' };
-  const partes = new Intl.DateTimeFormat('en-CA', opcionesFecha).format(ahora); // YYYY-MM-DD
+  const hoy = new Intl.DateTimeFormat('en-CA', opcionesFecha).format(ahora);
   const mananaDate = new Date(ahora);
   mananaDate.setDate(mananaDate.getDate() + 1);
-  const partesManana = new Intl.DateTimeFormat('en-CA', opcionesFecha).format(mananaDate);
+  const manana = new Intl.DateTimeFormat('en-CA', opcionesFecha).format(mananaDate);
 
   return `
 ## HERRAMIENTAS DISPONIBLES
@@ -89,11 +88,11 @@ Si necesitas usar una herramienta, responde SOLO en formato JSON así:
 4. NUNCA generes JSON con campos vacíos o inventados
 
 ## REGLAS DE FECHA (CRÍTICO)
-- La fecha actual en Colombia es: ${partes}
-- Si el usuario dice "mañana", corresponde a: ${partesManana}
+- La fecha actual en Colombia es: ${hoy}
+- Si el usuario dice "mañana", corresponde a: ${manana}
 - NUNCA escribas palabras como "mañana", "hoy", "el jueves" en los campos start o end del JSON
 - SIEMPRE escribe la fecha numérica completa en formato: YYYY-MM-DDTHH:MM:00
-- Ejemplo CORRECTO: "start": "${partesManana}T10:00:00"
+- Ejemplo CORRECTO: "start": "${manana}T10:00:00"
 - Ejemplo INCORRECTO: "start": "mañana 10:00"
 
 ## REGLAS ESPECÍFICAS PARA CALENDAR
@@ -166,11 +165,58 @@ function buildMissingFieldsQuestion(toolKey, missingFields = []) {
   return `Faltan datos para completar esta acción: ${missingFields.join(', ')}.`;
 }
 
+function extractEmail(text = "") {
+  const match = String(text).match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
+  return match ? match[0].trim() : "";
+}
+
+function extractPhone(text = "") {
+  const match = String(text).match(/(?:\+?\d[\d\s-]{7,}\d)/);
+  return match ? match[0].trim() : "";
+}
+
+function extractName(text = "") {
+  let cleaned = String(text).trim();
+  if (!cleaned) return "";
+
+  cleaned = cleaned.replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/ig, " ");
+  cleaned = cleaned.replace(/(?:\+?\d[\d\s-]{7,}\d)/g, " ");
+  cleaned = cleaned.replace(/[,:;]/g, " ");
+  cleaned = cleaned.replace(/\s+/g, " ").trim();
+
+  if (!cleaned || cleaned.length < 3) return "";
+  return cleaned;
+}
+
+function enrichCalendarPayloadFromText(payload = {}, text = "") {
+  const email = extractEmail(text);
+  const phone = extractPhone(text);
+  const name = extractName(text);
+
+  const attendees = Array.isArray(payload.attendees) ? [...payload.attendees] : [];
+
+  if (email && !attendees.includes(email)) {
+    attendees.push(email);
+  }
+
+  return {
+    ...payload,
+    attendees,
+    contact_email: payload.contact_email || email || "",
+    contact_phone: payload.contact_phone || phone || "",
+    contact_name: payload.contact_name || name || ""
+  };
+}
+
 module.exports = {
   TOOL_DEFINITIONS,
   esConfirmacion,
   esCancelacion,
   construirToolsDescription,
   getMissingFields,
-  buildMissingFieldsQuestion
+  buildMissingFieldsQuestion,
+  extractEmail,
+  extractPhone,
+  extractName,
+  enrichCalendarPayloadFromText
 };
