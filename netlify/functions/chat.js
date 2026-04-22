@@ -5,7 +5,8 @@ const {
     construirToolsDescription,
     getMissingFields,
     buildMissingFieldsQuestion,
-    enrichCalendarPayloadFromText
+    enrichCalendarPayloadFromText,
+    seemsContactInfo
 } = require('./tool-workflows');
 
 const supabase = createClient(
@@ -220,44 +221,50 @@ exports.handler = async (event) => {
 
         // ── COMPLETAR PENDING DE CALENDAR DESDE BACKEND ──────────────────────
         if (
-            pendingAction &&
-            pendingAction.action === 'GOOGLECALENDAR_CREATE_EVENT' &&
-            !esConfirmacion(prompt) &&
-            !esCancelacion(prompt)
-        ) {
-            const payloadActual = pendingAction.payload || {};
-            const payloadEnriquecido = enrichCalendarPayloadFromText(payloadActual, prompt);
-            const missingFields = getMissingFields('GOOGLECALENDAR_CREATE_EVENT', payloadEnriquecido);
+    pendingAction &&
+    pendingAction.action === 'GOOGLECALENDAR_CREATE_EVENT' &&
+    !esConfirmacion(prompt) &&
+    !esCancelacion(prompt)
+) {
+    const payloadActual = pendingAction.payload || {};
 
-            const huboCambios = JSON.stringify(payloadActual) !== JSON.stringify(payloadEnriquecido);
+    // Solo completar desde backend si el mensaje parece dato de contacto.
+    if (seemsContactInfo(prompt)) {
+        const payloadEnriquecido = enrichCalendarPayloadFromText(payloadActual, prompt);
+        const missingFields = getMissingFields('GOOGLECALENDAR_CREATE_EVENT', payloadEnriquecido);
 
-            if (huboCambios) {
-                await supabase
-                    .from('pending_tool_actions')
-                    .update({ payload: payloadEnriquecido })
-                    .eq('id', pendingAction.id);
+        const huboCambios = JSON.stringify(payloadActual) !== JSON.stringify(payloadEnriquecido);
 
-                console.log("Pending action Calendar enriquecida desde texto:", JSON.stringify(payloadEnriquecido));
-            }
+        if (huboCambios) {
+            await supabase
+                .from('pending_tool_actions')
+                .update({ payload: payloadEnriquecido })
+                .eq('id', pendingAction.id);
 
-            if (missingFields.length > 0) {
-                return {
-                    statusCode: 200,
-                    headers,
-                    body: JSON.stringify({
-                        respuesta: buildMissingFieldsQuestion('GOOGLECALENDAR_CREATE_EVENT', missingFields)
-                    })
-                };
-            }
+            console.log("Pending action Calendar enriquecida desde texto:", JSON.stringify(payloadEnriquecido));
+        }
 
+        if (missingFields.length > 0) {
             return {
                 statusCode: 200,
                 headers,
                 body: JSON.stringify({
-                    respuesta: `Voy a agendar "${payloadEnriquecido.summary}" el ${resolverFecha(payloadEnriquecido.start)?.split('T')[0]} a las ${resolverFecha(payloadEnriquecido.start)?.split('T')[1]?.substring(0, 5)} para ${payloadEnriquecido.contact_name} (${payloadEnriquecido.contact_email}). Responde "sí" para confirmar o "no" para cancelar.`
+                    respuesta: buildMissingFieldsQuestion('GOOGLECALENDAR_CREATE_EVENT', missingFields)
                 })
             };
         }
+
+        return {
+            statusCode: 200,
+            headers,
+            body: JSON.stringify({
+                respuesta: `Voy a agendar "${payloadEnriquecido.summary}" el ${resolverFecha(payloadEnriquecido.start)?.split('T')[0]} a las ${resolverFecha(payloadEnriquecido.start)?.split('T')[1]?.substring(0, 5)} para ${payloadEnriquecido.contact_name} (${payloadEnriquecido.contact_email}). Responde "sí" para confirmar o "no" para cancelar.`
+            })
+        };
+    }
+
+    // Si no parece dato de contacto, deja que continúe el flujo normal hacia el modelo.
+}
 
         // ── CONFIRMAR ACCIÓN PENDIENTE ───────────────────────────────────────
         if (pendingAction && esConfirmacion(prompt)) {
