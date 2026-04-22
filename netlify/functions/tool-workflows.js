@@ -27,6 +27,41 @@ const TOOL_DEFINITIONS = {
   }
 };
 
+const WORKFLOW_CONFIG = {
+  schedule_meeting: {
+    toolKey: 'GOOGLECALENDAR_CREATE_EVENT',
+    confirmationRequired: true,
+    requiredFields: ['start', 'end', 'contact_name', 'contact_email'],
+    optionalFields: ['summary', 'description', 'contact_phone', 'meeting_reason', 'location'],
+    defaults: {
+      summary: 'Reunión agendada desde el chat',
+      description: 'Reunión generada desde el asistente del agente.',
+      durationMinutes: 30
+    },
+    prompts: {
+      initial: 'Claro. Para agendar la reunión, compárteme la fecha y hora, tu nombre y tu correo.'
+    }
+  },
+
+  send_email: {
+    toolKey: 'GMAIL_SEND_EMAIL',
+    confirmationRequired: true,
+    requiredFields: ['to', 'subject', 'body'],
+    optionalFields: ['cc', 'bcc'],
+    defaults: {},
+    prompts: {}
+  },
+
+  find_document: {
+    toolKey: 'GOOGLEDRIVE_FIND_FILE',
+    confirmationRequired: false,
+    requiredFields: ['query'],
+    optionalFields: ['folder', 'file_type'],
+    defaults: {},
+    prompts: {}
+  }
+};
+
 const WORKFLOW_DEFINITIONS = {
   schedule_meeting: {
     key: 'schedule_meeting',
@@ -318,9 +353,14 @@ function detectWorkflowIntent(text = "", availableToolKeys = []) {
   return null;
 }
 
+function getWorkflowConfig(workflowKey) {
+  return WORKFLOW_CONFIG[workflowKey] || null;
+}
+
 module.exports = {
   TOOL_DEFINITIONS,
   WORKFLOW_DEFINITIONS,
+  WORKFLOW_CONFIG,
   esConfirmacion,
   esCancelacion,
   construirToolsDescription,
@@ -331,5 +371,6 @@ module.exports = {
   extractName,
   enrichCalendarPayloadFromText,
   seemsContactInfo,
-  detectWorkflowIntent
+  detectWorkflowIntent,
+  getWorkflowConfig
 };
