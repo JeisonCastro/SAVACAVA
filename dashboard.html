@@ -920,7 +920,7 @@ async function conectarToolkit(toolkit) {
 });
             const data = await res.json();
             document.getElementById('dashboard-loading')?.remove();
-            agregarMensaje("Agente", data.respuesta, "bot");
+            agregarMensaje("Agente", data.respuesta || data.error || "No se recibió una respuesta válida.", "bot");
             cargarBalance(currentUser.id);
         } catch (err) {
             document.getElementById('dashboard-loading')?.remove();
