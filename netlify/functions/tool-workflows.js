@@ -185,7 +185,51 @@ function extractName(text = "") {
   cleaned = cleaned.replace(/\s+/g, " ").trim();
 
   if (!cleaned || cleaned.length < 3) return "";
-  return cleaned;
+
+  const frasesInvalidas = [
+    /quiero agendar/i,
+    /quiero reunir/i,
+    /necesito agendar/i,
+    /una reunión/i,
+    /una reunion/i,
+    /mañana/i,
+    /hoy/i,
+    /desarrollo web/i,
+    /automatización/i,
+    /automatizacion/i,
+    /soporte/i,
+    /pagina web/i,
+    /página web/i,
+    /reunión/i,
+    /reunion/i,
+    /agenda/i,
+    /agendar/i
+  ];
+
+  if (frasesInvalidas.some(rx => rx.test(cleaned))) {
+    return "";
+  }
+
+  if (!/^[a-záéíóúñü\s]+$/i.test(cleaned)) {
+    return "";
+  }
+
+  const partes = cleaned.split(" ").filter(Boolean);
+
+  if (partes.length < 2) return "";
+
+  return partes.join(" ");
+}
+
+function seemsContactInfo(text = "") {
+  const t = String(text).trim();
+  if (!t) return false;
+
+  const hasEmail = !!extractEmail(t);
+  const hasPhone = !!extractPhone(t);
+  const hasName = !!extractName(t);
+
+  return hasEmail || hasPhone || hasName;
 }
 
 function enrichCalendarPayloadFromText(payload = {}, text = "") {
@@ -218,5 +262,6 @@ module.exports = {
   extractEmail,
   extractPhone,
   extractName,
-  enrichCalendarPayloadFromText
+  enrichCalendarPayloadFromText,
+  seemsContactInfo
 };
