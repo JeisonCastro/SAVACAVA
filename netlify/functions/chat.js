@@ -48,6 +48,18 @@ function resolverFecha(texto) {
     return `${fecha.getFullYear()}-${pad(fecha.getMonth() + 1)}-${pad(fecha.getDate())}T${pad(fecha.getHours())}:${pad(fecha.getMinutes())}:00-05:00`;
 }
 
+function sumarMinutos(fechaIso, minutos = 30) {
+    if (!fechaIso) return "";
+    const fecha = new Date(fechaIso);
+    if (isNaN(fecha.getTime())) return "";
+    fecha.setMinutes(fecha.getMinutes() + minutos);
+
+    const pad = n => String(n).padStart(2, '0');
+    const offset = '-05:00';
+
+    return `${fecha.getFullYear()}-${pad(fecha.getMonth() + 1)}-${pad(fecha.getDate())}T${pad(fecha.getHours())}:${pad(fecha.getMinutes())}:00${offset}`;
+}
+
 async function ejecutarToolComposio(toolSlug, connectedAccountId, userId, args) {
     const res = await fetch(`https://backend.composio.dev/api/v3.1/tools/execute/${toolSlug}`, {
         method: 'POST',
@@ -290,48 +302,62 @@ exports.handler = async (event) => {
         }
 
         // ── COMPLETAR PENDING DE CALENDAR DESDE BACKEND ──────────────────────
+
         if (
-            pendingAction &&
-            pendingAction.action === 'GOOGLECALENDAR_CREATE_EVENT' &&
-            !esConfirmacion(prompt) &&
-            !esCancelacion(prompt)
-        ) {
-            const payloadActual = pendingAction.payload || {};
+    pendingAction &&
+    pendingAction.action === 'GOOGLECALENDAR_CREATE_EVENT' &&
+    !esConfirmacion(prompt) &&
+    !esCancelacion(prompt)
+) {
+    const payloadActual = pendingAction.payload || {};
 
-            if (seemsContactInfo(prompt)) {
-                const payloadEnriquecido = enrichCalendarPayloadFromText(payloadActual, prompt);
-                const missingFields = getMissingFields('GOOGLECALENDAR_CREATE_EVENT', payloadEnriquecido);
+    let payloadEnriquecido = { ...payloadActual };
 
-                const huboCambios = JSON.stringify(payloadActual) !== JSON.stringify(payloadEnriquecido);
+    // 1. Extraer contacto si el mensaje parece traer datos de contacto
+    if (seemsContactInfo(prompt)) {
+        payloadEnriquecido = enrichCalendarPayloadFromText(payloadEnriquecido, prompt);
+    }
 
-                if (huboCambios) {
-                    await supabase
-                        .from('pending_tool_actions')
-                        .update({ payload: payloadEnriquecido })
-                        .eq('id', pendingAction.id);
+    // 2. Extraer fecha/hora desde el texto
+    const fechaResuelta = resolverFecha(prompt);
+    if (fechaResuelta && !payloadEnriquecido.start) {
+        payloadEnriquecido.start = fechaResuelta;
+    }
 
-                    console.log("Pending action Calendar enriquecida desde texto:", JSON.stringify(payloadEnriquecido));
-                }
+    if (payloadEnriquecido.start && !payloadEnriquecido.end) {
+        payloadEnriquecido.end = sumarMinutos(payloadEnriquecido.start, 30);
+    }
 
-                if (missingFields.length > 0) {
-                    return {
-                        statusCode: 200,
-                        headers,
-                        body: JSON.stringify({
-                            respuesta: buildMissingFieldsQuestion('GOOGLECALENDAR_CREATE_EVENT', missingFields)
-                        })
-                    };
-                }
+    const missingFields = getMissingFields('GOOGLECALENDAR_CREATE_EVENT', payloadEnriquecido);
+    const huboCambios = JSON.stringify(payloadActual) !== JSON.stringify(payloadEnriquecido);
 
-                return {
-                    statusCode: 200,
-                    headers,
-                    body: JSON.stringify({
-                        respuesta: `Voy a agendar "${payloadEnriquecido.summary}" el ${resolverFecha(payloadEnriquecido.start)?.split('T')[0]} a las ${resolverFecha(payloadEnriquecido.start)?.split('T')[1]?.substring(0, 5)} para ${payloadEnriquecido.contact_name} (${payloadEnriquecido.contact_email}). Responde "sí" para confirmar o "no" para cancelar.`
-                    })
-                };
-            }
-        }
+    if (huboCambios) {
+        await supabase
+            .from('pending_tool_actions')
+            .update({ payload: payloadEnriquecido })
+            .eq('id', pendingAction.id);
+
+        console.log("Pending action Calendar enriquecida desde texto:", JSON.stringify(payloadEnriquecido));
+    }
+
+    if (missingFields.length > 0) {
+        return {
+            statusCode: 200,
+            headers,
+            body: JSON.stringify({
+                respuesta: buildMissingFieldsQuestion('GOOGLECALENDAR_CREATE_EVENT', missingFields)
+            })
+        };
+    }
+
+    return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({
+            respuesta: `Voy a agendar "${payloadEnriquecido.summary}" el ${payloadEnriquecido.start?.split('T')[0]} a las ${payloadEnriquecido.start?.split('T')[1]?.substring(0, 5)} para ${payloadEnriquecido.contact_name} (${payloadEnriquecido.contact_email}). Responde "sí" para confirmar o "no" para cancelar.`
+        })
+    };
+}
 
         // ── CONFIRMAR ACCIÓN PENDIENTE ───────────────────────────────────────
         if (pendingAction && esConfirmacion(prompt)) {
