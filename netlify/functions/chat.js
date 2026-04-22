@@ -51,14 +51,34 @@ function resolverFecha(texto) {
 
 function sumarMinutos(fechaIso, minutos = 30) {
     if (!fechaIso) return "";
-    const fecha = new Date(fechaIso);
-    if (isNaN(fecha.getTime())) return "";
-    fecha.setMinutes(fecha.getMinutes() + minutos);
+
+    const match = String(fechaIso).match(
+        /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})([+-]\d{2}:\d{2})$/
+    );
+
+    if (!match) return "";
+
+    let [, year, month, day, hour, minute, second, offset] = match;
+
+    let totalMinutos = parseInt(hour, 10) * 60 + parseInt(minute, 10) + minutos;
+
+    let diasExtra = Math.floor(totalMinutos / 1440);
+    let minutosDelDia = totalMinutos % 1440;
+
+    if (minutosDelDia < 0) {
+        minutosDelDia += 1440;
+        diasExtra -= 1;
+    }
+
+    const nuevaHora = Math.floor(minutosDelDia / 60);
+    const nuevoMinuto = minutosDelDia % 60;
+
+    const baseDate = new Date(Number(year), Number(month) - 1, Number(day));
+    baseDate.setDate(baseDate.getDate() + diasExtra);
 
     const pad = n => String(n).padStart(2, '0');
-    const offset = '-05:00';
 
-    return `${fecha.getFullYear()}-${pad(fecha.getMonth() + 1)}-${pad(fecha.getDate())}T${pad(fecha.getHours())}:${pad(fecha.getMinutes())}:00${offset}`;
+    return `${baseDate.getFullYear()}-${pad(baseDate.getMonth() + 1)}-${pad(baseDate.getDate())}T${pad(nuevaHora)}:${pad(nuevoMinuto)}:${second}${offset}`;
 }
 
 async function ejecutarToolComposio(toolSlug, connectedAccountId, userId, args) {
