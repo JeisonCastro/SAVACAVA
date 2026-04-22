@@ -424,24 +424,45 @@ INSTRUCCIONES:
 
         console.log("Turnos de historial enviados a DeepSeek:", historial.length);
 
-        const aiResponse = await fetch('https://api.deepseek.com/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${process.env.DEEPSEEK_API_KEY}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                model: "deepseek-chat",
-                messages: mensajes
-            })
-        });
+        console.log("Llamando a DeepSeek...");
 
-        const aiData = await aiResponse.json();
+const controller = new AbortController();
+const timeout = setTimeout(() => controller.abort(), 20000);
 
-        if (!aiData.choices) {
-            console.error("Error DeepSeek:", aiData);
-            throw new Error("Error en la respuesta de la IA");
-        }
+let aiResponse;
+try {
+    aiResponse = await fetch('https://api.deepseek.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${process.env.DEEPSEEK_API_KEY}`,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            model: "deepseek-chat",
+            messages: mensajes
+        }),
+        signal: controller.signal
+    });
+} finally {
+    clearTimeout(timeout);
+}
+
+console.log("DeepSeek respondió con status:", aiResponse.status);
+
+        const aiRaw = await aiResponse.text();
+console.log("Respuesta cruda DeepSeek:", aiRaw);
+
+let aiData;
+try {
+    aiData = JSON.parse(aiRaw);
+} catch (e) {
+    throw new Error(`DeepSeek devolvió una respuesta no JSON: ${aiRaw}`);
+}
+
+if (!aiResponse.ok || !aiData.choices) {
+    console.error("Error DeepSeek:", aiData);
+    throw new Error(aiData?.error?.message || "Error en la respuesta de la IA");
+}
 
         let respuestaIA = aiData.choices[0].message.content;
         console.log("Respuesta raw DeepSeek:", respuestaIA);
