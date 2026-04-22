@@ -27,6 +27,58 @@ const TOOL_DEFINITIONS = {
   }
 };
 
+const WORKFLOW_DEFINITIONS = {
+  schedule_meeting: {
+    key: 'schedule_meeting',
+    label: 'Agendar reunión',
+    toolKey: 'GOOGLECALENDAR_CREATE_EVENT',
+    requiredFields: ['summary', 'start', 'end', 'contact_name', 'contact_email'],
+    optionalFields: ['description', 'attendees', 'contact_phone', 'meeting_reason', 'location'],
+    confirmationRequired: true,
+    intentPatterns: [
+      /agend/i,
+      /reuni[oó]n/i,
+      /reunion/i,
+      /cita/i,
+      /calendar/i,
+      /evento/i
+    ]
+  },
+
+  send_email: {
+    key: 'send_email',
+    label: 'Enviar correo',
+    toolKey: 'GMAIL_SEND_EMAIL',
+    requiredFields: ['to', 'subject', 'body'],
+    optionalFields: ['cc', 'bcc'],
+    confirmationRequired: true,
+    intentPatterns: [
+      /correo/i,
+      /email/i,
+      /gmail/i,
+      /enviar/i,
+      /escribe/i,
+      /manda/i
+    ]
+  },
+
+  find_document: {
+    key: 'find_document',
+    label: 'Buscar documento',
+    toolKey: 'GOOGLEDRIVE_FIND_FILE',
+    requiredFields: ['query'],
+    optionalFields: ['folder', 'file_type'],
+    confirmationRequired: false,
+    intentPatterns: [
+      /buscar/i,
+      /archivo/i,
+      /documento/i,
+      /drive/i,
+      /carpeta/i
+    ]
+  }
+};
+
 function esConfirmacion(texto = "") {
   const t = String(texto).trim().toLowerCase();
   return [
@@ -252,8 +304,23 @@ function enrichCalendarPayloadFromText(payload = {}, text = "") {
   };
 }
 
+function detectWorkflowIntent(text = "", availableToolKeys = []) {
+  const contenido = String(text || "");
+  const disponibles = new Set(availableToolKeys || []);
+
+  for (const workflow of Object.values(WORKFLOW_DEFINITIONS)) {
+    if (!disponibles.has(workflow.toolKey)) continue;
+
+    const match = workflow.intentPatterns.some(rx => rx.test(contenido));
+    if (match) return workflow;
+  }
+
+  return null;
+}
+
 module.exports = {
   TOOL_DEFINITIONS,
+  WORKFLOW_DEFINITIONS,
   esConfirmacion,
   esCancelacion,
   construirToolsDescription,
@@ -263,5 +330,6 @@ module.exports = {
   extractPhone,
   extractName,
   enrichCalendarPayloadFromText,
-  seemsContactInfo
+  seemsContactInfo,
+  detectWorkflowIntent
 };
