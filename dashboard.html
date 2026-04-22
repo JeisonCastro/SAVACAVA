@@ -439,6 +439,7 @@
     let planSeleccionado = { tokens: 500000, precio: '20.000' };
     let upgradeWhatsappUrl = '';
     let todosLosPlanes = [];
+    let currentConversationId = null;
 
     // ── TOAST ──
     function showToast(msg, type = 'success') {
@@ -887,12 +888,13 @@ async function conectarToolkit(toolkit) {
     let agenteSeleccionadoId = null;
 
     function abrirChat(id, nombre) {
-        agenteSeleccionadoId = id;
-        document.getElementById('chat-agent-name').innerText = "Probando: " + nombre;
-        document.getElementById('chat-messages').innerHTML = '';
-        document.getElementById('chat-modal').style.display = 'flex';
-        agregarMensaje("Sistema", "Conectado al agente. Listo para recibir instrucciones.", "bot");
-    }
+    agenteSeleccionadoId = id;
+    currentConversationId = crypto.randomUUID();
+    document.getElementById('chat-agent-name').innerText = "Probando: " + nombre;
+    document.getElementById('chat-messages').innerHTML = '';
+    document.getElementById('chat-modal').style.display = 'flex';
+    agregarMensaje("Sistema", "Conectado al agente. Listo para recibir instrucciones.", "bot");
+}
 
     async function enviarMensaje() {
         const input = document.getElementById('chat-input');
@@ -907,7 +909,15 @@ async function conectarToolkit(toolkit) {
         ld.innerHTML = "<em>El agente está pensando...</em>";
         container.appendChild(ld); container.scrollTop = container.scrollHeight;
         try {
-            const res = await fetch('/.netlify/functions/chat', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ prompt: mensaje, agente_id: agenteSeleccionadoId }) });
+            const res = await fetch('/.netlify/functions/chat', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({
+        prompt: mensaje,
+        agente_id: agenteSeleccionadoId,
+        conversation_id: currentConversationId
+    })
+});
             const data = await res.json();
             document.getElementById('dashboard-loading')?.remove();
             agregarMensaje("Agente", data.respuesta, "bot");
