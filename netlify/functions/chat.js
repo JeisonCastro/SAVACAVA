@@ -466,7 +466,7 @@ async function leerTextoConTimeout(response, ms = 8000) {
     ]);
 }
 
-const aiRaw = await leerTextoConTimeout(aiResponse, 8000);
+const aiRaw = await leerTextoConTimeout(aiResponse, 15000);
 console.log("Respuesta cruda DeepSeek:", aiRaw);
 
 let aiData;
