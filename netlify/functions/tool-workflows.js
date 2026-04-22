@@ -36,7 +36,7 @@ const WORKFLOW_CONFIG = {
     defaults: {
       summary: 'Reunión agendada desde el chat',
       description: 'Reunión generada desde el asistente del agente.',
-      durationMinutes: 30
+      durationMinutes: 45
     },
     prompts: {
       initial: 'Claro. Para agendar la reunión, compárteme la fecha y hora, tu nombre y tu correo.'
