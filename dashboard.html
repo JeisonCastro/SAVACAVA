@@ -161,12 +161,141 @@
         /* MOBILE */
         .mob-toggle{display:none;position:fixed;top:1rem;left:1rem;z-index:100;width:36px;height:36px;background:var(--surface);border:1px solid var(--border);border-radius:8px;align-items:center;justify-content:center;cursor:pointer;color:var(--muted)}
         @media(max-width:768px){
-            .sidebar{transform:translateX(-100%);transition:transform .3s}
-            .sidebar.open{transform:translateX(0)}
-            .main-content{margin-left:0}
-            .bg-grid{left:0}
-            .mob-toggle{display:flex}
-        }
+    .sidebar{transform:translateX(-100%);transition:transform .3s}
+    .sidebar.open{transform:translateX(0)}
+    .main-content{
+        margin-left:0;
+        padding:1rem 1rem 2rem;
+    }
+    .bg-grid{left:0}
+    .mob-toggle{display:flex}
+
+    .topbar{
+        flex-direction:column;
+        align-items:flex-start;
+    }
+
+    .topbar-right{
+        width:100%;
+        flex-direction:column;
+        align-items:stretch;
+    }
+
+    .token-card,
+    .plan-indicator{
+        width:100%;
+    }
+
+    .card{
+        padding:1rem;
+    }
+
+    .agent-item{
+        padding:.8rem;
+    }
+
+    .table-wrap{
+        overflow-x:auto;
+    }
+
+    table{
+        min-width:520px;
+    }
+}
+
+@media(max-width:480px){
+    .main-content{
+        padding:.75rem .75rem 1.5rem;
+    }
+
+    .page-title{
+        font-size:1.1rem;
+    }
+
+    .page-sub{
+        font-size:.75rem;
+    }
+
+    .card{
+        padding:.9rem;
+        border-radius:12px;
+    }
+
+    .token-card{
+        padding:.65rem .8rem;
+    }
+
+    .token-icon{
+        width:32px;
+        height:32px;
+    }
+
+    #token-balance,
+    #token-balance-2{
+        font-size:1.1rem;
+    }
+
+    .plan-card{
+        padding:.9rem .6rem;
+    }
+
+    .plan-tokens{
+        font-size:1.25rem;
+    }
+
+    .plan-price{
+        font-size:.75rem;
+    }
+
+    .stat-card{
+        padding:1rem;
+    }
+
+    .stat-value{
+        font-size:1.4rem;
+    }
+
+    .field input,
+    .field textarea{
+        font-size:.82rem;
+        padding:9px 11px;
+    }
+
+    thead th,
+    tbody td{
+        padding:.55rem .65rem;
+        font-size:.75rem;
+    }
+}
+
+        .agent-top-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:.75rem;
+    margin-bottom:10px;
+}
+
+.agent-actions{
+    display:flex;
+    gap:5px;
+    flex-shrink:0;
+    margin-left:8px;
+    flex-wrap:wrap;
+    justify-content:flex-end;
+}
+
+@media(max-width:480px){
+    .agent-top-row{
+        flex-direction:column;
+        align-items:stretch;
+    }
+
+    .agent-actions{
+        margin-left:0;
+        justify-content:flex-start;
+    }
+}
     </style>
 </head>
 <body>
@@ -641,21 +770,19 @@
         const container = document.getElementById('lista-agentes');
         if (agentes.length === 0) { container.innerHTML = '<div class="empty-state"><i class="fas fa-robot"></i>Aún no hay agentes.</div>'; return; }
         container.innerHTML = agentes.map(a => `
-            <div class="agent-item" style="flex-direction:column;align-items:stretch;">
-                <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
-                    <div style="min-width:0;flex:1;">
-                        <div class="agent-name">${a.name}</div>
-                        <div class="agent-prompt">${a.prompt}</div>
-                    </div>
-                    <div style="display:flex;gap:5px;flex-shrink:0;margin-left:8px;">
-                        <button onclick="abrirChat('${a.id}','${a.name}')" title="Probar" style="background:rgba(14,165,233,0.1);color:var(--accent);border:1px solid var(--border);padding:8px;border-radius:8px;cursor:pointer;"><i class="fas fa-play"></i></button>
-                        <button onclick="copiarCDN('${a.id}')" title="Copiar CDN" style="background:rgba(34,211,165,0.1);color:var(--green);border:1px solid var(--border);padding:8px;border-radius:8px;cursor:pointer;"><i class="fas fa-code"></i></button>
-                        <button onclick="abrirEdicion('${a.id}')" title="Editar" style="background:rgba(122,152,184,0.1);color:var(--muted);border:1px solid var(--border);padding:8px;border-radius:8px;cursor:pointer;"><i class="fas fa-edit"></i></button>
-                        <button onclick="abrirIntegraciones('${a.id}','${a.name}')" title="Integraciones" style="background:rgba(251,191,36,0.1);color:var(--yellow);border:1px solid var(--border);padding:8px;border-radius:8px;cursor:pointer;"><i class="fas fa-plug"></i></button>
-                        <button onclick="eliminarAgente('${a.id}')" title="Borrar" style="background:rgba(248,113,113,0.1);color:var(--red);border:1px solid var(--border);padding:8px;border-radius:8px;cursor:pointer;"><i class="fas fa-trash"></i></button>
-                    </div>
-                </div>
-            </div>
+           <div class="agent-top-row">
+    <div style="min-width:0;flex:1;">
+        <div class="agent-name">${a.name}</div>
+        <div class="agent-prompt">${a.prompt}</div>
+    </div>
+    <div class="agent-actions">
+        <button onclick="abrirChat('${a.id}','${a.name}')" title="Probar" style="background:rgba(14,165,233,0.1);color:var(--accent);border:1px solid var(--border);padding:8px;border-radius:8px;cursor:pointer;"><i class="fas fa-play"></i></button>
+        <button onclick="copiarCDN('${a.id}')" title="Copiar CDN" style="background:rgba(34,211,165,0.1);color:var(--green);border:1px solid var(--border);padding:8px;border-radius:8px;cursor:pointer;"><i class="fas fa-code"></i></button>
+        <button onclick="abrirEdicion('${a.id}')" title="Editar" style="background:rgba(122,152,184,0.1);color:var(--muted);border:1px solid var(--border);padding:8px;border-radius:8px;cursor:pointer;"><i class="fas fa-edit"></i></button>
+        <button onclick="abrirIntegraciones('${a.id}','${a.name}')" title="Integraciones" style="background:rgba(251,191,36,0.1);color:var(--yellow);border:1px solid var(--border);padding:8px;border-radius:8px;cursor:pointer;"><i class="fas fa-plug"></i></button>
+        <button onclick="eliminarAgente('${a.id}')" title="Borrar" style="background:rgba(248,113,113,0.1);color:var(--red);border:1px solid var(--border);padding:8px;border-radius:8px;cursor:pointer;"><i class="fas fa-trash"></i></button>
+    </div>
+</div>
         `).join('');
     }
 
