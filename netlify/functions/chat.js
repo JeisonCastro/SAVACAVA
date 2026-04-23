@@ -592,18 +592,33 @@ console.log("Message route:", messageRoute);
                 }
 
                 const payload = pendingAction.payload || {};
-                const resultado = await ejecutarToolComposio(
-                    'GMAIL_SEND_EMAIL',
-                    gmailConn.composio_entity_id,
-                    agente.user_id,
-                    {
-                        to: payload.to,
-                        subject: payload.subject,
-                        body: payload.body,
-                        cc: payload.cc || "",
-                        bcc: payload.bcc || ""
-                    }
-                );
+                const normalizarListaCorreos = (valor) => {
+    if (Array.isArray(valor)) {
+        return valor.filter(v => typeof v === 'string' && v.trim());
+    }
+
+    if (typeof valor === 'string' && valor.trim()) {
+        return valor
+            .split(',')
+            .map(v => v.trim())
+            .filter(Boolean);
+    }
+
+    return [];
+};
+
+const resultado = await ejecutarToolComposio(
+    'GMAIL_SEND_EMAIL',
+    gmailConn.composio_entity_id,
+    agente.user_id,
+    {
+        to: payload.to,
+        subject: payload.subject,
+        body: payload.body,
+        cc: normalizarListaCorreos(payload.cc),
+        bcc: normalizarListaCorreos(payload.bcc)
+    }
+);
 
                 await supabase
                     .from('pending_tool_actions')
