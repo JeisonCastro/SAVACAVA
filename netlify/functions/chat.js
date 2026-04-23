@@ -28,21 +28,49 @@ function resolverFecha(texto) {
             : texto + '-05:00';
     }
 
-    const horaMatch = texto.match(/(\d{1,2}):(\d{2})/);
-    const hora = horaMatch ? parseInt(horaMatch[1], 10) : 10;
-    const min = horaMatch ? parseInt(horaMatch[2], 10) : 0;
+    const textoLower = String(texto || "").toLowerCase();
+
+    let hora = null;
+    let min = 0;
+
+    const matchHoraCompleta = textoLower.match(/\b(\d{1,2}):(\d{2})\s*(am|pm)?\b/i);
+    const matchHoraSimple = textoLower.match(/\b(\d{1,2})\s*(am|pm)\b/i);
+    const matchHoraSolo = textoLower.match(/\ba las\s+(\d{1,2})\b/i);
+
+    if (matchHoraCompleta) {
+        hora = parseInt(matchHoraCompleta[1], 10);
+        min = parseInt(matchHoraCompleta[2], 10);
+
+        const periodo = matchHoraCompleta[3]?.toLowerCase();
+        if (periodo === 'pm' && hora < 12) hora += 12;
+        if (periodo === 'am' && hora === 12) hora = 0;
+    } else if (matchHoraSimple) {
+        hora = parseInt(matchHoraSimple[1], 10);
+        min = 0;
+
+        const periodo = matchHoraSimple[2]?.toLowerCase();
+        if (periodo === 'pm' && hora < 12) hora += 12;
+        if (periodo === 'am' && hora === 12) hora = 0;
+    } else if (matchHoraSolo) {
+        hora = parseInt(matchHoraSolo[1], 10);
+        min = 0;
+    }
 
     const hoy = new Date();
     hoy.setHours(0, 0, 0, 0);
     let fecha = new Date(hoy);
 
-    if (/pasado ma[ñn]ana/i.test(texto)) fecha.setDate(fecha.getDate() + 2);
-    else if (/ma[ñn]ana/i.test(texto)) fecha.setDate(fecha.getDate() + 1);
-    else if (/lunes/i.test(texto)) while (fecha.getDay() !== 1) fecha.setDate(fecha.getDate() + 1);
-    else if (/martes/i.test(texto)) while (fecha.getDay() !== 2) fecha.setDate(fecha.getDate() + 1);
-    else if (/mi[eé]rcoles/i.test(texto)) while (fecha.getDay() !== 3) fecha.setDate(fecha.getDate() + 1);
-    else if (/jueves/i.test(texto)) while (fecha.getDay() !== 4) fecha.setDate(fecha.getDate() + 1);
-    else if (/viernes/i.test(texto)) while (fecha.getDay() !== 5) fecha.setDate(fecha.getDate() + 1);
+    if (/pasado ma[ñn]ana/i.test(textoLower)) fecha.setDate(fecha.getDate() + 2);
+    else if (/ma[ñn]ana/i.test(textoLower)) fecha.setDate(fecha.getDate() + 1);
+    else if (/lunes/i.test(textoLower)) while (fecha.getDay() !== 1) fecha.setDate(fecha.getDate() + 1);
+    else if (/martes/i.test(textoLower)) while (fecha.getDay() !== 2) fecha.setDate(fecha.getDate() + 1);
+    else if (/mi[eé]rcoles/i.test(textoLower)) while (fecha.getDay() !== 3) fecha.setDate(fecha.getDate() + 1);
+    else if (/jueves/i.test(textoLower)) while (fecha.getDay() !== 4) fecha.setDate(fecha.getDate() + 1);
+    else if (/viernes/i.test(textoLower)) while (fecha.getDay() !== 5) fecha.setDate(fecha.getDate() + 1);
+
+    if (hora === null) {
+        return null;
+    }
 
     fecha.setHours(hora, min, 0, 0);
 
