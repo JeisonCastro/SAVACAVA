@@ -41,46 +41,68 @@
     const input = document.getElementById('jt-input');
     const sendBtn = document.getElementById('jt-send');
     const messages = document.getElementById('jt-messages');
+    let currentConversationId = crypto.randomUUID();
+    let currentChatHistory = [];
 
     chatBtn.onclick = () => {
-        chatWindow.style.display = chatWindow.style.display === 'flex' ? 'none' : 'flex';
-    };
+    const abierto = chatWindow.style.display === 'flex';
+    chatWindow.style.display = abierto ? 'none' : 'flex';
 
-   async function sendMessage() {
-        const text = input.value.trim();
-        if(!text) return;
-
-        appendMsg(text, 'user');
-        input.value = '';
-        
-        // --- PRO TIP: Agregamos indicador de carga ---
-        const loadingDiv = document.createElement('div');
-        loadingDiv.className = 'msg-bot';
-        loadingDiv.innerText = 'Escribiendo...';
-        loadingDiv.id = 'jt-loading'; // Le ponemos ID para borrarlo luego
-        messages.appendChild(loadingDiv);
-        messages.scrollTop = messages.scrollHeight;
-        // ---------------------------------------------
-
-        try {
-            const res = await fetch('https://jeisondigital.netlify.app/.netlify/functions/chat', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ prompt: text, agente_id: agenteId })
-            });
-            
-            if (!res.ok) throw new Error('Error');
-            const data = await res.json();
-            
-            // Eliminamos el mensaje de "Escribiendo..."
-            document.getElementById('jt-loading')?.remove();
-            
-            appendMsg(data.respuesta, 'bot');
-        } catch (e) {
-            document.getElementById('jt-loading')?.remove(); // Quitamos carga si hay error
-            appendMsg("Error al conectar con el asistente.", 'bot');
-        }
+    if (!abierto && messages.children.length === 0) {
+        currentConversationId = crypto.randomUUID();
+        currentChatHistory = [];
     }
+};
+
+ async function sendMessage() {
+    const text = input.value.trim();
+    if (!text) return;
+
+    appendMsg(text, 'user');
+    input.value = '';
+
+    const loadingDiv = document.createElement('div');
+    loadingDiv.className = 'msg-bot';
+    loadingDiv.innerText = 'Escribiendo...';
+    loadingDiv.id = 'jt-loading';
+    messages.appendChild(loadingDiv);
+    messages.scrollTop = messages.scrollHeight;
+
+    try {
+        const historialParaEnviar = [...currentChatHistory];
+
+        const res = await fetch('https://jeisondigital.netlify.app/.netlify/functions/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                prompt: text,
+                agente_id: agenteId,
+                conversation_id: currentConversationId,
+                historial: historialParaEnviar
+            })
+        });
+
+        const data = await res.json();
+
+        currentChatHistory.push({
+            role: 'user',
+            content: text
+        });
+
+        const respuestaTexto = data.respuesta || data.error || 'No se recibió una respuesta válida.';
+
+        currentChatHistory.push({
+            role: 'assistant',
+            content: respuestaTexto
+        });
+
+        document.getElementById('jt-loading')?.remove();
+        appendMsg(respuestaTexto, 'bot');
+    } catch (e) {
+        document.getElementById('jt-loading')?.remove();
+        appendMsg("Error al conectar con el asistente.", 'bot');
+    }
+}
 
     function appendMsg(txt, type) {
         const div = document.createElement('div');
