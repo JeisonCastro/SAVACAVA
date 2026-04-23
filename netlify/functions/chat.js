@@ -9,7 +9,8 @@ const {
     seemsContactInfo,
     detectWorkflowIntent,
     getWorkflowConfig,
-    classifyMessageRoute
+    classifyMessageRoute,
+    enrichEmailPayloadFromText
 } = require('./tool-workflows');
 
 const supabase = createClient(
@@ -413,6 +414,44 @@ console.log("Message route:", messageRoute);
     pendingAction.action === 'GOOGLECALENDAR_CREATE_EVENT' &&
     messageRoute === 'workflow_collect'
 ) {
+            if (
+    pendingAction &&
+    pendingAction.action === 'GMAIL_SEND_EMAIL' &&
+    messageRoute === 'workflow_collect'
+) {
+    const payloadActual = pendingAction.payload || {};
+    const payloadEnriquecido = enrichEmailPayloadFromText(payloadActual, prompt);
+
+    const missingFields = getMissingFields('GMAIL_SEND_EMAIL', payloadEnriquecido);
+    const huboCambios = JSON.stringify(payloadActual) !== JSON.stringify(payloadEnriquecido);
+
+    if (huboCambios) {
+        await supabase
+            .from('pending_tool_actions')
+            .update({ payload: payloadEnriquecido })
+            .eq('id', pendingAction.id);
+
+        console.log("Pending action Gmail enriquecida desde texto:", JSON.stringify(payloadEnriquecido));
+    }
+
+    if (missingFields.length > 0) {
+        return {
+            statusCode: 200,
+            headers,
+            body: JSON.stringify({
+                respuesta: buildMissingFieldsQuestion('GMAIL_SEND_EMAIL', missingFields)
+            })
+        };
+    }
+
+    return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({
+            respuesta: `Voy a enviar un correo a ${payloadEnriquecido.to} con asunto "${payloadEnriquecido.subject}". Responde "sí" para confirmar o "no" para cancelar.`
+        })
+    };
+}
     const payloadActual = pendingAction.payload || {};
 
     let payloadEnriquecido = { ...payloadActual };
