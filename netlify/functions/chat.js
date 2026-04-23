@@ -407,6 +407,51 @@ console.log("Message route:", messageRoute);
     };
 }
 
+        if (workflowDetectado?.key === 'find_document') {
+    const driveConfig = getWorkflowConfig('find_document');
+
+    const { data: existingDrivePending } = await supabase
+        .from('pending_tool_actions')
+        .select('*')
+        .eq('user_id', agente.user_id)
+        .eq('agente_id', targetID)
+        .eq('conversation_id', conversation_id)
+        .eq('status', 'pending')
+        .eq('action', 'GOOGLEDRIVE_FIND_FILE')
+        .gte('expires_at', new Date().toISOString())
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+    if (!existingDrivePending) {
+        await supabase
+            .from('pending_tool_actions')
+            .insert([{
+                user_id: agente.user_id,
+                agente_id: targetID,
+                conversation_id: conversation_id,
+                action: 'GOOGLEDRIVE_FIND_FILE',
+                payload: {
+                    query: "",
+                    folder: "",
+                    file_type: ""
+                },
+                status: 'pending',
+                expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString()
+            }]);
+
+        console.log("Pending action de find_document creada desde workflow nativo");
+    }
+
+    return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({
+            respuesta: driveConfig?.prompts?.initial || "Claro. Indícame qué archivo o documento quieres buscar en Google Drive."
+        })
+    };
+}
+
         // ── COMPLETAR PENDING DE GMAIL DESDE BACKEND ─────────────────────────
 
         if (
