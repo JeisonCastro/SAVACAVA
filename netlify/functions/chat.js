@@ -10,7 +10,8 @@ const {
     detectWorkflowIntent,
     getWorkflowConfig,
     classifyMessageRoute,
-    enrichEmailPayloadFromText
+    enrichEmailPayloadFromText,
+    enrichDrivePayloadFromText
 } = require('./tool-workflows');
 
 const supabase = createClient(
@@ -551,6 +552,88 @@ console.log("Message route:", messageRoute);
                 })
             };
         }
+
+        if (
+    pendingAction &&
+    pendingAction.action === 'GOOGLEDRIVE_FIND_FILE' &&
+    messageRoute === 'workflow_collect'
+) {
+    const payloadActual = pendingAction.payload || {};
+    const payloadEnriquecido = enrichDrivePayloadFromText(payloadActual, prompt);
+
+    const missingFields = getMissingFields('GOOGLEDRIVE_FIND_FILE', payloadEnriquecido);
+    const huboCambios = JSON.stringify(payloadActual) !== JSON.stringify(payloadEnriquecido);
+
+    if (huboCambios) {
+        await supabase
+            .from('pending_tool_actions')
+            .update({ payload: payloadEnriquecido })
+            .eq('id', pendingAction.id);
+
+        console.log("Pending action Drive enriquecida desde texto:", JSON.stringify(payloadEnriquecido));
+    }
+
+    if (missingFields.length > 0) {
+        return {
+            statusCode: 200,
+            headers,
+            body: JSON.stringify({
+                respuesta: buildMissingFieldsQuestion('GOOGLEDRIVE_FIND_FILE', missingFields)
+            })
+        };
+    }
+
+    const driveConn = (userConnections || []).find(
+        c => String(c.toolkit).toLowerCase() === 'googledrive'
+    );
+
+    if (!driveConn?.composio_entity_id) {
+        return {
+            statusCode: 400,
+            headers,
+            body: JSON.stringify({ respuesta: "Google Drive no está conectado." })
+        };
+    }
+
+    const resultado = await ejecutarToolComposio(
+        'GOOGLEDRIVE_FIND_FILE',
+        driveConn.composio_entity_id,
+        agente.user_id,
+        {
+            query: payloadEnriquecido.query,
+            folder: payloadEnriquecido.folder || "",
+            file_type: payloadEnriquecido.file_type || ""
+        }
+    );
+
+    await supabase
+        .from('pending_tool_actions')
+        .update({ status: 'executed' })
+        .eq('id', pendingAction.id);
+
+    const archivos = resultado?.data?.response_data?.files || [];
+    const respuestaIA = archivos.length > 0
+        ? `Encontré ${archivos.length} archivo(s):\n` +
+          archivos.slice(0, 5).map(f => `📄 ${f.name} — ${f.webViewLink || ''}`).join('\n')
+        : "No encontré archivos que coincidan con tu búsqueda.";
+
+    const tokensUsados = await registrarConsumo({
+        agente,
+        targetID,
+        saldoActual,
+        prompt,
+        respuestaIA
+    });
+
+    return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({
+            respuesta: respuestaIA,
+            tokens_consumidos: tokensUsados
+        })
+    };
+}
 
         // ── CONFIRMAR ACCIÓN PENDIENTE ───────────────────────────────────────
         if (pendingAction && messageRoute === 'workflow_confirm' && esConfirmacion(prompt)) {
