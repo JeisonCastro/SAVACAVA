@@ -626,14 +626,12 @@ console.log("Message route:", messageRoute);
         [];
 
     const respuestaIA = archivos.length > 0
-        ? `Encontré ${archivos.length} archivo(s):
-` +
+        ? `Encontré ${archivos.length} archivo(s):\n` +
           archivos.slice(0, 5).map(f => {
               const nombre = f.name || f.title || f.file_name || 'Archivo sin nombre';
               const link = f.webViewLink || f.url || f.link || '';
               return `📄 ${nombre}${link ? ` — ${link}` : ''}`;
-          }).join('
-')
+          }).join('\\n')
         : "No encontré archivos que coincidan con tu búsqueda.";
 
     const tokensUsados = await registrarConsumo({
@@ -1120,14 +1118,12 @@ const mensajes = [
                 [];
 
             respuestaIA = archivos.length > 0
-                ? `Encontré ${archivos.length} archivo(s):
-` +
+                ? `Encontré ${archivos.length} archivo(s):\n` +
                   archivos.slice(0, 5).map(f => {
                       const nombre = f.name || f.title || f.file_name || 'Archivo sin nombre';
                       const link = f.webViewLink || f.url || f.link || '';
                       return `📄 ${nombre}${link ? ` — ${link}` : ''}`;
-                  }).join('
-')
+                  }).join('\\n')
                 : "No encontré archivos que coincidan con tu búsqueda.";
         }
 
