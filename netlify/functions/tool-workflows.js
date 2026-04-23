@@ -49,7 +49,9 @@ const WORKFLOW_CONFIG = {
     requiredFields: ['to', 'subject', 'body'],
     optionalFields: ['cc', 'bcc'],
     defaults: {},
-    prompts: {}
+    prompts: {
+      initial: 'Claro. Para enviar el correo, compárteme el destinatario, el asunto y el mensaje.'
+    }
   },
 
   find_document: {
@@ -58,7 +60,9 @@ const WORKFLOW_CONFIG = {
     requiredFields: ['query'],
     optionalFields: ['folder', 'file_type'],
     defaults: {},
-    prompts: {}
+    prompts: {
+      initial: 'Claro. Indícame qué archivo o documento quieres buscar.'
+    }
   }
 };
 
@@ -71,12 +75,13 @@ const WORKFLOW_DEFINITIONS = {
     optionalFields: ['description', 'attendees', 'contact_phone', 'meeting_reason', 'location'],
     confirmationRequired: true,
     intentPatterns: [
-      /agend/i,
-      /reuni[oó]n/i,
-      /reunion/i,
-      /cita/i,
-      /calendar/i,
-      /evento/i
+      /\bagend/i,
+      /\breuni[oó]n\b/i,
+      /\breunion\b/i,
+      /\bcita\b/i,
+      /\bcalendar\b/i,
+      /\bevento\b/i,
+      /\bprogramar\b.*\breuni[oó]n\b/i
     ]
   },
 
@@ -88,12 +93,12 @@ const WORKFLOW_DEFINITIONS = {
     optionalFields: ['cc', 'bcc'],
     confirmationRequired: true,
     intentPatterns: [
-      /correo/i,
-      /email/i,
-      /gmail/i,
-      /enviar/i,
-      /escribe/i,
-      /manda/i
+      /\benviar\b.*\b(correo|email)\b/i,
+      /\benv[ií]a\b.*\b(correo|email)\b/i,
+      /\bmanda\b.*\b(correo|email)\b/i,
+      /\bmandar\b.*\b(correo|email)\b/i,
+      /\bescribe\b.*\b(correo|email)\b/i,
+      /\bgmail\b/i
     ]
   },
 
@@ -105,11 +110,10 @@ const WORKFLOW_DEFINITIONS = {
     optionalFields: ['folder', 'file_type'],
     confirmationRequired: false,
     intentPatterns: [
-      /buscar/i,
-      /archivo/i,
-      /documento/i,
-      /drive/i,
-      /carpeta/i
+      /\bbuscar\b.*\b(archivo|documento)\b/i,
+      /\bencuentra\b.*\b(archivo|documento)\b/i,
+      /\bdrive\b/i,
+      /\bcarpeta\b/i
     ]
   }
 };
@@ -142,6 +146,10 @@ function esCancelacion(texto = "") {
     /^ya no quiero agendar nada$/,
     /^no quiero agendar$/,
     /^no quiero agendar nada$/,
+    /^ya no quiero enviar correo$/,
+    /^ya no quiero enviar un correo$/,
+    /^no quiero enviar correo$/,
+    /^no quiero enviar un correo$/,
     /^no deseo agendar$/,
     /^mejor no$/,
     /^mejor ya no$/,
@@ -287,32 +295,19 @@ function extractName(text = "") {
   let cleaned = String(text).trim();
   if (!cleaned) return "";
 
-  // quitar correo
   cleaned = cleaned.replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/ig, " ");
-
-  // quitar teléfono
   cleaned = cleaned.replace(/(?:\+?\d[\d\s-]{7,}\d)/g, " ");
-
-  // quitar expresiones comunes de fecha/hora
   cleaned = cleaned.replace(/\b(hoy|mañana|pasado mañana|lunes|martes|miércoles|miercoles|jueves|viernes|sábado|sabado|domingo)\b/ig, " ");
   cleaned = cleaned.replace(/\b(a las?\s+\d{1,2}(:\d{2})?\s*(am|pm)?)\b/ig, " ");
   cleaned = cleaned.replace(/\b\d{1,2}(:\d{2})?\s*(am|pm)\b/ig, " ");
-
-  // quitar frases operativas comunes
   cleaned = cleaned.replace(/\b(quiero|agendar|agenda|reunión|reunion|correo|email|enviar|envía|envia|mensaje|cita|para|una|de|el|la)\b/ig, " ");
-
-  // limpiar puntuación y espacios
   cleaned = cleaned.replace(/[,:;]/g, " ");
   cleaned = cleaned.replace(/\s+/g, " ").trim();
 
   if (!cleaned || cleaned.length < 3) return "";
-
-  // solo letras y espacios
   if (!/^[a-záéíóúñü\s]+$/i.test(cleaned)) return "";
 
   const partes = cleaned.split(" ").filter(Boolean);
-
-  // mínimo nombre y apellido
   if (partes.length < 2) return "";
 
   return partes.join(" ");
@@ -375,16 +370,12 @@ function seemsSchedulingData(text = "") {
   const t = String(text || "").trim();
   if (!t) return false;
 
-  // Si parece cancelación, nunca tratarlo como dato de agenda
   if (esCancelacion(t)) return false;
-
-  // Si parece conversación casual corta, tampoco
   if (/^(hola|buenas|gracias|ok|vale|entiendo)$/i.test(t)) return false;
 
   const hasEmail = !!extractEmail(t);
   const hasPhone = !!extractPhone(t);
 
-  // Nombre solo cuenta si NO contiene frases de rechazo/cancelación
   const hasValidName =
     !!extractName(t) &&
     !/\b(no|ya no|cancelar|cancelalo|cancelalo por favor|no quiero|ya no quiero|nada)\b/i.test(t);
@@ -397,24 +388,35 @@ function seemsSchedulingData(text = "") {
   return hasEmail || hasPhone || hasValidName || hasDateHint;
 }
 
+function seemsEmailData(text = "") {
+  const t = String(text || "").trim();
+  if (!t) return false;
+
+  if (esCancelacion(t)) return false;
+  if (/^(hola|buenas|gracias|ok|vale|entiendo)$/i.test(t)) return false;
+
+  const hasEmail = !!extractEmail(t);
+  const hasEmailKeywords = /\b(correo|email|asunto|mensaje|contenido|destinatario|para:|cc:|bcc:)\b/i.test(t);
+
+  return hasEmail || hasEmailKeywords;
+}
+
 function classifyMessageRoute({ pendingAction, text = "" }) {
   const t = String(text || "").trim();
 
   if (!t) return 'chat';
 
   if (pendingAction) {
-  if (esCancelacion(t)) return 'workflow_confirm';
-  if (seemsWorkflowConfirmation(t)) return 'workflow_confirm';
+    if (esCancelacion(t)) return 'workflow_confirm';
+    if (seemsWorkflowConfirmation(t)) return 'workflow_confirm';
 
-  if (pendingAction.action === 'GOOGLECALENDAR_CREATE_EVENT') {
-    if (seemsSchedulingData(t)) return 'workflow_collect';
-    return 'chat';
-  }
+    if (pendingAction.action === 'GOOGLECALENDAR_CREATE_EVENT') {
+      if (seemsSchedulingData(t)) return 'workflow_collect';
+      return 'chat';
+    }
 
     if (pendingAction.action === 'GMAIL_SEND_EMAIL') {
-      const hasEmail = !!extractEmail(t);
-      const hasLikelyEmailIntent = /\b(correo|email|asunto|mensaje|contenido)\b/i.test(t);
-      if (hasEmail || hasLikelyEmailIntent) return 'workflow_collect';
+      if (seemsEmailData(t)) return 'workflow_collect';
       return 'chat';
     }
 
