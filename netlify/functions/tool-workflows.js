@@ -426,6 +426,45 @@ function classifyMessageRoute({ pendingAction, text = "" }) {
   return 'chat';
 }
 
+function extractEmailSubject(text = "") {
+  const t = String(text || "").trim();
+
+  const match =
+    t.match(/asunto\s*:\s*([^,\n]+)/i) ||
+    t.match(/subject\s*:\s*([^,\n]+)/i);
+
+  return match ? match[1].trim() : "";
+}
+
+function extractEmailBody(text = "") {
+  const t = String(text || "").trim();
+
+  const match =
+    t.match(/mensaje\s*:\s*(.+)$/i) ||
+    t.match(/contenido\s*:\s*(.+)$/i) ||
+    t.match(/cuerpo\s*:\s*(.+)$/i);
+
+  if (match) return match[1].trim();
+
+  // fallback: si viene texto largo y ya hay email/asunto, tomar lo restante
+  return "";
+}
+
+function enrichEmailPayloadFromText(payload = {}, text = "") {
+  const email = extractEmail(text);
+  const subject = extractEmailSubject(text);
+  const body = extractEmailBody(text);
+
+  return {
+    ...payload,
+    to: payload.to || email || "",
+    subject: payload.subject || subject || "",
+    body: payload.body || body || "",
+    cc: payload.cc || "",
+    bcc: payload.bcc || ""
+  };
+}
+
 module.exports = {
   TOOL_DEFINITIONS,
   WORKFLOW_DEFINITIONS,
@@ -444,5 +483,8 @@ module.exports = {
   getWorkflowConfig,
   seemsWorkflowConfirmation,
   seemsSchedulingData,
-  classifyMessageRoute
+  classifyMessageRoute,
+  extractEmailSubject,
+  extractEmailBody,
+  enrichEmailPayloadFromText
 };
