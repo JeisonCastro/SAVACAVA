@@ -420,6 +420,11 @@ function classifyMessageRoute({ pendingAction, text = "" }) {
       return 'chat';
     }
 
+    if (pendingAction.action === 'GOOGLEDRIVE_FIND_FILE') {
+  if (seemsDriveData(t)) return 'workflow_collect';
+  return 'chat';
+}
+
     return 'chat';
   }
 
@@ -465,6 +470,27 @@ function enrichEmailPayloadFromText(payload = {}, text = "") {
   };
 }
 
+function enrichDrivePayloadFromText(payload = {}, text = "") {
+  const t = String(text || "").trim();
+
+  return {
+    ...payload,
+    query: payload.query || t || "",
+    folder: payload.folder || "",
+    file_type: payload.file_type || ""
+  };
+}
+
+function seemsDriveData(text = "") {
+  const t = String(text || "").trim();
+  if (!t) return false;
+
+  if (esCancelacion(t)) return false;
+  if (/^(hola|buenas|gracias|ok|vale|entiendo)$/i.test(t)) return false;
+
+  return t.length >= 3;
+}
+
 module.exports = {
   TOOL_DEFINITIONS,
   WORKFLOW_DEFINITIONS,
@@ -486,5 +512,7 @@ module.exports = {
   classifyMessageRoute,
   extractEmailSubject,
   extractEmailBody,
-  enrichEmailPayloadFromText
+  enrichEmailPayloadFromText,
+  enrichDrivePayloadFromText,
+  seemsDriveData
 };
