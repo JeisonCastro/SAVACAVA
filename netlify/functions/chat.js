@@ -606,15 +606,34 @@ console.log("Message route:", messageRoute);
         }
     );
 
+    console.log("Resultado Drive Composio:", JSON.stringify(resultado));
+
     await supabase
         .from('pending_tool_actions')
         .update({ status: 'executed' })
         .eq('id', pendingAction.id);
 
-    const archivos = resultado?.data?.response_data?.files || [];
+    const archivos =
+        resultado?.data?.response_data?.files ||
+        resultado?.data?.response_data?.items ||
+        resultado?.data?.response_data?.results ||
+        resultado?.data?.files ||
+        resultado?.data?.items ||
+        resultado?.data?.results ||
+        resultado?.files ||
+        resultado?.items ||
+        resultado?.results ||
+        [];
+
     const respuestaIA = archivos.length > 0
-        ? `Encontré ${archivos.length} archivo(s):\n` +
-          archivos.slice(0, 5).map(f => `📄 ${f.name} — ${f.webViewLink || ''}`).join('\n')
+        ? `Encontré ${archivos.length} archivo(s):
+` +
+          archivos.slice(0, 5).map(f => {
+              const nombre = f.name || f.title || f.file_name || 'Archivo sin nombre';
+              const link = f.webViewLink || f.url || f.link || '';
+              return `📄 ${nombre}${link ? ` — ${link}` : ''}`;
+          }).join('
+')
         : "No encontré archivos que coincidan con tu búsqueda.";
 
     const tokensUsados = await registrarConsumo({
@@ -1086,10 +1105,29 @@ const mensajes = [
                 }
             );
 
-            const archivos = resultado?.data?.response_data?.files || [];
+            console.log("Resultado Drive Composio (actionPayload):", JSON.stringify(resultado));
+
+            const archivos =
+                resultado?.data?.response_data?.files ||
+                resultado?.data?.response_data?.items ||
+                resultado?.data?.response_data?.results ||
+                resultado?.data?.files ||
+                resultado?.data?.items ||
+                resultado?.data?.results ||
+                resultado?.files ||
+                resultado?.items ||
+                resultado?.results ||
+                [];
+
             respuestaIA = archivos.length > 0
-                ? `Encontré ${archivos.length} archivo(s):\n` +
-                  archivos.slice(0, 5).map(f => `📄 ${f.name} — ${f.webViewLink || ''}`).join('\n')
+                ? `Encontré ${archivos.length} archivo(s):
+` +
+                  archivos.slice(0, 5).map(f => {
+                      const nombre = f.name || f.title || f.file_name || 'Archivo sin nombre';
+                      const link = f.webViewLink || f.url || f.link || '';
+                      return `📄 ${nombre}${link ? ` — ${link}` : ''}`;
+                  }).join('
+')
                 : "No encontré archivos que coincidan con tu búsqueda.";
         }
 
