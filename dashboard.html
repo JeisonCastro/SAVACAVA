@@ -133,7 +133,7 @@
         .toast.error{border-color:rgba(248,113,113,.4);color:var(--red)}
 
         /* PLANS */
-        .plan-card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:1.25rem;text-align:center;transition:all .2s;cursor:pointer}
+        .plan-card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:1.25rem;text-align:center;transition:all .2s;cursor:pointer;min-width:0;}
         .plan-card:hover{border-color:var(--border2)}
         .plan-card.selected{outline:2px solid var(--accent)}
         .plan-card.featured{border-color:rgba(14,165,233,.35);background:rgba(14,165,233,.04)}
@@ -296,6 +296,84 @@
         justify-content:flex-start;
     }
 }
+
+    .tokens-plan-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:.75rem;
+    margin-bottom:1.25rem;
+}
+@media(max-width:480px){
+    .tokens-plan-grid{
+        grid-template-columns:1fr 1fr;
+        gap:.5rem;
+    }
+
+    .plan-card{
+        padding:.75rem .45rem;
+        border-radius:10px;
+    }
+
+    .plan-name{
+        font-size:.68rem;
+        margin-bottom:.25rem;
+    }
+
+    .plan-tokens{
+        font-size:1.05rem;
+        line-height:1.1;
+    }
+
+    .plan-tokens span{
+        display:block;
+        font-size:.62rem;
+        margin-top:.12rem;
+    }
+
+    .plan-price{
+        font-size:.68rem;
+        margin-top:.25rem;
+    }
+
+    .plan-badge-card{
+        font-size:.55rem;
+        padding:.1rem .35rem;
+        margin-bottom:.35rem;
+    }
+
+    .stat-card{
+        padding:.85rem;
+    }
+
+    .stat-label{
+        font-size:.62rem;
+    }
+
+    .stat-value{
+        font-size:1.2rem;
+    }
+
+    .stat-sub{
+        font-size:.65rem;
+    }
+
+    .btn-wa{
+        font-size:.82rem;
+        padding:10px;
+    }
+}
+
+        @media(max-width:480px){
+    .table-wrap{
+        overflow-x:auto;
+        -webkit-overflow-scrolling:touch;
+    }
+
+    table{
+        min-width:480px;
+    }
+}
+        
     </style>
 </head>
 <body>
@@ -401,7 +479,7 @@
             <div class="card">
                 <div class="card-header"><div class="card-icon green"><i class="fas fa-bolt"></i></div><span class="card-title">Recargar tokens</span></div>
                 <p style="font-size:.85rem;color:var(--muted);margin-bottom:1.25rem;line-height:1.6;font-weight:300">Selecciona un plan y te contactaremos por WhatsApp para activarlo de inmediato.</p>
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:1.25rem">
+                   <div class="tokens-plan-grid">
                     <div class="plan-card" onclick="seleccionarPlan(this,100000,'5.000')"><div class="plan-name">Básico</div><div class="plan-tokens">100K <span>tokens</span></div><div class="plan-price">$ 5.000 COP</div></div>
                     <div class="plan-card featured selected" onclick="seleccionarPlan(this,500000,'20.000')"><div class="plan-badge-card">Popular</div><div class="plan-name">Pro</div><div class="plan-tokens">500K <span>tokens</span></div><div class="plan-price">$ 20.000 COP</div></div>
                     <div class="plan-card" onclick="seleccionarPlan(this,1000000,'35.000')"><div class="plan-name">Business</div><div class="plan-tokens">1M <span>tokens</span></div><div class="plan-price">$ 35.000 COP</div></div>
