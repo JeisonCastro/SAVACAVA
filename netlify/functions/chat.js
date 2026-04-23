@@ -407,102 +407,105 @@ console.log("Message route:", messageRoute);
     };
 }
 
+        // ── COMPLETAR PENDING DE GMAIL DESDE BACKEND ─────────────────────────
+
+        if (
+            pendingAction &&
+            pendingAction.action === 'GMAIL_SEND_EMAIL' &&
+            messageRoute === 'workflow_collect'
+        ) {
+            const payloadActual = pendingAction.payload || {};
+            const payloadEnriquecido = enrichEmailPayloadFromText(payloadActual, prompt);
+
+            const missingFields = getMissingFields('GMAIL_SEND_EMAIL', payloadEnriquecido);
+            const huboCambios = JSON.stringify(payloadActual) !== JSON.stringify(payloadEnriquecido);
+
+            if (huboCambios) {
+                await supabase
+                    .from('pending_tool_actions')
+                    .update({ payload: payloadEnriquecido })
+                    .eq('id', pendingAction.id);
+
+                console.log("Pending action Gmail enriquecida desde texto:", JSON.stringify(payloadEnriquecido));
+            }
+
+            if (missingFields.length > 0) {
+                return {
+                    statusCode: 200,
+                    headers,
+                    body: JSON.stringify({
+                        respuesta: buildMissingFieldsQuestion('GMAIL_SEND_EMAIL', missingFields)
+                    })
+                };
+            }
+
+            return {
+                statusCode: 200,
+                headers,
+                body: JSON.stringify({
+                    respuesta: `Voy a enviar un correo a ${payloadEnriquecido.to} con asunto "${payloadEnriquecido.subject}". Responde "sí" para confirmar o "no" para cancelar.`
+                })
+            };
+        }
+
         // ── COMPLETAR PENDING DE CALENDAR DESDE BACKEND ──────────────────────
 
         if (
-    pendingAction &&
-    pendingAction.action === 'GOOGLECALENDAR_CREATE_EVENT' &&
-    messageRoute === 'workflow_collect'
-) {
-            if (
-    pendingAction &&
-    pendingAction.action === 'GMAIL_SEND_EMAIL' &&
-    messageRoute === 'workflow_collect'
-) {
-    const payloadActual = pendingAction.payload || {};
-    const payloadEnriquecido = enrichEmailPayloadFromText(payloadActual, prompt);
+            pendingAction &&
+            pendingAction.action === 'GOOGLECALENDAR_CREATE_EVENT' &&
+            messageRoute === 'workflow_collect'
+        ) {
+            const payloadActual = pendingAction.payload || {};
 
-    const missingFields = getMissingFields('GMAIL_SEND_EMAIL', payloadEnriquecido);
-    const huboCambios = JSON.stringify(payloadActual) !== JSON.stringify(payloadEnriquecido);
+            let payloadEnriquecido = { ...payloadActual };
 
-    if (huboCambios) {
-        await supabase
-            .from('pending_tool_actions')
-            .update({ payload: payloadEnriquecido })
-            .eq('id', pendingAction.id);
+            // 1. Extraer contacto si el mensaje parece traer datos de contacto
+            if (seemsContactInfo(prompt)) {
+                payloadEnriquecido = enrichCalendarPayloadFromText(payloadEnriquecido, prompt);
+            }
 
-        console.log("Pending action Gmail enriquecida desde texto:", JSON.stringify(payloadEnriquecido));
-    }
+            // 2. Extraer fecha/hora desde el texto
+            const fechaResuelta = resolverFecha(prompt);
+            if (fechaResuelta && !payloadEnriquecido.start) {
+                payloadEnriquecido.start = fechaResuelta;
+            }
 
-    if (missingFields.length > 0) {
-        return {
-            statusCode: 200,
-            headers,
-            body: JSON.stringify({
-                respuesta: buildMissingFieldsQuestion('GMAIL_SEND_EMAIL', missingFields)
-            })
-        };
-    }
+            if (payloadEnriquecido.start && !payloadEnriquecido.end) {
+                const scheduleConfig = getWorkflowConfig('schedule_meeting');
+                const durationMinutes = scheduleConfig?.defaults?.durationMinutes || 30;
+                payloadEnriquecido.end = sumarMinutos(payloadEnriquecido.start, durationMinutes);
+            }
 
-    return {
-        statusCode: 200,
-        headers,
-        body: JSON.stringify({
-            respuesta: `Voy a enviar un correo a ${payloadEnriquecido.to} con asunto "${payloadEnriquecido.subject}". Responde "sí" para confirmar o "no" para cancelar.`
-        })
-    };
-}
-    const payloadActual = pendingAction.payload || {};
+            const missingFields = getMissingFields('GOOGLECALENDAR_CREATE_EVENT', payloadEnriquecido);
+            const huboCambios = JSON.stringify(payloadActual) !== JSON.stringify(payloadEnriquecido);
 
-    let payloadEnriquecido = { ...payloadActual };
+            if (huboCambios) {
+                await supabase
+                    .from('pending_tool_actions')
+                    .update({ payload: payloadEnriquecido })
+                    .eq('id', pendingAction.id);
 
-    // 1. Extraer contacto si el mensaje parece traer datos de contacto
-    if (seemsContactInfo(prompt)) {
-        payloadEnriquecido = enrichCalendarPayloadFromText(payloadEnriquecido, prompt);
-    }
+                console.log("Pending action Calendar enriquecida desde texto:", JSON.stringify(payloadEnriquecido));
+            }
 
-    // 2. Extraer fecha/hora desde el texto
-    const fechaResuelta = resolverFecha(prompt);
-    if (fechaResuelta && !payloadEnriquecido.start) {
-        payloadEnriquecido.start = fechaResuelta;
-    }
+            if (missingFields.length > 0) {
+                return {
+                    statusCode: 200,
+                    headers,
+                    body: JSON.stringify({
+                        respuesta: buildMissingFieldsQuestion('GOOGLECALENDAR_CREATE_EVENT', missingFields)
+                    })
+                };
+            }
 
-    if (payloadEnriquecido.start && !payloadEnriquecido.end) {
-       const scheduleConfig = getWorkflowConfig('schedule_meeting');
-const durationMinutes = scheduleConfig?.defaults?.durationMinutes || 30;
-payloadEnriquecido.end = sumarMinutos(payloadEnriquecido.start, durationMinutes);
-    }
-
-    const missingFields = getMissingFields('GOOGLECALENDAR_CREATE_EVENT', payloadEnriquecido);
-    const huboCambios = JSON.stringify(payloadActual) !== JSON.stringify(payloadEnriquecido);
-
-    if (huboCambios) {
-        await supabase
-            .from('pending_tool_actions')
-            .update({ payload: payloadEnriquecido })
-            .eq('id', pendingAction.id);
-
-        console.log("Pending action Calendar enriquecida desde texto:", JSON.stringify(payloadEnriquecido));
-    }
-
-    if (missingFields.length > 0) {
-        return {
-            statusCode: 200,
-            headers,
-            body: JSON.stringify({
-                respuesta: buildMissingFieldsQuestion('GOOGLECALENDAR_CREATE_EVENT', missingFields)
-            })
-        };
-    }
-
-    return {
-        statusCode: 200,
-        headers,
-        body: JSON.stringify({
-            respuesta: `Voy a agendar "${payloadEnriquecido.summary}" el ${payloadEnriquecido.start?.split('T')[0]} a las ${payloadEnriquecido.start?.split('T')[1]?.substring(0, 5)} para ${payloadEnriquecido.contact_name} (${payloadEnriquecido.contact_email}). Responde "sí" para confirmar o "no" para cancelar.`
-        })
-    };
-}
+            return {
+                statusCode: 200,
+                headers,
+                body: JSON.stringify({
+                    respuesta: `Voy a agendar "${payloadEnriquecido.summary}" el ${payloadEnriquecido.start?.split('T')[0]} a las ${payloadEnriquecido.start?.split('T')[1]?.substring(0, 5)} para ${payloadEnriquecido.contact_name} (${payloadEnriquecido.contact_email}). Responde "sí" para confirmar o "no" para cancelar.`
+                })
+            };
+        }
 
         // ── CONFIRMAR ACCIÓN PENDIENTE ───────────────────────────────────────
         if (pendingAction && messageRoute === 'workflow_confirm' && esConfirmacion(prompt)) {
