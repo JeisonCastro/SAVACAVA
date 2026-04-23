@@ -359,6 +359,53 @@ console.log("Message route:", messageRoute);
             };
         }
 
+        if (workflowDetectado?.key === 'send_email') {
+    const emailConfig = getWorkflowConfig('send_email');
+
+    const { data: existingEmailPending } = await supabase
+        .from('pending_tool_actions')
+        .select('*')
+        .eq('user_id', agente.user_id)
+        .eq('agente_id', targetID)
+        .eq('conversation_id', conversation_id)
+        .eq('status', 'pending')
+        .eq('action', 'GMAIL_SEND_EMAIL')
+        .gte('expires_at', new Date().toISOString())
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+    if (!existingEmailPending) {
+        await supabase
+            .from('pending_tool_actions')
+            .insert([{
+                user_id: agente.user_id,
+                agente_id: targetID,
+                conversation_id: conversation_id,
+                action: 'GMAIL_SEND_EMAIL',
+                payload: {
+                    to: "",
+                    subject: "",
+                    body: "",
+                    cc: "",
+                    bcc: ""
+                },
+                status: 'pending',
+                expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString()
+            }]);
+
+        console.log("Pending action de send_email creada desde workflow nativo");
+    }
+
+    return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({
+            respuesta: emailConfig?.prompts?.initial || "Claro. Para enviar el correo, compárteme el destinatario, el asunto y el mensaje."
+        })
+    };
+}
+
         // ── COMPLETAR PENDING DE CALENDAR DESDE BACKEND ──────────────────────
 
         if (
