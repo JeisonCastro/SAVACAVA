@@ -373,6 +373,147 @@
         min-width:480px;
     }
 }
+
+        .tokens-main-grid{
+    align-items:start;
+}
+
+.activities-table{
+    width:100%;
+    table-layout:fixed;
+}
+
+.activities-table th:nth-child(1),
+.activities-table td:nth-child(1){
+    width:48%;
+}
+
+.activities-table th:nth-child(2),
+.activities-table td:nth-child(2){
+    width:22%;
+    text-align:center;
+}
+
+.activities-table th:nth-child(3),
+.activities-table td:nth-child(3){
+    width:30%;
+    text-align:right;
+}
+
+.activities-table td{
+    word-break:break-word;
+}
+
+@media(max-width:768px){
+    .tokens-main-grid{
+        grid-template-columns:1fr;
+    }
+}
+
+@media(max-width:480px){
+    .tokens-main-grid{
+        grid-template-columns:1fr;
+        gap:1rem;
+    }
+
+    .tokens-main-grid .card{
+        padding:.85rem;
+    }
+
+    .tokens-main-grid .card-header{
+        margin-bottom:1rem;
+    }
+
+    .tokens-main-grid .card-title{
+        font-size:.92rem;
+    }
+
+    .tokens-main-grid p{
+        font-size:.76rem !important;
+        line-height:1.45 !important;
+    }
+
+    .tokens-plan-grid{
+        grid-template-columns:1fr 1fr;
+        gap:.45rem;
+        margin-bottom:1rem;
+    }
+
+    .plan-card{
+        padding:.65rem .4rem;
+        min-height:92px;
+        display:flex;
+        flex-direction:column;
+        justify-content:center;
+    }
+
+    .plan-name{
+        font-size:.62rem;
+        line-height:1.1;
+        margin-bottom:.2rem;
+    }
+
+    .plan-tokens{
+        font-size:.95rem;
+        line-height:1;
+    }
+
+    .plan-tokens span{
+        display:block;
+        font-size:.56rem;
+        margin-top:.1rem;
+    }
+
+    .plan-price{
+        font-size:.62rem;
+        line-height:1.1;
+        margin-top:.2rem;
+    }
+
+    .btn-wa{
+        width:100%;
+        font-size:.76rem;
+        padding:9px 10px;
+        border-radius:8px;
+    }
+
+    .activities-table-wrap{
+        overflow-x:visible;
+    }
+
+    .activities-table{
+        min-width:unset;
+        table-layout:fixed;
+    }
+
+    .activities-table th,
+    .activities-table td{
+        padding:.45rem .3rem;
+        font-size:.66rem;
+    }
+
+    .activities-table th:nth-child(1),
+    .activities-table td:nth-child(1){
+        width:50%;
+    }
+
+    .activities-table th:nth-child(2),
+    .activities-table td:nth-child(2){
+        width:20%;
+        text-align:center;
+    }
+
+    .activities-table th:nth-child(3),
+    .activities-table td:nth-child(3){
+        width:30%;
+        text-align:right;
+    }
+
+    .badge{
+        font-size:.56rem;
+        padding:.12rem .38rem;
+    }
+}
         
     </style>
 </head>
@@ -475,7 +616,7 @@
             <div class="stat-card"><div class="stat-label">Consumido este mes</div><div class="stat-value accent" id="tokens-mes">—</div><div class="stat-sub">tokens usados</div></div>
             <div class="stat-card"><div class="stat-label">Interacciones</div><div class="stat-value yellow" id="total-logs">—</div><div class="stat-sub">conversaciones totales</div></div>
         </div>
-        <div class="grid-2" style="margin-bottom:1.5rem">
+        <div class="grid-2 tokens-main-grid" style="margin-bottom:1.5rem">
             <div class="card">
                 <div class="card-header"><div class="card-icon green"><i class="fas fa-bolt"></i></div><span class="card-title">Recargar tokens</span></div>
                 <p style="font-size:.85rem;color:var(--muted);margin-bottom:1.25rem;line-height:1.6;font-weight:300">Selecciona un plan y te contactaremos por WhatsApp para activarlo de inmediato.</p>
@@ -489,7 +630,7 @@
             </div>
             <div class="card">
                 <div class="card-header"><div class="card-icon yellow"><i class="fas fa-clock-rotate-left"></i></div><span class="card-title">Últimas actividades</span></div>
-                <div class="table-wrap"><table><thead><tr><th>Agente</th><th>Tokens</th><th>Fecha</th></tr></thead><tbody id="logs-recientes"><tr><td colspan="3" style="text-align:center;color:var(--dim);padding:1.5rem">Cargando...</td></tr></tbody></table></div>
+                <div class="table-wrap activities-table-wrap"><table class="activities-table"><thead><tr><th>Agente</th><th>Tokens</th><th>Fecha</th></tr></thead><tbody id="logs-recientes"><tr><td colspan="3" style="text-align:center;color:var(--dim);padding:1.5rem">Cargando...</td></tr></tbody></table></div>
             </div>
         </div>
 
