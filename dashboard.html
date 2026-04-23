@@ -1083,28 +1083,35 @@
     container.innerHTML = '<div style="text-align:center;color:var(--muted);padding:1rem;">Cargando integraciones...</div>';
 
     const appsBase = [
-        {
-            toolkit: 'googlecalendar',
-            nombre: 'Google Calendar',
-            tools: [
-                { tool_key: 'GOOGLECALENDAR_CREATE_EVENT', label: 'Crear eventos' }
-            ]
-        },
-        {
-            toolkit: 'gmail',
-            nombre: 'Gmail',
-            tools: [
-                { tool_key: 'GMAIL_SEND_EMAIL', label: 'Enviar correos' }
-            ]
-        },
-        {
-            toolkit: 'googledrive',
-            nombre: 'Google Drive',
-            tools: [
-                { tool_key: 'GOOGLEDRIVE_FIND_FILE', label: 'Buscar archivos' }
-            ]
-        }
-    ];
+    {
+        toolkit: 'googlecalendar',
+        nombre: 'Google Calendar',
+        tools: [
+            { tool_key: 'GOOGLECALENDAR_CREATE_EVENT', label: 'Crear eventos' }
+        ]
+    },
+    {
+        toolkit: 'gmail',
+        nombre: 'Gmail',
+        tools: [
+            { tool_key: 'GMAIL_SEND_EMAIL', label: 'Enviar correos' }
+        ]
+    },
+    {
+        toolkit: 'googledrive',
+        nombre: 'Google Drive',
+        tools: [
+            { tool_key: 'GOOGLEDRIVE_FIND_FILE', label: 'Buscar archivos' }
+        ]
+    },
+    {
+        toolkit: 'whatsapp',
+        nombre: 'WhatsApp',
+        tools: [
+            { tool_key: 'WHATSAPP_SEND_MESSAGE', label: 'Enviar mensajes' }
+        ]
+    }
+];
 
     const { data: conexiones, error: errorConns } = await _supabase
         .from('composio_connections')
