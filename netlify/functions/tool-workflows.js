@@ -61,7 +61,7 @@ const WORKFLOW_CONFIG = {
     optionalFields: ['folder', 'file_type'],
     defaults: {},
     prompts: {
-      initial: 'Claro. Indícame qué archivo o documento quieres buscar.'
+      initial: 'Claro. Indícame qué archivo o documento quieres buscar en Google Drive.'
     }
   }
 };
