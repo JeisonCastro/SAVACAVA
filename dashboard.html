@@ -514,6 +514,42 @@
         padding:.12rem .38rem;
     }
 }
+
+        /* CHAT TEST MODAL */
+.chat-msg{
+    max-width:85%;
+    padding:10px 12px;
+    border-radius:12px;
+    line-height:1.45;
+    font-size:.85rem;
+    white-space:pre-wrap;
+    overflow-wrap:anywhere;
+    word-break:break-word;
+}
+
+.chat-msg.bot{
+    align-self:flex-start;
+    background:var(--border);
+    color:var(--text);
+}
+
+.chat-msg.user{
+    align-self:flex-end;
+    background:var(--accent);
+    color:white;
+    margin-left:auto;
+}
+
+.chat-msg a{
+    color:var(--accent2);
+    text-decoration:underline;
+    overflow-wrap:anywhere;
+    word-break:break-all;
+}
+
+#chat-messages{
+    overflow-x:hidden;
+}
         
     </style>
 </head>
@@ -1297,12 +1333,20 @@ async function conectarToolkit(toolkit) {
     }
 
     function agregarMensaje(autor, texto, tipo) {
-        const container = document.getElementById('chat-messages');
-        const div = document.createElement('div');
-        div.style.cssText = `padding:10px 12px;border-radius:12px;max-width:85%;line-height:1.4;${tipo==='user'?'align-self:flex-end;background:var(--accent);color:white;margin-left:auto;':'align-self:flex-start;background:var(--border);color:var(--text);'}`;
-        div.innerHTML = `<strong>${autor}</strong><br>${texto}`;
-        container.appendChild(div); container.scrollTop = container.scrollHeight;
-    }
+    const container = document.getElementById('chat-messages');
+    const div = document.createElement('div');
+
+    div.className = `chat-msg ${tipo === 'user' ? 'user' : 'bot'}`;
+
+    const textoSeguro = String(texto || '').replace(
+        /(https?:\/\/[^\s<]+)/g,
+        '<a href="$1" target="_blank" rel="noopener noreferrer">Abrir enlace</a>'
+    );
+
+    div.innerHTML = `<strong>${autor}</strong><br>${textoSeguro}`;
+    container.appendChild(div);
+    container.scrollTop = container.scrollHeight;
+}
 
     document.getElementById('chat-input').addEventListener('keypress', e => { if (e.key === 'Enter') enviarMensaje(); });
 
