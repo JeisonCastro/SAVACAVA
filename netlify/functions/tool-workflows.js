@@ -436,9 +436,16 @@ function extractEmailSubject(text = "") {
 
   const match =
     t.match(/asunto\s*:\s*([^,\n]+)/i) ||
-    t.match(/subject\s*:\s*([^,\n]+)/i);
+    t.match(/subject\s*:\s*([^,\n]+)/i) ||
+    t.match(/(?:el\s+)?asunto\s+(?:es|seria|sería|seri|será|sera)\s+([^,\n]+)/i) ||
+    t.match(/(?:el\s+)?asusnto\s+(?:es|seria|sería|seri|será|sera)\s+([^,\n]+)/i);
 
-  return match ? match[1].trim() : "";
+  let subject = match ? match[1].trim() : "";
+
+  // Si capturó también el inicio del contenido, recortar
+  subject = subject.replace(/\s+y\s+el\s+contenido\s+(?:es|seria|sería|seri|será|sera).*$/i, "").trim();
+
+  return subject;
 }
 
 function extractEmailBody(text = "") {
@@ -447,12 +454,11 @@ function extractEmailBody(text = "") {
   const match =
     t.match(/mensaje\s*:\s*(.+)$/i) ||
     t.match(/contenido\s*:\s*(.+)$/i) ||
-    t.match(/cuerpo\s*:\s*(.+)$/i);
+    t.match(/cuerpo\s*:\s*(.+)$/i) ||
+    t.match(/(?:el\s+)?mensaje\s+(?:es|seria|sería|seri|será|sera)\s+(.+)$/i) ||
+    t.match(/(?:el\s+)?contenido\s+(?:es|seria|sería|seri|será|sera)\s+(.+)$/i);
 
-  if (match) return match[1].trim();
-
-  // fallback: si viene texto largo y ya hay email/asunto, tomar lo restante
-  return "";
+  return match ? match[1].trim() : "";
 }
 
 function enrichEmailPayloadFromText(payload = {}, text = "") {
