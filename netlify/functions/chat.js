@@ -364,6 +364,16 @@ console.log("Message route:", messageRoute);
         if (workflowDetectado?.key === 'send_email') {
     const emailConfig = getWorkflowConfig('send_email');
 
+    const payloadInicialEmail = enrichEmailPayloadFromText({
+        to: "",
+        subject: "",
+        body: "",
+        cc: "",
+        bcc: ""
+    }, prompt);
+
+    const missingEmailFields = getMissingFields('GMAIL_SEND_EMAIL', payloadInicialEmail);
+
     const { data: existingEmailPending } = await supabase
         .from('pending_tool_actions')
         .select('*')
@@ -385,25 +395,24 @@ console.log("Message route:", messageRoute);
                 agente_id: targetID,
                 conversation_id: conversation_id,
                 action: 'GMAIL_SEND_EMAIL',
-                payload: {
-                    to: "",
-                    subject: "",
-                    body: "",
-                    cc: "",
-                    bcc: ""
-                },
+                payload: payloadInicialEmail,
                 status: 'pending',
                 expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString()
             }]);
 
         console.log("Pending action de send_email creada desde workflow nativo");
+        console.log("Payload inicial Gmail:", JSON.stringify(payloadInicialEmail));
     }
+
+    const respuestaEmail = missingEmailFields.length > 0
+        ? buildMissingFieldsQuestion('GMAIL_SEND_EMAIL', missingEmailFields)
+        : `Voy a enviar un correo a ${payloadInicialEmail.to} con asunto "${payloadInicialEmail.subject}". Responde "sí" para confirmar o "no" para cancelar.`;
 
     return {
         statusCode: 200,
         headers,
         body: JSON.stringify({
-            respuesta: emailConfig?.prompts?.initial || "Claro. Para enviar el correo, compárteme el destinatario, el asunto y el mensaje."
+            respuesta: respuestaEmail
         })
     };
 }
