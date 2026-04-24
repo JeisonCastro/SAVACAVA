@@ -292,15 +292,31 @@ function extractPhone(text = "") {
 }
 
 function extractName(text = "") {
-  let cleaned = String(text).trim();
-  if (!cleaned) return "";
+  let raw = String(text || "").trim();
+  if (!raw) return "";
 
+  const explicitMatch =
+    raw.match(/\b(?:con|para|a nombre de)\s+([a-záéíóúñü]+(?:\s+[a-záéíóúñü]+){0,3})(?=\s+[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}|\s+\+?\d|\s+(?:sobre|tema|para revisar|para hablar de|acerca de)\b|[,.]|$)/i);
+
+  if (explicitMatch) {
+    const candidate = explicitMatch[1].trim();
+    if (
+      candidate.length >= 3 &&
+      /^[a-záéíóúñü\s]+$/i.test(candidate) &&
+      !/\b(reunión|reunion|cita|correo|email|mensaje|archivo|documento|drive|google)\b/i.test(candidate)
+    ) {
+      return candidate;
+    }
+  }
+
+  let cleaned = raw;
   cleaned = cleaned.replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/ig, " ");
   cleaned = cleaned.replace(/(?:\+?\d[\d\s-]{7,}\d)/g, " ");
   cleaned = cleaned.replace(/\b(hoy|mañana|pasado mañana|lunes|martes|miércoles|miercoles|jueves|viernes|sábado|sabado|domingo)\b/ig, " ");
   cleaned = cleaned.replace(/\b(a las?\s+\d{1,2}(:\d{2})?\s*(am|pm)?)\b/ig, " ");
   cleaned = cleaned.replace(/\b\d{1,2}(:\d{2})?\s*(am|pm)\b/ig, " ");
-  cleaned = cleaned.replace(/\b(quiero|agendar|agenda|reunión|reunion|correo|email|enviar|envía|envia|mensaje|cita|para|una|de|el|la)\b/ig, " ");
+  cleaned = cleaned.replace(/\b(sobre|tema|para revisar|para hablar de|acerca de)\b.*$/ig, " ");
+  cleaned = cleaned.replace(/\b(quiero|necesito|puedes|ayudame|ayúdame|agendar|agenda|programar|reunión|reunion|correo|email|enviar|envía|envia|mensaje|cita|para|con|una|un|de|del|el|la|los|las)\b/ig, " ");
   cleaned = cleaned.replace(/[,:;]/g, " ");
   cleaned = cleaned.replace(/\s+/g, " ").trim();
 
@@ -308,6 +324,7 @@ function extractName(text = "") {
   if (!/^[a-záéíóúñü\s]+$/i.test(cleaned)) return "";
 
   const partes = cleaned.split(" ").filter(Boolean);
+
   if (partes.length < 2) return "";
 
   return partes.join(" ");
@@ -324,10 +341,31 @@ function seemsContactInfo(text = "") {
   return hasEmail || hasPhone || hasName;
 }
 
+function extractMeetingReason(text = "") {
+  const t = String(text || "").trim();
+  if (!t) return "";
+
+  const match =
+    t.match(/\b(?:sobre|tema|para revisar|para hablar de|acerca de)\s+([^,.\n]+)/i) ||
+    t.match(/\breuni[oó]n\s+(?:sobre|de|para)\s+([^,.\n]+)/i) ||
+    t.match(/\bcita\s+(?:sobre|de|para)\s+([^,.\n]+)/i);
+
+  if (!match) return "";
+
+  let reason = match[1].trim();
+
+  reason = reason.replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/ig, " ");
+  reason = reason.replace(/(?:\+?\d[\d\s-]{7,}\d)/g, " ");
+  reason = reason.replace(/\s+/g, " ").trim();
+
+  return reason;
+}
+
 function enrichCalendarPayloadFromText(payload = {}, text = "") {
   const email = extractEmail(text);
   const phone = extractPhone(text);
   const name = extractName(text);
+  const reason = extractMeetingReason(text);
 
   const attendees = Array.isArray(payload.attendees) ? [...payload.attendees] : [];
 
@@ -335,9 +373,29 @@ function enrichCalendarPayloadFromText(payload = {}, text = "") {
     attendees.push(email);
   }
 
+  const defaultSummary = WORKFLOW_CONFIG.schedule_meeting.defaults.summary;
+  const defaultDescription = WORKFLOW_CONFIG.schedule_meeting.defaults.description;
+
+  const summary =
+    payload.summary && payload.summary !== defaultSummary
+      ? payload.summary
+      : reason
+        ? `Reunión sobre ${reason}`
+        : payload.summary || defaultSummary;
+
+  const description =
+    payload.description && payload.description !== defaultDescription
+      ? payload.description
+      : reason
+        ? `Reunión sobre ${reason}.`
+        : payload.description || defaultDescription;
+
   return {
     ...payload,
     attendees,
+    summary,
+    description,
+    meeting_reason: payload.meeting_reason || reason || "",
     contact_email: payload.contact_email || email || "",
     contact_phone: payload.contact_phone || phone || "",
     contact_name: payload.contact_name || name || ""
@@ -385,7 +443,9 @@ function seemsSchedulingData(text = "") {
     /\b\d{1,2}(:\d{2})?\s*(am|pm)\b/i.test(t) ||
     /\b(a las?\s+\d{1,2}(:\d{2})?\s*(am|pm)?)\b/i.test(t);
 
-  return hasEmail || hasPhone || hasValidName || hasDateHint;
+  const hasReason = !!extractMeetingReason(t);
+
+  return hasEmail || hasPhone || hasValidName || hasDateHint || hasReason;
 }
 
 function seemsEmailData(text = "") {
@@ -509,6 +569,7 @@ module.exports = {
   extractEmail,
   extractPhone,
   extractName,
+  extractMeetingReason,
   enrichCalendarPayloadFromText,
   seemsContactInfo,
   detectWorkflowIntent,
