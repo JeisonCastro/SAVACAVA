@@ -312,54 +312,64 @@ console.log("Message route:", messageRoute);
         console.log("Workflow detectado:", workflowDetectado ? workflowDetectado.key : 'ninguno');
 
         if (workflowDetectado?.key === 'schedule_meeting') {
-            const scheduleConfig = getWorkflowConfig('schedule_meeting');
-            const { data: existingSchedulePending } = await supabase
-                .from('pending_tool_actions')
-                .select('*')
-                .eq('user_id', agente.user_id)
-                .eq('agente_id', targetID)
-                .eq('conversation_id', conversation_id)
-                .eq('status', 'pending')
-                .eq('action', 'GOOGLECALENDAR_CREATE_EVENT')
-                .gte('expires_at', new Date().toISOString())
-                .order('created_at', { ascending: false })
-                .limit(1)
-                .maybeSingle();
+    const meetingConfig = getWorkflowConfig('schedule_meeting');
 
-            if (!existingSchedulePending) {
-                await supabase
-                    .from('pending_tool_actions')
-                    .insert([{
-                        user_id: agente.user_id,
-                        agente_id: targetID,
-                        conversation_id: conversation_id,
-                        action: 'GOOGLECALENDAR_CREATE_EVENT',
-                        payload: {
-    summary: scheduleConfig?.defaults?.summary || "Reunión agendada desde el chat",
-    description: scheduleConfig?.defaults?.description || "Reunión generada desde el asistente del agente.",
-    start: "",
-    end: "",
-    attendees: [],
-    contact_name: "",
-    contact_email: "",
-    contact_phone: "",
-    meeting_reason: ""
-},
-                        status: 'pending',
-                        expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString()
-                    }]);
+    const payloadInicialMeeting = enrichCalendarPayloadFromText({
+        summary: meetingConfig?.defaults?.summary || "",
+        description: meetingConfig?.defaults?.description || "",
+        start: "",
+        end: "",
+        attendees: [],
+        contact_name: "",
+        contact_email: "",
+        contact_phone: "",
+        meeting_reason: ""
+    }, prompt);
 
-                console.log("Pending action de schedule_meeting creada desde workflow nativo");
-            }
+    const missingMeetingFields = getMissingFields('GOOGLECALENDAR_CREATE_EVENT', payloadInicialMeeting);
 
-            return {
-                statusCode: 200,
-                headers,
-                body: JSON.stringify({
-                   respuesta: scheduleConfig?.prompts?.initial || "Claro. Para agendar la reunión, compárteme la fecha y hora, tu nombre y tu correo."
-                })
-            };
-        }
+    const { data: existingMeetingPending } = await supabase
+        .from('pending_tool_actions')
+        .select('*')
+        .eq('user_id', agente.user_id)
+        .eq('agente_id', targetID)
+        .eq('conversation_id', conversation_id)
+        .eq('status', 'pending')
+        .eq('action', 'GOOGLECALENDAR_CREATE_EVENT')
+        .gte('expires_at', new Date().toISOString())
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+    if (!existingMeetingPending) {
+        await supabase
+            .from('pending_tool_actions')
+            .insert([{
+                user_id: agente.user_id,
+                agente_id: targetID,
+                conversation_id: conversation_id,
+                action: 'GOOGLECALENDAR_CREATE_EVENT',
+                payload: payloadInicialMeeting,
+                status: 'pending',
+                expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString()
+            }]);
+
+        console.log("Pending action de schedule_meeting creada desde workflow nativo");
+        console.log("Payload inicial Calendar:", JSON.stringify(payloadInicialMeeting));
+    }
+
+    const respuestaMeeting = missingMeetingFields.length > 0
+        ? buildMissingFieldsQuestion('GOOGLECALENDAR_CREATE_EVENT', missingMeetingFields)
+        : `Voy a agendar "${payloadInicialMeeting.summary}" para el ${payloadInicialMeeting.start}. Responde "sí" para confirmar o "no" para cancelar.`;
+
+    return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({
+            respuesta: respuestaMeeting
+        })
+    };
+}
 
         if (workflowDetectado?.key === 'send_email') {
     const emailConfig = getWorkflowConfig('send_email');
