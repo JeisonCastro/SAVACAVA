@@ -314,17 +314,28 @@ console.log("Message route:", messageRoute);
         if (workflowDetectado?.key === 'schedule_meeting') {
     const meetingConfig = getWorkflowConfig('schedule_meeting');
 
-    const payloadInicialMeeting = enrichCalendarPayloadFromText({
-        summary: meetingConfig?.defaults?.summary || "",
-        description: meetingConfig?.defaults?.description || "",
-        start: "",
-        end: "",
-        attendees: [],
-        contact_name: "",
-        contact_email: "",
-        contact_phone: "",
-        meeting_reason: ""
-    }, prompt);
+    let payloadInicialMeeting = enrichCalendarPayloadFromText({
+    summary: meetingConfig?.defaults?.summary || "",
+    description: meetingConfig?.defaults?.description || "",
+    start: "",
+    end: "",
+    attendees: [],
+    contact_name: "",
+    contact_email: "",
+    contact_phone: "",
+    meeting_reason: ""
+}, prompt);
+
+const fechaInicial = resolverFecha(prompt);
+
+if (fechaInicial && !payloadInicialMeeting.start) {
+    payloadInicialMeeting.start = fechaInicial;
+}
+
+if (payloadInicialMeeting.start && !payloadInicialMeeting.end) {
+    const durationMinutes = meetingConfig?.defaults?.durationMinutes || 45;
+    payloadInicialMeeting.end = sumarMinutos(payloadInicialMeeting.start, durationMinutes);
+}
 
     const missingMeetingFields = getMissingFields('GOOGLECALENDAR_CREATE_EVENT', payloadInicialMeeting);
 
