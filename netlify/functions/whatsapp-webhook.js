@@ -100,7 +100,7 @@ exports.handler = async (event) => {
         prompt: text,
         agente_id: agenteId,
         conversation_id: conversationId,
-        historial: []
+        historial: [],
         canal: "whatsapp"
       })
     });
