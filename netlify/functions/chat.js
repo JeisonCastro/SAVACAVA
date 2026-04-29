@@ -190,7 +190,7 @@ exports.handler = async (event) => {
 
     try {
         const body = JSON.parse(event.body || '{}');
-        const { prompt, agente_id, historial = [], conversation_id = null } = body;
+        const { prompt, agente_id, historial = [], conversation_id = null, canal = "" } = body;
         const targetID = agente_id || process.env.AGENTE_MAESTRO_ID;
 
         if (!conversation_id) {
@@ -220,8 +220,9 @@ exports.handler = async (event) => {
 
         const origin = event.headers.origin || "";
         const esDashboard = origin.includes("jeisondigital.netlify.app");
+        const esWhatsapp = canal === "whatsapp";
 
-        if (!esDashboard && (!agente.dominios_permitidos || agente.dominios_permitidos.length === 0)) {
+        if (!esDashboard && !esWhatsapp && (!agente.dominios_permitidos || agente.dominios_permitidos.length === 0)) {
             return {
                 statusCode: 403,
                 headers,
@@ -229,7 +230,7 @@ exports.handler = async (event) => {
             };
         }
 
-        if (!esDashboard && !agente.dominios_permitidos.includes(origin)) {
+        if (!esDashboard && !esWhatsapp && !agente.dominios_permitidos.includes(origin)) {
             return {
                 statusCode: 403,
                 headers,
