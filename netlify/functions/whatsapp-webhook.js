@@ -47,6 +47,8 @@ exports.handler = async (event) => {
     const phoneNumberId = value?.metadata?.phone_number_id;
     const message = value?.messages?.[0];
 
+    console.log('Phone Number ID recibido desde Meta:', phoneNumberId);
+
     // Meta también envía estados de entrega; esos no se responden
     if (!phoneNumberId || !message) {
       return {
