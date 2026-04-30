@@ -7,8 +7,6 @@ const {
     buildMissingFieldsQuestion,
     enrichCalendarPayloadFromText,
     seemsContactInfo,
-    detectWorkflowIntent,
-    getWorkflowConfig,
     classifyMessageRoute,
     enrichEmailPayloadFromText,
     enrichDrivePayloadFromText
@@ -112,6 +110,119 @@ function sumarMinutos(fechaIso, minutos = 30) {
     return `${baseDate.getFullYear()}-${pad(baseDate.getMonth() + 1)}-${pad(baseDate.getDate())}T${pad(nuevaHora)}:${pad(nuevoMinuto)}:${second}${offset}`;
 }
 
+function parseActionPayload(text = "") {
+    const raw = String(text || "").trim();
+
+    if (!raw) return null;
+
+    try {
+        return JSON.parse(raw);
+    } catch (_) {}
+
+    const sinFence = raw
+        .replace(/^```json\s*/i, "")
+        .replace(/^```\s*/i, "")
+        .replace(/```$/i, "")
+        .trim();
+
+    try {
+        return JSON.parse(sinFence);
+    } catch (_) {}
+
+    const match = sinFence.match(/\{[\s\S]*\}/);
+    if (!match) return null;
+
+    try {
+        return JSON.parse(match[0]);
+    } catch (_) {
+        return null;
+    }
+}
+
+function limpiarTextoIA(text = "") {
+    return String(text || "")
+        .replace(/^```json\s*/i, "")
+        .replace(/^```\s*/i, "")
+        .replace(/```$/i, "")
+        .trim();
+}
+
+function normalizarListaCorreos(valor) {
+    if (Array.isArray(valor)) {
+        return valor.filter(v => typeof v === 'string' && v.trim());
+    }
+
+    if (typeof valor === 'string' && valor.trim()) {
+        return valor
+            .split(',')
+            .map(v => v.trim())
+            .filter(Boolean);
+    }
+
+    return [];
+}
+
+function normalizarToolkit(toolkit = "") {
+    return String(toolkit || "").toLowerCase();
+}
+
+function obtenerConexion(userConnections = [], toolkit = "") {
+    const tk = normalizarToolkit(toolkit);
+    return (userConnections || []).find(c => normalizarToolkit(c.toolkit) === tk);
+}
+
+function toolDisponible(toolsDisponibles = [], toolKey = "") {
+    return (toolsDisponibles || []).some(t => t.tool_key === toolKey);
+}
+
+function construirPayloadCalendarDesdeAction(actionData = {}, prompt = "") {
+    let payload = {
+        summary: actionData.summary || actionData.title || "Evento agendado desde el chat",
+        description: actionData.description || "",
+        start: actionData.start || "",
+        end: actionData.end || "",
+        attendees: Array.isArray(actionData.attendees) ? actionData.attendees : [],
+        contact_name: actionData.contact_name || "",
+        contact_email: actionData.contact_email || "",
+        contact_phone: actionData.contact_phone || "",
+        meeting_reason: actionData.meeting_reason || "",
+        location: actionData.location || ""
+    };
+
+    payload = enrichCalendarPayloadFromText(payload, prompt);
+
+    const fechaInicio = resolverFecha(payload.start || prompt);
+    if (fechaInicio && !payload.start) {
+        payload.start = fechaInicio;
+    } else if (fechaInicio && payload.start && !/^\d{4}-\d{2}-\d{2}T/.test(payload.start)) {
+        payload.start = fechaInicio;
+    }
+
+    if (payload.start && !payload.end) {
+        payload.end = sumarMinutos(payload.start, 45);
+    }
+
+    return payload;
+}
+
+function construirPayloadEmailDesdeAction(actionData = {}, prompt = "") {
+    return enrichEmailPayloadFromText({
+        to: actionData.to || "",
+        subject: actionData.subject || "",
+        body: actionData.body || "",
+        cc: actionData.cc || "",
+        bcc: actionData.bcc || ""
+    }, prompt);
+}
+
+function construirPayloadDriveDesdeAction(actionData = {}, prompt = "") {
+    return enrichDrivePayloadFromText({
+        query: actionData.query || "",
+        folder: actionData.folder || "",
+        file_type: actionData.file_type || ""
+    }, prompt);
+}
+
 async function ejecutarToolComposio(toolSlug, connectedAccountId, userId, args) {
     const res = await fetch(`https://backend.composio.dev/api/v3.1/tools/execute/${toolSlug}`, {
         method: 'POST',
@@ -171,6 +282,401 @@ async function registrarConsumo({ agente, targetID, saldoActual, prompt, respues
     return tokensUsados;
 }
 
+async function crearOActualizarPending({
+    existingPending,
+    userId,
+    agenteId,
+    conversationId,
+    action,
+    payload
+}) {
+    if (existingPending) {
+        await supabase
+            .from('pending_tool_actions')
+            .update({
+                action,
+                payload,
+                status: 'pending',
+                expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString()
+            })
+            .eq('id', existingPending.id);
+
+        return existingPending.id;
+    }
+
+    const { data, error } = await supabase
+        .from('pending_tool_actions')
+        .insert([{
+            user_id: userId,
+            agente_id: agenteId,
+            conversation_id: conversationId,
+            action,
+            payload,
+            status: 'pending',
+            expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString()
+        }])
+        .select('id')
+        .single();
+
+    if (error) {
+        throw new Error(`No se pudo crear acción pendiente: ${error.message}`);
+    }
+
+    return data?.id;
+}
+
+async function cancelarPending(pendingId) {
+    if (!pendingId) return;
+
+    await supabase
+        .from('pending_tool_actions')
+        .update({ status: 'cancelled' })
+        .eq('id', pendingId);
+}
+
+async function marcarPendingEjecutado(pendingId) {
+    if (!pendingId) return;
+
+    await supabase
+        .from('pending_tool_actions')
+        .update({ status: 'executed' })
+        .eq('id', pendingId);
+}
+
+async function ejecutarCalendar({ pendingAction, agente, targetID, userConnections, saldoActual, prompt }) {
+    const calConn = obtenerConexion(userConnections, 'googlecalendar');
+
+    if (!calConn?.composio_entity_id) {
+        return {
+            statusCode: 400,
+            respuesta: "Google Calendar no está conectado."
+        };
+    }
+
+    const payload = pendingAction.payload || {};
+    const attendeesBase = Array.isArray(payload.attendees) ? payload.attendees : [];
+    const contactEmail = payload.contact_email || "";
+
+    const attendeesFinal = [...new Set([
+        ...attendeesBase,
+        ...(contactEmail ? [contactEmail] : [])
+    ])].filter(e => e && e.includes('@'));
+
+    const startDatetime = resolverFecha(payload.start);
+    const endDatetime = resolverFecha(payload.end) || sumarMinutos(startDatetime, 45);
+
+    const argumentos = {
+        summary: payload.summary || "Evento agendado desde el chat",
+        description: payload.description || "",
+        start_datetime: startDatetime,
+        end_datetime: endDatetime,
+        attendees: attendeesFinal
+    };
+
+    if (payload.location) {
+        argumentos.location = payload.location;
+    }
+
+    console.log("Ejecutando Calendar con argumentos:", JSON.stringify(argumentos));
+
+    const resultado = await ejecutarToolComposio(
+        'GOOGLECALENDAR_CREATE_EVENT',
+        calConn.composio_entity_id,
+        agente.user_id,
+        argumentos
+    );
+
+    console.log("Resultado Calendar Composio:", JSON.stringify(resultado));
+
+    await marcarPendingEjecutado(pendingAction.id);
+
+    const meetLink =
+        resultado?.data?.response_data?.hangoutLink ||
+        resultado?.data?.response_data?.conferenceData?.entryPoints?.[0]?.uri ||
+        "";
+
+    const respuestaIA =
+        `✅ Listo, agendé "${argumentos.summary}" para el ${argumentos.start_datetime?.split('T')[0]} a las ${argumentos.start_datetime?.split('T')[1]?.substring(0, 5)}.` +
+        `${meetLink ? `\n\n🎥 Link de Meet: ${meetLink}` : ""}` +
+        `${contactEmail ? `\n\nSe envió invitación a ${contactEmail}.` : ""}`;
+
+    const tokensUsados = await registrarConsumo({
+        agente,
+        targetID,
+        saldoActual,
+        prompt,
+        respuestaIA
+    });
+
+    return {
+        statusCode: 200,
+        respuesta: respuestaIA,
+        tokens_consumidos: tokensUsados
+    };
+}
+
+async function ejecutarGmail({ pendingAction, agente, targetID, userConnections, saldoActual, prompt }) {
+    const gmailConn = obtenerConexion(userConnections, 'gmail');
+
+    if (!gmailConn?.composio_entity_id) {
+        return {
+            statusCode: 400,
+            respuesta: "Gmail no está conectado."
+        };
+    }
+
+    const payload = pendingAction.payload || {};
+
+    const argumentos = {
+        to: payload.to,
+        subject: payload.subject,
+        body: payload.body,
+        cc: normalizarListaCorreos(payload.cc),
+        bcc: normalizarListaCorreos(payload.bcc)
+    };
+
+    console.log("Ejecutando Gmail con argumentos:", JSON.stringify(argumentos));
+
+    const resultado = await ejecutarToolComposio(
+        'GMAIL_SEND_EMAIL',
+        gmailConn.composio_entity_id,
+        agente.user_id,
+        argumentos
+    );
+
+    console.log("Resultado Gmail Composio:", JSON.stringify(resultado));
+
+    await marcarPendingEjecutado(pendingAction.id);
+
+    const respuestaIA = resultado?.successful !== false
+        ? `✅ Correo enviado a ${payload.to} con asunto "${payload.subject}".`
+        : `❌ No pude enviar el correo: ${resultado?.error || 'error desconocido'}`;
+
+    const tokensUsados = await registrarConsumo({
+        agente,
+        targetID,
+        saldoActual,
+        prompt,
+        respuestaIA
+    });
+
+    return {
+        statusCode: 200,
+        respuesta: respuestaIA,
+        tokens_consumidos: tokensUsados
+    };
+}
+
+async function ejecutarDriveDirecto({ payload, agente, targetID, userConnections, saldoActual, prompt }) {
+    const driveConn = obtenerConexion(userConnections, 'googledrive');
+
+    if (!driveConn?.composio_entity_id) {
+        return {
+            statusCode: 400,
+            respuesta: "Google Drive no está conectado."
+        };
+    }
+
+    const resultado = await ejecutarToolComposio(
+        'GOOGLEDRIVE_FIND_FILE',
+        driveConn.composio_entity_id,
+        agente.user_id,
+        {
+            query: payload.query,
+            folder: payload.folder || "",
+            file_type: payload.file_type || ""
+        }
+    );
+
+    console.log("Resultado Drive Composio:", JSON.stringify(resultado));
+
+    const archivos =
+        resultado?.data?.response_data?.files ||
+        resultado?.data?.response_data?.items ||
+        resultado?.data?.response_data?.results ||
+        resultado?.data?.files ||
+        resultado?.data?.items ||
+        resultado?.data?.results ||
+        resultado?.files ||
+        resultado?.items ||
+        resultado?.results ||
+        [];
+
+    const respuestaIA = archivos.length > 0
+        ? `Encontré ${archivos.length} archivo(s):\n` +
+          archivos.slice(0, 5).map(f => {
+              const nombre = f.name || f.title || f.file_name || 'Archivo sin nombre';
+              const link = f.webViewLink || f.url || f.link || '';
+              return `📄 ${nombre}${link ? ` — ${link}` : ''}`;
+          }).join('\n')
+        : "No encontré archivos que coincidan con tu búsqueda.";
+
+    const tokensUsados = await registrarConsumo({
+        agente,
+        targetID,
+        saldoActual,
+        prompt,
+        respuestaIA
+    });
+
+    return {
+        statusCode: 200,
+        respuesta: respuestaIA,
+        tokens_consumidos: tokensUsados
+    };
+}
+
+async function manejarPendingAction({
+    pendingAction,
+    prompt,
+    messageRoute,
+    agente,
+    targetID,
+    userConnections,
+    saldoActual
+}) {
+    if (!pendingAction) return null;
+
+    if (messageRoute === 'workflow_confirm' && esCancelacion(prompt)) {
+        await cancelarPending(pendingAction.id);
+
+        return {
+            statusCode: 200,
+            respuesta: "Entendido, cancelé la acción pendiente."
+        };
+    }
+
+    if (messageRoute === 'workflow_confirm' && esConfirmacion(prompt)) {
+        if (pendingAction.action === 'GOOGLECALENDAR_CREATE_EVENT') {
+            return await ejecutarCalendar({
+                pendingAction,
+                agente,
+                targetID,
+                userConnections,
+                saldoActual,
+                prompt
+            });
+        }
+
+        if (pendingAction.action === 'GMAIL_SEND_EMAIL') {
+            return await ejecutarGmail({
+                pendingAction,
+                agente,
+                targetID,
+                userConnections,
+                saldoActual,
+                prompt
+            });
+        }
+
+        return {
+            statusCode: 400,
+            respuesta: "No reconozco la acción pendiente para confirmarla."
+        };
+    }
+
+    if (messageRoute !== 'workflow_collect') {
+        return null;
+    }
+
+    if (pendingAction.action === 'GMAIL_SEND_EMAIL') {
+        const payloadActual = pendingAction.payload || {};
+        const payloadEnriquecido = enrichEmailPayloadFromText(payloadActual, prompt);
+        const missingFields = getMissingFields('GMAIL_SEND_EMAIL', payloadEnriquecido);
+
+        await supabase
+            .from('pending_tool_actions')
+            .update({ payload: payloadEnriquecido })
+            .eq('id', pendingAction.id);
+
+        console.log("Pending Gmail actualizado:", JSON.stringify(payloadEnriquecido));
+
+        if (missingFields.length > 0) {
+            return {
+                statusCode: 200,
+                respuesta: buildMissingFieldsQuestion('GMAIL_SEND_EMAIL', missingFields)
+            };
+        }
+
+        return {
+            statusCode: 200,
+            respuesta: `Voy a enviar un correo a ${payloadEnriquecido.to} con asunto "${payloadEnriquecido.subject}". Responde "sí" para confirmar o "no" para cancelar.`
+        };
+    }
+
+    if (pendingAction.action === 'GOOGLECALENDAR_CREATE_EVENT') {
+        const payloadActual = pendingAction.payload || {};
+        let payloadEnriquecido = { ...payloadActual };
+
+        if (seemsContactInfo(prompt)) {
+            payloadEnriquecido = enrichCalendarPayloadFromText(payloadEnriquecido, prompt);
+        } else {
+            payloadEnriquecido = enrichCalendarPayloadFromText(payloadEnriquecido, prompt);
+        }
+
+        const fechaResuelta = resolverFecha(prompt);
+        if (fechaResuelta && !payloadEnriquecido.start) {
+            payloadEnriquecido.start = fechaResuelta;
+        }
+
+        if (payloadEnriquecido.start && !payloadEnriquecido.end) {
+            payloadEnriquecido.end = sumarMinutos(payloadEnriquecido.start, 45);
+        }
+
+        const missingFields = getMissingFields('GOOGLECALENDAR_CREATE_EVENT', payloadEnriquecido);
+
+        await supabase
+            .from('pending_tool_actions')
+            .update({ payload: payloadEnriquecido })
+            .eq('id', pendingAction.id);
+
+        console.log("Pending Calendar actualizado:", JSON.stringify(payloadEnriquecido));
+
+        if (missingFields.length > 0) {
+            return {
+                statusCode: 200,
+                respuesta: buildMissingFieldsQuestion('GOOGLECALENDAR_CREATE_EVENT', missingFields)
+            };
+        }
+
+        return {
+            statusCode: 200,
+            respuesta: `Voy a agendar "${payloadEnriquecido.summary}" el ${payloadEnriquecido.start?.split('T')[0]} a las ${payloadEnriquecido.start?.split('T')[1]?.substring(0, 5)} para ${payloadEnriquecido.contact_name} (${payloadEnriquecido.contact_email}). Responde "sí" para confirmar o "no" para cancelar.`
+        };
+    }
+
+    if (pendingAction.action === 'GOOGLEDRIVE_FIND_FILE') {
+        const payloadActual = pendingAction.payload || {};
+        const payloadEnriquecido = enrichDrivePayloadFromText(payloadActual, prompt);
+        const missingFields = getMissingFields('GOOGLEDRIVE_FIND_FILE', payloadEnriquecido);
+
+        await supabase
+            .from('pending_tool_actions')
+            .update({ payload: payloadEnriquecido })
+            .eq('id', pendingAction.id);
+
+        if (missingFields.length > 0) {
+            return {
+                statusCode: 200,
+                respuesta: buildMissingFieldsQuestion('GOOGLEDRIVE_FIND_FILE', missingFields)
+            };
+        }
+
+        await marcarPendingEjecutado(pendingAction.id);
+
+        return await ejecutarDriveDirecto({
+            payload: payloadEnriquecido,
+            agente,
+            targetID,
+            userConnections,
+            saldoActual,
+            prompt
+        });
+    }
+
+    return null;
+}
+
 // ── HANDLER ──────────────────────────────────────────────────────────────────
 
 exports.handler = async (event) => {
@@ -192,6 +698,14 @@ exports.handler = async (event) => {
         const body = JSON.parse(event.body || '{}');
         const { prompt, agente_id, historial = [], conversation_id = null, canal = "" } = body;
         const targetID = agente_id || process.env.AGENTE_MAESTRO_ID;
+
+        if (!prompt || !String(prompt).trim()) {
+            return {
+                statusCode: 400,
+                headers,
+                body: JSON.stringify({ error: "Falta prompt." })
+            };
+        }
 
         if (!conversation_id) {
             return {
@@ -273,9 +787,10 @@ exports.handler = async (event) => {
             .select('toolkit, composio_entity_id, connected_at')
             .eq('user_id', agente.user_id);
 
-        const toolkitsConectados = new Set((userConnections || []).map(c => String(c.toolkit).toLowerCase()));
+        const toolkitsConectados = new Set((userConnections || []).map(c => normalizarToolkit(c.toolkit)));
+
         const toolsDisponibles = (agentTools || []).filter(t =>
-            toolkitsConectados.has(String(t.toolkit).toLowerCase())
+            toolkitsConectados.has(normalizarToolkit(t.toolkit))
         );
 
         console.log("Tools disponibles:", toolsDisponibles.map(t => t.tool_key));
@@ -295,554 +810,38 @@ exports.handler = async (event) => {
         console.log("Pending action:", pendingAction ? pendingAction.action : 'ninguno');
 
         const messageRoute = classifyMessageRoute({
-    pendingAction,
-    text: prompt
-});
+            pendingAction,
+            text: prompt
+        });
 
-console.log("Message route:", messageRoute);
+        console.log("Message route:", messageRoute);
 
-        let workflowDetectado = null;
+        const resultadoPending = await manejarPendingAction({
+            pendingAction,
+            prompt,
+            messageRoute,
+            agente,
+            targetID,
+            userConnections,
+            saldoActual
+        });
 
-        if (!pendingAction) {
-            workflowDetectado = detectWorkflowIntent(
-                prompt,
-                toolsDisponibles.map(t => t.tool_key)
-            );
-        }
-
-        console.log("Workflow detectado:", workflowDetectado ? workflowDetectado.key : 'ninguno');
-
-        if (workflowDetectado?.key === 'schedule_meeting') {
-    const meetingConfig = getWorkflowConfig('schedule_meeting');
-
-    let payloadInicialMeeting = enrichCalendarPayloadFromText({
-    summary: meetingConfig?.defaults?.summary || "",
-    description: meetingConfig?.defaults?.description || "",
-    start: "",
-    end: "",
-    attendees: [],
-    contact_name: "",
-    contact_email: "",
-    contact_phone: "",
-    meeting_reason: ""
-}, prompt);
-
-const fechaInicial = resolverFecha(prompt);
-
-if (fechaInicial && !payloadInicialMeeting.start) {
-    payloadInicialMeeting.start = fechaInicial;
-}
-
-if (payloadInicialMeeting.start && !payloadInicialMeeting.end) {
-    const durationMinutes = meetingConfig?.defaults?.durationMinutes || 45;
-    payloadInicialMeeting.end = sumarMinutos(payloadInicialMeeting.start, durationMinutes);
-}
-
-    const missingMeetingFields = getMissingFields('GOOGLECALENDAR_CREATE_EVENT', payloadInicialMeeting);
-
-    const { data: existingMeetingPending } = await supabase
-        .from('pending_tool_actions')
-        .select('*')
-        .eq('user_id', agente.user_id)
-        .eq('agente_id', targetID)
-        .eq('conversation_id', conversation_id)
-        .eq('status', 'pending')
-        .eq('action', 'GOOGLECALENDAR_CREATE_EVENT')
-        .gte('expires_at', new Date().toISOString())
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-    if (!existingMeetingPending) {
-        await supabase
-            .from('pending_tool_actions')
-            .insert([{
-                user_id: agente.user_id,
-                agente_id: targetID,
-                conversation_id: conversation_id,
-                action: 'GOOGLECALENDAR_CREATE_EVENT',
-                payload: payloadInicialMeeting,
-                status: 'pending',
-                expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString()
-            }]);
-
-        console.log("Pending action de schedule_meeting creada desde workflow nativo");
-        console.log("Payload inicial Calendar:", JSON.stringify(payloadInicialMeeting));
-    }
-
-    const respuestaMeeting = missingMeetingFields.length > 0
-        ? buildMissingFieldsQuestion('GOOGLECALENDAR_CREATE_EVENT', missingMeetingFields)
-        : `Voy a agendar "${payloadInicialMeeting.summary}" para el ${payloadInicialMeeting.start}. Responde "sí" para confirmar o "no" para cancelar.`;
-
-    return {
-        statusCode: 200,
-        headers,
-        body: JSON.stringify({
-            respuesta: respuestaMeeting
-        })
-    };
-}
-
-        if (workflowDetectado?.key === 'send_email') {
-    const emailConfig = getWorkflowConfig('send_email');
-
-    const payloadInicialEmail = enrichEmailPayloadFromText({
-        to: "",
-        subject: "",
-        body: "",
-        cc: "",
-        bcc: ""
-    }, prompt);
-
-    const missingEmailFields = getMissingFields('GMAIL_SEND_EMAIL', payloadInicialEmail);
-
-    const { data: existingEmailPending } = await supabase
-        .from('pending_tool_actions')
-        .select('*')
-        .eq('user_id', agente.user_id)
-        .eq('agente_id', targetID)
-        .eq('conversation_id', conversation_id)
-        .eq('status', 'pending')
-        .eq('action', 'GMAIL_SEND_EMAIL')
-        .gte('expires_at', new Date().toISOString())
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-    if (!existingEmailPending) {
-        await supabase
-            .from('pending_tool_actions')
-            .insert([{
-                user_id: agente.user_id,
-                agente_id: targetID,
-                conversation_id: conversation_id,
-                action: 'GMAIL_SEND_EMAIL',
-                payload: payloadInicialEmail,
-                status: 'pending',
-                expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString()
-            }]);
-
-        console.log("Pending action de send_email creada desde workflow nativo");
-        console.log("Payload inicial Gmail:", JSON.stringify(payloadInicialEmail));
-    }
-
-    const respuestaEmail = missingEmailFields.length > 0
-        ? buildMissingFieldsQuestion('GMAIL_SEND_EMAIL', missingEmailFields)
-        : `Voy a enviar un correo a ${payloadInicialEmail.to} con asunto "${payloadInicialEmail.subject}". Responde "sí" para confirmar o "no" para cancelar.`;
-
-    return {
-        statusCode: 200,
-        headers,
-        body: JSON.stringify({
-            respuesta: respuestaEmail
-        })
-    };
-}
-
-        if (workflowDetectado?.key === 'find_document') {
-    const driveConfig = getWorkflowConfig('find_document');
-
-    const { data: existingDrivePending } = await supabase
-        .from('pending_tool_actions')
-        .select('*')
-        .eq('user_id', agente.user_id)
-        .eq('agente_id', targetID)
-        .eq('conversation_id', conversation_id)
-        .eq('status', 'pending')
-        .eq('action', 'GOOGLEDRIVE_FIND_FILE')
-        .gte('expires_at', new Date().toISOString())
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-    if (!existingDrivePending) {
-        await supabase
-            .from('pending_tool_actions')
-            .insert([{
-                user_id: agente.user_id,
-                agente_id: targetID,
-                conversation_id: conversation_id,
-                action: 'GOOGLEDRIVE_FIND_FILE',
-                payload: {
-                    query: "",
-                    folder: "",
-                    file_type: ""
-                },
-                status: 'pending',
-                expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString()
-            }]);
-
-        console.log("Pending action de find_document creada desde workflow nativo");
-    }
-
-    return {
-        statusCode: 200,
-        headers,
-        body: JSON.stringify({
-            respuesta: driveConfig?.prompts?.initial || "Claro. Indícame qué archivo o documento quieres buscar en Google Drive."
-        })
-    };
-}
-
-        // ── COMPLETAR PENDING DE GMAIL DESDE BACKEND ─────────────────────────
-
-        if (
-            pendingAction &&
-            pendingAction.action === 'GMAIL_SEND_EMAIL' &&
-            messageRoute === 'workflow_collect'
-        ) {
-            const payloadActual = pendingAction.payload || {};
-            const payloadEnriquecido = enrichEmailPayloadFromText(payloadActual, prompt);
-
-            const missingFields = getMissingFields('GMAIL_SEND_EMAIL', payloadEnriquecido);
-            const huboCambios = JSON.stringify(payloadActual) !== JSON.stringify(payloadEnriquecido);
-
-            if (huboCambios) {
-                await supabase
-                    .from('pending_tool_actions')
-                    .update({ payload: payloadEnriquecido })
-                    .eq('id', pendingAction.id);
-
-                console.log("Pending action Gmail enriquecida desde texto:", JSON.stringify(payloadEnriquecido));
-            }
-
-            if (missingFields.length > 0) {
-                return {
-                    statusCode: 200,
-                    headers,
-                    body: JSON.stringify({
-                        respuesta: buildMissingFieldsQuestion('GMAIL_SEND_EMAIL', missingFields)
-                    })
-                };
-            }
-
+        if (resultadoPending) {
             return {
-                statusCode: 200,
+                statusCode: resultadoPending.statusCode || 200,
                 headers,
                 body: JSON.stringify({
-                    respuesta: `Voy a enviar un correo a ${payloadEnriquecido.to} con asunto "${payloadEnriquecido.subject}". Responde "sí" para confirmar o "no" para cancelar.`
+                    respuesta: resultadoPending.respuesta,
+                    tokens_consumidos: resultadoPending.tokens_consumidos
                 })
             };
         }
 
-        // ── COMPLETAR PENDING DE CALENDAR DESDE BACKEND ──────────────────────
-
-        if (
-            pendingAction &&
-            pendingAction.action === 'GOOGLECALENDAR_CREATE_EVENT' &&
-            messageRoute === 'workflow_collect'
-        ) {
-            const payloadActual = pendingAction.payload || {};
-
-            let payloadEnriquecido = { ...payloadActual };
-
-            // 1. Extraer contacto si el mensaje parece traer datos de contacto
-            if (seemsContactInfo(prompt)) {
-                payloadEnriquecido = enrichCalendarPayloadFromText(payloadEnriquecido, prompt);
-            }
-
-            // 2. Extraer fecha/hora desde el texto
-            const fechaResuelta = resolverFecha(prompt);
-            if (fechaResuelta && !payloadEnriquecido.start) {
-                payloadEnriquecido.start = fechaResuelta;
-            }
-
-            if (payloadEnriquecido.start && !payloadEnriquecido.end) {
-                const scheduleConfig = getWorkflowConfig('schedule_meeting');
-                const durationMinutes = scheduleConfig?.defaults?.durationMinutes || 30;
-                payloadEnriquecido.end = sumarMinutos(payloadEnriquecido.start, durationMinutes);
-            }
-
-            const missingFields = getMissingFields('GOOGLECALENDAR_CREATE_EVENT', payloadEnriquecido);
-            const huboCambios = JSON.stringify(payloadActual) !== JSON.stringify(payloadEnriquecido);
-
-            if (huboCambios) {
-                await supabase
-                    .from('pending_tool_actions')
-                    .update({ payload: payloadEnriquecido })
-                    .eq('id', pendingAction.id);
-
-                console.log("Pending action Calendar enriquecida desde texto:", JSON.stringify(payloadEnriquecido));
-            }
-
-            if (missingFields.length > 0) {
-                return {
-                    statusCode: 200,
-                    headers,
-                    body: JSON.stringify({
-                        respuesta: buildMissingFieldsQuestion('GOOGLECALENDAR_CREATE_EVENT', missingFields)
-                    })
-                };
-            }
-
-            return {
-                statusCode: 200,
-                headers,
-                body: JSON.stringify({
-                    respuesta: `Voy a agendar "${payloadEnriquecido.summary}" el ${payloadEnriquecido.start?.split('T')[0]} a las ${payloadEnriquecido.start?.split('T')[1]?.substring(0, 5)} para ${payloadEnriquecido.contact_name} (${payloadEnriquecido.contact_email}). Responde "sí" para confirmar o "no" para cancelar.`
-                })
-            };
-        }
-
-        if (
-    pendingAction &&
-    pendingAction.action === 'GOOGLEDRIVE_FIND_FILE' &&
-    messageRoute === 'workflow_collect'
-) {
-    const payloadActual = pendingAction.payload || {};
-    const payloadEnriquecido = enrichDrivePayloadFromText(payloadActual, prompt);
-
-    const missingFields = getMissingFields('GOOGLEDRIVE_FIND_FILE', payloadEnriquecido);
-    const huboCambios = JSON.stringify(payloadActual) !== JSON.stringify(payloadEnriquecido);
-
-    if (huboCambios) {
-        await supabase
-            .from('pending_tool_actions')
-            .update({ payload: payloadEnriquecido })
-            .eq('id', pendingAction.id);
-
-        console.log("Pending action Drive enriquecida desde texto:", JSON.stringify(payloadEnriquecido));
-    }
-
-    if (missingFields.length > 0) {
-        return {
-            statusCode: 200,
-            headers,
-            body: JSON.stringify({
-                respuesta: buildMissingFieldsQuestion('GOOGLEDRIVE_FIND_FILE', missingFields)
-            })
-        };
-    }
-
-    const driveConn = (userConnections || []).find(
-        c => String(c.toolkit).toLowerCase() === 'googledrive'
-    );
-
-    if (!driveConn?.composio_entity_id) {
-        return {
-            statusCode: 400,
-            headers,
-            body: JSON.stringify({ respuesta: "Google Drive no está conectado." })
-        };
-    }
-
-    const resultado = await ejecutarToolComposio(
-        'GOOGLEDRIVE_FIND_FILE',
-        driveConn.composio_entity_id,
-        agente.user_id,
-        {
-            query: payloadEnriquecido.query,
-            folder: payloadEnriquecido.folder || "",
-            file_type: payloadEnriquecido.file_type || ""
-        }
-    );
-
-    console.log("Resultado Drive Composio:", JSON.stringify(resultado));
-
-    await supabase
-        .from('pending_tool_actions')
-        .update({ status: 'executed' })
-        .eq('id', pendingAction.id);
-
-    const archivos =
-        resultado?.data?.response_data?.files ||
-        resultado?.data?.response_data?.items ||
-        resultado?.data?.response_data?.results ||
-        resultado?.data?.files ||
-        resultado?.data?.items ||
-        resultado?.data?.results ||
-        resultado?.files ||
-        resultado?.items ||
-        resultado?.results ||
-        [];
-
-    const respuestaIA = archivos.length > 0
-        ? `Encontré ${archivos.length} archivo(s):\n` +
-          archivos.slice(0, 5).map(f => {
-              const nombre = f.name || f.title || f.file_name || 'Archivo sin nombre';
-              const link = f.webViewLink || f.url || f.link || '';
-              return `📄 ${nombre}${link ? ` — ${link}` : ''}`;
-          }).join('\\n')
-        : "No encontré archivos que coincidan con tu búsqueda.";
-
-    const tokensUsados = await registrarConsumo({
-        agente,
-        targetID,
-        saldoActual,
-        prompt,
-        respuestaIA
-    });
-
-    return {
-        statusCode: 200,
-        headers,
-        body: JSON.stringify({
-            respuesta: respuestaIA,
-            tokens_consumidos: tokensUsados
-        })
-    };
-}
-
-        // ── CONFIRMAR ACCIÓN PENDIENTE ───────────────────────────────────────
-        if (pendingAction && messageRoute === 'workflow_confirm' && esConfirmacion(prompt)) {
-            console.log("Confirmación recibida para:", pendingAction.action);
-
-            if (pendingAction.action === 'GOOGLECALENDAR_CREATE_EVENT') {
-                const calConn = (userConnections || []).find(
-                    c => String(c.toolkit).toLowerCase() === 'googlecalendar'
-                );
-
-                if (!calConn?.composio_entity_id) {
-                    return {
-                        statusCode: 400,
-                        headers,
-                        body: JSON.stringify({ respuesta: "Google Calendar no está conectado." })
-                    };
-                }
-
-                const payload = pendingAction.payload || {};
-                const attendeesBase = Array.isArray(payload.attendees) ? payload.attendees : [];
-                const contactEmail = payload.contact_email || "";
-                const attendeesFinal = [...new Set([
-                    ...attendeesBase,
-                    ...(contactEmail ? [contactEmail] : [])
-                ])].filter(e => e && e.includes('@'));
-
-                const argumentos = {
-                    summary: payload.summary || "Evento agendado desde el chat",
-                    description: payload.description || "",
-                    start_datetime: resolverFecha(payload.start),
-                    end_datetime: resolverFecha(payload.end),
-                    attendees: attendeesFinal
-                };
-
-                console.log("Fechas resueltas:", argumentos.start_datetime, argumentos.end_datetime);
-                console.log("Invitados:", attendeesFinal);
-
-                const resultado = await ejecutarToolComposio(
-                    'GOOGLECALENDAR_CREATE_EVENT',
-                    calConn.composio_entity_id,
-                    agente.user_id,
-                    argumentos
-                );
-
-                console.log("Resultado Composio:", JSON.stringify(resultado));
-
-                await supabase
-                    .from('pending_tool_actions')
-                    .update({ status: 'executed' })
-                    .eq('id', pendingAction.id);
-
-                const meetLink = resultado?.data?.response_data?.hangoutLink || "";
-                const respuestaIA = `✅ Listo, agendé "${argumentos.summary}" para el ${argumentos.start_datetime?.split('T')[0]} a las ${argumentos.start_datetime?.split('T')[1]?.substring(0, 5)}.${meetLink ? `\n\n🎥 Link de Meet: ${meetLink}` : ""}${contactEmail ? `\n\nSe envió invitación a ${contactEmail}.` : ""}`;
-
-                const tokensUsados = await registrarConsumo({
-                    agente,
-                    targetID,
-                    saldoActual,
-                    prompt,
-                    respuestaIA
-                });
-
-                return {
-                    statusCode: 200,
-                    headers,
-                    body: JSON.stringify({
-                        respuesta: respuestaIA,
-                        tokens_consumidos: tokensUsados
-                    })
-                };
-            }
-
-            if (pendingAction.action === 'GMAIL_SEND_EMAIL') {
-                const gmailConn = (userConnections || []).find(
-                    c => String(c.toolkit).toLowerCase() === 'gmail'
-                );
-
-                if (!gmailConn?.composio_entity_id) {
-                    return {
-                        statusCode: 400,
-                        headers,
-                        body: JSON.stringify({ respuesta: "Gmail no está conectado." })
-                    };
-                }
-
-                const payload = pendingAction.payload || {};
-                const normalizarListaCorreos = (valor) => {
-    if (Array.isArray(valor)) {
-        return valor.filter(v => typeof v === 'string' && v.trim());
-    }
-
-    if (typeof valor === 'string' && valor.trim()) {
-        return valor
-            .split(',')
-            .map(v => v.trim())
-            .filter(Boolean);
-    }
-
-    return [];
-};
-
-const resultado = await ejecutarToolComposio(
-    'GMAIL_SEND_EMAIL',
-    gmailConn.composio_entity_id,
-    agente.user_id,
-    {
-        to: payload.to,
-        subject: payload.subject,
-        body: payload.body,
-        cc: normalizarListaCorreos(payload.cc),
-        bcc: normalizarListaCorreos(payload.bcc)
-    }
-);
-
-                await supabase
-                    .from('pending_tool_actions')
-                    .update({ status: 'executed' })
-                    .eq('id', pendingAction.id);
-
-                const respuestaIA = resultado?.successful
-                    ? `✅ Correo enviado a ${payload.to} con asunto "${payload.subject}".`
-                    : `❌ No pude enviar el correo: ${resultado?.error || 'error desconocido'}`;
-
-                const tokensUsados = await registrarConsumo({
-                    agente,
-                    targetID,
-                    saldoActual,
-                    prompt,
-                    respuestaIA
-                });
-
-                return {
-                    statusCode: 200,
-                    headers,
-                    body: JSON.stringify({
-                        respuesta: respuestaIA,
-                        tokens_consumidos: tokensUsados
-                    })
-                };
-            }
-        }
-
-       if (pendingAction && messageRoute === 'workflow_confirm' && esCancelacion(prompt)) {
-            await supabase
-                .from('pending_tool_actions')
-                .update({ status: 'cancelled' })
-                .eq('id', pendingAction.id);
-
-            return {
-                statusCode: 200,
-                headers,
-                body: JSON.stringify({ respuesta: "Entendido, cancelé la acción pendiente." })
-            };
-        }
-
-        // ── PROMPT PARA DEEPSEEK ──────────────────────────────────────────────
         const toolsDescription = construirToolsDescription(toolsDisponibles);
 
-const esSaludoSimple = /^(hola|buenas|buenos días|buenos dias|buen día|buen dia|buenas tardes|buenas noches|hey|hi)\s*$/i.test((prompt || "").trim());
+        const esSaludoSimple = /^(hola|buenas|buenos días|buenos dias|buen día|buen dia|buenas tardes|buenas noches|hey|hi)\s*$/i.test((prompt || "").trim());
 
-let systemFinal = agente.prompt_sistema + "\n" + toolsDescription + `
+        let systemFinal = agente.prompt_sistema + "\n" + toolsDescription + `
 
 REGLAS DE CONVERSACIÓN:
 - Responde primero a la intención concreta del usuario.
@@ -852,35 +851,45 @@ REGLAS DE CONVERSACIÓN:
 - Si el usuario ya expresó una necesidad, continúa desde esa necesidad sin reiniciar la conversación.
 - Si hay historial conversacional, continúa con naturalidad y no vuelvas a presentarte.
 - Evita responder con "¿en qué necesitas apoyo hoy?" si el usuario ya dijo lo que necesita.
+
+REGLAS DE HERRAMIENTAS:
+- DeepSeek decide la intención principal del usuario.
+- Si el usuario quiere enviar correo, usa GMAIL_SEND_EMAIL.
+- Si el usuario quiere agendar o crear evento, usa GOOGLECALENDAR_CREATE_EVENT.
+- Si el usuario quiere buscar archivo, usa GOOGLEDRIVE_FIND_FILE.
+- Si faltan campos, responde en lenguaje natural preguntando solo lo que falta.
+- Si tienes todos los campos para una herramienta, responde únicamente JSON válido con action y data.
+- No confundas correos con reuniones.
+- Si el usuario corrige la intención, respeta la corrección inmediatamente.
 `;
 
-if (!esSaludoSimple) {
-    systemFinal += `
+        if (!esSaludoSimple) {
+            systemFinal += `
 INSTRUCCIÓN ADICIONAL:
 - El mensaje actual NO es un saludo simple. No uses el saludo base. Responde directamente a lo que el usuario pidió.
 `;
-}
+        }
 
         if (pendingAction) {
-    systemFinal += `
+            systemFinal += `
 
 ## ACCIÓN PENDIENTE EN CURSO
-Hay una acción pendiente que debes continuar completando:
+Hay una acción pendiente:
 Tipo: ${pendingAction.action}
 Datos actuales: ${JSON.stringify(pendingAction.payload || {}, null, 2)}
 
 INSTRUCCIONES:
-- NO saludes de nuevo ni reinicies la conversación.
-- Si el usuario te da datos faltantes, actualiza el JSON con esos datos.
-- Si ya tienes todos los campos requeridos, genera el JSON final y pide confirmación.
-- Responde SOLO en JSON si vas a actualizar la acción.`;
-}
+- Si el usuario completa datos faltantes, responde con JSON de la misma acción o con texto natural si aún falta algo.
+- Si el usuario cambia claramente de intención, puedes responder con JSON de la nueva herramienta.
+- No fuerces la acción anterior si el usuario la corrigió.
+`;
+        }
 
-const mensajes = [
-    { role: "system", content: systemFinal },
-    ...historial.slice(-12),
-    { role: "user", content: prompt }
-];
+        const mensajes = [
+            { role: "system", content: systemFinal },
+            ...historial.slice(-12),
+            { role: "user", content: prompt }
+        ];
 
         console.log("Turnos de historial enviados a DeepSeek:", historial.length);
         console.log("Llamando a DeepSeek...");
@@ -919,243 +928,106 @@ const mensajes = [
             throw new Error(aiData?.error?.message || "Error en la respuesta de la IA");
         }
 
-        let respuestaIA = aiData.choices[0].message.content;
+        let respuestaIA = limpiarTextoIA(aiData.choices[0].message.content);
         console.log("Respuesta raw DeepSeek:", respuestaIA);
 
-        let actionPayload = null;
-        try {
-            actionPayload = JSON.parse(respuestaIA);
-        } catch (_) {
-            actionPayload = null;
-        }
-
-        const mencionaCalendar =
-            !actionPayload &&
-            !pendingAction &&
-            toolsDisponibles.some(t => t.tool_key === 'GOOGLECALENDAR_CREATE_EVENT') &&
-            /agend|reuni[oó]n|cita|calendar|evento|invitaci[oó]n/i.test(prompt + " " + respuestaIA);
-
-        if (mencionaCalendar) {
-            await supabase
-                .from('pending_tool_actions')
-                .insert([{
-                    user_id: agente.user_id,
-                    agente_id: targetID,
-                    conversation_id: conversation_id,
-                    action: 'GOOGLECALENDAR_CREATE_EVENT',
-                    payload: {},
-                    status: 'pending',
-                    expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString()
-                }]);
-
-            console.log("Pending action vacío creado por intención textual");
-        }
-
+        const actionPayload = parseActionPayload(respuestaIA);
         console.log("Action payload parseado:", actionPayload ? actionPayload.action : 'null');
 
-        // ── GOOGLECALENDAR_CREATE_EVENT ───────────────────────────────────────
         if (actionPayload?.action === 'GOOGLECALENDAR_CREATE_EVENT') {
-            const calConn = (userConnections || []).find(
-                c => String(c.toolkit).toLowerCase() === 'googlecalendar'
-            );
-
-            if (!calConn?.composio_entity_id) {
-                return {
-                    statusCode: 400,
-                    headers,
-                    body: JSON.stringify({
-                        respuesta: "Google Calendar no está conectado para este usuario."
-                    })
-                };
-            }
-
-            const eventData = actionPayload.data || {};
-
-            const basePayloadPendiente = {
-                summary: eventData.summary || eventData.title || "Evento agendado desde el chat",
-                description: eventData.description || "",
-                start: eventData.start,
-                end: eventData.end,
-                attendees: Array.isArray(eventData.attendees) ? eventData.attendees : [],
-                contact_name: eventData.contact_name || "",
-                contact_email: eventData.contact_email || "",
-                contact_phone: eventData.contact_phone || "",
-                meeting_reason: eventData.meeting_reason || "",
-                location: eventData.location || ""
-            };
-
-            const payloadPendiente = enrichCalendarPayloadFromText(basePayloadPendiente, prompt);
-            const missingFields = getMissingFields('GOOGLECALENDAR_CREATE_EVENT', payloadPendiente);
-
-            const { data: existingPending } = await supabase
-                .from('pending_tool_actions')
-                .select('*')
-                .eq('user_id', agente.user_id)
-                .eq('agente_id', targetID)
-                .eq('conversation_id', conversation_id)
-                .eq('status', 'pending')
-                .order('created_at', { ascending: false })
-                .limit(1)
-                .maybeSingle();
-
-            if (existingPending) {
-                const mergedPayload = enrichCalendarPayloadFromText({
-                    ...(existingPending.payload || {}),
-                    ...payloadPendiente
-                }, prompt);
-
-                const mergedMissing = getMissingFields('GOOGLECALENDAR_CREATE_EVENT', mergedPayload);
-
-                await supabase
-                    .from('pending_tool_actions')
-                    .update({
-                        action: 'GOOGLECALENDAR_CREATE_EVENT',
-                        payload: mergedPayload,
-                        status: 'pending'
-                    })
-                    .eq('id', existingPending.id);
-
-                respuestaIA = mergedMissing.length > 0
-                    ? buildMissingFieldsQuestion('GOOGLECALENDAR_CREATE_EVENT', mergedMissing)
-                    : `Voy a agendar "${mergedPayload.summary}" el ${resolverFecha(mergedPayload.start)?.split('T')[0]} a las ${resolverFecha(mergedPayload.start)?.split('T')[1]?.substring(0, 5)} para ${mergedPayload.contact_name} (${mergedPayload.contact_email}). Responde "sí" para confirmar o "no" para cancelar.`;
+            if (!toolDisponible(toolsDisponibles, 'GOOGLECALENDAR_CREATE_EVENT')) {
+                respuestaIA = "Google Calendar no está habilitado para este agente.";
             } else {
-                await supabase
-                    .from('pending_tool_actions')
-                    .insert([{
-                        user_id: agente.user_id,
-                        agente_id: targetID,
-                        conversation_id: conversation_id,
-                        action: 'GOOGLECALENDAR_CREATE_EVENT',
-                        payload: payloadPendiente,
-                        status: 'pending',
-                        expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString()
-                    }]);
-
-                respuestaIA = missingFields.length > 0
-                    ? buildMissingFieldsQuestion('GOOGLECALENDAR_CREATE_EVENT', missingFields)
-                    : `Voy a agendar "${payloadPendiente.summary}" el ${resolverFecha(payloadPendiente.start)?.split('T')[0]} a las ${resolverFecha(payloadPendiente.start)?.split('T')[1]?.substring(0, 5)} para ${payloadPendiente.contact_name} (${payloadPendiente.contact_email}). Responde "sí" para confirmar o "no" para cancelar.`;
-            }
-        }
-
-        // ── GMAIL_SEND_EMAIL ──────────────────────────────────────────────────
-        if (actionPayload?.action === 'GMAIL_SEND_EMAIL') {
-            const gmailConn = (userConnections || []).find(
-                c => String(c.toolkit).toLowerCase() === 'gmail'
-            );
-
-            if (!gmailConn?.composio_entity_id) {
-                return {
-                    statusCode: 400,
-                    headers,
-                    body: JSON.stringify({ respuesta: "Gmail no está conectado para este usuario." })
-                };
-            }
-
-            const emailData = actionPayload.data || {};
-            const payloadEmail = {
-                to: emailData.to || "",
-                subject: emailData.subject || "",
-                body: emailData.body || "",
-                cc: emailData.cc || "",
-                bcc: emailData.bcc || ""
-            };
-
-            const missingEmail = getMissingFields('GMAIL_SEND_EMAIL', payloadEmail);
-
-            const { data: existingPendingEmail } = await supabase
-                .from('pending_tool_actions')
-                .select('*')
-                .eq('user_id', agente.user_id)
-                .eq('agente_id', targetID)
-                .eq('conversation_id', conversation_id)
-                .eq('status', 'pending')
-                .order('created_at', { ascending: false })
-                .limit(1)
-                .maybeSingle();
-
-            if (existingPendingEmail) {
-                const merged = { ...(existingPendingEmail.payload || {}), ...payloadEmail };
-                const mergedMissing = getMissingFields('GMAIL_SEND_EMAIL', merged);
-
-                await supabase
-                    .from('pending_tool_actions')
-                    .update({
-                        action: 'GMAIL_SEND_EMAIL',
-                        payload: merged,
-                        status: 'pending'
-                    })
-                    .eq('id', existingPendingEmail.id);
-
-                respuestaIA = mergedMissing.length > 0
-                    ? buildMissingFieldsQuestion('GMAIL_SEND_EMAIL', mergedMissing)
-                    : `Voy a enviar un correo a ${merged.to} con asunto "${merged.subject}". Responde "sí" para confirmar o "no" para cancelar.`;
-            } else {
-                await supabase
-                    .from('pending_tool_actions')
-                    .insert([{
-                        user_id: agente.user_id,
-                        agente_id: targetID,
-                        conversation_id: conversation_id,
-                        action: 'GMAIL_SEND_EMAIL',
-                        payload: payloadEmail,
-                        status: 'pending',
-                        expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString()
-                    }]);
-
-                respuestaIA = missingEmail.length > 0
-                    ? buildMissingFieldsQuestion('GMAIL_SEND_EMAIL', missingEmail)
-                    : `Voy a enviar un correo a ${payloadEmail.to} con asunto "${payloadEmail.subject}". Responde "sí" para confirmar o "no" para cancelar.`;
-            }
-        }
-
-        // ── GOOGLEDRIVE_FIND_FILE ─────────────────────────────────────────────
-        if (actionPayload?.action === 'GOOGLEDRIVE_FIND_FILE') {
-            const driveConn = (userConnections || []).find(
-                c => String(c.toolkit).toLowerCase() === 'googledrive'
-            );
-
-            if (!driveConn?.composio_entity_id) {
-                return {
-                    statusCode: 400,
-                    headers,
-                    body: JSON.stringify({ respuesta: "Google Drive no está conectado." })
-                };
-            }
-
-            const driveData = actionPayload.data || {};
-            const resultado = await ejecutarToolComposio(
-                'GOOGLEDRIVE_FIND_FILE',
-                driveConn.composio_entity_id,
-                agente.user_id,
-                {
-                    query: driveData.query,
-                    folder: driveData.folder || "",
-                    file_type: driveData.file_type || ""
+                if (pendingAction && pendingAction.action !== 'GOOGLECALENDAR_CREATE_EVENT') {
+                    await cancelarPending(pendingAction.id);
                 }
-            );
 
-            console.log("Resultado Drive Composio (actionPayload):", JSON.stringify(resultado));
+                const payloadCalendar = construirPayloadCalendarDesdeAction(actionPayload.data || {}, prompt);
+                const missingFields = getMissingFields('GOOGLECALENDAR_CREATE_EVENT', payloadCalendar);
 
-            const archivos =
-                resultado?.data?.response_data?.files ||
-                resultado?.data?.response_data?.items ||
-                resultado?.data?.response_data?.results ||
-                resultado?.data?.files ||
-                resultado?.data?.items ||
-                resultado?.data?.results ||
-                resultado?.files ||
-                resultado?.items ||
-                resultado?.results ||
-                [];
+                await crearOActualizarPending({
+                    existingPending: pendingAction?.action === 'GOOGLECALENDAR_CREATE_EVENT' ? pendingAction : null,
+                    userId: agente.user_id,
+                    agenteId: targetID,
+                    conversationId: conversation_id,
+                    action: 'GOOGLECALENDAR_CREATE_EVENT',
+                    payload: payloadCalendar
+                });
 
-            respuestaIA = archivos.length > 0
-                ? `Encontré ${archivos.length} archivo(s):\n` +
-                  archivos.slice(0, 5).map(f => {
-                      const nombre = f.name || f.title || f.file_name || 'Archivo sin nombre';
-                      const link = f.webViewLink || f.url || f.link || '';
-                      return `📄 ${nombre}${link ? ` — ${link}` : ''}`;
-                  }).join('\\n')
-                : "No encontré archivos que coincidan con tu búsqueda.";
+                if (missingFields.length > 0) {
+                    respuestaIA = buildMissingFieldsQuestion('GOOGLECALENDAR_CREATE_EVENT', missingFields);
+                } else {
+                    respuestaIA = `Voy a agendar "${payloadCalendar.summary}" el ${payloadCalendar.start?.split('T')[0]} a las ${payloadCalendar.start?.split('T')[1]?.substring(0, 5)} para ${payloadCalendar.contact_name} (${payloadCalendar.contact_email}). Responde "sí" para confirmar o "no" para cancelar.`;
+                }
+            }
+        }
+
+        if (actionPayload?.action === 'GMAIL_SEND_EMAIL') {
+            if (!toolDisponible(toolsDisponibles, 'GMAIL_SEND_EMAIL')) {
+                respuestaIA = "Gmail no está habilitado para este agente.";
+            } else {
+                if (pendingAction && pendingAction.action !== 'GMAIL_SEND_EMAIL') {
+                    await cancelarPending(pendingAction.id);
+                }
+
+                const payloadEmail = construirPayloadEmailDesdeAction(actionPayload.data || {}, prompt);
+                const missingEmail = getMissingFields('GMAIL_SEND_EMAIL', payloadEmail);
+
+                await crearOActualizarPending({
+                    existingPending: pendingAction?.action === 'GMAIL_SEND_EMAIL' ? pendingAction : null,
+                    userId: agente.user_id,
+                    agenteId: targetID,
+                    conversationId: conversation_id,
+                    action: 'GMAIL_SEND_EMAIL',
+                    payload: payloadEmail
+                });
+
+                if (missingEmail.length > 0) {
+                    respuestaIA = buildMissingFieldsQuestion('GMAIL_SEND_EMAIL', missingEmail);
+                } else {
+                    respuestaIA = `Voy a enviar un correo a ${payloadEmail.to} con asunto "${payloadEmail.subject}". Responde "sí" para confirmar o "no" para cancelar.`;
+                }
+            }
+        }
+
+        if (actionPayload?.action === 'GOOGLEDRIVE_FIND_FILE') {
+            if (!toolDisponible(toolsDisponibles, 'GOOGLEDRIVE_FIND_FILE')) {
+                respuestaIA = "Google Drive no está habilitado para este agente.";
+            } else {
+                const payloadDrive = construirPayloadDriveDesdeAction(actionPayload.data || {}, prompt);
+                const missingDrive = getMissingFields('GOOGLEDRIVE_FIND_FILE', payloadDrive);
+
+                if (missingDrive.length > 0) {
+                    await crearOActualizarPending({
+                        existingPending: pendingAction?.action === 'GOOGLEDRIVE_FIND_FILE' ? pendingAction : null,
+                        userId: agente.user_id,
+                        agenteId: targetID,
+                        conversationId: conversation_id,
+                        action: 'GOOGLEDRIVE_FIND_FILE',
+                        payload: payloadDrive
+                    });
+
+                    respuestaIA = buildMissingFieldsQuestion('GOOGLEDRIVE_FIND_FILE', missingDrive);
+                } else {
+                    const driveResult = await ejecutarDriveDirecto({
+                        payload: payloadDrive,
+                        agente,
+                        targetID,
+                        userConnections,
+                        saldoActual,
+                        prompt
+                    });
+
+                    return {
+                        statusCode: driveResult.statusCode || 200,
+                        headers,
+                        body: JSON.stringify({
+                            respuesta: driveResult.respuesta,
+                            tokens_consumidos: driveResult.tokens_consumidos
+                        })
+                    };
+                }
+            }
         }
 
         const tokensUsados = await registrarConsumo({
