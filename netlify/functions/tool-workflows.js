@@ -20,6 +20,59 @@ const TOOL_DEFINITIONS = {
     optionalFields: ['cc', 'bcc'],
     confirmationRequired: true
   },
+  GMAIL_FETCH_EMAILS: {
+  toolkit: 'gmail',
+  label: 'Leer correos de Gmail',
+  workflow: 'execute',
+  requiredFields: ['query'],
+  optionalFields: ['max_results'],
+  confirmationRequired: false
+},
+
+GMAIL_FETCH_MESSAGE_BY_MESSAGE_ID: {
+  toolkit: 'gmail',
+  label: 'Leer correo por ID',
+  workflow: 'execute',
+  requiredFields: ['message_id'],
+  optionalFields: [],
+  confirmationRequired: false
+},
+
+GMAIL_FETCH_MESSAGE_BY_THREAD_ID: {
+  toolkit: 'gmail',
+  label: 'Leer hilo de Gmail',
+  workflow: 'execute',
+  requiredFields: ['thread_id'],
+  optionalFields: [],
+  confirmationRequired: false
+},
+
+GMAIL_REPLY_TO_THREAD: {
+  toolkit: 'gmail',
+  label: 'Responder hilo de Gmail',
+  workflow: 'collect_confirm_execute',
+  requiredFields: ['thread_id', 'body'],
+  optionalFields: [],
+  confirmationRequired: true
+},
+
+GMAIL_CREATE_EMAIL_DRAFT: {
+  toolkit: 'gmail',
+  label: 'Crear borrador de Gmail',
+  workflow: 'collect_execute',
+  requiredFields: ['to', 'subject', 'body'],
+  optionalFields: ['cc', 'bcc'],
+  confirmationRequired: false
+},
+
+GMAIL_LIST_LABELS: {
+  toolkit: 'gmail',
+  label: 'Listar etiquetas de Gmail',
+  workflow: 'execute',
+  requiredFields: [],
+  optionalFields: [],
+  confirmationRequired: false
+},
   GOOGLEDRIVE_FIND_FILE: {
     toolkit: 'googledrive',
     label: 'Buscar archivos en Google Drive',
@@ -627,6 +680,20 @@ Responde ÚNICAMENTE con este JSON (sin texto adicional, sin markdown):
 }
 
 ## REGLAS CRÍTICAS PARA HERRAMIENTAS
+
+### Para GMAIL_FETCH_EMAILS:
+- Úsala cuando el usuario pida leer, revisar, consultar, resumir o ver correos.
+- Para últimos correos recibidos usa:
+{
+  "action": "GMAIL_FETCH_EMAILS",
+  "data": {
+    "query": "in:inbox",
+    "max_results": 2
+  }
+}
+- Si el usuario dice “últimos 5 correos”, usa max_results: 5.
+- Si no especifica cantidad, usa max_results: 2.
+- NO digas que no puedes leer correos si GMAIL_FETCH_EMAILS está disponible.
 
 ### Para GMAIL_SEND_EMAIL:
 - "to": correo del destinatario (SOLO si el usuario lo dio, sino deja vacío "")
