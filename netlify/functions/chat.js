@@ -961,7 +961,57 @@ INSTRUCCIONES:
                 }
             }
         }
+        if (actionPayload?.action === 'GMAIL_FETCH_EMAILS') {
+    if (!toolDisponible(toolsDisponibles, 'GMAIL_FETCH_EMAILS')) {
+        respuestaIA = "Gmail lectura no está habilitada para este agente.";
+    } else {
+        const gmailConn = obtenerConexion(userConnections, 'gmail');
 
+        if (!gmailConn?.composio_entity_id) {
+            return {
+                statusCode: 400,
+                headers,
+                body: JSON.stringify({
+                    respuesta: "Gmail no está conectado para este usuario."
+                })
+            };
+        }
+
+        const payloadGmail = {
+            query: actionPayload.data?.query || 'in:inbox',
+            max_results: actionPayload.data?.max_results || 2
+        };
+
+        const resultado = await ejecutarToolComposio(
+            'GMAIL_FETCH_EMAILS',
+            gmailConn.composio_entity_id,
+            agente.user_id,
+            payloadGmail
+        );
+
+        console.log("Resultado Gmail Fetch:", JSON.stringify(resultado));
+
+        const correos =
+            resultado?.data?.response_data?.messages ||
+            resultado?.data?.response_data?.emails ||
+            resultado?.data?.messages ||
+            resultado?.data?.emails ||
+            resultado?.messages ||
+            resultado?.emails ||
+            [];
+
+        if (!correos.length) {
+            respuestaIA = "No encontré correos recientes en tu bandeja.";
+        } else {
+            respuestaIA = "Encontré estos correos recientes:\n\n" + correos.slice(0, payloadGmail.max_results).map((c, i) => {
+                const from = c.from || c.sender || c.from_email || 'Remitente no disponible';
+                const subject = c.subject || 'Sin asunto';
+                const snippet = c.snippet || c.body_preview || c.text || c.body || '';
+                return `${i + 1}. De: ${from}\nAsunto: ${subject}\nResumen: ${String(snippet).slice(0, 300)}`;
+            }).join("\n\n");
+        }
+    }
+}
         if (actionPayload?.action === 'GMAIL_SEND_EMAIL') {
             if (!toolDisponible(toolsDisponibles, 'GMAIL_SEND_EMAIL')) {
                 respuestaIA = "Gmail no está habilitado para este agente.";
