@@ -773,7 +773,15 @@
                 toolkit: 'gmail',
                 nombre: 'Gmail',
                 tipo: 'composio',
-                tools: [{ tool_key: 'GMAIL_SEND_EMAIL', label: 'Enviar correos' }]
+                tools: [
+  { tool_key: 'GMAIL_FETCH_EMAILS', label: 'Leer correos' },
+  { tool_key: 'GMAIL_FETCH_MESSAGE_BY_MESSAGE_ID', label: 'Leer correo por ID' },
+  { tool_key: 'GMAIL_REPLY_TO_THREAD', label: 'Responder hilos' },
+  { tool_key: 'GMAIL_SEND_EMAIL', label: 'Enviar correos' },
+  { tool_key: 'GMAIL_CREATE_EMAIL_DRAFT', label: 'Crear borradores' },
+  { tool_key: 'GMAIL_LIST_LABELS', label: 'Listar etiquetas' },
+  { tool_key: 'GMAIL_GET_ATTACHMENT', label: 'Leer adjuntos' }
+]
             },
             {
                 toolkit: 'googledrive',
