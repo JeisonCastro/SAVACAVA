@@ -927,6 +927,13 @@ const historialDB = await cargarHistorialConversacion(conversationIdFinal, 12);
         });
 
         if (resultadoPending) {
+            await guardarMensajeConversacion({
+    conversacionId: conversationIdFinal,
+    agenteId: targetID,
+    role: 'assistant',
+    content: resultadoPending.respuesta,
+    metadata: { canal }
+});
             return {
                 statusCode: resultadoPending.statusCode || 200,
                 headers,
@@ -1130,7 +1137,7 @@ console.log("Conversation ID final:", conversationIdFinal);
                     existingPending: pendingAction?.action === 'GMAIL_SEND_EMAIL' ? pendingAction : null,
                     userId: agente.user_id,
                     agenteId: targetID,
-                    conversationId: conversation_id,
+                    conversationId: conversationIdFinal,
                     action: 'GMAIL_SEND_EMAIL',
                     payload: payloadEmail
                 });
@@ -1155,7 +1162,7 @@ console.log("Conversation ID final:", conversationIdFinal);
                         existingPending: pendingAction?.action === 'GOOGLEDRIVE_FIND_FILE' ? pendingAction : null,
                         userId: agente.user_id,
                         agenteId: targetID,
-                        conversationId: conversation_id,
+                        conversationId: conversationIdFinal,
                         action: 'GOOGLEDRIVE_FIND_FILE',
                         payload: payloadDrive
                     });
