@@ -1088,7 +1088,8 @@ console.log("Conversation ID final:", conversationIdFinal);
                 statusCode: 400,
                 headers,
                 body: JSON.stringify({
-                    respuesta: "Gmail no está conectado para este usuario."
+                    respuesta: "Gmail no está conectado para este usuario.",
+                    conversation_id: conversationIdFinal
                 })
             };
         }
@@ -1196,7 +1197,8 @@ console.log("Conversation ID final:", conversationIdFinal);
                         headers,
                         body: JSON.stringify({
                             respuesta: driveResult.respuesta,
-                            tokens_consumidos: driveResult.tokens_consumidos
+                            tokens_consumidos: driveResult.tokens_consumidos,
+                            conversation_id: conversationIdFinal
                         })
                     };
                 }
