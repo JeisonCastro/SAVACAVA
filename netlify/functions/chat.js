@@ -679,6 +679,80 @@ async function manejarPendingAction({
 
 // ── HANDLER ──────────────────────────────────────────────────────────────────
 
+async function obtenerOCrearConversacion({ agente, targetID, canal, externalUserId, conversationId }) {
+    let query = supabase
+        .from('conversaciones')
+        .select('*')
+        .eq('agente_id', targetID)
+        .eq('canal', canal);
+
+    if (conversationId) {
+        query = query.eq('id', conversationId);
+    } else {
+        query = query.eq('external_user_id', externalUserId);
+    }
+
+    let { data: conversacion, error } = await query.maybeSingle();
+
+    if (error) {
+        console.error("Error buscando conversación:", error);
+    }
+
+    if (conversacion) return conversacion;
+
+    const { data: nueva, error: insertError } = await supabase
+        .from('conversaciones')
+        .insert([{
+            agente_id: targetID,
+            user_id: agente.user_id,
+            canal,
+            external_user_id: externalUserId,
+            titulo: `Conversación ${canal}`
+        }])
+        .select('*')
+        .single();
+
+    if (insertError) {
+        throw new Error("No se pudo crear conversación: " + insertError.message);
+    }
+
+    return nueva;
+}
+
+async function cargarHistorialConversacion(conversacionId, limite = 12) {
+    const { data, error } = await supabase
+        .from('mensajes_conversacion')
+        .select('role, content')
+        .eq('conversacion_id', conversacionId)
+        .order('created_at', { ascending: false })
+        .limit(limite);
+
+    if (error) {
+        console.error("Error cargando historial:", error);
+        return [];
+    }
+
+    return (data || []).reverse();
+}
+
+async function guardarMensajeConversacion({ conversacionId, agenteId, role, content, metadata = {} }) {
+    if (!content) return;
+
+    const { error } = await supabase
+        .from('mensajes_conversacion')
+        .insert([{
+            conversacion_id: conversacionId,
+            agente_id: agenteId,
+            role,
+            content,
+            metadata
+        }]);
+
+    if (error) {
+        console.error("Error guardando mensaje:", error);
+    }
+}
+
 exports.handler = async (event) => {
     const headers = {
         "Access-Control-Allow-Origin": "*",
