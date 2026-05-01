@@ -1183,15 +1183,15 @@ console.log("Conversation ID final:", conversationIdFinal);
                         saldoActual,
                         prompt
                     });
-
-                    return {
-                        await guardarMensajeConversacion({
+                     await guardarMensajeConversacion({
     conversacionId: conversationIdFinal,
     agenteId: targetID,
     role: 'assistant',
     content: driveResult.respuesta,
     metadata: { canal, action: 'GOOGLEDRIVE_FIND_FILE' }
 });
+                    return {
+                        
                         statusCode: driveResult.statusCode || 200,
                         headers,
                         body: JSON.stringify({
