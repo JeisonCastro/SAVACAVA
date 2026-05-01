@@ -1129,21 +1129,21 @@
         container.appendChild(ld);
         container.scrollTop = container.scrollHeight;
         try {
-            const historialParaEnviar = [...currentChatHistory];
+            
             const res = await fetch('/.netlify/functions/chat', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    prompt: mensaje,
-                    agente_id: agenteSeleccionadoId,
-                    conversation_id: currentConversationId,
-                    historial: historialParaEnviar
-                })
+    prompt: mensaje,
+    agente_id: agenteSeleccionadoId,
+    canal: "dashboard",
+    external_user_id: currentUser.id + "_" + currentConversationId
+})
             });
-            currentChatHistory.push({ role: "user", content: mensaje });
+            
             const data = await res.json();
             const respuestaTexto = data.respuesta || data.error || "No se recibió una respuesta válida.";
-            currentChatHistory.push({ role: "assistant", content: respuestaTexto });
+            
             document.getElementById('dashboard-loading')?.remove();
             agregarMensaje("Agente", respuestaTexto, "bot");
             cargarBalance(currentUser.id);
