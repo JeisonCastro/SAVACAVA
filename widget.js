@@ -41,7 +41,12 @@
     const input = document.getElementById('jt-input');
     const sendBtn = document.getElementById('jt-send');
     const messages = document.getElementById('jt-messages');
-    let currentConversationId = crypto.randomUUID();
+    let sessionId = localStorage.getItem("jd_session_id");
+
+if (!sessionId) {
+  sessionId = crypto.randomUUID();
+  localStorage.setItem("jd_session_id", sessionId);
+}
     let currentChatHistory = [];
 
     chatBtn.onclick = () => {
