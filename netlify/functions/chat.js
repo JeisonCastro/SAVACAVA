@@ -788,13 +788,7 @@ exports.handler = async (event) => {
             };
         }
 
-        if (!conversation_id) {
-            return {
-                statusCode: 400,
-                headers,
-                body: JSON.stringify({ error: "Falta conversation_id." })
-            };
-        }
+        
 
         const { data: agente, error: errAgente } = await supabase
             .from('agentes_ia')
@@ -832,6 +826,31 @@ exports.handler = async (event) => {
                 body: JSON.stringify({ respuesta: "Este dominio no tiene permiso." })
             };
         }
+
+        const externalUserIdFinal =
+    external_user_id ||
+    conversation_id ||
+    `${canal}_${targetID}_anon`;
+
+const conversacion = await obtenerOCrearConversacion({
+    agente,
+    targetID,
+    canal,
+    externalUserId: externalUserIdFinal,
+    conversationId: conversation_id && /^[0-9a-f-]{36}$/i.test(conversation_id) ? conversation_id : null
+});
+
+const conversationIdFinal = conversacion.id;
+
+await guardarMensajeConversacion({
+    conversacionId: conversationIdFinal,
+    agenteId: targetID,
+    role: 'user',
+    content: prompt,
+    metadata: { canal }
+});
+
+const historialDB = await cargarHistorialConversacion(conversationIdFinal, 12);
 
         const { data: perfil, error: errPerfil } = await supabase
             .from('perfiles')
@@ -881,7 +900,7 @@ exports.handler = async (event) => {
             .select('*')
             .eq('user_id', agente.user_id)
             .eq('agente_id', targetID)
-            .eq('conversation_id', conversation_id)
+            .eq('conversation_id', conversationIdFinal)
             .eq('status', 'pending')
             .gte('expires_at', new Date().toISOString())
             .order('created_at', { ascending: false })
@@ -967,37 +986,15 @@ INSTRUCCIONES:
         }
 
         const mensajes = [
-            { role: "system", content: systemFinal },
-            ...historialDB.slice(-12),
-            { role: "user", content: prompt }
-        ];
+    { role: "system", content: systemFinal },
+    ...(historialDB || []).slice(-12),
+    { role: "user", content: prompt }
+];
 
-        const externalUserIdFinal =
-    external_user_id ||
-    conversation_id ||
-    `${canal}_${targetID}_anon`;
+        
 
-const conversacion = await obtenerOCrearConversacion({
-    agente,
-    targetID,
-    canal,
-    externalUserId: externalUserIdFinal,
-    conversationId: conversation_id && /^[0-9a-f-]{36}$/i.test(conversation_id) ? conversation_id : null
-});
-
-const conversationIdFinal = conversacion.id;
-
-await guardarMensajeConversacion({
-    conversacionId: conversationIdFinal,
-    agenteId: targetID,
-    role: 'user',
-    content: prompt,
-    metadata: { canal }
-});
-
-const historialDB = await cargarHistorialConversacion(conversationIdFinal, 12);
-
-        console.log("Turnos de historial enviados a DeepSeek:", historial.length);
+        console.log("Turnos de historial enviados a DeepSeek:", historialDB.length);
+console.log("Conversation ID final:", conversationIdFinal);
         console.log("Llamando a DeepSeek...");
 
         const controller = new AbortController();
@@ -1055,7 +1052,7 @@ const historialDB = await cargarHistorialConversacion(conversationIdFinal, 12);
                     existingPending: pendingAction?.action === 'GOOGLECALENDAR_CREATE_EVENT' ? pendingAction : null,
                     userId: agente.user_id,
                     agenteId: targetID,
-                    conversationId: conversation_id,
+                    conversationId: conversationIdFinal,
                     action: 'GOOGLECALENDAR_CREATE_EVENT',
                     payload: payloadCalendar
                 });
@@ -1207,7 +1204,8 @@ const historialDB = await cargarHistorialConversacion(conversationIdFinal, 12);
             headers,
             body: JSON.stringify({
                 respuesta: respuestaIA,
-                tokens_consumidos: tokensUsados
+                tokens_consumidos: tokensUsados,
+                conversation_id: conversationIdFinal
             })
         };
 
