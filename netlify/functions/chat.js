@@ -994,8 +994,7 @@ INSTRUCCIONES:
 
         const mensajes = [
     { role: "system", content: systemFinal },
-    ...(historialDB || []).slice(-12),
-    { role: "user", content: prompt }
+    ...(historialDB || []).slice(-12)
 ];
 
         
@@ -1078,6 +1077,13 @@ console.log("Conversation ID final:", conversationIdFinal);
         const gmailConn = obtenerConexion(userConnections, 'gmail');
 
         if (!gmailConn?.composio_entity_id) {
+            await guardarMensajeConversacion({
+        conversacionId: conversationIdFinal,
+        agenteId: targetID,
+        role: 'assistant',
+        content: "Gmail no está conectado para este usuario.",
+        metadata: { canal, action: 'GMAIL_FETCH_EMAILS' }
+    });
             return {
                 statusCode: 400,
                 headers,
@@ -1179,6 +1185,13 @@ console.log("Conversation ID final:", conversationIdFinal);
                     });
 
                     return {
+                        await guardarMensajeConversacion({
+    conversacionId: conversationIdFinal,
+    agenteId: targetID,
+    role: 'assistant',
+    content: driveResult.respuesta,
+    metadata: { canal, action: 'GOOGLEDRIVE_FIND_FILE' }
+});
                         statusCode: driveResult.statusCode || 200,
                         headers,
                         body: JSON.stringify({
