@@ -851,6 +851,14 @@ await guardarMensajeConversacion({
 });
 
 const historialDB = await cargarHistorialConversacion(conversationIdFinal, 12);
+        const historialSinDuplicado = (historialDB || []).filter(
+    (m, i, arr) => !(i === arr.length - 1 && m.role === 'user' && m.content === prompt)
+);
+        const mensajes = [
+    { role: "system", content: systemFinal },
+    ...historialSinDuplicado.slice(-12),
+    { role: "user", content: prompt }
+];
 
         const { data: perfil, error: errPerfil } = await supabase
             .from('perfiles')
@@ -939,7 +947,8 @@ const historialDB = await cargarHistorialConversacion(conversationIdFinal, 12);
                 headers,
                 body: JSON.stringify({
                     respuesta: resultadoPending.respuesta,
-                    tokens_consumidos: resultadoPending.tokens_consumidos
+                    tokens_consumidos: resultadoPending.tokens_consumidos,
+                    conversation_id: conversationIdFinal
                 })
             };
         }
@@ -994,7 +1003,8 @@ INSTRUCCIONES:
 
         const mensajes = [
     { role: "system", content: systemFinal },
-    ...(historialDB || []).slice(-12)
+    ...(historialDB || []).slice(-12),
+    { role: "user", content: prompt }
 ];
 
         
