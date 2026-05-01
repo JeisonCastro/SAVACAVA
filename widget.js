@@ -52,7 +52,6 @@ if (!sessionId) {
     chatBtn.onclick = () => {
     const abierto = chatWindow.style.display === 'flex';
     chatWindow.style.display = abierto ? 'none' : 'flex';
-    }
 };
 
  async function sendMessage() {
