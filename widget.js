@@ -47,15 +47,11 @@ if (!sessionId) {
   sessionId = crypto.randomUUID();
   localStorage.setItem("jd_session_id", sessionId);
 }
-    let currentChatHistory = [];
+    
 
     chatBtn.onclick = () => {
     const abierto = chatWindow.style.display === 'flex';
     chatWindow.style.display = abierto ? 'none' : 'flex';
-
-    if (!abierto && messages.children.length === 0) {
-        currentConversationId = crypto.randomUUID();
-        currentChatHistory = [];
     }
 };
 
@@ -74,32 +70,26 @@ if (!sessionId) {
     messages.scrollTop = messages.scrollHeight;
 
     try {
-        const historialParaEnviar = [...currentChatHistory];
+        
 
         const res = await fetch('https://jeisondigital.netlify.app/.netlify/functions/chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                prompt: text,
-                agente_id: agenteId,
-                conversation_id: currentConversationId,
-                historial: historialParaEnviar
-            })
+  prompt: text,
+  agente_id: agenteId,
+  canal: "web",
+  external_user_id: sessionId
+})
         });
 
         const data = await res.json();
 
-        currentChatHistory.push({
-            role: 'user',
-            content: text
-        });
+
 
         const respuestaTexto = data.respuesta || data.error || 'No se recibió una respuesta válida.';
 
-        currentChatHistory.push({
-            role: 'assistant',
-            content: respuestaTexto
-        });
+       
 
         document.getElementById('jt-loading')?.remove();
         appendMsg(respuestaTexto, 'bot');
