@@ -696,7 +696,14 @@ exports.handler = async (event) => {
 
     try {
         const body = JSON.parse(event.body || '{}');
-        const { prompt, agente_id, historial = [], conversation_id = null, canal = "" } = body;
+        const { 
+  prompt, 
+  agente_id, 
+  historial = [], 
+  conversation_id = null, 
+  canal = "web",
+  external_user_id = null
+} = body;
         const targetID = agente_id || process.env.AGENTE_MAESTRO_ID;
 
         if (!prompt || !String(prompt).trim()) {
