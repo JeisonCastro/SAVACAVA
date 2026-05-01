@@ -968,9 +968,34 @@ INSTRUCCIONES:
 
         const mensajes = [
             { role: "system", content: systemFinal },
-            ...historial.slice(-12),
+            ...historialDB.slice(-12),
             { role: "user", content: prompt }
         ];
+
+        const externalUserIdFinal =
+    external_user_id ||
+    conversation_id ||
+    `${canal}_${targetID}_anon`;
+
+const conversacion = await obtenerOCrearConversacion({
+    agente,
+    targetID,
+    canal,
+    externalUserId: externalUserIdFinal,
+    conversationId: conversation_id && /^[0-9a-f-]{36}$/i.test(conversation_id) ? conversation_id : null
+});
+
+const conversationIdFinal = conversacion.id;
+
+await guardarMensajeConversacion({
+    conversacionId: conversationIdFinal,
+    agenteId: targetID,
+    role: 'user',
+    content: prompt,
+    metadata: { canal }
+});
+
+const historialDB = await cargarHistorialConversacion(conversationIdFinal, 12);
 
         console.log("Turnos de historial enviados a DeepSeek:", historial.length);
         console.log("Llamando a DeepSeek...");
@@ -1168,6 +1193,14 @@ INSTRUCCIONES:
             prompt,
             respuestaIA
         });
+
+        await guardarMensajeConversacion({
+    conversacionId: conversationIdFinal,
+    agenteId: targetID,
+    role: 'assistant',
+    content: respuestaIA,
+    metadata: { canal }
+});
 
         return {
             statusCode: 200,
