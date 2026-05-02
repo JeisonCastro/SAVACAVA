@@ -735,6 +735,33 @@ async function cargarHistorialConversacion(conversacionId, limite = 12) {
     return (data || []).reverse();
 }
 
+
+async function actualizarResumenConversacion({ conversacionId, ultimoMensaje, ultimoRole, requiereAtencion = null }) {
+    const patch = {
+        ultimo_mensaje: String(ultimoMensaje || '').slice(0, 1000),
+        ultimo_role: ultimoRole,
+        updated_at: new Date().toISOString()
+    };
+
+    if (requiereAtencion !== null) {
+        patch.requiere_atencion = requiereAtencion;
+    }
+
+    const { error } = await supabase
+        .from('conversaciones')
+        .update(patch)
+        .eq('id', conversacionId);
+
+    if (error) {
+        console.error('Error actualizando resumen de conversación:', error);
+    }
+}
+
+function debeEscalarAHumano(texto = '') {
+    const t = String(texto || '').toLowerCase();
+    return /\b(humano|asesor|persona real|agente real|quiero hablar con alguien|representante|no me entiendes|no entiendes|queja|reclamo|molesto|enojado|cancelar servicio|soporte humano)\b/i.test(t);
+}
+
 async function guardarMensajeConversacion({ conversacionId, agenteId, role, content, metadata = {} }) {
     if (!content) return;
 
@@ -847,8 +874,35 @@ await guardarMensajeConversacion({
     agenteId: targetID,
     role: 'user',
     content: prompt,
-    metadata: { canal }
+    metadata: { canal, origen: 'cliente' }
 });
+
+await actualizarResumenConversacion({
+    conversacionId: conversationIdFinal,
+    ultimoMensaje: prompt,
+    ultimoRole: 'user',
+    requiereAtencion: debeEscalarAHumano(prompt) ? true : null
+});
+
+if (conversacion.modo_humano === true || conversacion.estado === 'modo_humano') {
+    await actualizarResumenConversacion({
+        conversacionId: conversationIdFinal,
+        ultimoMensaje: prompt,
+        ultimoRole: 'user',
+        requiereAtencion: true
+    });
+
+    return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({
+            respuesta: null,
+            skipped: true,
+            motivo: 'modo_humano',
+            conversation_id: conversationIdFinal
+        })
+    };
+}
 
 const historialDB = await cargarHistorialConversacion(conversationIdFinal, 12);
         const historialSinDuplicado = (historialDB || []).filter(
@@ -936,8 +990,9 @@ const historialDB = await cargarHistorialConversacion(conversationIdFinal, 12);
     agenteId: targetID,
     role: 'assistant',
     content: resultadoPending.respuesta,
-    metadata: { canal }
+    metadata: { canal, origen: 'ia' }
 });
+            await actualizarResumenConversacion({ conversacionId: conversationIdFinal, ultimoMensaje: resultadoPending.respuesta, ultimoRole: 'assistant', requiereAtencion: false });
             return {
                 statusCode: resultadoPending.statusCode || 200,
                 headers,
@@ -1088,8 +1143,9 @@ console.log("Conversation ID final:", conversationIdFinal);
         agenteId: targetID,
         role: 'assistant',
         content: "Gmail no está conectado para este usuario.",
-        metadata: { canal, action: 'GMAIL_FETCH_EMAILS' }
+        metadata: { canal, action: 'GMAIL_FETCH_EMAILS', origen: 'ia' }
     });
+            await actualizarResumenConversacion({ conversacionId: conversationIdFinal, ultimoMensaje: 'Gmail no está conectado para este usuario.', ultimoRole: 'assistant', requiereAtencion: true });
             return {
                 statusCode: 400,
                 headers,
@@ -1195,8 +1251,9 @@ console.log("Conversation ID final:", conversationIdFinal);
     agenteId: targetID,
     role: 'assistant',
     content: driveResult.respuesta,
-    metadata: { canal, action: 'GOOGLEDRIVE_FIND_FILE' }
+    metadata: { canal, action: 'GOOGLEDRIVE_FIND_FILE', origen: 'ia' }
 });
+                    await actualizarResumenConversacion({ conversacionId: conversationIdFinal, ultimoMensaje: driveResult.respuesta, ultimoRole: 'assistant', requiereAtencion: false });
                     return {
                         
                         statusCode: driveResult.statusCode || 200,
@@ -1224,8 +1281,15 @@ console.log("Conversation ID final:", conversationIdFinal);
     agenteId: targetID,
     role: 'assistant',
     content: respuestaIA,
-    metadata: { canal }
+    metadata: { canal, origen: 'ia' }
 });
+
+        await actualizarResumenConversacion({
+            conversacionId: conversationIdFinal,
+            ultimoMensaje: respuestaIA,
+            ultimoRole: 'assistant',
+            requiereAtencion: false
+        });
 
         return {
             statusCode: 200,
