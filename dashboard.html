@@ -21,7 +21,7 @@
         .bg-grid{position:fixed;inset:0;left:var(--sidebar);background-image:linear-gradient(var(--border) 1px,transparent 1px),linear-gradient(90deg,var(--border) 1px,transparent 1px);background-size:60px 60px;opacity:.15;pointer-events:none;z-index:0}
 
         /* SIDEBAR */
-        .sidebar{height:100vh;width:var(--sidebar);position:fixed;left:0;top:0;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;justify-content:space-between;padding:1.5rem 1rem;z-index:50}
+        .sidebar{height:100vh;width:var(--sidebar);position:fixed;left:0;top:0;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;justify-content:space-between;padding:1.5rem 1rem;z-index:50;transition:transform .28s ease}
         .sidebar-logo{display:flex;align-items:center;gap:8px;margin-bottom:2rem;padding:0 .5rem}
         .logo-dot{width:7px;height:7px;border-radius:50%;background:var(--accent);animation:pulse 2s infinite;flex-shrink:0}
         @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
@@ -41,7 +41,15 @@
         .btn-logout:hover{color:var(--red);background:rgba(248,113,113,.07)}
 
         /* MAIN */
-        .main-content{margin-left:var(--sidebar);min-height:100vh;padding:2rem 2rem 3rem;position:relative;z-index:1}
+        .main-content{margin-left:var(--sidebar);min-height:100vh;padding:2rem 2rem 3rem;position:relative;z-index:1;transition:margin-left .28s ease}
+        body.sidebar-collapsed .sidebar{transform:translateX(-100%)}
+        body.sidebar-collapsed .main-content{margin-left:0}
+        body.sidebar-collapsed .bg-grid{left:0}
+        .desktop-sidebar-toggle{position:fixed;top:1.1rem;left:calc(var(--sidebar) + 12px);z-index:80;width:36px;height:36px;background:var(--surface);border:1px solid var(--border);border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--muted);box-shadow:0 8px 24px rgba(0,0,0,.25);transition:left .28s ease,color .2s,border-color .2s,background .2s}
+        .desktop-sidebar-toggle:hover{color:var(--accent);border-color:rgba(14,165,233,.45);background:var(--bg2)}
+        body.sidebar-collapsed .desktop-sidebar-toggle{left:1rem}
+        body.sidebar-collapsed .desktop-sidebar-toggle i{transform:rotate(180deg)}
+        .desktop-sidebar-toggle i{transition:transform .28s ease}
         .view{display:none}.view.active{display:block}
 
         /* TOPBAR */
@@ -174,11 +182,11 @@
 
 
         /* BANDEJA DE CONVERSACIONES */
-        .inbox-layout{display:grid;grid-template-columns:360px 1fr;gap:1rem;min-height:680px}
-        .inbox-sidebar{background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;display:flex;flex-direction:column;min-height:680px}
+        .inbox-layout{display:grid;grid-template-columns:360px minmax(0,1fr);gap:1rem;height:calc(100vh - 168px);min-height:620px;max-height:calc(100vh - 168px)}
+        .inbox-sidebar{background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;display:flex;flex-direction:column;height:100%;min-height:0}
         .inbox-filters{padding:1rem;border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:.6rem}
         .inbox-filters select,.inbox-filters input{width:100%;padding:9px 11px;background:var(--bg2);border:1px solid var(--border2);border-radius:8px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:.82rem;outline:none}
-        .conversation-list{overflow-y:auto;flex:1}
+        .conversation-list{overflow-y:auto;flex:1;min-height:0}
         .conversation-item{padding:1rem;border-bottom:1px solid var(--border);cursor:pointer;transition:all .2s;background:transparent}
         .conversation-item:hover{background:rgba(255,255,255,.025)}
         .conversation-item.active{background:rgba(14,165,233,.08);border-left:3px solid var(--accent)}
@@ -187,7 +195,7 @@
         .conversation-time{font-size:.68rem;color:var(--dim);white-space:nowrap}
         .conversation-meta{display:flex;align-items:center;gap:.35rem;flex-wrap:wrap;margin-bottom:.4rem}
         .conversation-preview{font-size:.78rem;color:var(--muted);line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-        .inbox-panel{background:var(--surface);border:1px solid var(--border);border-radius:14px;display:flex;flex-direction:column;min-height:680px;overflow:hidden}
+        .inbox-panel{background:var(--surface);border:1px solid var(--border);border-radius:14px;display:flex;flex-direction:column;height:100%;min-height:0;overflow:hidden}
         .inbox-panel-header{padding:1rem 1.25rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:1rem;background:var(--bg2)}
         .inbox-header-title{font-family:'Syne',sans-serif;font-size:1rem;font-weight:800;color:var(--text)}
         .inbox-header-sub{font-size:.78rem;color:var(--muted);margin-top:.2rem}
@@ -196,19 +204,19 @@
         .btn-small:hover{border-color:var(--accent);color:var(--accent)}
         .btn-small.danger{background:rgba(248,113,113,.08);border-color:rgba(248,113,113,.22);color:var(--red)}
         .btn-small.green{background:rgba(34,211,165,.08);border-color:rgba(34,211,165,.22);color:var(--green)}
-        .conversation-messages{flex:1;padding:1rem;overflow-y:auto;display:flex;flex-direction:column;gap:.75rem;background:rgba(0,0,0,.08)}
+        .conversation-messages{flex:1 1 auto;min-height:0;padding:1rem;overflow-y:auto;display:flex;flex-direction:column;gap:.75rem;background:rgba(0,0,0,.08);scroll-behavior:smooth;overscroll-behavior:contain}
         .inbox-msg{max-width:78%;padding:10px 12px;border-radius:12px;font-size:.86rem;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word}
         .inbox-msg.user{align-self:flex-start;background:var(--bg2);border:1px solid var(--border);color:var(--text)}
         .inbox-msg.assistant{align-self:flex-end;background:rgba(14,165,233,.16);border:1px solid rgba(14,165,233,.28);color:var(--text)}
         .inbox-msg.humano{align-self:flex-end;background:rgba(34,211,165,.14);border:1px solid rgba(34,211,165,.28);color:var(--text)}
         .inbox-msg.system{align-self:center;background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.18);color:var(--yellow);max-width:92%;font-size:.78rem}
         .msg-meta{font-size:.66rem;color:var(--dim);margin-top:.35rem}
-        .manual-reply-box{padding:1rem;border-top:1px solid var(--border);background:var(--bg2);display:flex;gap:.7rem;align-items:flex-end}
+        .manual-reply-box{flex:0 0 auto;padding:1rem;border-top:1px solid var(--border);background:var(--bg2);display:flex;gap:.7rem;align-items:flex-end}
         .manual-reply-box textarea{flex:1;min-height:46px;max-height:130px;padding:10px 12px;background:var(--bg);border:1px solid var(--border2);border-radius:10px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:.86rem;resize:vertical;outline:none}
         .manual-reply-box textarea:focus{border-color:var(--accent)}
         .empty-inbox-state{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:400px;color:var(--dim);text-align:center;padding:2rem;font-size:.9rem}
         .empty-inbox-state i{font-size:2.4rem;margin-bottom:1rem;color:var(--border2)}
-        @media(max-width:980px){.inbox-layout{grid-template-columns:1fr}.inbox-sidebar{min-height:320px}.inbox-panel{min-height:560px}}
+        @media(max-width:980px){.inbox-layout{grid-template-columns:1fr;height:auto;max-height:none;min-height:0}.inbox-sidebar{height:340px;min-height:0}.inbox-panel{height:calc(100vh - 180px);min-height:560px}.desktop-sidebar-toggle{display:none}}
 
         /* MOBILE */
         .mob-toggle{display:none;position:fixed;top:1rem;left:1rem;z-index:100;width:36px;height:36px;background:var(--surface);border:1px solid var(--border);border-radius:8px;align-items:center;justify-content:center;cursor:pointer;color:var(--muted)}
@@ -218,6 +226,7 @@
             .main-content{margin-left:0;padding:1rem 1rem 2rem;}
             .bg-grid{left:0}
             .mob-toggle{display:flex}
+            .desktop-sidebar-toggle{display:none}
             .topbar{flex-direction:column;align-items:flex-start;}
             .topbar-right{width:100%;flex-direction:column;align-items:stretch;}
             .token-card,.plan-indicator{width:100%;}
@@ -310,6 +319,9 @@
 
 <button class="mob-toggle" onclick="document.querySelector('.sidebar').classList.toggle('open')">
     <i class="fas fa-bars" style="font-size:.85rem"></i>
+</button>
+<button class="desktop-sidebar-toggle" id="desktop-sidebar-toggle" onclick="toggleSidebarDesktop()" title="Ocultar/mostrar menú lateral">
+    <i class="fas fa-chevron-left" style="font-size:.85rem"></i>
 </button>
 
 <!-- SIDEBAR -->
