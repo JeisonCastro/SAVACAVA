@@ -403,6 +403,7 @@
                 <p class="page-sub">Visualiza chats por agente, toma control manual y devuelve la conversación a la IA cuando quieras</p>
             </div>
             <div class="topbar-right">
+                <span class="badge badge-green" id="realtime-status"><i class="fas fa-circle" style="font-size:.45rem"></i> Tiempo real</span>
                 <button class="btn-small" onclick="cargarBandejaConversaciones()"><i class="fas fa-rotate" style="margin-right:.35rem"></i> Actualizar</button>
             </div>
         </div>
@@ -637,6 +638,11 @@
     let conversacionesBandeja = [];
     let conversacionSeleccionada = null;
     let mensajesConversacionActual = [];
+    let realtimeConversacionesChannel = null;
+    let realtimeMensajesChannel = null;
+    let realtimeBandejaIniciada = false;
+    let realtimeMensajesConversacionId = null;
+    let recargaBandejaTimer = null;
 
     // ── TOAST ──
     function showToast(msg, type = 'success') {
@@ -1429,6 +1435,7 @@
     async function inicializarBandeja() {
         actualizarFiltroAgentesBandeja();
         await cargarBandejaConversaciones();
+        iniciarRealtimeBandeja();
     }
 
     function escapeHtml(value) {
@@ -1496,6 +1503,15 @@
         }
 
         conversacionesBandeja = data || [];
+
+        if (conversacionSeleccionada) {
+            const actualizada = conversacionesBandeja.find(c => c.id === conversacionSeleccionada.id);
+            if (actualizada) {
+                conversacionSeleccionada = actualizada;
+                renderHeaderConversacion(actualizada);
+            }
+        }
+
         renderConversacionesBandeja(conversacionesBandeja);
     }
 
@@ -1544,6 +1560,7 @@
         conversacionSeleccionada = conv;
         renderConversacionesBandeja(conversacionesBandeja);
         renderHeaderConversacion(conv);
+        iniciarRealtimeMensajes(conv.id);
 
         const box = document.getElementById('conversation-messages');
         box.innerHTML = '<div class="empty-state"><i class="fas fa-spinner fa-spin"></i>Cargando mensajes...</div>';
@@ -1683,6 +1700,132 @@
         }
     }
 
+
+
+    // ── REALTIME BANDEJA ──
+    function setRealtimeStatus(texto, tipo = 'success') {
+        const el = document.getElementById('realtime-status');
+        if (!el) return;
+        const colorClass = tipo === 'error' ? 'badge-yellow' : 'badge-green';
+        el.className = `badge ${colorClass}`;
+        el.innerHTML = `<i class="fas fa-circle" style="font-size:.45rem"></i> ${escapeHtml(texto)}`;
+    }
+
+    function debounceRecargaBandeja() {
+        clearTimeout(recargaBandejaTimer);
+        recargaBandejaTimer = setTimeout(async () => {
+            await cargarBandejaConversaciones();
+        }, 350);
+    }
+
+    function iniciarRealtimeBandeja() {
+        if (!currentUser || realtimeBandejaIniciada) return;
+
+        if (realtimeConversacionesChannel) {
+            _supabase.removeChannel(realtimeConversacionesChannel);
+            realtimeConversacionesChannel = null;
+        }
+
+        realtimeConversacionesChannel = _supabase
+            .channel(`conversaciones-user-${currentUser.id}`)
+            .on(
+                'postgres_changes',
+                {
+                    event: '*',
+                    schema: 'public',
+                    table: 'conversaciones',
+                    filter: `user_id=eq.${currentUser.id}`
+                },
+                payload => {
+                    console.log('Realtime conversaciones:', payload.eventType, payload.new || payload.old);
+                    debounceRecargaBandeja();
+                }
+            )
+            .subscribe(status => {
+                console.log('Estado realtime conversaciones:', status);
+                if (status === 'SUBSCRIBED') {
+                    realtimeBandejaIniciada = true;
+                    setRealtimeStatus('Tiempo real');
+                }
+                if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+                    realtimeBandejaIniciada = false;
+                    setRealtimeStatus('Reconectando', 'error');
+                    setTimeout(iniciarRealtimeBandeja, 2500);
+                }
+            });
+    }
+
+    function iniciarRealtimeMensajes(conversationId) {
+        if (!conversationId) return;
+        if (realtimeMensajesConversacionId === conversationId && realtimeMensajesChannel) return;
+
+        if (realtimeMensajesChannel) {
+            _supabase.removeChannel(realtimeMensajesChannel);
+            realtimeMensajesChannel = null;
+            realtimeMensajesConversacionId = null;
+        }
+
+        realtimeMensajesConversacionId = conversationId;
+        realtimeMensajesChannel = _supabase
+            .channel(`mensajes-conversacion-${conversationId}`)
+            .on(
+                'postgres_changes',
+                {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'mensajes_conversacion',
+                    filter: `conversacion_id=eq.${conversationId}`
+                },
+                payload => {
+                    console.log('Realtime mensaje nuevo:', payload.new);
+                    agregarMensajeRealtime(payload.new);
+                }
+            )
+            .on(
+                'postgres_changes',
+                {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'mensajes_conversacion',
+                    filter: `conversacion_id=eq.${conversationId}`
+                },
+                payload => {
+                    console.log('Realtime mensaje actualizado:', payload.new);
+                    actualizarMensajeRealtime(payload.new);
+                }
+            )
+            .subscribe(status => {
+                console.log('Estado realtime mensajes:', status, conversationId);
+                if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+                    setTimeout(() => iniciarRealtimeMensajes(conversationId), 2500);
+                }
+            });
+    }
+
+    function agregarMensajeRealtime(msg) {
+        if (!msg || !conversacionSeleccionada || msg.conversacion_id !== conversacionSeleccionada.id) return;
+
+        const yaExiste = mensajesConversacionActual.some(m => m.id === msg.id);
+        if (!yaExiste) {
+            mensajesConversacionActual.push(msg);
+            renderMensajesConversacion();
+        }
+    }
+
+    function actualizarMensajeRealtime(msg) {
+        if (!msg || !conversacionSeleccionada || msg.conversacion_id !== conversacionSeleccionada.id) return;
+
+        const index = mensajesConversacionActual.findIndex(m => m.id === msg.id);
+        if (index >= 0) {
+            mensajesConversacionActual[index] = msg;
+            renderMensajesConversacion();
+        }
+    }
+
+    window.addEventListener('beforeunload', () => {
+        if (realtimeConversacionesChannel) _supabase.removeChannel(realtimeConversacionesChannel);
+        if (realtimeMensajesChannel) _supabase.removeChannel(realtimeMensajesChannel);
+    });
 
     // ── CALLBACK COMPOSIO ──
     async function procesarCallbackComposio() {
