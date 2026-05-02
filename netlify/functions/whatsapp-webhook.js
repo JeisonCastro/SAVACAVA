@@ -108,6 +108,18 @@ exports.handler = async (event) => {
 
     const chatData = await chatRes.json();
 
+    if (chatData.skipped === true) {
+      return {
+        statusCode: 200,
+        body: JSON.stringify({
+          ok: true,
+          skipped: true,
+          motivo: chatData.motivo || 'modo_humano',
+          conversation_id: chatData.conversation_id
+        })
+      };
+    }
+
     const respuesta =
       chatData.respuesta ||
       chatData.error ||
