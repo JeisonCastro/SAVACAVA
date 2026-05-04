@@ -5,9 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard | Fábrica de Agentes IA</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <link rel="icon" href="/favicon.ico" />
-<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
-<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
     <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <style>
@@ -21,7 +18,7 @@
         .bg-grid{position:fixed;inset:0;left:var(--sidebar);background-image:linear-gradient(var(--border) 1px,transparent 1px),linear-gradient(90deg,var(--border) 1px,transparent 1px);background-size:60px 60px;opacity:.15;pointer-events:none;z-index:0}
 
         /* SIDEBAR */
-        .sidebar{height:100vh;width:var(--sidebar);position:fixed;left:0;top:0;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;justify-content:space-between;padding:1.5rem 1rem;z-index:50;transition:transform .28s ease}
+        .sidebar{height:100vh;width:var(--sidebar);position:fixed;left:0;top:0;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;justify-content:space-between;padding:1.5rem 1rem;z-index:50}
         .sidebar-logo{display:flex;align-items:center;gap:8px;margin-bottom:2rem;padding:0 .5rem}
         .logo-dot{width:7px;height:7px;border-radius:50%;background:var(--accent);animation:pulse 2s infinite;flex-shrink:0}
         @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
@@ -41,15 +38,7 @@
         .btn-logout:hover{color:var(--red);background:rgba(248,113,113,.07)}
 
         /* MAIN */
-        .main-content{margin-left:var(--sidebar);min-height:100vh;padding:2rem 2rem 3rem;position:relative;z-index:1;transition:margin-left .28s ease}
-        body.sidebar-collapsed .sidebar{transform:translateX(-100%)}
-        body.sidebar-collapsed .main-content{margin-left:0}
-        body.sidebar-collapsed .bg-grid{left:0}
-        .desktop-sidebar-toggle{position:fixed;top:1.1rem;left:calc(var(--sidebar) + 12px);z-index:80;width:36px;height:36px;background:var(--surface);border:1px solid var(--border);border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--muted);box-shadow:0 8px 24px rgba(0,0,0,.25);transition:left .28s ease,color .2s,border-color .2s,background .2s}
-        .desktop-sidebar-toggle:hover{color:var(--accent);border-color:rgba(14,165,233,.45);background:var(--bg2)}
-        body.sidebar-collapsed .desktop-sidebar-toggle{left:1rem}
-        body.sidebar-collapsed .desktop-sidebar-toggle i{transform:rotate(180deg)}
-        .desktop-sidebar-toggle i{transition:transform .28s ease}
+        .main-content{margin-left:var(--sidebar);min-height:100vh;padding:2rem 2rem 3rem;position:relative;z-index:1}
         .view{display:none}.view.active{display:block}
 
         /* TOPBAR */
@@ -180,52 +169,6 @@
         .wa-status.connected{color:#25d366}
         .wa-status.disconnected{color:var(--dim)}
 
-
-        /* BANDEJA DE CONVERSACIONES */
-        #view-bandeja.active{height:calc(100vh - 4rem);display:flex;flex-direction:column;min-height:0;overflow:hidden}
-        #view-bandeja.active .topbar{flex:0 0 auto;margin-bottom:1rem}
-        body.bandeja-active{overflow:hidden}
-        body.bandeja-active .main-content{height:100vh;overflow:hidden}
-        .inbox-layout{display:grid;grid-template-columns:360px minmax(0,1fr);gap:1rem;flex:1 1 auto;min-height:0;height:auto;max-height:none}
-        .inbox-sidebar{background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;display:flex;flex-direction:column;height:100%;min-height:0}
-        .inbox-filters{padding:1rem;border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:.6rem;flex:0 0 auto}
-        .inbox-filters select,.inbox-filters input{width:100%;padding:9px 11px;background:var(--bg2);border:1px solid var(--border2);border-radius:8px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:.82rem;outline:none}
-        .conversation-list{overflow-y:auto;flex:1 1 auto;min-height:0;scrollbar-width:thin;scrollbar-color:var(--border2) transparent}
-        .conversation-item{padding:1rem;border-bottom:1px solid var(--border);cursor:pointer;transition:all .2s;background:transparent}
-        .conversation-item:hover{background:rgba(255,255,255,.025)}
-        .conversation-item.active{background:rgba(14,165,233,.08);border-left:3px solid var(--accent);padding-left:calc(1rem - 3px)}
-        .conversation-item-title{display:flex;justify-content:space-between;gap:.5rem;align-items:flex-start;margin-bottom:.35rem}
-        .conversation-name{font-family:'Syne',sans-serif;font-size:.86rem;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-        .conversation-time{font-size:.68rem;color:var(--dim);white-space:nowrap}
-        .conversation-meta{display:flex;align-items:center;gap:.35rem;flex-wrap:wrap;margin-bottom:.4rem}
-        .conversation-preview{font-size:.78rem;color:var(--muted);line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-        .inbox-panel{background:var(--surface);border:1px solid var(--border);border-radius:14px;display:flex;flex-direction:column;height:100%;min-height:0;overflow:hidden}
-        .inbox-panel-header{padding:1rem 1.25rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:1rem;background:var(--bg2);flex:0 0 auto}
-        .inbox-header-title{font-family:'Syne',sans-serif;font-size:1rem;font-weight:800;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:460px}
-        .inbox-header-sub{font-size:.78rem;color:var(--muted);margin-top:.2rem}
-        .inbox-actions{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;justify-content:flex-end}
-        .btn-small{padding:8px 10px;border-radius:8px;border:1px solid var(--border2);background:var(--surface);color:var(--text);font-family:'DM Sans',sans-serif;font-size:.78rem;cursor:pointer;transition:all .2s}
-        .btn-small:hover{border-color:var(--accent);color:var(--accent)}
-        .btn-small.danger{background:rgba(248,113,113,.08);border-color:rgba(248,113,113,.22);color:var(--red)}
-        .btn-small.green{background:rgba(34,211,165,.08);border-color:rgba(34,211,165,.22);color:var(--green)}
-        .conversation-messages{flex:1 1 auto;min-height:0;padding:1.15rem 1.25rem;overflow-y:auto;display:flex;flex-direction:column;gap:.75rem;background:linear-gradient(180deg,rgba(0,0,0,.08),rgba(0,0,0,.14));scroll-behavior:smooth;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:var(--border2) transparent}
-        .conversation-messages::-webkit-scrollbar,.conversation-list::-webkit-scrollbar{width:8px}
-        .conversation-messages::-webkit-scrollbar-thumb,.conversation-list::-webkit-scrollbar-thumb{background:var(--border2);border-radius:999px}
-        .inbox-msg{max-width:min(76%,780px);min-width:220px;padding:11px 13px;border-radius:14px;font-size:.86rem;line-height:1.55;white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word;box-shadow:0 8px 20px rgba(0,0,0,.12)}
-        .inbox-msg strong{display:block;margin-bottom:.35rem;font-size:.76rem;letter-spacing:.01em;color:var(--text)}
-        .inbox-msg.user{align-self:flex-start;background:#0a111a;border:1px solid var(--border);color:var(--text);border-bottom-left-radius:5px}
-        .inbox-msg.assistant{align-self:flex-end;background:rgba(14,165,233,.16);border:1px solid rgba(14,165,233,.30);color:var(--text);border-bottom-right-radius:5px}
-        .inbox-msg.humano{align-self:flex-end;background:rgba(34,211,165,.14);border:1px solid rgba(34,211,165,.30);color:var(--text);border-bottom-right-radius:5px}
-        .inbox-msg.system{align-self:center;background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.18);color:var(--yellow);max-width:92%;font-size:.78rem;box-shadow:none}
-        .msg-meta{font-size:.66rem;color:var(--dim);margin-top:.45rem;text-align:right}
-        .inbox-msg.user .msg-meta{text-align:left}
-        .manual-reply-box{flex:0 0 auto;padding:1rem;border-top:1px solid var(--border);background:var(--bg2);display:flex;gap:.7rem;align-items:flex-end}
-        .manual-reply-box textarea{flex:1;min-height:46px;max-height:130px;padding:10px 12px;background:var(--bg);border:1px solid var(--border2);border-radius:10px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:.86rem;resize:vertical;outline:none}
-        .manual-reply-box textarea:focus{border-color:var(--accent)}
-        .empty-inbox-state{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100%;color:var(--dim);text-align:center;padding:2rem;font-size:.9rem}
-        .empty-inbox-state i{font-size:2.4rem;margin-bottom:1rem;color:var(--border2)}
-        @media(max-width:980px){body.bandeja-active{overflow:auto}body.bandeja-active .main-content{height:auto;overflow:visible}#view-bandeja.active{height:auto;overflow:visible}.inbox-layout{grid-template-columns:1fr;height:auto;max-height:none;min-height:0}.inbox-sidebar{height:340px;min-height:0}.inbox-panel{height:calc(100vh - 180px);min-height:560px}.desktop-sidebar-toggle{display:none}.inbox-msg{max-width:88%;min-width:160px}}
-
         /* MOBILE */
         .mob-toggle{display:none;position:fixed;top:1rem;left:1rem;z-index:100;width:36px;height:36px;background:var(--surface);border:1px solid var(--border);border-radius:8px;align-items:center;justify-content:center;cursor:pointer;color:var(--muted)}
         @media(max-width:768px){
@@ -234,7 +177,6 @@
             .main-content{margin-left:0;padding:1rem 1rem 2rem;}
             .bg-grid{left:0}
             .mob-toggle{display:flex}
-            .desktop-sidebar-toggle{display:none}
             .topbar{flex-direction:column;align-items:flex-start;}
             .topbar-right{width:100%;flex-direction:column;align-items:stretch;}
             .token-card,.plan-indicator{width:100%;}
@@ -319,38 +261,7 @@
         .chat-msg a{color:var(--accent2);text-decoration:underline;overflow-wrap:anywhere;word-break:break-all;}
         #chat-messages{overflow-x:hidden;}
     </style>
-
-    <script>
-        // Dark mode toggle functionality
-        function toggleDarkMode() {
-            const isDarkMode = document.body.classList.toggle("dark-mode");
-            localStorage.setItem("dark-mode", isDarkMode ? "enabled" : "disabled");
-        }
-        // Apply dark mode if set in localStorage
-        if (localStorage.getItem("dark-mode") === "enabled") {
-            document.body.classList.add("dark-mode");
-        }
-    </script>
-    <style>
-        /* Dark Mode Styles */
-        body.dark-mode {
-            background-color: #121212;
-            color: #e8f0f8;
-        }
-        body.dark-mode .sidebar {
-            background-color: #0d1117;
-        }
-        body.dark-mode .main-content {
-            background-color: #161e2a;
-        }
-        body.dark-mode .card {
-            background-color: #1e2d40;
-        }
-        body.dark-mode .inbox-sidebar {
-            background-color: #161e2a;
-        }
-    </style>
-
+</head>
 <body>
 
 <div class="bg-grid"></div>
@@ -359,16 +270,13 @@
 <button class="mob-toggle" onclick="document.querySelector('.sidebar').classList.toggle('open')">
     <i class="fas fa-bars" style="font-size:.85rem"></i>
 </button>
-<button class="desktop-sidebar-toggle" id="desktop-sidebar-toggle" onclick="toggleSidebarDesktop()" title="Ocultar/mostrar menú lateral">
-    <i class="fas fa-chevron-left" style="font-size:.85rem"></i>
-</button>
 
 <!-- SIDEBAR -->
 <div class="sidebar">
     <div>
         <div class="sidebar-logo">
             <span class="logo-dot"></span>
-            <span class="logo-text">AUVRO</span>
+            <span class="logo-text">JEISON.DIGITAL</span>
         </div>
         <div class="plan-badge-sidebar" id="sidebar-plan-badge">
             <i class="fas fa-crown" style="font-size:.6rem"></i>
@@ -377,7 +285,6 @@
         <div class="nav-label">Menú</div>
         <nav>
             <a onclick="mostrarVista('agentes')" id="nav-agentes" class="active"><i class="fas fa-robot"></i> Mis Agentes</a>
-            <a onclick="mostrarVista('bandeja')" id="nav-bandeja"><i class="fas fa-inbox"></i> Bandeja</a>
             <a onclick="mostrarVista('tokens')" id="nav-tokens"><i class="fas fa-coins"></i> Tokens y Planes</a>
             <a onclick="mostrarVista('integraciones')" id="nav-integraciones"><i class="fas fa-plug"></i> Integraciones</a>
             <a onclick="mostrarVista('config')" id="nav-config"><i class="fas fa-sliders"></i> Configuración</a>
@@ -442,70 +349,6 @@
                 </div>
                 <div id="lista-agentes"><div class="empty-state"><i class="fas fa-robot"></i>Aún no has creado ningún agente.</div></div>
             </div>
-        </div>
-    </div>
-
-
-    <!-- VISTA BANDEJA -->
-    <div class="view" id="view-bandeja">
-        <div class="topbar">
-            <div>
-                <h2 class="page-title">Bandeja de conversaciones</h2>
-                <p class="page-sub">Visualiza chats por agente, toma control manual y devuelve la conversación a la IA cuando quieras</p>
-            </div>
-            <div class="topbar-right">
-                <span class="badge badge-green" id="realtime-status"><i class="fas fa-circle" style="font-size:.45rem"></i> Tiempo real</span>
-                <button class="btn-small" onclick="cargarBandejaConversaciones()"><i class="fas fa-rotate" style="margin-right:.35rem"></i> Actualizar</button>
-            </div>
-        </div>
-
-        <div class="inbox-layout">
-            <aside class="inbox-sidebar">
-                <div class="inbox-filters">
-                    <select id="inbox-agent-filter" onchange="cargarBandejaConversaciones()">
-                        <option value="">Todos los agentes</option>
-                    </select>
-                    <select id="inbox-status-filter" onchange="cargarBandejaConversaciones()">
-                        <option value="">Todos los estados</option>
-                        <option value="requiere_atencion">Requiere atención</option>
-                        <option value="modo_humano">Modo humano</option>
-                        <option value="ia_activa">IA activa</option>
-                        <option value="cerrada">Cerradas</option>
-                    </select>
-                    <select id="inbox-channel-filter" onchange="cargarBandejaConversaciones()">
-                        <option value="">Todos los canales</option>
-                        <option value="whatsapp">WhatsApp</option>
-                        <option value="web">Widget Web</option>
-                        <option value="dashboard">Dashboard</option>
-                    </select>
-                    <input type="text" id="inbox-search" placeholder="Buscar por número o mensaje..." oninput="filtrarConversacionesLocal()">
-                </div>
-                <div class="conversation-list" id="conversation-list">
-                    <div class="empty-state"><i class="fas fa-inbox"></i>Cargando conversaciones...</div>
-                </div>
-            </aside>
-
-            <section class="inbox-panel">
-                <div class="inbox-panel-header" id="inbox-panel-header">
-                    <div>
-                        <div class="inbox-header-title">Selecciona una conversación</div>
-                        <div class="inbox-header-sub">Aquí verás el historial completo y podrás responder manualmente.</div>
-                    </div>
-                    <div class="inbox-actions" id="inbox-actions"></div>
-                </div>
-                <div class="conversation-messages" id="conversation-messages">
-                    <div class="empty-inbox-state">
-                        <i class="fas fa-comments"></i>
-                        <div>Selecciona una conversación de la lista.</div>
-                    </div>
-                </div>
-                <div class="manual-reply-box" id="manual-reply-box" style="display:none">
-                    <textarea id="manual-message" placeholder="Escribe tu respuesta manual al cliente..."></textarea>
-                    <button class="btn-main btn-green" id="btn-send-manual" onclick="enviarRespuestaManual()" style="width:auto;margin:0;white-space:nowrap">
-                        <i class="fas fa-paper-plane" style="margin-right:.35rem"></i> Enviar
-                    </button>
-                </div>
-            </section>
         </div>
     </div>
 
@@ -686,14 +529,6 @@
     let todosLosPlanes = [];
     let currentConversationId = null;
     let currentChatHistory = [];
-    let conversacionesBandeja = [];
-    let conversacionSeleccionada = null;
-    let mensajesConversacionActual = [];
-    let realtimeConversacionesChannel = null;
-    let realtimeMensajesChannel = null;
-    let realtimeBandejaIniciada = false;
-    let realtimeMensajesConversacionId = null;
-    let recargaBandejaTimer = null;
 
     // ── TOAST ──
     function showToast(msg, type = 'success') {
@@ -713,23 +548,10 @@
         document.querySelectorAll('nav a').forEach(a => a.classList.remove('active'));
         document.getElementById('view-' + vista).classList.add('active');
         document.getElementById('nav-' + vista).classList.add('active');
-        document.body.classList.toggle('bandeja-active', vista === 'bandeja');
         if (vista === 'tokens') cargarLogs();
-        if (vista === 'bandeja') inicializarBandeja();
         if (vista === 'config') cargarPerfil();
         if (vista === 'integraciones') cargarIntegraciones();
     }
-
-    function toggleSidebarDesktop() {
-        const collapsed = document.body.classList.toggle('sidebar-collapsed');
-        try { localStorage.setItem('auvrouter_sidebar_collapsed', collapsed ? '1' : '0'); } catch (_) {}
-    }
-
-    try {
-        if (localStorage.getItem('auvrouter_sidebar_collapsed') === '1') {
-            document.body.classList.add('sidebar-collapsed');
-        }
-    } catch (_) {}
 
     // ── SESIÓN ──
     async function verificarSesion() {
@@ -873,7 +695,6 @@
             agentes = data.map(a => ({ id: a.id, name: a.nombre_agente, prompt: a.prompt_sistema, dominios: a.dominios_permitidos }));
             renderAgentes();
             actualizarIndicadorPlan(agentes.length);
-            actualizarFiltroAgentesBandeja();
         }
     }
 
@@ -952,15 +773,7 @@
                 toolkit: 'gmail',
                 nombre: 'Gmail',
                 tipo: 'composio',
-                tools: [
-  { tool_key: 'GMAIL_FETCH_EMAILS', label: 'Leer correos' },
-  { tool_key: 'GMAIL_FETCH_MESSAGE_BY_MESSAGE_ID', label: 'Leer correo por ID' },
-  { tool_key: 'GMAIL_REPLY_TO_THREAD', label: 'Responder hilos' },
-  { tool_key: 'GMAIL_SEND_EMAIL', label: 'Enviar correos' },
-  { tool_key: 'GMAIL_CREATE_EMAIL_DRAFT', label: 'Crear borradores' },
-  { tool_key: 'GMAIL_LIST_LABELS', label: 'Listar etiquetas' },
-  { tool_key: 'GMAIL_GET_ATTACHMENT', label: 'Leer adjuntos' }
-]
+                tools: [{ tool_key: 'GMAIL_SEND_EMAIL', label: 'Enviar correos' }]
             },
             {
                 toolkit: 'googledrive',
@@ -1308,21 +1121,21 @@
         container.appendChild(ld);
         container.scrollTop = container.scrollHeight;
         try {
-            
+            const historialParaEnviar = [...currentChatHistory];
             const res = await fetch('/.netlify/functions/chat', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-    prompt: mensaje,
-    agente_id: agenteSeleccionadoId,
-    canal: "dashboard",
-    external_user_id: currentUser.id + "_" + currentConversationId
-})
+                    prompt: mensaje,
+                    agente_id: agenteSeleccionadoId,
+                    conversation_id: currentConversationId,
+                    historial: historialParaEnviar
+                })
             });
-            
+            currentChatHistory.push({ role: "user", content: mensaje });
             const data = await res.json();
             const respuestaTexto = data.respuesta || data.error || "No se recibió una respuesta válida.";
-            
+            currentChatHistory.push({ role: "assistant", content: respuestaTexto });
             document.getElementById('dashboard-loading')?.remove();
             agregarMensaje("Agente", respuestaTexto, "bot");
             cargarBalance(currentUser.id);
@@ -1483,412 +1296,6 @@
         console.warn('toggleHerramienta() está deshabilitada. Usa el modal de integraciones por agente.');
         showToast('Esta configuración ahora se hace desde Integraciones del agente', 'error');
     }
-
-
-
-    // ── BANDEJA DE CONVERSACIONES ──
-    function actualizarFiltroAgentesBandeja() {
-        const select = document.getElementById('inbox-agent-filter');
-        if (!select) return;
-        const actual = select.value;
-        select.innerHTML = '<option value="">Todos los agentes</option>' + agentes.map(a => `<option value="${a.id}">${escapeHtml(a.name)}</option>`).join('');
-        select.value = actual;
-    }
-
-    async function inicializarBandeja() {
-        actualizarFiltroAgentesBandeja();
-        await cargarBandejaConversaciones();
-        iniciarRealtimeBandeja();
-    }
-
-    function escapeHtml(value) {
-        return String(value ?? '')
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#039;');
-    }
-
-    function nombreAgentePorId(id) {
-        const a = agentes.find(x => String(x.id) === String(id));
-        return a?.name || `Agente ${id || '—'}`;
-    }
-
-    function formatoFechaCorta(value) {
-        if (!value) return '—';
-        try {
-            return new Date(value).toLocaleString('es-CO', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
-        } catch (_) { return '—'; }
-    }
-
-    function labelCanal(canal) {
-        if (canal === 'whatsapp') return '<span class="badge badge-green"><i class="fab fa-whatsapp"></i> WhatsApp</span>';
-        if (canal === 'dashboard') return '<span class="badge badge-yellow">Dashboard</span>';
-        return '<span class="badge badge-accent">Web</span>';
-    }
-
-    function labelEstado(c) {
-        if (c.requiere_atencion) return '<span class="badge badge-yellow">Atención</span>';
-        if (c.modo_humano || c.estado === 'modo_humano') return '<span class="badge badge-green">Humano</span>';
-        if (c.estado === 'cerrada') return '<span class="badge" style="background:rgba(122,152,184,.1);color:var(--muted);border:1px solid var(--border2)">Cerrada</span>';
-        return '<span class="badge badge-accent">IA activa</span>';
-    }
-
-    async function cargarBandejaConversaciones() {
-        if (!currentUser) return;
-        const list = document.getElementById('conversation-list');
-        if (list) list.innerHTML = '<div class="empty-state"><i class="fas fa-spinner fa-spin"></i>Cargando conversaciones...</div>';
-
-        const agentFilter = document.getElementById('inbox-agent-filter')?.value || '';
-        const statusFilter = document.getElementById('inbox-status-filter')?.value || '';
-        const channelFilter = document.getElementById('inbox-channel-filter')?.value || '';
-
-        let query = _supabase
-            .from('conversaciones')
-            .select('id, agente_id, user_id, canal, external_user_id, titulo, modo_humano, estado, ultimo_mensaje, ultimo_role, requiere_atencion, intervenida_por, intervenida_en, created_at, updated_at')
-            .eq('user_id', currentUser.id)
-            .order('updated_at', { ascending: false })
-            .limit(100);
-
-        if (agentFilter) query = query.eq('agente_id', parseInt(agentFilter));
-        if (channelFilter) query = query.eq('canal', channelFilter);
-        if (statusFilter === 'requiere_atencion') query = query.eq('requiere_atencion', true);
-        if (statusFilter === 'modo_humano') query = query.eq('modo_humano', true);
-        if (statusFilter === 'ia_activa') query = query.eq('estado', 'ia_activa').eq('modo_humano', false);
-        if (statusFilter === 'cerrada') query = query.eq('estado', 'cerrada');
-
-        const { data, error } = await query;
-        if (error) {
-            console.error('Error cargando bandeja:', error);
-            if (list) list.innerHTML = `<div class="empty-state"><i class="fas fa-triangle-exclamation"></i>Error cargando bandeja: ${escapeHtml(error.message)}</div>`;
-            return;
-        }
-
-        conversacionesBandeja = data || [];
-
-        if (conversacionSeleccionada) {
-            const actualizada = conversacionesBandeja.find(c => c.id === conversacionSeleccionada.id);
-            if (actualizada) {
-                conversacionSeleccionada = actualizada;
-                renderHeaderConversacion(actualizada);
-            }
-        }
-
-        renderConversacionesBandeja(conversacionesBandeja);
-    }
-
-    function filtrarConversacionesLocal() {
-        const term = (document.getElementById('inbox-search')?.value || '').trim().toLowerCase();
-        if (!term) return renderConversacionesBandeja(conversacionesBandeja);
-        const filtradas = conversacionesBandeja.filter(c =>
-            String(c.external_user_id || '').toLowerCase().includes(term) ||
-            String(c.ultimo_mensaje || '').toLowerCase().includes(term) ||
-            String(c.titulo || '').toLowerCase().includes(term) ||
-            nombreAgentePorId(c.agente_id).toLowerCase().includes(term)
-        );
-        renderConversacionesBandeja(filtradas);
-    }
-
-    function renderConversacionesBandeja(items) {
-        const list = document.getElementById('conversation-list');
-        if (!list) return;
-        if (!items || items.length === 0) {
-            list.innerHTML = '<div class="empty-state"><i class="fas fa-inbox"></i>No hay conversaciones para estos filtros.</div>';
-            return;
-        }
-
-        list.innerHTML = items.map(c => {
-            const selected = conversacionSeleccionada?.id === c.id ? 'active' : '';
-            const cliente = c.canal === 'whatsapp' ? `+${c.external_user_id}` : (c.external_user_id || c.titulo || 'Visitante');
-            return `
-                <div class="conversation-item ${selected}" onclick="abrirConversacionBandeja('${c.id}')">
-                    <div class="conversation-item-title">
-                        <div class="conversation-name">${escapeHtml(cliente)}</div>
-                        <div class="conversation-time">${formatoFechaCorta(c.updated_at || c.created_at)}</div>
-                    </div>
-                    <div class="conversation-meta">
-                        ${labelCanal(c.canal)}
-                        ${labelEstado(c)}
-                    </div>
-                    <div class="conversation-preview"><strong>${escapeHtml(nombreAgentePorId(c.agente_id))}</strong><br>${escapeHtml(c.ultimo_mensaje || 'Sin mensajes recientes')}</div>
-                </div>
-            `;
-        }).join('');
-    }
-
-    async function abrirConversacionBandeja(id) {
-        const conv = conversacionesBandeja.find(c => c.id === id);
-        if (!conv) return;
-        conversacionSeleccionada = conv;
-        renderConversacionesBandeja(conversacionesBandeja);
-        renderHeaderConversacion(conv);
-        iniciarRealtimeMensajes(conv.id);
-
-        const box = document.getElementById('conversation-messages');
-        box.innerHTML = '<div class="empty-state"><i class="fas fa-spinner fa-spin"></i>Cargando mensajes...</div>';
-
-        const { data, error } = await _supabase
-            .from('mensajes_conversacion')
-            .select('id, role, content, metadata, created_at, origen')
-            .eq('conversacion_id', id)
-            .order('created_at', { ascending: true })
-            .limit(300);
-
-        if (error) {
-            console.error('Error cargando mensajes:', error);
-            box.innerHTML = `<div class="empty-state"><i class="fas fa-triangle-exclamation"></i>Error cargando mensajes: ${escapeHtml(error.message)}</div>`;
-            return;
-        }
-
-        mensajesConversacionActual = data || [];
-        renderMensajesConversacion();
-    }
-
-    function renderHeaderConversacion(c) {
-        const header = document.getElementById('inbox-panel-header');
-        const actions = document.getElementById('inbox-actions');
-        const manualBox = document.getElementById('manual-reply-box');
-        const cliente = c.canal === 'whatsapp' ? `+${c.external_user_id}` : (c.external_user_id || c.titulo || 'Visitante');
-        const modoHumano = c.modo_humano || c.estado === 'modo_humano';
-
-        header.querySelector('.inbox-header-title').textContent = cliente;
-        header.querySelector('.inbox-header-sub').innerHTML = `${escapeHtml(nombreAgentePorId(c.agente_id))} · ${c.canal || 'web'} · ${modoHumano ? 'Modo humano activo' : 'IA activa'}`;
-        actions.innerHTML = `
-            ${modoHumano ?
-                `<button class="btn-small green" onclick="devolverConversacionIA()"><i class="fas fa-robot" style="margin-right:.35rem"></i> Devolver a IA</button>` :
-                `<button class="btn-small danger" onclick="tomarControlConversacion()"><i class="fas fa-hand" style="margin-right:.35rem"></i> Tomar control</button>`
-            }
-            <button class="btn-small" onclick="marcarConversacionAtendida()"><i class="fas fa-check" style="margin-right:.35rem"></i> Atendida</button>
-        `;
-        manualBox.style.display = modoHumano ? 'flex' : 'none';
-    }
-
-    function renderMensajesConversacion() {
-        const box = document.getElementById('conversation-messages');
-        if (!mensajesConversacionActual.length) {
-            box.innerHTML = '<div class="empty-inbox-state"><i class="fas fa-comment-slash"></i><div>Esta conversación aún no tiene mensajes.</div></div>';
-            return;
-        }
-
-        box.innerHTML = mensajesConversacionActual.map(m => {
-            const origen = m.origen || m.metadata?.origen || (m.role === 'user' ? 'cliente' : 'ia');
-            const cls = m.role === 'user' ? 'user' : (origen === 'humano' ? 'humano' : (m.role === 'system' ? 'system' : 'assistant'));
-            const autor = m.role === 'user' ? 'Cliente' : (origen === 'humano' ? 'Tú' : (m.role === 'system' ? 'Sistema' : 'IA'));
-            return `<div class="inbox-msg ${cls}">
-                <strong>${autor}</strong><span class="msg-text">${escapeHtml(m.content || '')}</span>
-                <div class="msg-meta">${formatoFechaCorta(m.created_at)}${origen ? ' · ' + escapeHtml(origen) : ''}</div>
-            </div>`;
-        }).join('');
-        box.scrollTop = box.scrollHeight;
-    }
-
-    async function actualizarEstadoConversacion(patch, mensajeExito) {
-        if (!conversacionSeleccionada) return;
-        const { error } = await _supabase
-            .from('conversaciones')
-            .update({ ...patch, updated_at: new Date().toISOString() })
-            .eq('id', conversacionSeleccionada.id)
-            .eq('user_id', currentUser.id);
-        if (error) { showToast('Error: ' + error.message, 'error'); return; }
-        showToast(mensajeExito);
-        await cargarBandejaConversaciones();
-        const nueva = conversacionesBandeja.find(c => c.id === conversacionSeleccionada.id);
-        if (nueva) {
-            conversacionSeleccionada = nueva;
-            renderHeaderConversacion(nueva);
-            renderConversacionesBandeja(conversacionesBandeja);
-        }
-    }
-
-    async function tomarControlConversacion() {
-        await actualizarEstadoConversacion({
-            modo_humano: true,
-            estado: 'modo_humano',
-            requiere_atencion: false,
-            intervenida_por: currentUser.id,
-            intervenida_en: new Date().toISOString()
-        }, 'Modo humano activado');
-    }
-
-    async function devolverConversacionIA() {
-        await actualizarEstadoConversacion({
-            modo_humano: false,
-            estado: 'ia_activa',
-            requiere_atencion: false
-        }, 'La IA retomará esta conversación');
-    }
-
-    async function marcarConversacionAtendida() {
-        await actualizarEstadoConversacion({ requiere_atencion: false }, 'Conversación marcada como atendida');
-    }
-
-    async function enviarRespuestaManual() {
-        if (!conversacionSeleccionada) return;
-        const textarea = document.getElementById('manual-message');
-        const mensaje = textarea.value.trim();
-        if (!mensaje) return showToast('Escribe una respuesta primero', 'error');
-        if (conversacionSeleccionada.canal !== 'whatsapp') {
-            return showToast('Por ahora el envío manual está habilitado para WhatsApp', 'error');
-        }
-
-        const btn = document.getElementById('btn-send-manual');
-        const original = btn.innerHTML;
-        btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin" style="margin-right:.35rem"></i> Enviando';
-
-        try {
-            const { data: { session } } = await _supabase.auth.getSession();
-            const token = session?.access_token;
-            const res = await fetch('/.netlify/functions/enviar-whatsapp-manual', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                body: JSON.stringify({ conversation_id: conversacionSeleccionada.id, mensaje })
-            });
-            const data = await res.json();
-            if (!res.ok) {
-                showToast(data.error || 'No se pudo enviar el mensaje', 'error');
-                return;
-            }
-            textarea.value = '';
-            showToast('Respuesta enviada');
-            await cargarBandejaConversaciones();
-            await abrirConversacionBandeja(conversacionSeleccionada.id);
-        } catch (err) {
-            console.error('Error enviando respuesta manual:', err);
-            showToast('Error enviando respuesta manual', 'error');
-        } finally {
-            btn.disabled = false;
-            btn.innerHTML = original;
-        }
-    }
-
-
-
-    // ── REALTIME BANDEJA ──
-    function setRealtimeStatus(texto, tipo = 'success') {
-        const el = document.getElementById('realtime-status');
-        if (!el) return;
-        const colorClass = tipo === 'error' ? 'badge-yellow' : 'badge-green';
-        el.className = `badge ${colorClass}`;
-        el.innerHTML = `<i class="fas fa-circle" style="font-size:.45rem"></i> ${escapeHtml(texto)}`;
-    }
-
-    function debounceRecargaBandeja() {
-        clearTimeout(recargaBandejaTimer);
-        recargaBandejaTimer = setTimeout(async () => {
-            await cargarBandejaConversaciones();
-        }, 350);
-    }
-
-    function iniciarRealtimeBandeja() {
-        if (!currentUser || realtimeBandejaIniciada) return;
-
-        if (realtimeConversacionesChannel) {
-            _supabase.removeChannel(realtimeConversacionesChannel);
-            realtimeConversacionesChannel = null;
-        }
-
-        realtimeConversacionesChannel = _supabase
-            .channel(`conversaciones-user-${currentUser.id}`)
-            .on(
-                'postgres_changes',
-                {
-                    event: '*',
-                    schema: 'public',
-                    table: 'conversaciones',
-                    filter: `user_id=eq.${currentUser.id}`
-                },
-                payload => {
-                    console.log('Realtime conversaciones:', payload.eventType, payload.new || payload.old);
-                    debounceRecargaBandeja();
-                }
-            )
-            .subscribe(status => {
-                console.log('Estado realtime conversaciones:', status);
-                if (status === 'SUBSCRIBED') {
-                    realtimeBandejaIniciada = true;
-                    setRealtimeStatus('Tiempo real');
-                }
-                if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-                    realtimeBandejaIniciada = false;
-                    setRealtimeStatus('Reconectando', 'error');
-                    setTimeout(iniciarRealtimeBandeja, 2500);
-                }
-            });
-    }
-
-    function iniciarRealtimeMensajes(conversationId) {
-        if (!conversationId) return;
-        if (realtimeMensajesConversacionId === conversationId && realtimeMensajesChannel) return;
-
-        if (realtimeMensajesChannel) {
-            _supabase.removeChannel(realtimeMensajesChannel);
-            realtimeMensajesChannel = null;
-            realtimeMensajesConversacionId = null;
-        }
-
-        realtimeMensajesConversacionId = conversationId;
-        realtimeMensajesChannel = _supabase
-            .channel(`mensajes-conversacion-${conversationId}`)
-            .on(
-                'postgres_changes',
-                {
-                    event: 'INSERT',
-                    schema: 'public',
-                    table: 'mensajes_conversacion',
-                    filter: `conversacion_id=eq.${conversationId}`
-                },
-                payload => {
-                    console.log('Realtime mensaje nuevo:', payload.new);
-                    agregarMensajeRealtime(payload.new);
-                }
-            )
-            .on(
-                'postgres_changes',
-                {
-                    event: 'UPDATE',
-                    schema: 'public',
-                    table: 'mensajes_conversacion',
-                    filter: `conversacion_id=eq.${conversationId}`
-                },
-                payload => {
-                    console.log('Realtime mensaje actualizado:', payload.new);
-                    actualizarMensajeRealtime(payload.new);
-                }
-            )
-            .subscribe(status => {
-                console.log('Estado realtime mensajes:', status, conversationId);
-                if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-                    setTimeout(() => iniciarRealtimeMensajes(conversationId), 2500);
-                }
-            });
-    }
-
-    function agregarMensajeRealtime(msg) {
-        if (!msg || !conversacionSeleccionada || msg.conversacion_id !== conversacionSeleccionada.id) return;
-
-        const yaExiste = mensajesConversacionActual.some(m => m.id === msg.id);
-        if (!yaExiste) {
-            mensajesConversacionActual.push(msg);
-            renderMensajesConversacion();
-        }
-    }
-
-    function actualizarMensajeRealtime(msg) {
-        if (!msg || !conversacionSeleccionada || msg.conversacion_id !== conversacionSeleccionada.id) return;
-
-        const index = mensajesConversacionActual.findIndex(m => m.id === msg.id);
-        if (index >= 0) {
-            mensajesConversacionActual[index] = msg;
-            renderMensajesConversacion();
-        }
-    }
-
-    window.addEventListener('beforeunload', () => {
-        if (realtimeConversacionesChannel) _supabase.removeChannel(realtimeConversacionesChannel);
-        if (realtimeMensajesChannel) _supabase.removeChannel(realtimeMensajesChannel);
-    });
 
     // ── CALLBACK COMPOSIO ──
     async function procesarCallbackComposio() {
