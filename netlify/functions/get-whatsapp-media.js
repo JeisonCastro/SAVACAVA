@@ -85,34 +85,37 @@ async function getConversationForUser(conversationId, userId) {
   return data;
 }
 
-async function getMessageForConversation(messageId, conversationId, mediaId) {
-  let query = supabase
-    .from('mensajes_conversacion')
-    .select('*')
-    .eq('conversacion_id', conversationId);
+async function findMessageWithMedia(conversationId, messageId, mediaId) {
+  let messages = [];
 
-  if (messageId) query = query.eq('id', messageId);
-
-  let { data, error } = await query.limit(50);
-  if (error) throw new Error('Error consultando mensaje: ' + error.message);
-
-  let messages = data || [];
-
-  if (!messages.length && messageId) {
-    const fallback = await supabase
+  if (messageId) {
+    const exact = await supabase
       .from('mensajes_conversacion')
       .select('*')
       .eq('conversacion_id', conversationId)
-      .limit(200);
+      .eq('id', messageId)
+      .limit(1);
 
-    if (fallback.error) throw new Error('Error consultando mensajes: ' + fallback.error.message);
-    messages = fallback.data || [];
+    if (exact.error) throw new Error('Error consultando mensaje exacto: ' + exact.error.message);
+    messages = exact.data || [];
+  }
+
+  if (!messages.length) {
+    const all = await supabase
+      .from('mensajes_conversacion')
+      .select('*')
+      .eq('conversacion_id', conversationId)
+      .order('created_at', { ascending: false })
+      .limit(300);
+
+    if (all.error) throw new Error('Error consultando mensajes: ' + all.error.message);
+    messages = all.data || [];
   }
 
   const msg = messages.find(m => String(extractMediaIdFromMetadata(m.metadata || {})) === String(mediaId));
 
   if (!msg) {
-    throw new Error('No encontré el media_id en metadata. Revisa que whatsapp-webhook.js esté guardando media_id.');
+    throw new Error('No encontré media_id en mensajes_conversacion.metadata. Reemplaza whatsapp-webhook.js por la versión que guarda media_id.');
   }
 
   return msg;
@@ -182,7 +185,7 @@ exports.handler = async (event) => {
     }
 
     const conversation = await getConversationForUser(conversationId, user.id);
-    const message = await getMessageForConversation(messageId, conversation.id, mediaId);
+    const message = await findMessageWithMedia(conversation.id, messageId, mediaId);
     const connection = await getWhatsappConnection(conversation.agente_id, user.id);
 
     const meta = message.metadata || {};
@@ -190,8 +193,8 @@ exports.handler = async (event) => {
     const downloaded = await downloadMetaMedia(mediaMeta.url, connection.access_token);
 
     const mimeType = extractMimeFromMetadata(meta) || mediaMeta.mime_type || downloaded.contentType || 'application/octet-stream';
-    const filenameBase = extractFilenameFromMetadata(meta, mediaId);
-    const filename = sanitizeFilename(filenameBase.includes('.') ? filenameBase : `${filenameBase}.${extensionFromMime(mimeType)}`);
+    const baseName = extractFilenameFromMetadata(meta, mediaId);
+    const filename = sanitizeFilename(baseName.includes('.') ? baseName : `${baseName}.${extensionFromMime(mimeType)}`);
 
     return jsonResponse(200, {
       ok: true,
