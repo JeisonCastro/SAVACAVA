@@ -152,7 +152,7 @@
       });
       const data = await res.json().catch(() => ({}));
 
-      if (data.skipped === true && String(data.motivo || '').includes('modo_humano')) {
+      if (data.skipped === true || data.respuesta === null) {
         localMessages.push({ id:'system_' + Date.now(), role:'system', text:'Tu mensaje fue recibido. Un asesor humano continuará la conversación.', time:new Date().toISOString() });
         render(localMessages);
         await cargarMensajes();
