@@ -7,6 +7,158 @@ const supabase = createClient(
 
 const VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN || 'jeison_digital_verify_token';
 
+function extraerContenidoMensaje(message) {
+  const type = message?.type || 'text';
+
+  if (type === 'text') {
+    return {
+      type,
+      content: message.text?.body || '',
+      media_id: null,
+      mime_type: null,
+      filename: null,
+      caption: null
+    };
+  }
+
+  if (type === 'image') {
+    return {
+      type,
+      content: message.image?.caption || '📷 Imagen recibida',
+      media_id: message.image?.id || null,
+      mime_type: message.image?.mime_type || null,
+      filename: 'imagen-whatsapp.jpg',
+      caption: message.image?.caption || null
+    };
+  }
+
+  if (type === 'document') {
+    return {
+      type,
+      content: message.document?.caption || `📎 Documento recibido${message.document?.filename ? ': ' + message.document.filename : ''}`,
+      media_id: message.document?.id || null,
+      mime_type: message.document?.mime_type || null,
+      filename: message.document?.filename || 'documento-whatsapp',
+      caption: message.document?.caption || null
+    };
+  }
+
+  if (type === 'audio') {
+    return {
+      type,
+      content: '🎧 Audio recibido',
+      media_id: message.audio?.id || null,
+      mime_type: message.audio?.mime_type || null,
+      filename: 'audio-whatsapp.ogg',
+      caption: null
+    };
+  }
+
+  if (type === 'video') {
+    return {
+      type,
+      content: message.video?.caption || '🎥 Video recibido',
+      media_id: message.video?.id || null,
+      mime_type: message.video?.mime_type || null,
+      filename: 'video-whatsapp.mp4',
+      caption: message.video?.caption || null
+    };
+  }
+
+  if (type === 'sticker') {
+    return {
+      type,
+      content: '🏷️ Sticker recibido',
+      media_id: message.sticker?.id || null,
+      mime_type: message.sticker?.mime_type || null,
+      filename: 'sticker-whatsapp.webp',
+      caption: null
+    };
+  }
+
+  return {
+    type,
+    content: `Mensaje ${type} recibido`,
+    media_id: null,
+    mime_type: null,
+    filename: null,
+    caption: null
+  };
+}
+
+async function obtenerOCrearConversacion({ agenteId, userId, canal, externalUserId }) {
+  const { data: existente, error } = await supabase
+    .from('conversaciones')
+    .select('*')
+    .eq('agente_id', agenteId)
+    .eq('canal', canal)
+    .eq('external_user_id', externalUserId)
+    .maybeSingle();
+
+  if (error) {
+    console.error('Error buscando conversación:', error);
+  }
+
+  if (existente) return existente;
+
+  const { data: nueva, error: insertError } = await supabase
+    .from('conversaciones')
+    .insert([{
+      agente_id: agenteId,
+      user_id: userId,
+      canal,
+      external_user_id: externalUserId,
+      titulo: `WhatsApp ${externalUserId}`,
+      estado: 'ia_activa',
+      modo_humano: false,
+      requiere_atencion: false,
+      ultimo_mensaje: '',
+      ultimo_role: 'user',
+      updated_at: new Date().toISOString()
+    }])
+    .select('*')
+    .single();
+
+  if (insertError) {
+    throw new Error('No se pudo crear conversación: ' + insertError.message);
+  }
+
+  return nueva;
+}
+
+async function guardarMensajeMediaEntrante({ conversacion, agenteId, contenido, rawMessage }) {
+  await supabase
+    .from('mensajes_conversacion')
+    .insert([{
+      conversacion_id: conversacion.id,
+      agente_id: agenteId,
+      role: 'user',
+      content: contenido.content || 'Adjunto recibido',
+      origen: 'cliente',
+      metadata: {
+        origen: 'cliente',
+        tipo: contenido.type,
+        media_id: contenido.media_id,
+        mime_type: contenido.mime_type,
+        filename: contenido.filename,
+        caption: contenido.caption,
+        whatsapp_message_id: rawMessage.id || null,
+        from: rawMessage.from || null,
+        timestamp: rawMessage.timestamp || null
+      }
+    }]);
+
+  await supabase
+    .from('conversaciones')
+    .update({
+      ultimo_mensaje: contenido.content || 'Adjunto recibido',
+      ultimo_role: 'user',
+      requiere_atencion: true,
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', conversacion.id);
+}
+
 exports.handler = async (event) => {
   try {
     // 1. Verificación inicial de Meta
@@ -58,9 +210,10 @@ exports.handler = async (event) => {
     }
 
     const from = message.from;
-    const text = message.text?.body || '';
+    const contenido = extraerContenidoMensaje(message);
+    const text = contenido.type === 'text' ? contenido.content : '';
 
-    if (!from || !text.trim()) {
+    if (!from) {
       return {
         statusCode: 200,
         body: JSON.stringify({ ok: true, ignored: true })
@@ -85,10 +238,60 @@ exports.handler = async (event) => {
 
     const agenteId = waConnection.agente_id;
 
+    // 4. Obtener agente para conocer user_id
+    const { data: agente, error: agenteError } = await supabase
+      .from('agentes_ia')
+      .select('id, user_id, nombre_agente')
+      .eq('id', agenteId)
+      .maybeSingle();
+
+    if (agenteError || !agente) {
+      console.error('Agente no encontrado:', agenteError);
+      return {
+        statusCode: 200,
+        body: JSON.stringify({ ok: false, error: 'Agente no encontrado' })
+      };
+    }
+
+    // 5. Si es media, guardar y NO llamar IA
+    if (contenido.type !== 'text') {
+      const conversacion = await obtenerOCrearConversacion({
+        agenteId,
+        userId: agente.user_id,
+        canal: 'whatsapp',
+        externalUserId: from
+      });
+
+      await guardarMensajeMediaEntrante({
+        conversacion,
+        agenteId,
+        contenido,
+        rawMessage: message
+      });
+
+      return {
+        statusCode: 200,
+        body: JSON.stringify({
+          ok: true,
+          received_media: true,
+          type: contenido.type,
+          media_id: contenido.media_id,
+          conversation_id: conversacion.id
+        })
+      };
+    }
+
+    if (!text.trim()) {
+      return {
+        statusCode: 200,
+        body: JSON.stringify({ ok: true, ignored: true })
+      };
+    }
+
     // Conversation estable por agente + número del usuario
     const conversationId = `wa_${agenteId}_${from}`;
 
-    // 4. Llamar a la función chat
+    // 6. Llamar a la función chat
     const chatUrl = `${process.env.URL || 'https://jeisondigital.netlify.app'}/.netlify/functions/chat`;
 
     const chatRes = await fetch(chatUrl, {
@@ -114,7 +317,7 @@ exports.handler = async (event) => {
         body: JSON.stringify({
           ok: true,
           skipped: true,
-          motivo: chatData.motivo || 'modo_humano',
+          motivo: chatData.motivo,
           conversation_id: chatData.conversation_id
         })
       };
@@ -125,7 +328,7 @@ exports.handler = async (event) => {
       chatData.error ||
       'Lo siento, no pude procesar tu mensaje en este momento.';
 
-    // 5. Responder por WhatsApp Cloud API
+    // 7. Responder por WhatsApp Cloud API
     const sendRes = await fetch(
       `https://graph.facebook.com/v19.0/${phoneNumberId}/messages`,
       {
