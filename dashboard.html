@@ -407,6 +407,128 @@
         .chat-msg.user{align-self:flex-end;background:var(--accent);color:white;margin-left:auto;}
         .chat-msg a{color:var(--accent2);text-decoration:underline;overflow-wrap:anywhere;word-break:break-all;}
         #chat-messages{overflow-x:hidden;}
+    
+        /* FIX FINAL: CHAT COMPACTO TIPO WATI / WHATSAPP */
+        .conversation-messages{
+            padding:8px 10px!important;
+            gap:5px!important;
+            align-items:stretch!important;
+        }
+        .inbox-msg{
+            width:fit-content!important;
+            max-width:52%!important;
+            min-width:0!important;
+            min-height:0!important;
+            height:auto!important;
+            padding:6px 8px!important;
+            border-radius:8px!important;
+            font-size:12px!important;
+            line-height:1.28!important;
+            display:block!important;
+            box-shadow:0 1px 4px rgba(0,0,0,.10)!important;
+        }
+        .inbox-msg.user{
+            align-self:flex-start!important;
+            border-bottom-left-radius:3px!important;
+        }
+        .inbox-msg.assistant,
+        .inbox-msg.humano{
+            align-self:flex-end!important;
+            border-bottom-right-radius:3px!important;
+        }
+        .inbox-msg strong{
+            display:flex!important;
+            margin:0 0 2px!important;
+            font-size:10px!important;
+            line-height:1.1!important;
+        }
+        .msg-text{
+            display:block!important;
+            margin:0!important;
+            padding:0!important;
+            font-size:12px!important;
+            line-height:1.28!important;
+        }
+        .msg-meta{
+            margin-top:3px!important;
+            font-size:9px!important;
+            line-height:1!important;
+        }
+        .inbox-date-chip{
+            font-size:10px!important;
+            padding:2px 7px!important;
+            margin:3px auto!important;
+        }
+        .media-box{
+            margin-top:4px!important;
+            width:auto!important;
+            min-width:0!important;
+            min-height:0!important;
+            border-radius:7px!important;
+        }
+        .media-loading,
+        .media-error{
+            padding:6px 8px!important;
+            font-size:11px!important;
+            min-height:0!important;
+        }
+        .media-img{
+            max-width:170px!important;
+            max-height:170px!important;
+            border-radius:7px!important;
+        }
+        .media-video{
+            max-width:190px!important;
+            max-height:170px!important;
+        }
+        .media-audio{
+            width:190px!important;
+            height:30px!important;
+        }
+        .media-doc{
+            min-width:160px!important;
+            max-width:210px!important;
+            padding:7px!important;
+        }
+        .media-doc-icon{
+            width:30px!important;
+            height:30px!important;
+        }
+        .media-doc-name{
+            font-size:11px!important;
+        }
+        .media-doc-meta{
+            font-size:9px!important;
+        }
+        .media-actions{
+            margin-top:3px!important;
+            gap:3px!important;
+        }
+        .media-link{
+            font-size:10px!important;
+            padding:3px 6px!important;
+        }
+        .manual-reply-box{
+            padding:7px 9px!important;
+        }
+        .manual-reply-box textarea{
+            min-height:36px!important;
+            max-height:90px!important;
+            font-size:12px!important;
+            padding:9px 10px!important;
+        }
+        .composer-icon-btn{
+            width:36px!important;
+            height:36px!important;
+        }
+        .send-round{
+            width:38px!important;
+            height:38px!important;
+        }
+        @media(max-width:980px){
+            .inbox-msg{max-width:78%!important;}
+        }
+
     </style>
 </head>
 <body>
@@ -864,8 +986,6 @@
             new Notification('Nuevo mensaje en AUVRO', { body: String(msg.content || 'Nuevo mensaje').slice(0, 100) });
         }
     }
-
-
 
     // ── NAVEGACIÓN ──
     function mostrarVista(vista) {
@@ -1871,7 +1991,12 @@
             nested.id ||
             null;
 
-        const tipo = meta.tipo || meta.type || meta.media_type || (meta.image ? 'image' : meta.document ? 'document' : meta.audio ? 'audio' : meta.video ? 'video' : meta.sticker ? 'sticker' : '');
+        const tipo =
+            meta.tipo ||
+            meta.type ||
+            meta.media_type ||
+            (meta.image ? 'image' : meta.document ? 'document' : meta.audio ? 'audio' : meta.video ? 'video' : meta.sticker ? 'sticker' : '');
+
         const mime = meta.mime_type || meta.mime || nested.mime_type || '';
         const filename = meta.filename || meta.file_name || meta.name || nested.filename || nested.file_name || 'archivo';
         const caption = meta.caption || nested.caption || '';
@@ -1883,7 +2008,6 @@
         else if (tipo === 'video' || mime.startsWith('video/')) kind = 'video';
         else if (tipo === 'audio' || mime.startsWith('audio/')) kind = 'audio';
         else if (tipo === 'sticker' || mime === 'image/webp') kind = 'image';
-        else kind = 'document';
 
         return { mediaId, tipo, mime, filename, caption, kind };
     }
@@ -1893,17 +2017,23 @@
         if (!media) return '';
 
         const safeId = `media-${String(m.id).replace(/[^a-zA-Z0-9_-]/g, '')}`;
-        const icon = media.kind === 'image' ? 'fa-image' :
-                     media.kind === 'video' ? 'fa-video' :
-                     media.kind === 'audio' ? 'fa-microphone' : 'fa-file-lines';
 
         return `
-            <div class="media-box" id="${safeId}" data-message-id="${escapeHtml(m.id)}">
+            <div class="media-box" id="${safeId}" data-message-id="${escapeHtml(m.id)}" data-media-id="${escapeHtml(media.mediaId)}">
                 <div class="media-loading"><i class="fas fa-spinner fa-spin"></i> Cargando adjunto...</div>
             </div>
             <div class="media-actions" id="${safeId}-actions"></div>
-
         `;
+    }
+
+    function cargarMediasPendientes() {
+        document.querySelectorAll('.media-box[data-message-id]').forEach(box => {
+            const messageId = box.getAttribute('data-message-id');
+            if (!messageId) return;
+            if (box.dataset.loading === '1' || box.dataset.ok === '1') return;
+            box.dataset.loading = '1';
+            cargarMediaMensaje(messageId);
+        });
     }
 
     async function cargarMediaMensaje(messageId) {
@@ -1935,9 +2065,14 @@
                     })
                 });
 
-                data = await res.json();
+                let responseText = await res.text();
+                try {
+                    data = JSON.parse(responseText);
+                } catch (_) {
+                    throw new Error('La función get-whatsapp-media devolvió una respuesta inválida.');
+                }
 
-                if (!res.ok) {
+                if (!res.ok || data.ok === false) {
                     throw new Error(data.error || 'No se pudo cargar el adjunto.');
                 }
 
@@ -1948,12 +2083,14 @@
             const mime = data.mime_type || media.mime || 'application/octet-stream';
             const filename = data.filename || media.filename || 'archivo';
 
+            if (!dataUrl) throw new Error('La función no devolvió data_url del archivo.');
+
             if (media.kind === 'image') {
-                box.innerHTML = `<img class="media-img" src="${dataUrl}" alt="${escapeHtml(filename)}" onclick="abrirMediaLightbox('${dataUrl.replace(/'/g, "\\'")}')">`;
+                box.innerHTML = `<img class="media-img" src="${dataUrl}" alt="${escapeHtml(filename)}" onclick="abrirMediaLightbox('${dataUrl.replace(/'/g, "\'")}')">`;
             } else if (media.kind === 'video') {
                 box.innerHTML = `<video class="media-video" controls src="${dataUrl}"></video>`;
             } else if (media.kind === 'audio') {
-                box.innerHTML = `<div style="padding:.65rem"><audio class="media-audio" controls src="${dataUrl}"></audio></div>`;
+                box.innerHTML = `<div style="padding:5px"><audio class="media-audio" controls src="${dataUrl}"></audio></div>`;
             } else {
                 box.innerHTML = `
                     <div class="media-doc">
@@ -1966,17 +2103,22 @@
                 `;
             }
 
+            box.dataset.ok = '1';
+
             if (actions) {
                 actions.innerHTML = `
                     <a class="media-link" href="${dataUrl}" download="${escapeHtml(filename)}">
                         <i class="fas fa-download"></i> Descargar
                     </a>
-                    ${media.kind === 'image' ? `<button class="media-link" onclick="abrirMediaLightbox('${dataUrl.replace(/'/g, "\\'")}')"><i class="fas fa-expand"></i> Ver</button>` : ''}
+                    ${media.kind === 'image' ? `<button class="media-link" onclick="abrirMediaLightbox('${dataUrl.replace(/'/g, "\'")}')"><i class="fas fa-expand"></i> Ver</button>` : ''}
                 `;
             }
         } catch (err) {
             console.error('Error cargando media:', err);
+            box.dataset.error = '1';
             box.innerHTML = `<div class="media-error"><i class="fas fa-triangle-exclamation"></i> ${escapeHtml(err.message || 'No se pudo cargar el adjunto')}</div>`;
+        } finally {
+            box.dataset.loading = '0';
         }
     }
 
