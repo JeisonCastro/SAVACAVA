@@ -1097,6 +1097,185 @@
             font-size:10px!important;
         }
 
+    
+        /* FIX DEFINITIVO FINAL: CHAT ESTABLE CON FILAS REALES */
+        #conversation-messages{
+            display:flex!important;
+            flex-direction:column!important;
+            align-items:stretch!important;
+            justify-content:flex-start!important;
+            gap:6px!important;
+            padding:12px 18px!important;
+            overflow-y:auto!important;
+            overflow-x:hidden!important;
+        }
+
+        #conversation-messages .msg-row{
+            display:flex!important;
+            position:static!important;
+            width:100%!important;
+            max-width:100%!important;
+            min-width:0!important;
+            height:auto!important;
+            min-height:auto!important;
+            margin:0!important;
+            padding:0!important;
+            clear:both!important;
+            float:none!important;
+            flex:0 0 auto!important;
+            box-sizing:border-box!important;
+        }
+
+        #conversation-messages .msg-row.user{justify-content:flex-start!important;}
+        #conversation-messages .msg-row.assistant,
+        #conversation-messages .msg-row.humano{justify-content:flex-end!important;}
+        #conversation-messages .msg-row.system{justify-content:center!important;}
+
+        #conversation-messages .msg-row > .inbox-msg{
+            display:block!important;
+            position:static!important;
+            float:none!important;
+            flex:0 1 auto!important;
+            width:auto!important;
+            min-width:0!important;
+            max-width:390px!important;
+            height:auto!important;
+            min-height:0!important;
+            margin:0!important;
+            padding:7px 9px!important;
+            box-sizing:border-box!important;
+            overflow:visible!important;
+            border-radius:9px!important;
+            font-size:12px!important;
+            line-height:1.3!important;
+            white-space:normal!important;
+            transform:none!important;
+            inset:auto!important;
+        }
+
+        #conversation-messages .msg-row.media-row > .inbox-msg{
+            max-width:260px!important;
+            padding:7px!important;
+        }
+
+        #conversation-messages .inbox-msg strong{
+            display:block!important;
+            visibility:visible!important;
+            margin:0 0 3px 0!important;
+            padding:0!important;
+            font-size:10px!important;
+            line-height:1.1!important;
+            color:var(--muted)!important;
+            white-space:nowrap!important;
+        }
+
+        #conversation-messages .msg-text{
+            display:block!important;
+            margin:0!important;
+            padding:0!important;
+            font-size:12px!important;
+            line-height:1.3!important;
+            white-space:pre-wrap!important;
+            overflow-wrap:anywhere!important;
+            word-break:break-word!important;
+        }
+
+        #conversation-messages .msg-meta{
+            display:block!important;
+            margin:4px 0 0 0!important;
+            padding:0!important;
+            font-size:9px!important;
+            line-height:1!important;
+            opacity:.65!important;
+            float:none!important;
+            clear:both!important;
+        }
+
+        #conversation-messages .msg-row.user .msg-meta{text-align:left!important;}
+        #conversation-messages .msg-row.assistant .msg-meta,
+        #conversation-messages .msg-row.humano .msg-meta{text-align:right!important;}
+
+        #conversation-messages .media-box{
+            display:block!important;
+            position:static!important;
+            width:auto!important;
+            max-width:240px!important;
+            min-width:0!important;
+            height:auto!important;
+            min-height:0!important;
+            margin:5px 0 0 0!important;
+            padding:0!important;
+            overflow:hidden!important;
+            border-radius:8px!important;
+            background:transparent!important;
+            clear:both!important;
+        }
+
+        #conversation-messages .media-img{
+            display:block!important;
+            width:auto!important;
+            max-width:240px!important;
+            max-height:240px!important;
+            height:auto!important;
+            object-fit:contain!important;
+            border-radius:8px!important;
+        }
+
+        #conversation-messages video.media-video{
+            display:block!important;
+            width:240px!important;
+            max-width:100%!important;
+            max-height:220px!important;
+            border-radius:8px!important;
+        }
+
+        #conversation-messages audio.media-audio{
+            display:block!important;
+            width:230px!important;
+            max-width:100%!important;
+            height:34px!important;
+            margin:0!important;
+            padding:0!important;
+        }
+
+        #conversation-messages .media-doc{
+            width:230px!important;
+            max-width:100%!important;
+            min-width:0!important;
+            padding:8px!important;
+        }
+
+        #conversation-messages .media-actions{
+            display:flex!important;
+            position:static!important;
+            clear:both!important;
+            gap:4px!important;
+            margin:4px 0 0 0!important;
+            padding:0!important;
+            max-width:240px!important;
+        }
+
+        #conversation-messages .media-link{
+            font-size:10px!important;
+            line-height:1!important;
+            padding:4px 7px!important;
+        }
+
+        #conversation-messages .inbox-date-chip{
+            display:block!important;
+            align-self:center!important;
+            width:max-content!important;
+            margin:6px auto!important;
+            padding:3px 8px!important;
+            font-size:10px!important;
+            flex:0 0 auto!important;
+        }
+
+        @media(max-width:980px){
+            #conversation-messages .msg-row > .inbox-msg{max-width:82%!important;}
+            #conversation-messages .msg-row.media-row > .inbox-msg{max-width:260px!important;}
+        }
+
     </style>
 </head>
 <body>
@@ -2716,14 +2895,16 @@
 
     function renderMensajesConversacion() {
         const box = document.getElementById('conversation-messages');
+
         if (!mensajesConversacionActual.length) {
             box.innerHTML = '<div class="empty-inbox-state"><i class="fas fa-comment-slash"></i><div>Esta conversación aún no tiene mensajes.</div></div>';
             return;
         }
 
+        box.innerHTML = '';
         let ultimoDia = '';
 
-        box.innerHTML = mensajesConversacionActual.map(m => {
+        mensajesConversacionActual.forEach(m => {
             const origen = m.origen || m.metadata?.origen || (m.role === 'user' ? 'cliente' : 'ia');
             const cls = m.role === 'user' ? 'user' : (origen === 'humano' ? 'humano' : (m.role === 'system' ? 'system' : 'assistant'));
             const autor = m.role === 'user' ? 'Cliente' : (origen === 'humano' ? 'Tú' : (m.role === 'system' ? 'Sistema' : 'IA'));
@@ -2731,29 +2912,53 @@
             const media = obtenerMediaInfoMensaje(m);
             const tieneMedia = !!media;
 
-            let fechaChip = '';
             try {
                 const dia = new Date(m.created_at).toLocaleDateString('es-CO', { year:'numeric', month:'long', day:'numeric' });
                 if (dia !== ultimoDia) {
                     ultimoDia = dia;
-                    fechaChip = `<div class="inbox-date-chip">${escapeHtml(dia)}</div>`;
+                    const chip = document.createElement('div');
+                    chip.className = 'inbox-date-chip';
+                    chip.textContent = dia;
+                    box.appendChild(chip);
                 }
             } catch (_) {}
 
+            const row = document.createElement('div');
+            row.className = `msg-row ${cls}${tieneMedia ? ' media-row' : ''}`;
+
+            const bubble = document.createElement('div');
+            bubble.className = `inbox-msg ${cls}${tieneMedia ? ' media-msg' : ''}`;
+
+            const strong = document.createElement('strong');
+            strong.innerHTML = `<i class="fas ${icono}"></i> ${escapeHtml(autor)}`;
+            bubble.appendChild(strong);
+
             const contenidoOriginal = String(m.content || '').trim();
             const esTextoRedundanteMedia = tieneMedia && /^(📷\s*)?Imagen recibida$|^(🎧\s*)?Audio recibido$|^(🎥\s*)?Video recibido$|^(📎\s*)?Documento recibido/i.test(contenidoOriginal);
-            const textoContenido = esTextoRedundanteMedia ? '' : escapeHtml(contenidoOriginal);
 
-            return `${fechaChip}
-                <div class="msg-row ${cls} ${tieneMedia ? 'media-row' : ''}">
-                    <div class="inbox-msg ${cls} ${tieneMedia ? 'media-msg' : ''}">
-                        <strong><i class="fas ${icono}"></i> ${autor}</strong>
-                        ${textoContenido ? `<span class="msg-text">${textoContenido}</span>` : ''}
-                        ${renderMediaPlaceholder(m)}
-                        <div class="msg-meta">${formatoHoraMensaje(m.created_at)}</div>
-                    </div>
-                </div>`;
-        }).join('');
+            if (contenidoOriginal && !esTextoRedundanteMedia) {
+                const span = document.createElement('span');
+                span.className = 'msg-text';
+                span.textContent = contenidoOriginal;
+                bubble.appendChild(span);
+            }
+
+            if (tieneMedia) {
+                const temp = document.createElement('div');
+                temp.innerHTML = renderMediaPlaceholder(m);
+                Array.from(temp.childNodes).forEach(node => bubble.appendChild(node));
+            }
+
+            const meta = document.createElement('div');
+            meta.className = 'msg-meta';
+            meta.textContent = typeof formatoHoraMensaje === 'function'
+                ? formatoHoraMensaje(m.created_at)
+                : formatoFechaCorta(m.created_at);
+            bubble.appendChild(meta);
+
+            row.appendChild(bubble);
+            box.appendChild(row);
+        });
 
         box.scrollTop = box.scrollHeight;
         setTimeout(cargarMediasPendientes, 80);
