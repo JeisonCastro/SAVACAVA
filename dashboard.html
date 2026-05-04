@@ -347,6 +347,27 @@
             .activities-table th:nth-child(3),.activities-table td:nth-child(3){width:30%;text-align:right;}
             .badge{font-size:.56rem;padding:.12rem .38rem;}
         }
+
+        /* MEDIA VIEWER WHATSAPP */
+        .media-box{margin-top:.45rem;border-radius:10px;overflow:hidden;border:1px solid var(--border);background:rgba(0,0,0,.10)}
+        .media-img{display:block;max-width:260px;max-height:280px;width:auto;height:auto;object-fit:cover;cursor:pointer}
+        .media-video{display:block;max-width:300px;max-height:260px;width:100%;background:#000}
+        .media-audio{width:260px;max-width:100%;height:36px}
+        .media-doc{display:flex;align-items:center;gap:.7rem;padding:.75rem;min-width:230px;max-width:320px;background:var(--surface)}
+        .media-doc-icon{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:rgba(14,165,233,.12);color:var(--accent);flex:0 0 auto}
+        .media-doc-info{min-width:0;flex:1}
+        .media-doc-name{font-size:.8rem;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+        .media-doc-meta{font-size:.68rem;color:var(--dim);margin-top:2px}
+        .media-actions{display:flex;gap:.4rem;margin-top:.45rem;flex-wrap:wrap}
+        .media-link{font-size:.7rem;color:var(--accent);text-decoration:none;border:1px solid rgba(14,165,233,.22);background:rgba(14,165,233,.08);padding:4px 8px;border-radius:999px;display:inline-flex;align-items:center;gap:.35rem}
+        .media-link:hover{border-color:var(--accent)}
+        .media-loading{font-size:.72rem;color:var(--muted);display:flex;align-items:center;gap:.35rem;padding:.5rem .65rem}
+        .media-error{font-size:.72rem;color:var(--red);padding:.5rem .65rem}
+        .media-lightbox{display:none;position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:3000;align-items:center;justify-content:center;padding:2rem}
+        .media-lightbox.show{display:flex}
+        .media-lightbox img{max-width:92vw;max-height:88vh;border-radius:12px;box-shadow:0 20px 70px rgba(0,0,0,.45)}
+        .media-lightbox-close{position:absolute;top:18px;right:20px;width:42px;height:42px;border-radius:50%;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.08);color:#fff;cursor:pointer;font-size:1.1rem}
+
         /* CHAT TEST MODAL */
         .chat-msg{max-width:85%;padding:10px 12px;border-radius:12px;line-height:1.45;font-size:.85rem;white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word;}
         .chat-msg.bot{align-self:flex-start;background:var(--border);color:var(--text);}
@@ -359,6 +380,10 @@
 
 <div class="bg-grid"></div>
 <div class="toast" id="toast"></div>
+<div class="media-lightbox" id="media-lightbox" onclick="cerrarMediaLightbox()">
+    <button class="media-lightbox-close" onclick="cerrarMediaLightbox();event.stopPropagation();"><i class="fas fa-times"></i></button>
+    <img id="media-lightbox-img" src="" alt="Vista previa">
+</div>
 
 <button class="mob-toggle" onclick="document.querySelector('.sidebar').classList.toggle('open')">
     <i class="fas fa-bars" style="font-size:.85rem"></i>
@@ -719,6 +744,7 @@
     let realtimeBandejaIniciada = false;
     let realtimeMensajesConversacionId = null;
     let recargaBandejaTimer = null;
+    let mediaCache = new Map();
     let adjuntosManual = [];
 
     // ── TOAST ──
@@ -1682,7 +1708,7 @@
 
         const { data, error } = await _supabase
             .from('mensajes_conversacion')
-            .select('id, role, content, metadata, created_at, origen')
+            .select('id, conversacion_id, role, content, metadata, created_at, origen')
             .eq('conversacion_id', id)
             .order('created_at', { ascending: true })
             .limit(300);
@@ -1718,6 +1744,135 @@
         manualBox.style.display = modoHumano ? 'flex' : 'none';
     }
 
+
+    function obtenerMediaInfoMensaje(m) {
+        const meta = m.metadata || {};
+        const mediaId = meta.media_id || meta.mediaId || meta.id || null;
+        const tipo = meta.tipo || meta.type || meta.media_type || '';
+        const mime = meta.mime_type || meta.mime || '';
+        const filename = meta.filename || meta.file_name || meta.name || 'archivo';
+        const caption = meta.caption || '';
+
+        if (!mediaId) return null;
+
+        let kind = 'document';
+        if (tipo === 'image' || mime.startsWith('image/')) kind = 'image';
+        else if (tipo === 'video' || mime.startsWith('video/')) kind = 'video';
+        else if (tipo === 'audio' || mime.startsWith('audio/')) kind = 'audio';
+        else kind = 'document';
+
+        return { mediaId, tipo, mime, filename, caption, kind };
+    }
+
+    function renderMediaPlaceholder(m) {
+        const media = obtenerMediaInfoMensaje(m);
+        if (!media) return '';
+
+        const safeId = `media-${String(m.id).replace(/[^a-zA-Z0-9_-]/g, '')}`;
+        const icon = media.kind === 'image' ? 'fa-image' :
+                     media.kind === 'video' ? 'fa-video' :
+                     media.kind === 'audio' ? 'fa-microphone' : 'fa-file-lines';
+
+        return `
+            <div class="media-box" id="${safeId}" data-message-id="${escapeHtml(m.id)}">
+                <div class="media-loading"><i class="fas fa-spinner fa-spin"></i> Cargando adjunto...</div>
+            </div>
+            <div class="media-actions" id="${safeId}-actions"></div>
+            <script>setTimeout(function(){ cargarMediaMensaje('${escapeHtml(m.id)}'); }, 0);<\/script>
+        `;
+    }
+
+    async function cargarMediaMensaje(messageId) {
+        const msg = mensajesConversacionActual.find(x => String(x.id) === String(messageId));
+        if (!msg || !conversacionSeleccionada) return;
+
+        const media = obtenerMediaInfoMensaje(msg);
+        if (!media) return;
+
+        const safeId = `media-${String(msg.id).replace(/[^a-zA-Z0-9_-]/g, '')}`;
+        const box = document.getElementById(safeId);
+        const actions = document.getElementById(`${safeId}-actions`);
+        if (!box) return;
+
+        try {
+            let data = mediaCache.get(media.mediaId);
+
+            if (!data) {
+                const { data: { session } } = await _supabase.auth.getSession();
+                const token = session?.access_token;
+
+                const res = await fetch('/.netlify/functions/get-whatsapp-media', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify({
+                        conversation_id: conversacionSeleccionada.id,
+                        message_id: msg.id,
+                        media_id: media.mediaId
+                    })
+                });
+
+                data = await res.json();
+
+                if (!res.ok) {
+                    throw new Error(data.error || 'No se pudo cargar el adjunto.');
+                }
+
+                mediaCache.set(media.mediaId, data);
+            }
+
+            const dataUrl = data.data_url;
+            const mime = data.mime_type || media.mime || 'application/octet-stream';
+            const filename = data.filename || media.filename || 'archivo';
+
+            if (media.kind === 'image') {
+                box.innerHTML = `<img class="media-img" src="${dataUrl}" alt="${escapeHtml(filename)}" onclick="abrirMediaLightbox('${dataUrl.replace(/'/g, "\\'")}')">`;
+            } else if (media.kind === 'video') {
+                box.innerHTML = `<video class="media-video" controls src="${dataUrl}"></video>`;
+            } else if (media.kind === 'audio') {
+                box.innerHTML = `<div style="padding:.65rem"><audio class="media-audio" controls src="${dataUrl}"></audio></div>`;
+            } else {
+                box.innerHTML = `
+                    <div class="media-doc">
+                        <div class="media-doc-icon"><i class="fas fa-file-lines"></i></div>
+                        <div class="media-doc-info">
+                            <div class="media-doc-name">${escapeHtml(filename)}</div>
+                            <div class="media-doc-meta">${escapeHtml(mime)}</div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            if (actions) {
+                actions.innerHTML = `
+                    <a class="media-link" href="${dataUrl}" download="${escapeHtml(filename)}">
+                        <i class="fas fa-download"></i> Descargar
+                    </a>
+                    ${media.kind === 'image' ? `<button class="media-link" onclick="abrirMediaLightbox('${dataUrl.replace(/'/g, "\\'")}')"><i class="fas fa-expand"></i> Ver</button>` : ''}
+                `;
+            }
+        } catch (err) {
+            console.error('Error cargando media:', err);
+            box.innerHTML = `<div class="media-error"><i class="fas fa-triangle-exclamation"></i> ${escapeHtml(err.message || 'No se pudo cargar el adjunto')}</div>`;
+        }
+    }
+
+    function abrirMediaLightbox(src) {
+        const lb = document.getElementById('media-lightbox');
+        const img = document.getElementById('media-lightbox-img');
+        if (!lb || !img) return;
+        img.src = src;
+        lb.classList.add('show');
+    }
+
+    function cerrarMediaLightbox() {
+        const lb = document.getElementById('media-lightbox');
+        const img = document.getElementById('media-lightbox-img');
+        if (!lb || !img) return;
+        lb.classList.remove('show');
+        img.src = '';
+    }
+
+
     function renderMensajesConversacion() {
         const box = document.getElementById('conversation-messages');
         if (!mensajesConversacionActual.length) {
@@ -1741,6 +1896,7 @@
             } catch (_) {}
             return `${fechaChip}<div class="inbox-msg ${cls}">
                 <strong><i class="fas ${icono}"></i> ${autor}</strong><span class="msg-text">${escapeHtml(m.content || '')}</span>
+                ${renderMediaPlaceholder(m)}
                 <div class="msg-meta">${formatoFechaCorta(m.created_at)}${origen ? ' · ' + escapeHtml(origen) : ''}</div>
             </div>`;
         }).join('');
