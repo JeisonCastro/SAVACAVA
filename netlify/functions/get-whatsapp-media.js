@@ -46,6 +46,21 @@ function extensionFromMime(mime = '') {
   return map[String(mime).toLowerCase()] || 'bin';
 }
 
+function extractMediaIdFromMetadata(meta = {}) {
+  const nested = meta.image || meta.document || meta.audio || meta.video || meta.sticker || {};
+  return meta.media_id || meta.mediaId || meta.id || nested.id || null;
+}
+
+function extractMimeFromMetadata(meta = {}) {
+  const nested = meta.image || meta.document || meta.audio || meta.video || meta.sticker || {};
+  return meta.mime_type || meta.mime || nested.mime_type || null;
+}
+
+function extractFilenameFromMetadata(meta = {}, mediaId = '') {
+  const nested = meta.image || meta.document || meta.audio || meta.video || meta.sticker || {};
+  return meta.filename || meta.file_name || meta.name || nested.filename || nested.file_name || `whatsapp-media-${mediaId}`;
+}
+
 async function verifyUser(event) {
   const token = getBearerToken(event);
   if (!token) throw new Error('No se recibió token de sesión.');
@@ -66,6 +81,7 @@ async function getConversationForUser(conversationId, userId) {
 
   if (error) throw new Error('Error consultando conversación: ' + error.message);
   if (!data) throw new Error('Conversación no encontrada o no pertenece al usuario.');
+
   return data;
 }
 
@@ -77,23 +93,27 @@ async function getMessageForConversation(messageId, conversationId, mediaId) {
 
   if (messageId) query = query.eq('id', messageId);
 
-  const { data, error } = await query.limit(20);
+  let { data, error } = await query.limit(50);
   if (error) throw new Error('Error consultando mensaje: ' + error.message);
 
-  const messages = data || [];
-  const msg = messages.find(m => {
-    const meta = m.metadata || {};
-    const saved = meta.media_id || meta.mediaId || meta.id || null;
-    return String(m.id) === String(messageId) || String(saved) === String(mediaId);
-  });
+  let messages = data || [];
 
-  if (!msg) throw new Error('Mensaje con adjunto no encontrado.');
+  if (!messages.length && messageId) {
+    const fallback = await supabase
+      .from('mensajes_conversacion')
+      .select('*')
+      .eq('conversacion_id', conversationId)
+      .limit(200);
 
-  const meta = msg.metadata || {};
-  const savedMediaId = meta.media_id || meta.mediaId || meta.id;
+    if (fallback.error) throw new Error('Error consultando mensajes: ' + fallback.error.message);
+    messages = fallback.data || [];
+  }
 
-  if (!savedMediaId) throw new Error('El mensaje no tiene media_id en metadata.');
-  if (String(savedMediaId) !== String(mediaId)) throw new Error('El media_id no coincide con el mensaje solicitado.');
+  const msg = messages.find(m => String(extractMediaIdFromMetadata(m.metadata || {})) === String(mediaId));
+
+  if (!msg) {
+    throw new Error('No encontré el media_id en metadata. Revisa que whatsapp-webhook.js esté guardando media_id.');
+  }
 
   return msg;
 }
@@ -110,6 +130,7 @@ async function getWhatsappConnection(agenteId, userId) {
   if (error) throw new Error('Error consultando conexión WhatsApp: ' + error.message);
   if (!data) throw new Error('No hay conexión activa de WhatsApp para este agente.');
   if (!data.access_token) throw new Error('La conexión WhatsApp no tiene access_token.');
+
   return data;
 }
 
@@ -120,10 +141,12 @@ async function getMetaMediaUrl(mediaId, accessToken) {
   });
 
   const data = await res.json().catch(() => null);
+
   if (!res.ok || !data?.url) {
     const msg = data?.error?.message || 'No se pudo obtener la URL del adjunto en Meta.';
     throw new Error(msg);
   }
+
   return data;
 }
 
@@ -138,6 +161,7 @@ async function downloadMetaMedia(url, accessToken) {
   const arrayBuffer = await res.arrayBuffer();
   const buffer = Buffer.from(arrayBuffer);
   const contentType = res.headers.get('content-type') || 'application/octet-stream';
+
   return { buffer, contentType };
 }
 
@@ -165,10 +189,9 @@ exports.handler = async (event) => {
     const mediaMeta = await getMetaMediaUrl(mediaId, connection.access_token);
     const downloaded = await downloadMetaMedia(mediaMeta.url, connection.access_token);
 
-    const mimeType = meta.mime_type || mediaMeta.mime_type || downloaded.contentType || 'application/octet-stream';
-    const filename = sanitizeFilename(
-      meta.filename || mediaMeta.filename || `whatsapp-media-${mediaId}.${extensionFromMime(mimeType)}`
-    );
+    const mimeType = extractMimeFromMetadata(meta) || mediaMeta.mime_type || downloaded.contentType || 'application/octet-stream';
+    const filenameBase = extractFilenameFromMetadata(meta, mediaId);
+    const filename = sanitizeFilename(filenameBase.includes('.') ? filenameBase : `${filenameBase}.${extensionFromMime(mimeType)}`);
 
     return jsonResponse(200, {
       ok: true,
