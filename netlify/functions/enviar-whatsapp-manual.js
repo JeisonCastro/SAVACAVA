@@ -57,9 +57,11 @@ exports.handler = async (event) => {
       return { statusCode: 404, headers, body: JSON.stringify({ error: 'Conversación no encontrada.' }) };
     }
 
-    if (conversacion.canal !== 'whatsapp') {
-      return { statusCode: 400, headers, body: JSON.stringify({ error: 'El envío manual por ahora solo está disponible para WhatsApp.' }) };
-    }
+    const canal = conversacionSeleccionada.canal || 'web';
+
+if (adjuntosManual.length > 0 && canal !== 'whatsapp') {
+    return showToast('Por ahora los adjuntos manuales solo se envían por WhatsApp. Para web usa texto.', 'error');
+}
 
     const { data: waConnection, error: waError } = await supabase
       .from('whatsapp_connections')
