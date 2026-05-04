@@ -368,6 +368,39 @@
         .media-lightbox img{max-width:92vw;max-height:88vh;border-radius:12px;box-shadow:0 20px 70px rgba(0,0,0,.45)}
         .media-lightbox-close{position:absolute;top:18px;right:20px;width:42px;height:42px;border-radius:50%;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.08);color:#fff;cursor:pointer;font-size:1.1rem}
 
+
+        /* AJUSTES PRO WATI - COMPACTO */
+        .inbox-layout{grid-template-columns:330px minmax(0,1fr)!important;border-radius:12px!important}
+        .conversation-messages{padding:.75rem .85rem!important;gap:.38rem!important}
+        .inbox-msg{max-width:min(54%,560px)!important;min-width:90px!important;padding:6px 8px!important;border-radius:9px!important;font-size:.76rem!important;line-height:1.32!important;box-shadow:0 2px 8px rgba(0,0,0,.10)!important}
+        .inbox-msg strong{font-size:.61rem!important;margin-bottom:1px!important}
+        .msg-meta{font-size:.56rem!important;margin-top:2px!important}
+        .inbox-date-chip{font-size:.6rem!important;padding:2px 8px!important;margin:.1rem 0!important}
+        .media-box{margin-top:.28rem!important;border-radius:8px!important}
+        .media-img{max-width:190px!important;max-height:190px!important}
+        .media-video{max-width:220px!important;max-height:180px!important}
+        .media-audio{width:210px!important;height:32px!important}
+        .media-doc{min-width:180px!important;max-width:230px!important;padding:.55rem!important}
+        .manual-reply-box{padding:.55rem .75rem!important}
+        .manual-reply-box textarea{min-height:38px!important;font-size:.8rem!important;border-radius:12px!important}
+        .composer-icon-btn{width:36px!important;height:36px!important;border-radius:10px!important}
+        .send-round{width:38px!important;height:38px!important}
+        .inbox-panel-header{padding:.6rem .85rem!important}
+        .inbox-contact-avatar{width:34px!important;height:34px!important}
+        .inbox-header-title{font-size:.9rem!important}
+        .inbox-header-sub{font-size:.7rem!important}
+        .inbox-filters{padding:.65rem!important}
+        .conversation-item{padding:.65rem .75rem!important}
+        .conversation-avatar{width:30px!important;height:30px!important;font-size:.72rem!important}
+        .conversation-meta,.conversation-preview{margin-left:2.35rem!important}
+        .conversation-name{font-size:.78rem!important}
+        .conversation-preview{font-size:.7rem!important}
+        .conversation-time{font-size:.62rem!important}
+        .agent-top-row{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:1rem;margin-bottom:.85rem;transition:all .2s}
+        .agent-top-row:hover{border-color:var(--accent);box-shadow:0 8px 26px rgba(14,165,233,.08)}
+        #lista-agentes{display:flex;flex-direction:column;gap:.2rem}
+        @media(max-width:980px){.inbox-msg{max-width:82%!important}.inbox-layout{grid-template-columns:1fr!important}}
+
         /* CHAT TEST MODAL */
         .chat-msg{max-width:85%;padding:10px 12px;border-radius:12px;line-height:1.45;font-size:.85rem;white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word;}
         .chat-msg.bot{align-self:flex-start;background:var(--border);color:var(--text);}
@@ -484,6 +517,7 @@
             </div>
             <div class="topbar-right">
                 <span class="badge badge-green" id="realtime-status"><i class="fas fa-circle" style="font-size:.45rem"></i> Tiempo real</span>
+                <button class="btn-small" onclick="solicitarPermisoNotificaciones()"><i class="fas fa-volume-high" style="margin-right:.35rem"></i> Activar sonido</button>
                 <button class="btn-small" onclick="cargarBandejaConversaciones()"><i class="fas fa-rotate" style="margin-right:.35rem"></i> Actualizar</button>
             </div>
         </div>
@@ -758,6 +792,63 @@
         const el = document.getElementById(id);
         el.textContent = text; el.className = 'msg ' + type;
     }
+
+
+    let notificacionesSonidoHabilitadas = false;
+    let ultimoMensajeNotificadoId = null;
+
+    function habilitarSonidosNotificacion() {
+        notificacionesSonidoHabilitadas = true;
+        try { localStorage.setItem('auvrouter_sound_enabled', '1'); } catch (_) {}
+        showToast('Sonidos de notificación activados');
+    }
+
+    function inicializarPreferenciaSonido() {
+        try {
+            notificacionesSonidoHabilitadas = localStorage.getItem('auvrouter_sound_enabled') === '1';
+        } catch (_) {
+            notificacionesSonidoHabilitadas = false;
+        }
+    }
+
+    function reproducirSonidoNotificacion() {
+        if (!notificacionesSonidoHabilitadas) return;
+        try {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(880, ctx.currentTime);
+            osc.frequency.setValueAtTime(660, ctx.currentTime + 0.09);
+            gain.gain.setValueAtTime(0.001, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.12, ctx.currentTime + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.22);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start();
+            osc.stop(ctx.currentTime + 0.24);
+        } catch (e) {
+            console.warn('No se pudo reproducir sonido:', e);
+        }
+    }
+
+    function notificarMensajeEntrante(msg) {
+        if (!msg || msg.role !== 'user') return;
+        if (String(msg.id) === String(ultimoMensajeNotificadoId)) return;
+        ultimoMensajeNotificadoId = msg.id;
+        reproducirSonidoNotificacion();
+        if (document.hidden && 'Notification' in window && Notification.permission === 'granted') {
+            new Notification('Nuevo mensaje en AUVRO', { body: String(msg.content || 'Nuevo mensaje').slice(0, 100) });
+        }
+    }
+
+    async function solicitarPermisoNotificaciones() {
+        habilitarSonidosNotificacion();
+        if ('Notification' in window && Notification.permission === 'default') {
+            try { await Notification.requestPermission(); } catch (_) {}
+        }
+    }
+
 
     // ── NAVEGACIÓN ──
     function mostrarVista(vista) {
@@ -1584,6 +1675,14 @@
             .replace(/'/g, '&#039;');
     }
 
+
+    function nombreClienteConversacion(c) {
+        if (!c) return 'Conversación';
+        if (c.canal === 'whatsapp') return `+${c.external_user_id}`;
+        if (c.titulo && !String(c.titulo).startsWith('Conversación')) return c.titulo;
+        return nombreAgentePorId(c.agente_id);
+    }
+
     function nombreAgentePorId(id) {
         const a = agentes.find(x => String(x.id) === String(id));
         return a?.name || `Agente ${id || '—'}`;
@@ -1674,7 +1773,7 @@
 
         list.innerHTML = items.map(c => {
             const selected = conversacionSeleccionada?.id === c.id ? 'active' : '';
-            const cliente = c.canal === 'whatsapp' ? `+${c.external_user_id}` : (c.external_user_id || c.titulo || 'Visitante');
+            const cliente = nombreClienteConversacion(c);
             const inicial = String(cliente || 'C').replace('+','').trim().slice(0,1).toUpperCase() || 'C';
             return `
                 <div class="conversation-item ${selected}" onclick="abrirConversacionBandeja('${c.id}')">
@@ -1727,7 +1826,7 @@
         const header = document.getElementById('inbox-panel-header');
         const actions = document.getElementById('inbox-actions');
         const manualBox = document.getElementById('manual-reply-box');
-        const cliente = c.canal === 'whatsapp' ? `+${c.external_user_id}` : (c.external_user_id || c.titulo || 'Visitante');
+        const cliente = nombreClienteConversacion(c);
         const modoHumano = c.modo_humano || c.estado === 'modo_humano';
 
         header.querySelector('.inbox-header-title').textContent = cliente;
@@ -1778,7 +1877,7 @@
                 <div class="media-loading"><i class="fas fa-spinner fa-spin"></i> Cargando adjunto...</div>
             </div>
             <div class="media-actions" id="${safeId}-actions"></div>
-            <script>setTimeout(function(){ cargarMediaMensaje('${escapeHtml(m.id)}'); }, 0);<\/script>
+
         `;
     }
 
@@ -1901,6 +2000,7 @@
             </div>`;
         }).join('');
         box.scrollTop = box.scrollHeight;
+        setTimeout(cargarMediasPendientes, 80);
     }
 
     async function actualizarEstadoConversacion(patch, mensajeExito) {
@@ -2108,6 +2208,9 @@
                 },
                 payload => {
                     console.log('Realtime conversaciones:', payload.eventType, payload.new || payload.old);
+                    if (payload.new && payload.new.requiere_atencion === true && payload.new.ultimo_role === 'user') {
+                        reproducirSonidoNotificacion();
+                    }
                     debounceRecargaBandeja();
                 }
             )
@@ -2179,6 +2282,7 @@
         if (!yaExiste) {
             mensajesConversacionActual.push(msg);
             renderMensajesConversacion();
+            notificarMensajeEntrante(msg);
         }
     }
 
@@ -2232,6 +2336,7 @@
 
     (async () => {
         aplicarTemaGuardado();
+        inicializarPreferenciaSonido();
         await verificarSesion();
         await procesarCallbackComposio();
     })();
