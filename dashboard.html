@@ -1897,5 +1897,65 @@
         await procesarCallbackComposio();
     })();
 </script>
+
+<!-- PRO IMPROVEMENTS -->
+<style>
+body.light-mode{
+    --bg:#f5f7fb;
+    --bg2:#ffffff;
+    --surface:#ffffff;
+    --border:#e2e8f0;
+    --border2:#d1d5db;
+    --text:#0f172a;
+    --muted:#64748b;
+    --dim:#94a3b8;
+}
+.clip-btn{cursor:pointer;color:var(--muted);font-size:1.1rem;}
+.send-btn{background:var(--accent);border:none;border-radius:50%;width:42px;height:42px;display:flex;align-items:center;justify-content:center;color:#fff;cursor:pointer;}
+.unread{background:var(--accent);color:#fff;border-radius:50%;padding:2px 6px;font-size:.7rem;}
+</style>
+
+<script>
+function toggleTheme(){
+    document.body.classList.toggle('light-mode');
+    localStorage.setItem('theme', document.body.classList.contains('light-mode') ? 'light':'dark');
+}
+(function(){
+    if(localStorage.getItem('theme')==='light'){
+        document.body.classList.add('light-mode');
+    }
+})();
+
+document.addEventListener("DOMContentLoaded", ()=>{
+    const textarea = document.getElementById("manual-message");
+    if(textarea){
+        textarea.addEventListener("keydown", function(e){
+            if(e.key==="Enter" && !e.shiftKey){
+                e.preventDefault();
+                if(typeof enviarRespuestaManual==="function"){
+                    enviarRespuestaManual();
+                }
+            }
+        });
+    }
+});
+
+document.addEventListener("change", function(e){
+    if(e.target && e.target.id==="file-input"){
+        const file=e.target.files[0];
+        if(file){
+            console.log("Archivo listo para enviar:", file);
+        }
+    }
+});
+
+function scrollToBottom(){
+    const chat=document.getElementById("conversation-messages");
+    if(chat){
+        chat.scrollTop=chat.scrollHeight;
+    }
+}
+</script>
+
 </body>
 </html>
