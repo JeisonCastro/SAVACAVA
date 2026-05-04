@@ -48,16 +48,10 @@ function extensionFromMime(mime = '') {
 
 async function verifyUser(event) {
   const token = getBearerToken(event);
-
-  if (!token) {
-    throw new Error('No se recibió token de sesión.');
-  }
+  if (!token) throw new Error('No se recibió token de sesión.');
 
   const { data, error } = await supabase.auth.getUser(token);
-
-  if (error || !data?.user) {
-    throw new Error('Sesión inválida o expirada.');
-  }
+  if (error || !data?.user) throw new Error('Sesión inválida o expirada.');
 
   return data.user;
 }
@@ -72,7 +66,6 @@ async function getConversationForUser(conversationId, userId) {
 
   if (error) throw new Error('Error consultando conversación: ' + error.message);
   if (!data) throw new Error('Conversación no encontrada o no pertenece al usuario.');
-
   return data;
 }
 
@@ -82,18 +75,16 @@ async function getMessageForConversation(messageId, conversationId, mediaId) {
     .select('*')
     .eq('conversacion_id', conversationId);
 
-  if (messageId) {
-    query = query.eq('id', messageId);
-  }
+  if (messageId) query = query.eq('id', messageId);
 
   const { data, error } = await query.limit(20);
-
   if (error) throw new Error('Error consultando mensaje: ' + error.message);
 
-  const msg = (data || []).find(m => {
+  const messages = data || [];
+  const msg = messages.find(m => {
     const meta = m.metadata || {};
-    return String(m.id) === String(messageId) ||
-      String(meta.media_id || meta.mediaId || meta.id || '') === String(mediaId);
+    const saved = meta.media_id || meta.mediaId || meta.id || null;
+    return String(m.id) === String(messageId) || String(saved) === String(mediaId);
   });
 
   if (!msg) throw new Error('Mensaje con adjunto no encontrado.');
@@ -101,9 +92,8 @@ async function getMessageForConversation(messageId, conversationId, mediaId) {
   const meta = msg.metadata || {};
   const savedMediaId = meta.media_id || meta.mediaId || meta.id;
 
-  if (!savedMediaId || String(savedMediaId) !== String(mediaId)) {
-    throw new Error('El media_id no coincide con el mensaje solicitado.');
-  }
+  if (!savedMediaId) throw new Error('El mensaje no tiene media_id en metadata.');
+  if (String(savedMediaId) !== String(mediaId)) throw new Error('El media_id no coincide con el mensaje solicitado.');
 
   return msg;
 }
@@ -119,55 +109,41 @@ async function getWhatsappConnection(agenteId, userId) {
 
   if (error) throw new Error('Error consultando conexión WhatsApp: ' + error.message);
   if (!data) throw new Error('No hay conexión activa de WhatsApp para este agente.');
-
+  if (!data.access_token) throw new Error('La conexión WhatsApp no tiene access_token.');
   return data;
 }
 
 async function getMetaMediaUrl(mediaId, accessToken) {
   const res = await fetch(`https://graph.facebook.com/${GRAPH_VERSION}/${mediaId}`, {
     method: 'GET',
-    headers: {
-      Authorization: `Bearer ${accessToken}`
-    }
+    headers: { Authorization: `Bearer ${accessToken}` }
   });
 
   const data = await res.json().catch(() => null);
-
   if (!res.ok || !data?.url) {
     const msg = data?.error?.message || 'No se pudo obtener la URL del adjunto en Meta.';
     throw new Error(msg);
   }
-
   return data;
 }
 
 async function downloadMetaMedia(url, accessToken) {
   const res = await fetch(url, {
     method: 'GET',
-    headers: {
-      Authorization: `Bearer ${accessToken}`
-    }
+    headers: { Authorization: `Bearer ${accessToken}` }
   });
 
-  if (!res.ok) {
-    throw new Error('No se pudo descargar el archivo desde Meta.');
-  }
+  if (!res.ok) throw new Error('No se pudo descargar el archivo desde Meta.');
 
   const arrayBuffer = await res.arrayBuffer();
   const buffer = Buffer.from(arrayBuffer);
   const contentType = res.headers.get('content-type') || 'application/octet-stream';
-
   return { buffer, contentType };
 }
 
 exports.handler = async (event) => {
-  if (event.httpMethod === 'OPTIONS') {
-    return jsonResponse(200, { ok: true });
-  }
-
-  if (event.httpMethod !== 'POST') {
-    return jsonResponse(405, { error: 'Method Not Allowed' });
-  }
+  if (event.httpMethod === 'OPTIONS') return jsonResponse(200, { ok: true });
+  if (event.httpMethod !== 'POST') return jsonResponse(405, { error: 'Method Not Allowed' });
 
   try {
     const user = await verifyUser(event);
@@ -191,12 +167,8 @@ exports.handler = async (event) => {
 
     const mimeType = meta.mime_type || mediaMeta.mime_type || downloaded.contentType || 'application/octet-stream';
     const filename = sanitizeFilename(
-      meta.filename ||
-      mediaMeta.filename ||
-      `whatsapp-media-${mediaId}.${extensionFromMime(mimeType)}`
+      meta.filename || mediaMeta.filename || `whatsapp-media-${mediaId}.${extensionFromMime(mimeType)}`
     );
-
-    const base64 = downloaded.buffer.toString('base64');
 
     return jsonResponse(200, {
       ok: true,
@@ -204,14 +176,11 @@ exports.handler = async (event) => {
       mime_type: mimeType,
       filename,
       size: downloaded.buffer.length,
-      data_url: `data:${mimeType};base64,${base64}`
+      data_url: `data:${mimeType};base64,${downloaded.buffer.toString('base64')}`
     });
 
   } catch (error) {
     console.error('get-whatsapp-media error:', error);
-    return jsonResponse(500, {
-      ok: false,
-      error: error.message || 'No se pudo cargar el adjunto.'
-    });
+    return jsonResponse(500, { ok: false, error: error.message || 'No se pudo cargar el adjunto.' });
   }
 };
