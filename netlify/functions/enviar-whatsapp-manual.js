@@ -11,6 +11,54 @@ function getBearerToken(event) {
   return auth.slice('Bearer '.length).trim();
 }
 
+function jsonResponse(statusCode, headers, body) {
+  return {
+    statusCode,
+    headers,
+    body: JSON.stringify(body)
+  };
+}
+
+async function guardarMensajeManual({ conversationId, conversacion, mensaje, user, canal, extraMetadata = {} }) {
+  const { error: insertError } = await supabase
+    .from('mensajes_conversacion')
+    .insert([{
+      conversacion_id: conversationId,
+      agente_id: conversacion.agente_id,
+      role: 'assistant',
+      content: mensaje,
+      origen: 'humano',
+      metadata: {
+        canal,
+        origen: 'humano',
+        enviado_por: user.id,
+        ...extraMetadata
+      }
+    }]);
+
+  if (insertError) {
+    throw new Error('No se pudo guardar el mensaje manual: ' + insertError.message);
+  }
+
+  const { error: updateError } = await supabase
+    .from('conversaciones')
+    .update({
+      ultimo_mensaje: mensaje.slice(0, 1000),
+      ultimo_role: 'assistant',
+      requiere_atencion: false,
+      modo_humano: true,
+      estado: 'modo_humano',
+      intervenida_por: user.id,
+      intervenida_en: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', conversationId);
+
+  if (updateError) {
+    throw new Error('No se pudo actualizar la conversación: ' + updateError.message);
+  }
+}
+
 exports.handler = async (event) => {
   const headers = {
     'Access-Control-Allow-Origin': '*',
@@ -23,27 +71,30 @@ exports.handler = async (event) => {
   }
 
   if (event.httpMethod !== 'POST') {
-    return { statusCode: 405, headers, body: JSON.stringify({ error: 'Method Not Allowed' }) };
+    return jsonResponse(405, headers, { error: 'Method Not Allowed' });
   }
 
   try {
     const token = getBearerToken(event);
+
     if (!token) {
-      return { statusCode: 401, headers, body: JSON.stringify({ error: 'No autenticado.' }) };
+      return jsonResponse(401, headers, { error: 'No autenticado.' });
     }
 
     const { data: authData, error: authError } = await supabase.auth.getUser(token);
+
     if (authError || !authData?.user) {
-      return { statusCode: 401, headers, body: JSON.stringify({ error: 'Sesión inválida.' }) };
+      return jsonResponse(401, headers, { error: 'Sesión inválida.' });
     }
 
     const user = authData.user;
     const body = JSON.parse(event.body || '{}');
+
     const conversationId = body.conversation_id;
     const mensaje = String(body.mensaje || '').trim();
 
     if (!conversationId || !mensaje) {
-      return { statusCode: 400, headers, body: JSON.stringify({ error: 'Falta conversation_id o mensaje.' }) };
+      return jsonResponse(400, headers, { error: 'Falta conversation_id o mensaje.' });
     }
 
     const { data: conversacion, error: convError } = await supabase
@@ -54,82 +105,99 @@ exports.handler = async (event) => {
       .single();
 
     if (convError || !conversacion) {
-      return { statusCode: 404, headers, body: JSON.stringify({ error: 'Conversación no encontrada.' }) };
+      return jsonResponse(404, headers, { error: 'Conversación no encontrada.' });
     }
 
-    const canal = conversacionSeleccionada.canal || 'web';
+    const canal = conversacion.canal || 'web';
 
-if (adjuntosManual.length > 0 && canal !== 'whatsapp') {
-  return showToast('Por ahora los adjuntos manuales solo se envían por WhatsApp. Para web usa texto.', 'error');
-}
+    if (canal === 'whatsapp') {
+      const { data: waConnection, error: waError } = await supabase
+        .from('whatsapp_connections')
+        .select('*')
+        .eq('agente_id', conversacion.agente_id)
+        .eq('user_id', user.id)
+        .eq('activo', true)
+        .maybeSingle();
 
-    const { data: waConnection, error: waError } = await supabase
-      .from('whatsapp_connections')
-      .select('*')
-      .eq('agente_id', conversacion.agente_id)
-      .eq('user_id', user.id)
-      .eq('activo', true)
-      .maybeSingle();
-
-    if (waError || !waConnection) {
-      return { statusCode: 404, headers, body: JSON.stringify({ error: 'Conexión WhatsApp activa no encontrada para este agente.' }) };
-    }
-
-    const sendRes = await fetch(
-      `https://graph.facebook.com/v19.0/${waConnection.phone_number_id}/messages`,
-      {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${waConnection.access_token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          messaging_product: 'whatsapp',
-          to: conversacion.external_user_id,
-          type: 'text',
-          text: { body: mensaje.slice(0, 4000) }
-        })
+      if (waError || !waConnection) {
+        return jsonResponse(404, headers, {
+          error: 'Conexión WhatsApp activa no encontrada para este agente.'
+        });
       }
-    );
 
-    const sendData = await sendRes.json();
-    if (!sendRes.ok) {
-      console.error('Error enviando WhatsApp manual:', sendData);
-      return { statusCode: 400, headers, body: JSON.stringify({ error: 'Meta no aceptó el mensaje.', meta: sendData }) };
+      const sendRes = await fetch(
+        `https://graph.facebook.com/v19.0/${waConnection.phone_number_id}/messages`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${waConnection.access_token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            messaging_product: 'whatsapp',
+            to: conversacion.external_user_id,
+            type: 'text',
+            text: {
+              body: mensaje.slice(0, 4000)
+            }
+          })
+        }
+      );
+
+      const sendData = await sendRes.json().catch(() => ({}));
+
+      if (!sendRes.ok) {
+        console.error('Error enviando WhatsApp manual:', sendData);
+
+        return jsonResponse(400, headers, {
+          error: 'Meta no aceptó el mensaje.',
+          meta: sendData
+        });
+      }
+
+      await guardarMensajeManual({
+        conversationId,
+        conversacion,
+        mensaje,
+        user,
+        canal: 'whatsapp',
+        extraMetadata: {
+          meta: sendData
+        }
+      });
+
+      return jsonResponse(200, headers, {
+        ok: true,
+        canal: 'whatsapp',
+        whatsapp_send: sendData
+      });
     }
 
-    await supabase
-      .from('mensajes_conversacion')
-      .insert([{
-        conversacion_id: conversationId,
-        agente_id: conversacion.agente_id,
-        role: 'assistant',
-        content: mensaje,
-        origen: 'humano',
-        metadata: { canal: 'whatsapp', origen: 'humano', enviado_por: user.id, meta: sendData }
-      }]);
+    if (canal === 'web' || canal === 'dashboard') {
+      await guardarMensajeManual({
+        conversationId,
+        conversacion,
+        mensaje,
+        user,
+        canal
+      });
 
-    await supabase
-      .from('conversaciones')
-      .update({
-        ultimo_mensaje: mensaje.slice(0, 1000),
-        ultimo_role: 'assistant',
-        requiere_atencion: false,
-        modo_humano: true,
-        estado: 'modo_humano',
-        intervenida_por: user.id,
-        intervenida_en: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', conversationId);
+      return jsonResponse(200, headers, {
+        ok: true,
+        canal,
+        message: 'Mensaje manual guardado para canal web/dashboard.'
+      });
+    }
 
-    return {
-      statusCode: 200,
-      headers,
-      body: JSON.stringify({ ok: true, whatsapp_send: sendData })
-    };
+    return jsonResponse(400, headers, {
+      error: `Canal no soportado para envío manual: ${canal}`
+    });
+
   } catch (error) {
     console.error('enviar-whatsapp-manual error:', error);
-    return { statusCode: 500, headers, body: JSON.stringify({ error: error.message || 'Error interno.' }) };
+
+    return jsonResponse(500, headers, {
+      error: error.message || 'Error interno.'
+    });
   }
 };
