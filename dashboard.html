@@ -3080,11 +3080,17 @@
 
     async function enviarRespuestaManual() {
         if (!conversacionSeleccionada) return;
+
         const textarea = document.getElementById('manual-message');
         const mensaje = textarea.value.trim();
-        if (!mensaje && adjuntosManual.length === 0) return showToast('Escribe una respuesta o adjunta un archivo primero', 'error');
-        if (conversacionSeleccionada.canal !== 'whatsapp') {
-            return showToast('Por ahora el envío manual está habilitado para WhatsApp', 'error');
+        const canal = conversacionSeleccionada.canal || 'web';
+
+        if (!mensaje && adjuntosManual.length === 0) {
+            return showToast('Escribe una respuesta o adjunta un archivo primero', 'error');
+        }
+
+        if (adjuntosManual.length > 0 && canal !== 'whatsapp') {
+            return showToast('Por ahora los adjuntos manuales solo se envían por WhatsApp. Para web usa texto.', 'error');
         }
 
         const conversationIdActual = conversacionSeleccionada.id;
@@ -3102,7 +3108,7 @@
             let endpoint = '/.netlify/functions/enviar-whatsapp-manual';
             let payload = { conversation_id: conversationIdActual, mensaje };
 
-            if (adjuntosManual.length > 0) {
+            if (adjuntosManual.length > 0 && canal === 'whatsapp') {
                 endpoint = '/.netlify/functions/enviar-whatsapp-media';
                 payload.files = await prepararArchivosManual();
             }
@@ -3128,10 +3134,12 @@
             enviadoOk = true;
             textarea.value = '';
             adjuntosManual = [];
+
             const inputAdj = document.getElementById('manual-attachments');
             if (inputAdj) inputAdj.value = '';
+
             renderAdjuntosManual();
-            showToast('Respuesta enviada');
+            showToast(canal === 'whatsapp' ? 'Respuesta enviada por WhatsApp' : 'Respuesta enviada al chat web');
 
             try {
                 await cargarBandejaConversaciones();
