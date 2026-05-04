@@ -1640,7 +1640,8 @@
     let currentConversationId = null;
     let currentChatHistory = [];
     let conversacionesBandeja = [];
-    let conversacionSeleccionada = null;
+    var conversacionSeleccionada = window.conversacionSeleccionada || null;
+    window.conversacionSeleccionada = conversacionSeleccionada;
     let mensajesConversacionActual = [];
     let realtimeConversacionesChannel = null;
     let realtimeMensajesChannel = null;
@@ -2689,6 +2690,7 @@
         const conv = conversacionesBandeja.find(c => c.id === id);
         if (!conv) return;
         conversacionSeleccionada = conv;
+        window.conversacionSeleccionada = conv;
         renderConversacionesBandeja(conversacionesBandeja);
         renderHeaderConversacion(conv);
         iniciarRealtimeMensajes(conv.id);
@@ -2965,18 +2967,20 @@
     }
 
     async function actualizarEstadoConversacion(patch, mensajeExito) {
-        if (!conversacionSeleccionada) return;
+        const convActual = conversacionSeleccionada || window.conversacionSeleccionada || null;
+        if (!convActual) return;
         const { error } = await _supabase
             .from('conversaciones')
             .update({ ...patch, updated_at: new Date().toISOString() })
-            .eq('id', conversacionSeleccionada.id)
+            .eq('id', convActual.id)
             .eq('user_id', currentUser.id);
         if (error) { showToast('Error: ' + error.message, 'error'); return; }
         showToast(mensajeExito);
         await cargarBandejaConversaciones();
-        const nueva = conversacionesBandeja.find(c => c.id === conversacionSeleccionada.id);
+        const nueva = conversacionesBandeja.find(c => c.id === convActual.id);
         if (nueva) {
             conversacionSeleccionada = nueva;
+            window.conversacionSeleccionada = nueva;
             renderHeaderConversacion(nueva);
             renderConversacionesBandeja(conversacionesBandeja);
         }
@@ -3079,11 +3083,18 @@
     }
 
     async function enviarRespuestaManual() {
-        if (!conversacionSeleccionada) return;
+        const conv = conversacionSeleccionada || window.conversacionSeleccionada || null;
+
+        if (!conv || !conv.id) {
+            return showToast('Selecciona una conversación antes de responder', 'error');
+        }
+
+        conversacionSeleccionada = conv;
+        window.conversacionSeleccionada = conv;
 
         const textarea = document.getElementById('manual-message');
         const mensaje = textarea.value.trim();
-        const canal = conversacionSeleccionada.canal || 'web';
+        const canal = conv.canal || 'web';
 
         if (!mensaje && adjuntosManual.length === 0) {
             return showToast('Escribe una respuesta o adjunta un archivo primero', 'error');
@@ -3093,7 +3104,7 @@
             return showToast('Por ahora los adjuntos manuales solo se envían por WhatsApp. Para web usa texto.', 'error');
         }
 
-        const conversationIdActual = conversacionSeleccionada.id;
+        const conversationIdActual = conv.id;
         const btn = document.getElementById('btn-send-manual');
         const original = btn.innerHTML;
         btn.disabled = true;
@@ -3139,15 +3150,18 @@
             if (inputAdj) inputAdj.value = '';
 
             renderAdjuntosManual();
+
             showToast(canal === 'whatsapp' ? 'Respuesta enviada por WhatsApp' : 'Respuesta enviada al chat web');
 
             try {
                 await cargarBandejaConversaciones();
                 const existe = conversacionesBandeja.find(c => c.id === conversationIdActual);
                 if (existe) {
+                    conversacionSeleccionada = existe;
+                    window.conversacionSeleccionada = existe;
                     await abrirConversacionBandeja(conversationIdActual);
-                } else if (conversacionSeleccionada?.id === conversationIdActual) {
-                    renderHeaderConversacion(conversacionSeleccionada);
+                } else {
+                    renderHeaderConversacion(conv);
                 }
             } catch (uiError) {
                 console.warn('Mensaje enviado, pero falló refresco UI:', uiError);
