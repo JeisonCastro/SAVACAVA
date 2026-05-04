@@ -517,7 +517,7 @@
             </div>
             <div class="topbar-right">
                 <span class="badge badge-green" id="realtime-status"><i class="fas fa-circle" style="font-size:.45rem"></i> Tiempo real</span>
-                <button class="btn-small" onclick="solicitarPermisoNotificaciones()"><i class="fas fa-volume-high" style="margin-right:.35rem"></i> Activar sonido</button>
+                <button class="btn-small" id="btn-sound-toggle" onclick="toggleSonidoNotificacion()"><i class="fas fa-volume-high" style="margin-right:.35rem"></i> Activar sonido</button>
                 <button class="btn-small" onclick="cargarBandejaConversaciones()"><i class="fas fa-rotate" style="margin-right:.35rem"></i> Actualizar</button>
             </div>
         </div>
@@ -794,13 +794,19 @@
     }
 
 
-    let notificacionesSonidoHabilitadas = false;
+        let notificacionesSonidoHabilitadas = false;
     let ultimoMensajeNotificadoId = null;
 
-    function habilitarSonidosNotificacion() {
-        notificacionesSonidoHabilitadas = true;
-        try { localStorage.setItem('auvrouter_sound_enabled', '1'); } catch (_) {}
-        showToast('Sonidos de notificación activados');
+    function actualizarBotonSonido() {
+        const btn = document.getElementById('btn-sound-toggle');
+        if (!btn) return;
+        if (notificacionesSonidoHabilitadas) {
+            btn.innerHTML = '<i class="fas fa-volume-xmark" style="margin-right:.35rem"></i> Desactivar sonido';
+            btn.classList.add('green');
+        } else {
+            btn.innerHTML = '<i class="fas fa-volume-high" style="margin-right:.35rem"></i> Activar sonido';
+            btn.classList.remove('green');
+        }
     }
 
     function inicializarPreferenciaSonido() {
@@ -809,10 +815,27 @@
         } catch (_) {
             notificacionesSonidoHabilitadas = false;
         }
+        setTimeout(actualizarBotonSonido, 0);
     }
 
-    function reproducirSonidoNotificacion() {
-        if (!notificacionesSonidoHabilitadas) return;
+    async function toggleSonidoNotificacion() {
+        notificacionesSonidoHabilitadas = !notificacionesSonidoHabilitadas;
+        try { localStorage.setItem('auvrouter_sound_enabled', notificacionesSonidoHabilitadas ? '1' : '0'); } catch (_) {}
+        actualizarBotonSonido();
+
+        if (notificacionesSonidoHabilitadas) {
+            showToast('Sonidos de notificación activados');
+            reproducirSonidoNotificacion(true);
+            if ('Notification' in window && Notification.permission === 'default') {
+                try { await Notification.requestPermission(); } catch (_) {}
+            }
+        } else {
+            showToast('Sonidos de notificación desactivados');
+        }
+    }
+
+    function reproducirSonidoNotificacion(forzar = false) {
+        if (!forzar && !notificacionesSonidoHabilitadas) return;
         try {
             const ctx = new (window.AudioContext || window.webkitAudioContext)();
             const osc = ctx.createOscillator();
@@ -842,12 +865,6 @@
         }
     }
 
-    async function solicitarPermisoNotificaciones() {
-        habilitarSonidosNotificacion();
-        if ('Notification' in window && Notification.permission === 'default') {
-            try { await Notification.requestPermission(); } catch (_) {}
-        }
-    }
 
 
     // ── NAVEGACIÓN ──
@@ -1846,11 +1863,18 @@
 
     function obtenerMediaInfoMensaje(m) {
         const meta = m.metadata || {};
-        const mediaId = meta.media_id || meta.mediaId || meta.id || null;
-        const tipo = meta.tipo || meta.type || meta.media_type || '';
-        const mime = meta.mime_type || meta.mime || '';
-        const filename = meta.filename || meta.file_name || meta.name || 'archivo';
-        const caption = meta.caption || '';
+        const nested = meta.image || meta.document || meta.audio || meta.video || meta.sticker || {};
+        const mediaId =
+            meta.media_id ||
+            meta.mediaId ||
+            meta.id ||
+            nested.id ||
+            null;
+
+        const tipo = meta.tipo || meta.type || meta.media_type || (meta.image ? 'image' : meta.document ? 'document' : meta.audio ? 'audio' : meta.video ? 'video' : meta.sticker ? 'sticker' : '');
+        const mime = meta.mime_type || meta.mime || nested.mime_type || '';
+        const filename = meta.filename || meta.file_name || meta.name || nested.filename || nested.file_name || 'archivo';
+        const caption = meta.caption || nested.caption || '';
 
         if (!mediaId) return null;
 
@@ -1858,6 +1882,7 @@
         if (tipo === 'image' || mime.startsWith('image/')) kind = 'image';
         else if (tipo === 'video' || mime.startsWith('video/')) kind = 'video';
         else if (tipo === 'audio' || mime.startsWith('audio/')) kind = 'audio';
+        else if (tipo === 'sticker' || mime === 'image/webp') kind = 'image';
         else kind = 'document';
 
         return { mediaId, tipo, mime, filename, caption, kind };
@@ -2126,17 +2151,20 @@
             return showToast('Por ahora el envío manual está habilitado para WhatsApp', 'error');
         }
 
+        const conversationIdActual = conversacionSeleccionada.id;
         const btn = document.getElementById('btn-send-manual');
         const original = btn.innerHTML;
         btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin" style="margin-right:.35rem"></i> Enviando';
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+
+        let enviadoOk = false;
 
         try {
             const { data: { session } } = await _supabase.auth.getSession();
             const token = session?.access_token;
 
             let endpoint = '/.netlify/functions/enviar-whatsapp-manual';
-            let payload = { conversation_id: conversacionSeleccionada.id, mensaje };
+            let payload = { conversation_id: conversationIdActual, mensaje };
 
             if (adjuntosManual.length > 0) {
                 endpoint = '/.netlify/functions/enviar-whatsapp-media';
@@ -2148,27 +2176,52 @@
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                 body: JSON.stringify(payload)
             });
-            const data = await res.json();
+
+            let data = {};
+            try {
+                data = await res.json();
+            } catch (_) {
+                data = {};
+            }
+
             if (!res.ok) {
                 showToast(data.error || 'No se pudo enviar el mensaje', 'error');
                 return;
             }
+
+            enviadoOk = true;
             textarea.value = '';
             adjuntosManual = [];
             const inputAdj = document.getElementById('manual-attachments');
             if (inputAdj) inputAdj.value = '';
             renderAdjuntosManual();
             showToast('Respuesta enviada');
-            await cargarBandejaConversaciones();
-            await abrirConversacionBandeja(conversacionSeleccionada.id);
+
+            try {
+                await cargarBandejaConversaciones();
+                const existe = conversacionesBandeja.find(c => c.id === conversationIdActual);
+                if (existe) {
+                    await abrirConversacionBandeja(conversationIdActual);
+                } else if (conversacionSeleccionada?.id === conversationIdActual) {
+                    renderHeaderConversacion(conversacionSeleccionada);
+                }
+            } catch (uiError) {
+                console.warn('Mensaje enviado, pero falló refresco UI:', uiError);
+            }
+
         } catch (err) {
             console.error('Error enviando respuesta manual:', err);
-            showToast('Error enviando respuesta manual', 'error');
+            if (enviadoOk) {
+                showToast('Respuesta enviada, pero no se pudo refrescar la bandeja', 'success');
+            } else {
+                showToast(err.message || 'Error enviando respuesta manual', 'error');
+            }
         } finally {
             btn.disabled = false;
             btn.innerHTML = original;
         }
     }
+
 
 
 
