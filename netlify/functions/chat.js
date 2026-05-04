@@ -896,9 +896,10 @@ if (conversacion.modo_humano === true || conversacion.estado === 'modo_humano') 
         statusCode: 200,
         headers,
         body: JSON.stringify({
-            respuesta: null,
+            respuesta: "Tu mensaje fue recibido. Un asesor humano continuará la conversación.",
             skipped: true,
             motivo: 'modo_humano',
+            modo_humano: true,
             conversation_id: conversationIdFinal
         })
     };
