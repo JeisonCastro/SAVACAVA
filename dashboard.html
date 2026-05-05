@@ -1460,6 +1460,702 @@ button, a, input, textarea, select {
     }
 }
 
+
+/* ════════════════════════════════════════════════════════════════════════
+   FIX PWA MOBILE — BANDEJA OPTIMIZADA + PROBAR AGENTE MODO CLARO
+   Mantiene lógica actual. Solo corrige layout/responsive/legibilidad.
+   ════════════════════════════════════════════════════════════════════════ */
+
+:root{
+    --mobile-top-gap: calc(var(--safe-top, 0px) + .65rem);
+    --mobile-bottom-gap: calc(var(--safe-bottom, 0px) + .55rem);
+}
+
+/* Botón menú flotante no debe tapar título */
+.sidebar-toggle,
+.menu-toggle,
+#sidebar-toggle,
+#menu-toggle,
+.mobile-menu-btn{
+    z-index: 10020 !important;
+}
+
+/* ─── BANDEJA EN MÓVIL / PWA ───────────────────────────────────────────── */
+@media (max-width: 768px) {
+    body{
+        overflow-x: hidden !important;
+    }
+
+    .main-content{
+        width: 100% !important;
+        min-width: 0 !important;
+        padding: calc(var(--safe-top, 0px) + .75rem) .75rem calc(var(--safe-bottom, 0px) + .75rem) !important;
+        overflow-x: hidden !important;
+    }
+
+    /* Encabezado de bandeja compacto */
+    #view-bandeja.active{
+        display: flex !important;
+        flex-direction: column !important;
+        height: calc(100dvh - var(--safe-top, 0px) - var(--safe-bottom, 0px) - 1rem) !important;
+        min-height: 0 !important;
+        overflow: hidden !important;
+        gap: .55rem !important;
+    }
+
+    #view-bandeja .page-header,
+    #view-bandeja .view-header,
+    #view-bandeja .section-header{
+        margin: 0 !important;
+        padding-left: 2.7rem !important;
+        min-height: auto !important;
+    }
+
+    #view-bandeja h1,
+    #view-bandeja .page-title{
+        font-size: clamp(1.35rem, 7vw, 2rem) !important;
+        line-height: 1.02 !important;
+        letter-spacing: -.03em !important;
+        margin: 0 0 .25rem !important;
+        max-width: calc(100vw - 4.2rem) !important;
+    }
+
+    #view-bandeja .page-subtitle,
+    #view-bandeja .view-subtitle,
+    #view-bandeja p{
+        font-size: .85rem !important;
+        line-height: 1.35 !important;
+        margin: 0 !important;
+    }
+
+    /* Botones superiores: 3 columnas compactas */
+    #view-bandeja .top-actions,
+    #view-bandeja .header-actions,
+    #view-bandeja .bandeja-actions{
+        display: grid !important;
+        grid-template-columns: 1fr 1fr 1fr !important;
+        gap: .45rem !important;
+        width: 100% !important;
+        margin: .25rem 0 .35rem !important;
+    }
+
+    #view-bandeja .top-actions button,
+    #view-bandeja .header-actions button,
+    #view-bandeja .bandeja-actions button,
+    #view-bandeja button{
+        min-height: 38px !important;
+        padding: .55rem .7rem !important;
+        border-radius: 12px !important;
+        font-size: .78rem !important;
+    }
+
+    /* Si los botones están sueltos antes de la bandeja, que ocupen menos */
+    #view-bandeja > .pill,
+    #view-bandeja > .btn-small,
+    #view-bandeja > .btn-main{
+        width: 100% !important;
+        min-height: 36px !important;
+    }
+
+    /* Layout de la bandeja en móvil: columna única */
+    .inbox-layout,
+    .bandeja-layout,
+    .conversations-layout,
+    .inbox-grid{
+        display: flex !important;
+        flex-direction: column !important;
+        height: 100% !important;
+        min-height: 0 !important;
+        gap: .55rem !important;
+        overflow: hidden !important;
+    }
+
+    .inbox-sidebar,
+    .conversation-sidebar,
+    .conversations-panel,
+    .inbox-left,
+    .bandeja-left{
+        width: 100% !important;
+        max-width: 100% !important;
+        flex: 0 0 auto !important;
+        min-height: 0 !important;
+        max-height: 42dvh !important;
+        border-radius: 16px !important;
+        overflow: hidden !important;
+    }
+
+    .conversation-detail,
+    .inbox-detail,
+    .chat-panel,
+    .bandeja-chat,
+    .inbox-right{
+        width: 100% !important;
+        max-width: 100% !important;
+        flex: 1 1 auto !important;
+        min-height: 0 !important;
+        border-radius: 16px !important;
+        overflow: hidden !important;
+    }
+
+    /* Filtros compactos */
+    .inbox-filters,
+    .conversation-filters,
+    .bandeja-filters{
+        display: grid !important;
+        grid-template-columns: 1fr 1fr !important;
+        gap: .45rem !important;
+        padding: .65rem !important;
+    }
+
+    .inbox-filters select,
+    .conversation-filters select,
+    .bandeja-filters select,
+    .inbox-filters input,
+    .conversation-filters input,
+    .bandeja-filters input{
+        width: 100% !important;
+        min-width: 0 !important;
+        height: 38px !important;
+        min-height: 38px !important;
+        padding: 0 .8rem !important;
+        font-size: 13px !important;
+        border-radius: 10px !important;
+        line-height: 1 !important;
+        white-space: nowrap !important;
+        text-overflow: ellipsis !important;
+    }
+
+    .inbox-filters select:first-child,
+    .conversation-filters select:first-child,
+    .bandeja-filters select:first-child{
+        grid-column: 1 / -1 !important;
+    }
+
+    .inbox-filters input[type="text"],
+    .conversation-filters input[type="text"],
+    .bandeja-filters input[type="text"],
+    .inbox-search{
+        grid-column: 1 / -1 !important;
+    }
+
+    /* Header interno de conversaciones */
+    .inbox-sidebar-header,
+    .conversation-sidebar-header,
+    .conversations-header,
+    .bandeja-left-header{
+        padding: .75rem .75rem .35rem !important;
+    }
+
+    .inbox-sidebar-header h2,
+    .conversation-sidebar-header h2,
+    .conversations-header h2{
+        font-size: 1rem !important;
+    }
+
+    /* Lista de chats: más compacta */
+    .conversation-list,
+    .inbox-list,
+    .conversations-list{
+        max-height: calc(42dvh - 170px) !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        -webkit-overflow-scrolling: touch !important;
+    }
+
+    .conversation-item,
+    .conv-item,
+    .inbox-conversation-item{
+        min-height: 72px !important;
+        padding: .62rem .75rem !important;
+        gap: .55rem !important;
+    }
+
+    .conversation-item h3,
+    .conv-item h3,
+    .conversation-item .conv-title,
+    .conv-title{
+        font-size: .88rem !important;
+        line-height: 1.15 !important;
+        max-width: 100% !important;
+    }
+
+    .conversation-item p,
+    .conv-item p,
+    .conv-preview,
+    .conversation-preview{
+        font-size: .76rem !important;
+        line-height: 1.25 !important;
+        -webkit-line-clamp: 1 !important;
+        line-clamp: 1 !important;
+        display: -webkit-box !important;
+        -webkit-box-orient: vertical !important;
+        overflow: hidden !important;
+    }
+
+    .conversation-badge,
+    .conv-badge,
+    .channel-badge,
+    .status-badge{
+        font-size: .65rem !important;
+        padding: .18rem .45rem !important;
+        border-radius: 999px !important;
+    }
+
+    /* Chat seleccionado: header + acciones compactas */
+    .conversation-header,
+    .chat-header,
+    .inbox-chat-header{
+        min-height: 58px !important;
+        padding: .6rem .75rem !important;
+        gap: .5rem !important;
+    }
+
+    .conversation-header h2,
+    .chat-header h2,
+    .inbox-chat-header h2{
+        font-size: .98rem !important;
+        line-height: 1.1 !important;
+        max-width: 48vw !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        white-space: nowrap !important;
+    }
+
+    .conversation-header small,
+    .chat-header small,
+    .inbox-chat-header small{
+        font-size: .68rem !important;
+        max-width: 48vw !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        white-space: nowrap !important;
+    }
+
+    .conversation-actions,
+    .chat-actions,
+    .inbox-chat-actions{
+        display: flex !important;
+        gap: .35rem !important;
+        margin-left: auto !important;
+    }
+
+    .conversation-actions button,
+    .chat-actions button,
+    .inbox-chat-actions button{
+        min-height: 34px !important;
+        padding: .45rem .55rem !important;
+        font-size: .72rem !important;
+    }
+
+    /* Área de mensajes dentro del chat */
+    .conversation-messages,
+    #conversation-messages{
+        flex: 1 1 auto !important;
+        min-height: 0 !important;
+        padding: .65rem !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+    }
+
+    #conversation-messages .msg-row > .inbox-msg,
+    .conversation-messages .msg-row > .inbox-msg{
+        max-width: 84% !important;
+        font-size: 12px !important;
+    }
+
+    #conversation-messages .msg-row.media-row > .inbox-msg,
+    .conversation-messages .msg-row.media-row > .inbox-msg{
+        max-width: 260px !important;
+    }
+
+    /* Composer fijo abajo, pero compacto */
+    .manual-reply-box,
+    .reply-box,
+    .composer-box{
+        flex: 0 0 auto !important;
+        padding: .55rem !important;
+        gap: .45rem !important;
+        padding-bottom: calc(.55rem + var(--safe-bottom, 0px)) !important;
+    }
+
+    .manual-reply-box textarea,
+    #manual-message{
+        min-height: 38px !important;
+        max-height: 82px !important;
+        font-size: 16px !important;
+        padding: .65rem .8rem !important;
+        border-radius: 12px !important;
+    }
+
+    .composer-icon-btn,
+    .send-round,
+    #btn-send-manual{
+        width: 38px !important;
+        height: 38px !important;
+        min-width: 38px !important;
+        min-height: 38px !important;
+        border-radius: 12px !important;
+    }
+
+    /* Si el chat aparece debajo de la lista, no debe quedar tapado */
+    .conversation-detail.is-open,
+    .inbox-detail.is-open,
+    .chat-panel.is-open{
+        max-height: 53dvh !important;
+    }
+}
+
+/* En pantallas muy pequeñas, mostrar filtros en modo colapsado visual */
+@media (max-width: 420px) {
+    .inbox-filters,
+    .conversation-filters,
+    .bandeja-filters{
+        padding: .55rem !important;
+        gap: .4rem !important;
+    }
+
+    .inbox-filters select,
+    .conversation-filters select,
+    .bandeja-filters select,
+    .inbox-filters input,
+    .conversation-filters input,
+    .bandeja-filters input{
+        height: 36px !important;
+        min-height: 36px !important;
+        font-size: 12.5px !important;
+    }
+
+    .conversation-list,
+    .inbox-list,
+    .conversations-list{
+        max-height: calc(40dvh - 160px) !important;
+    }
+}
+
+/* ─── MODAL / PROBAR AGENTE — MODO CLARO Y OSCURO ──────────────────────── */
+.test-chat-modal,
+.agent-test-modal,
+#test-chat-modal,
+#agent-test-modal,
+.probar-agente-modal{
+    color: var(--text, #111827) !important;
+}
+
+.test-chat-modal .modal-content,
+.agent-test-modal .modal-content,
+#test-chat-modal .modal-content,
+#agent-test-modal .modal-content,
+.probar-agente-modal .modal-content,
+.test-chat-box,
+.agent-test-box,
+#test-chat-box{
+    background: var(--surface, #ffffff) !important;
+    color: var(--text, #111827) !important;
+    border: 1px solid var(--border, #dbe3ee) !important;
+}
+
+.test-chat-messages,
+.agent-test-messages,
+#test-chat-messages,
+.test-messages{
+    background: var(--bg, #f8fafc) !important;
+    color: var(--text, #111827) !important;
+}
+
+.test-chat-input,
+.agent-test-input,
+#test-chat-input,
+#agent-test-input,
+.test-chat-modal textarea,
+.agent-test-modal textarea,
+.probar-agente-modal textarea{
+    background: var(--bg2, #ffffff) !important;
+    color: var(--text, #111827) !important;
+    border: 1px solid var(--border2, #cbd5e1) !important;
+    opacity: 1 !important;
+}
+
+.test-chat-input::placeholder,
+.agent-test-input::placeholder,
+#test-chat-input::placeholder,
+#agent-test-input::placeholder{
+    color: var(--muted, #64748b) !important;
+    opacity: 1 !important;
+}
+
+.test-chat-send,
+.agent-test-send,
+#test-chat-send,
+#agent-test-send{
+    background: var(--accent, #0ea5e9) !important;
+    color: #ffffff !important;
+}
+
+.test-message.user,
+.test-bubble.user{
+    background: var(--accent, #0ea5e9) !important;
+    color: #ffffff !important;
+}
+
+.test-message.agent,
+.test-message.assistant,
+.test-message.system,
+.test-bubble.agent,
+.test-bubble.assistant,
+.test-bubble.system{
+    background: color-mix(in srgb, var(--surface, #ffffff) 88%, var(--accent, #0ea5e9) 12%) !important;
+    color: var(--text, #111827) !important;
+    border: 1px solid var(--border, #dbe3ee) !important;
+}
+
+/* Fallback si el navegador no soporta color-mix */
+@supports not (background: color-mix(in srgb, #000 50%, #fff 50%)) {
+    .test-message.agent,
+    .test-message.assistant,
+    .test-message.system,
+    .test-bubble.agent,
+    .test-bubble.assistant,
+    .test-bubble.system{
+        background:#e8f1f8 !important;
+        color:#111827 !important;
+    }
+}
+
+/* En modo oscuro conservar contraste */
+body.dark .test-chat-modal .modal-content,
+body.dark .agent-test-modal .modal-content,
+body.dark #test-chat-modal .modal-content,
+body.dark #agent-test-modal .modal-content,
+body.dark .probar-agente-modal .modal-content,
+[data-theme="dark"] .test-chat-modal .modal-content,
+[data-theme="dark"] .agent-test-modal .modal-content,
+[data-theme="dark"] #test-chat-modal .modal-content,
+[data-theme="dark"] #agent-test-modal .modal-content,
+[data-theme="dark"] .probar-agente-modal .modal-content{
+    background:#111827 !important;
+    color:#e5edf7 !important;
+    border-color:#253648 !important;
+}
+
+body.dark .test-chat-messages,
+body.dark .agent-test-messages,
+body.dark #test-chat-messages,
+body.dark .test-messages,
+[data-theme="dark"] .test-chat-messages,
+[data-theme="dark"] .agent-test-messages,
+[data-theme="dark"] #test-chat-messages,
+[data-theme="dark"] .test-messages{
+    background:#07111d !important;
+    color:#e5edf7 !important;
+}
+
+body.dark .test-chat-input,
+body.dark .agent-test-input,
+body.dark #test-chat-input,
+body.dark #agent-test-input,
+body.dark .test-chat-modal textarea,
+body.dark .agent-test-modal textarea,
+body.dark .probar-agente-modal textarea,
+[data-theme="dark"] .test-chat-input,
+[data-theme="dark"] .agent-test-input,
+[data-theme="dark"] #test-chat-input,
+[data-theme="dark"] #agent-test-input,
+[data-theme="dark"] .test-chat-modal textarea,
+[data-theme="dark"] .agent-test-modal textarea,
+[data-theme="dark"] .probar-agente-modal textarea{
+    background:#020617 !important;
+    color:#e5edf7 !important;
+    border-color:#253648 !important;
+}
+
+
+/* ════════════════════════════════════════════════════════════════════════
+   FIX PWA MOBILE V2 — SIDEBAR, BOTÓN MENÚ Y NOTIFICACIONES
+   ════════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 768px) {
+    /* Botón hamburguesa: siempre fuera del logo y con safe-area */
+    .sidebar-toggle,
+    .menu-toggle,
+    #sidebar-toggle,
+    #menu-toggle,
+    .mobile-menu-btn,
+    button[onclick*="toggleSidebar"],
+    button[onclick*="toggleMenu"] {
+        position: fixed !important;
+        top: calc(env(safe-area-inset-top, 0px) + 14px) !important;
+        left: calc(env(safe-area-inset-left, 0px) + 14px) !important;
+        width: 44px !important;
+        height: 44px !important;
+        min-width: 44px !important;
+        min-height: 44px !important;
+        z-index: 30000 !important;
+        border-radius: 12px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        box-shadow: 0 10px 30px rgba(0,0,0,.18) !important;
+    }
+
+    /* Sidebar móvil: baja un poco el contenido para que no choque con el botón */
+    .sidebar {
+        padding-top: calc(env(safe-area-inset-top, 0px) + 76px) !important;
+    }
+
+    .sidebar .logo,
+    .sidebar .logo-row,
+    .sidebar-brand,
+    .brand,
+    .logo {
+        margin-top: 0 !important;
+        padding-left: 10px !important;
+    }
+
+    /* Si el botón está dentro del sidebar, que no empuje ni tape contenido */
+    .sidebar .sidebar-toggle,
+    .sidebar .menu-toggle,
+    .sidebar #sidebar-toggle,
+    .sidebar #menu-toggle,
+    .sidebar .mobile-menu-btn{
+        position: fixed !important;
+    }
+
+    /* En vista bandeja el título necesita espacio para el botón */
+    #view-bandeja .topbar,
+    #view-bandeja .page-header,
+    #view-bandeja .view-header {
+        padding-left: 56px !important;
+    }
+
+    /* Acciones superiores compactas en móvil */
+    #view-bandeja .topbar {
+        display: grid !important;
+        grid-template-columns: 1fr !important;
+        gap: .65rem !important;
+        align-items: start !important;
+    }
+
+    #view-bandeja .topbar-right {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr 1fr !important;
+        gap: .45rem !important;
+        width: 100% !important;
+    }
+
+    #view-bandeja .topbar-right .badge,
+    #view-bandeja .topbar-right button {
+        width: 100% !important;
+        min-height: 34px !important;
+        height: 34px !important;
+        padding: 0 .55rem !important;
+        justify-content: center !important;
+        font-size: .72rem !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+    }
+
+    /* Filtros más compactos sin perder usabilidad */
+    .inbox-toolbar {
+        display: flex !important;
+        align-items: center !important;
+        gap: .5rem !important;
+        padding-bottom: .3rem !important;
+    }
+
+    .inbox-toolbar-title {
+        font-size: .95rem !important;
+        line-height: 1 !important;
+        flex: 1 !important;
+        min-width: 0 !important;
+    }
+
+    .inbox-toolbar .theme-toggle {
+        height: 34px !important;
+        min-height: 34px !important;
+        padding: 0 .65rem !important;
+        font-size: .74rem !important;
+        width: auto !important;
+        flex: 0 0 auto !important;
+    }
+
+    .inbox-filters {
+        grid-template-columns: 1fr 1fr !important;
+        gap: .42rem !important;
+        padding: .58rem !important;
+    }
+
+    .inbox-filters .inbox-toolbar {
+        grid-column: 1 / -1 !important;
+    }
+
+    .inbox-filters > select:first-of-type {
+        grid-column: 1 / -1 !important;
+    }
+
+    .inbox-filter-row {
+        grid-column: 1 / -1 !important;
+        display: grid !important;
+        grid-template-columns: 1fr 1fr !important;
+        gap: .42rem !important;
+    }
+
+    .inbox-search-wrap,
+    .inbox-search,
+    #inbox-search {
+        grid-column: 1 / -1 !important;
+    }
+
+    .inbox-filters select,
+    .inbox-filters input,
+    #inbox-search {
+        height: 36px !important;
+        min-height: 36px !important;
+        font-size: 13px !important;
+        padding-left: .75rem !important;
+        padding-right: .75rem !important;
+        border-radius: 10px !important;
+    }
+
+    /* No dejar que el chat seleccionado se monte sobre la lista */
+    .inbox-layout {
+        min-height: 0 !important;
+    }
+
+    .inbox-sidebar {
+        max-height: 48dvh !important;
+    }
+
+    .conversation-list,
+    #conversation-list {
+        max-height: calc(48dvh - 155px) !important;
+    }
+
+    .inbox-chat,
+    .conversation-detail,
+    .inbox-detail {
+        min-height: 46dvh !important;
+        max-height: 50dvh !important;
+    }
+}
+
+/* Modo instalado: más espacio para Android/iOS barras */
+@media (max-width: 768px) and (display-mode: standalone) {
+    .sidebar-toggle,
+    .menu-toggle,
+    #sidebar-toggle,
+    #menu-toggle,
+    .mobile-menu-btn,
+    button[onclick*="toggleSidebar"],
+    button[onclick*="toggleMenu"] {
+        top: calc(env(safe-area-inset-top, 0px) + 12px) !important;
+    }
+
+    .sidebar {
+        padding-top: calc(env(safe-area-inset-top, 0px) + 74px) !important;
+    }
+}
+
 </style>
 </head>
 <body>
@@ -1878,7 +2574,7 @@ button, a, input, textarea, select {
         actualizarBotonSonido();
 
         if (notificacionesSonidoHabilitadas) {
-            showToast('Sonidos de notificación activados');
+            showToast('Sonidos y notificaciones activados');
             reproducirSonidoNotificacion(true);
             if ('Notification' in window && Notification.permission === 'default') {
                 try { await Notification.requestPermission(); } catch (_) {}
@@ -1909,13 +2605,83 @@ button, a, input, textarea, select {
         }
     }
 
+    function appEstaInstaladaPWA() {
+        return window.matchMedia?.('(display-mode: standalone)')?.matches ||
+               window.navigator.standalone === true;
+    }
+
+    function mostrarNotificacionLocalAuvro(msg) {
+        if (!('Notification' in window)) return;
+        if (Notification.permission !== 'granted') return;
+
+        const body = String(msg?.content || 'Nuevo mensaje').slice(0, 120);
+        const title = msg?.metadata?.canal === 'whatsapp'
+            ? 'Nuevo WhatsApp en AUVRO'
+            : 'Nuevo mensaje en AUVRO';
+
+        try {
+            const n = new Notification(title, {
+                body,
+                icon: '/icon-192.svg',
+                badge: '/icon-192.svg',
+                tag: `auvro-${msg?.conversacion_id || msg?.id || Date.now()}`,
+                renotify: true,
+                vibrate: [160, 80, 160],
+                data: {
+                    conversationId: msg?.conversacion_id || null,
+                    url: '/dashboard.html#bandeja'
+                }
+            });
+
+            n.onclick = () => {
+                window.focus();
+                try {
+                    mostrarVista('bandeja');
+                    if (msg?.conversacion_id && typeof abrirConversacionBandeja === 'function') {
+                        setTimeout(() => abrirConversacionBandeja(msg.conversacion_id), 250);
+                    }
+                } catch (_) {}
+                n.close();
+            };
+        } catch (e) {
+            console.warn('No se pudo mostrar notificación local:', e);
+        }
+    }
+
+    async function activarNotificacionesAuvro() {
+        inicializarPreferenciaSonido();
+
+        if ('Notification' in window && Notification.permission === 'default') {
+            try { await Notification.requestPermission(); } catch (_) {}
+        }
+
+        if ('Notification' in window && Notification.permission === 'granted') {
+            showToast('Notificaciones activadas');
+        } else {
+            showToast('Sonido activado. Notificaciones del sistema no permitidas.');
+        }
+
+        if (!notificacionesSonidoHabilitadas) {
+            notificacionesSonidoHabilitadas = true;
+            try { localStorage.setItem('auvrouter_sound_enabled', '1'); } catch (_) {}
+            actualizarBotonSonido();
+        }
+
+        reproducirSonidoNotificacion(true);
+    }
+
     function notificarMensajeEntrante(msg) {
         if (!msg || msg.role !== 'user') return;
         if (String(msg.id) === String(ultimoMensajeNotificadoId)) return;
+
         ultimoMensajeNotificadoId = msg.id;
+
         reproducirSonidoNotificacion();
-        if (document.hidden && 'Notification' in window && Notification.permission === 'granted') {
-            new Notification('Nuevo mensaje en AUVRO', { body: String(msg.content || 'Nuevo mensaje').slice(0, 100) });
+
+        // En Android/PWA las notificaciones locales funcionan si la app está abierta
+        // o en segundo plano reciente. Para app completamente cerrada se requiere Push real con VAPID.
+        if ('Notification' in window && Notification.permission === 'granted') {
+            mostrarNotificacionLocalAuvro(msg);
         }
     }
 
@@ -2029,7 +2795,7 @@ button, a, input, textarea, select {
         await _supabase.auth.signOut();
         localStorage.clear();
         sessionStorage.clear();
-        window.location.replace('https://jeisondigital.netlify.app/login');
+        window.location.replace('https://jeisondigital.netlify.app/');
     }
 
     // ── CREAR AGENTE ──
