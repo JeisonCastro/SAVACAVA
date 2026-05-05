@@ -2,7 +2,44 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+
+<!-- PWA Core -->
+<meta name="application-name" content="AUVRO">
+<meta name="description" content="Plataforma SaaS de agentes de IA multicanal con WhatsApp y Web">
+<meta name="theme-color" content="#06090f" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#0ea5e9" media="(prefers-color-scheme: light)">
+<meta name="color-scheme" content="dark light">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="AUVRO">
+<meta name="msapplication-TileColor" content="#06090f">
+<meta name="msapplication-tap-highlight" content="no">
+<meta name="format-detection" content="telephone=no">
+
+<!-- Manifest -->
+<link rel="manifest" href="/manifest.json">
+
+<!-- Favicons -->
+<link rel="icon" href="/favicon.ico">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="icon" type="image/svg+xml" href="/icon-192.svg">
+
+<!-- Apple Touch Icons -->
+<link rel="apple-touch-icon" href="/icon-192.svg">
+<link rel="apple-touch-icon" sizes="152x152" href="/icon-152.png">
+<link rel="apple-touch-icon" sizes="167x167" href="/icon-167.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/icon-180.png">
+
+<!-- Apple Splash Screens -->
+<link rel="apple-touch-startup-image" media="screen and (device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="/splash/splash-430x932.png">
+<link rel="apple-touch-startup-image" media="screen and (device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="/splash/splash-393x852.png">
+<link rel="apple-touch-startup-image" media="screen and (device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="/splash/splash-428x926.png">
+<link rel="apple-touch-startup-image" media="screen and (device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="/splash/splash-390x844.png">
+<link rel="apple-touch-startup-image" media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" href="/splash/splash-375x667.png">
+<link rel="apple-touch-startup-image" media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" href="/splash/splash-1024x1366.png">
     <title>Dashboard | Fábrica de Agentes IA</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link rel="icon" href="/favicon.ico" />
@@ -1276,7 +1313,154 @@
             #conversation-messages .msg-row.media-row > .inbox-msg{max-width:260px!important;}
         }
 
-    </style>
+    
+/* ─── PWA / MOBILE OPTIMIZATIONS ─────────────────────────────────────────── */
+:root {
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-left: env(safe-area-inset-left, 0px);
+    --safe-right: env(safe-area-inset-right, 0px);
+}
+
+body {
+    padding-top: var(--safe-top);
+    -webkit-tap-highlight-color: transparent;
+    overscroll-behavior: none;
+}
+
+.main-content {
+    padding-bottom: calc(2rem + var(--safe-bottom));
+}
+
+.sidebar {
+    padding-left: max(1rem, var(--safe-left));
+}
+
+.field input,
+.field textarea,
+.field select,
+.inbox-filters input,
+.inbox-filters select,
+.manual-reply-box textarea,
+#chat-input,
+#manual-message {
+    font-size: max(16px, .88rem) !important;
+}
+
+.btn-main,
+.btn-ghost,
+.btn-small,
+.btn-logout,
+.sidebar nav a,
+.conversation-item,
+.conv-item {
+    min-height: 44px;
+}
+
+* {
+    -webkit-tap-highlight-color: transparent;
+}
+
+button, a, input, textarea, select {
+    touch-action: manipulation;
+}
+
+.conversation-messages,
+.conversation-list,
+.main-content {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+}
+
+.btn-main, .btn-small, .btn-logout, nav a {
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+@media (max-width: 768px) {
+    .toast {
+        bottom: calc(24px + var(--safe-bottom));
+    }
+    .main-content {
+        padding-left: max(.75rem, var(--safe-left));
+        padding-right: max(.75rem, var(--safe-right));
+    }
+}
+
+@media (max-width: 768px) and (display-mode: standalone) {
+    #view-bandeja.active {
+        height: calc(100dvh - var(--safe-top) - var(--safe-bottom) - 4rem);
+    }
+    body.bandeja-active .main-content {
+        height: calc(100dvh - var(--safe-top) - var(--safe-bottom));
+    }
+}
+
+.pwa-install-banner {
+    display: none;
+    position: fixed;
+    bottom: calc(1rem + var(--safe-bottom));
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--surface, #161e2a);
+    border: 1px solid var(--border2, #253648);
+    border-radius: 14px;
+    padding: .75rem 1rem;
+    z-index: 9998;
+    box-shadow: 0 8px 32px rgba(0,0,0,.4);
+    align-items: center;
+    gap: .75rem;
+    max-width: calc(100vw - 2rem);
+    white-space: nowrap;
+}
+.pwa-install-banner.visible { display: flex; }
+.pwa-install-banner-text { font-size: .78rem; color: var(--muted, #7a98b8); line-height: 1.3; }
+.pwa-install-banner-text strong { color: var(--text, #e8f0f8); display: block; font-size: .84rem; }
+.pwa-install-btn {
+    background: var(--accent, #0ea5e9);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 7px 14px;
+    font-family: inherit;
+    font-size: .8rem;
+    font-weight: 500;
+    cursor: pointer;
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+.pwa-install-close {
+    background: none;
+    border: none;
+    color: var(--dim, #4a6580);
+    cursor: pointer;
+    font-size: .9rem;
+    padding: 4px;
+    flex-shrink: 0;
+}
+
+.nav-notif-dot {
+    width: 7px;
+    height: 7px;
+    background: var(--red, #ef4444);
+    border-radius: 50%;
+    margin-left: auto;
+    flex-shrink: 0;
+    display: none;
+}
+.nav-notif-dot.visible { display: block; }
+
+@media (display-mode: standalone) {
+    .main-content {
+        animation: auvroPwaFadeInUp .3s ease both;
+    }
+    @keyframes auvroPwaFadeInUp {
+        from { opacity: 0; transform: translateY(8px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+}
+
+</style>
 </head>
 <body>
 
@@ -3351,6 +3535,135 @@
         await verificarSesion();
         await procesarCallbackComposio();
     })();
+
+
+/* ─── PWA SERVICE WORKER / INSTALL ───────────────────────────────────────── */
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js', { scope: '/' })
+            .then(reg => {
+                console.log('[AUVRO SW] Registrado:', reg.scope);
+
+                reg.addEventListener('updatefound', () => {
+                    const newWorker = reg.installing;
+                    newWorker?.addEventListener('statechange', () => {
+                        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                            if (typeof showToast === 'function') {
+                                showToast('Nueva versión disponible — Recarga para actualizar');
+                            } else {
+                                console.log('[AUVRO SW] Nueva versión disponible');
+                            }
+                        }
+                    });
+                });
+            })
+            .catch(err => console.warn('[AUVRO SW] Error al registrar:', err));
+
+        navigator.serviceWorker.addEventListener('message', event => {
+            if (event.data?.type === 'NOTIFICATION_CLICK') {
+                const convId = event.data.conversationId;
+                if (convId && typeof mostrarVista === 'function') {
+                    mostrarVista('bandeja');
+                    if (typeof abrirConversacionBandeja === 'function') {
+                        setTimeout(() => abrirConversacionBandeja(convId), 400);
+                    }
+                }
+            }
+            if (event.data?.type === 'BACKGROUND_SYNC') {
+                if (typeof cargarBandejaConversaciones === 'function') {
+                    cargarBandejaConversaciones();
+                }
+            }
+        });
+    });
+}
+
+async function solicitarPermisosNotificacion() {
+    if (!('Notification' in window)) return;
+    if (Notification.permission === 'granted') return;
+    if (Notification.permission === 'denied') return;
+
+    const permission = await Notification.requestPermission();
+    if (permission === 'granted') {
+        if (typeof showToast === 'function') showToast('Notificaciones activadas ✓');
+        await suscribirPush();
+    }
+}
+
+async function suscribirPush() {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+    try {
+        const reg = await navigator.serviceWorker.ready;
+        const existing = await reg.pushManager.getSubscription();
+        if (existing) return;
+        console.log('[Push] Listo para suscripción VAPID');
+    } catch (err) {
+        console.warn('[Push] Error al suscribir:', err);
+    }
+}
+
+let _deferredPWAPrompt = null;
+
+window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault();
+    _deferredPWAPrompt = e;
+    try {
+        if (!localStorage.getItem('auvro_pwa_dismissed') && !localStorage.getItem('auvro_pwa_installed')) {
+            document.getElementById('pwa-install-banner')?.classList.add('visible');
+        }
+    } catch(_) {}
+});
+
+async function instalarPWA() {
+    if (!_deferredPWAPrompt) return;
+    _deferredPWAPrompt.prompt();
+    const { outcome } = await _deferredPWAPrompt.userChoice;
+    _deferredPWAPrompt = null;
+    document.getElementById('pwa-install-banner')?.classList.remove('visible');
+    if (outcome === 'accepted') {
+        try { localStorage.setItem('auvro_pwa_installed', '1'); } catch(_) {}
+        if (typeof showToast === 'function') showToast('¡AUVRO instalado correctamente! 🎉');
+        await solicitarPermisosNotificacion();
+    }
+}
+
+function cerrarBannerPWA() {
+    document.getElementById('pwa-install-banner')?.classList.remove('visible');
+    try { localStorage.setItem('auvro_pwa_dismissed', '1'); } catch(_) {}
+}
+
+window.addEventListener('appinstalled', () => {
+    document.getElementById('pwa-install-banner')?.classList.remove('visible');
+    _deferredPWAPrompt = null;
+    try { localStorage.setItem('auvro_pwa_installed', '1'); } catch(_) {}
+    if (typeof showToast === 'function') showToast('AUVRO instalado en tu dispositivo ✓');
+});
+
+setTimeout(() => {
+    try {
+        if ('Notification' in window && Notification.permission === 'default') {
+            solicitarPermisosNotificacion();
+        }
+    } catch(_) {}
+}, 8000);
+
 </script>
+
+<!-- PWA Install Banner -->
+<div class="pwa-install-banner" id="pwa-install-banner">
+    <div>
+        <svg width="32" height="32" viewBox="0 0 32 32" fill="none" style="border-radius:8px;background:rgba(14,165,233,.1);border:1px solid rgba(14,165,233,.2);padding:6px">
+            <polygon points="16,4 26,22 6,22" fill="none" stroke="#0ea5e9" stroke-width="2.5" stroke-linejoin="round"/>
+            <line x1="10" y1="14" x2="22" y2="14" stroke="#0ea5e9" stroke-width="2.5" stroke-linecap="round"/>
+        </svg>
+    </div>
+    <div class="pwa-install-banner-text">
+        <strong>Instalar AUVRO</strong>
+        Agrega a pantalla de inicio
+    </div>
+    <button class="pwa-install-btn" onclick="instalarPWA()">Instalar</button>
+    <button class="pwa-install-close" onclick="cerrarBannerPWA()" aria-label="Cerrar">✕</button>
+</div>
+
 </body>
 </html>
