@@ -2,13 +2,59 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Entrar | AUVRO</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <link rel="icon" href="/favicon.ico" />
+
+<!-- ─── PWA META TAGS ───────────────────────────────────────────────────── -->
+<meta name="application-name" content="AUVRO">
+<meta name="description" content="Plataforma SaaS de agentes de IA multicanal con WhatsApp y Web">
+<meta name="theme-color" content="#06090f" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#0ea5e9" media="(prefers-color-scheme: light)">
+<meta name="color-scheme" content="dark light">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="AUVRO">
+<meta name="msapplication-TileColor" content="#06090f">
+<meta name="msapplication-tap-highlight" content="no">
+<meta name="format-detection" content="telephone=no">
+
+<!-- ─── MANIFEST ────────────────────────────────────────────────────────── -->
+<link rel="manifest" href="/manifest.json">
+
+<!-- ─── FAVICONS ────────────────────────────────────────────────────────── -->
+<link rel="icon" href="/favicon.ico">
 <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="icon" type="image/svg+xml" href="/icon-192.svg">
+
+<!-- ─── APPLE TOUCH ICONS ────────────────────────────────────────────────── -->
+<link rel="apple-touch-icon" href="/icon-192.svg">
+<link rel="apple-touch-icon" sizes="152x152" href="/icon-152.png">
+<link rel="apple-touch-icon" sizes="167x167" href="/icon-167.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/icon-180.png">
+
+<!-- ─── APPLE SPLASH SCREENS (portrait) ──────────────────────────────────── -->
+<!-- iPhone 14 Pro Max -->
+<link rel="apple-touch-startup-image" media="screen and (device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="/splash/splash-430x932.png">
+<!-- iPhone 14 Pro -->
+<link rel="apple-touch-startup-image" media="screen and (device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="/splash/splash-393x852.png">
+<!-- iPhone 14 Plus / 13 Pro Max -->
+<link rel="apple-touch-startup-image" media="screen and (device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="/splash/splash-428x926.png">
+<!-- iPhone 14 / 13 / 12 -->
+<link rel="apple-touch-startup-image" media="screen and (device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="/splash/splash-390x844.png">
+<!-- iPhone SE 3rd gen / 8 / 7 / 6s -->
+<link rel="apple-touch-startup-image" media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" href="/splash/splash-375x667.png">
+<!-- iPad Pro 12.9" -->
+<link rel="apple-touch-startup-image" media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" href="/splash/splash-1024x1366.png">
+<!-- iPad Pro 11" / Air 4 -->
+<link rel="apple-touch-startup-image" media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" href="/splash/splash-834x1194.png">
+
+<!-- ─── FONTS ────────────────────────────────────────────────────────────── -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -23,40 +69,123 @@
   --text:#e8f0f8;
   --muted:#7a98b8;
   --dim:#4a6580;
+  --safe-top:env(safe-area-inset-top, 0px);
+  --safe-bottom:env(safe-area-inset-bottom, 0px);
 }
-body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative}
+html{height:100%;-webkit-text-size-adjust:100%;text-size-adjust:100%}
+body{
+  font-family:'DM Sans',sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  min-height:100%;
+  min-height:100dvh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  overflow:hidden;
+  position:relative;
+  padding-top:var(--safe-top);
+  padding-bottom:var(--safe-bottom);
+  -webkit-tap-highlight-color:transparent;
+  overscroll-behavior:none;
+}
 
-.bg-grid{position:fixed;inset:0;background-image:linear-gradient(var(--border) 1px,transparent 1px),linear-gradient(90deg,var(--border) 1px,transparent 1px);background-size:60px 60px;opacity:.2;pointer-events:none}
+/* BG */
+.bg-grid{position:fixed;inset:0;background-image:linear-gradient(var(--border) 1px,transparent 1px),linear-gradient(90deg,var(--border) 1px,transparent 1px);background-size:60px 60px;opacity:.18;pointer-events:none}
 .bg-glow{position:fixed;top:40%;left:50%;transform:translate(-50%,-50%);width:600px;height:400px;background:radial-gradient(ellipse,rgba(14,165,233,.1) 0%,transparent 70%);pointer-events:none}
 
-.card{position:relative;z-index:1;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:2.5rem 2rem;width:100%;max-width:380px;margin:1rem}
+/* CARD */
+.card{
+  position:relative;z-index:1;
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:20px;
+  padding:2.5rem 2rem;
+  width:100%;
+  max-width:380px;
+  margin:1rem;
+  box-shadow:0 24px 60px rgba(0,0,0,.4);
+}
+@media(max-width:420px){
+  .card{margin:.75rem;padding:2rem 1.5rem;border-radius:18px}
+}
+@media(max-height:700px){
+  .card{padding:1.5rem 1.5rem}
+}
 
+/* LOGO */
 .logo-row{display:flex;align-items:center;gap:8px;margin-bottom:2rem;justify-content:center}
 .logo-dot{width:8px;height:8px;border-radius:50%;background:var(--accent);animation:pulse 2s infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
 .logo-text{font-family:'Syne',sans-serif;font-weight:800;font-size:1rem;letter-spacing:.04em;color:var(--text)}
-
 .card-title{font-family:'Syne',sans-serif;font-size:1.5rem;font-weight:800;color:var(--text);text-align:center;margin-bottom:.4rem}
 .card-sub{font-size:.88rem;color:var(--muted);text-align:center;margin-bottom:2rem;font-weight:300;line-height:1.5}
 
+/* FIELDS */
 .field{margin-bottom:.85rem}
 .field label{display:block;font-size:.78rem;font-weight:500;color:var(--muted);letter-spacing:.05em;text-transform:uppercase;margin-bottom:.4rem}
-.field input{width:100%;padding:11px 14px;background:var(--bg2);border:1px solid var(--border2);border-radius:8px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:.9rem;outline:none;transition:border-color .2s}
+.field input{
+  width:100%;
+  padding:13px 14px;
+  background:var(--bg2);
+  border:1px solid var(--border2);
+  border-radius:10px;
+  color:var(--text);
+  font-family:'DM Sans',sans-serif;
+  font-size:1rem;
+  outline:none;
+  transition:border-color .2s;
+  -webkit-appearance:none;
+  appearance:none;
+}
 .field input:focus{border-color:var(--accent)}
 .field input::placeholder{color:var(--dim)}
 
-.btn-main{width:100%;padding:12px;margin-top:.5rem;background:var(--accent);color:#fff;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-weight:500;font-size:.95rem;cursor:pointer;transition:all .2s;letter-spacing:.01em}
+/* Botones */
+.btn-main{
+  width:100%;
+  padding:14px;
+  margin-top:.5rem;
+  background:var(--accent);
+  color:#fff;
+  border:none;
+  border-radius:12px;
+  font-family:'DM Sans',sans-serif;
+  font-weight:500;
+  font-size:1rem;
+  cursor:pointer;
+  transition:all .2s;
+  letter-spacing:.01em;
+  -webkit-tap-highlight-color:transparent;
+  touch-action:manipulation;
+}
 .btn-main:hover{background:var(--accent2);transform:translateY(-1px)}
-.btn-main:active{transform:translateY(0)}
+.btn-main:active{transform:translateY(1px);opacity:.9}
 
-.btn-ghost{width:100%;padding:11px;margin-top:.6rem;background:transparent;color:var(--green);border:1px solid rgba(34,211,165,.3);border-radius:8px;font-family:'DM Sans',sans-serif;font-weight:400;font-size:.9rem;cursor:pointer;transition:all .2s}
-.btn-ghost:hover{background:rgba(34,211,165,.06);border-color:rgba(34,211,165,.6);transform:translateY(-1px)}
+.btn-ghost{
+  width:100%;
+  padding:13px;
+  margin-top:.6rem;
+  background:transparent;
+  color:var(--green);
+  border:1px solid rgba(34,211,165,.3);
+  border-radius:12px;
+  font-family:'DM Sans',sans-serif;
+  font-weight:400;
+  font-size:.95rem;
+  cursor:pointer;
+  transition:all .2s;
+  -webkit-tap-highlight-color:transparent;
+  touch-action:manipulation;
+}
+.btn-ghost:hover{background:rgba(34,211,165,.06);border-color:rgba(34,211,165,.6)}
+.btn-ghost:active{opacity:.8}
 
 .divider{display:flex;align-items:center;gap:.75rem;margin:1.25rem 0 .5rem}
 .divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--border)}
 .divider span{font-size:.75rem;color:var(--dim);white-space:nowrap}
 
-.msg{font-size:.82rem;text-align:center;margin-top:.85rem;padding:.6rem .85rem;border-radius:7px;display:none}
+.msg{font-size:.82rem;text-align:center;margin-top:.85rem;padding:.6rem .85rem;border-radius:8px;display:none}
 .msg.error{background:rgba(226,75,74,.12);color:#f87171;border:1px solid rgba(226,75,74,.2);display:block}
 .msg.success{background:rgba(34,211,165,.1);color:var(--green);border:1px solid rgba(34,211,165,.2);display:block}
 
@@ -65,6 +194,34 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .loading-dot:nth-child(2){animation-delay:.15s}
 .loading-dot:nth-child(3){animation-delay:.3s}
 @keyframes bounce{0%,100%{transform:translateY(0);opacity:.4}50%{transform:translateY(-5px);opacity:1}}
+
+/* PWA install prompt */
+.pwa-banner{
+  display:none;
+  position:fixed;
+  bottom:calc(1rem + var(--safe-bottom));
+  left:50%;
+  transform:translateX(-50%);
+  background:var(--surface);
+  border:1px solid var(--border2);
+  border-radius:14px;
+  padding:.75rem 1.1rem;
+  font-size:.82rem;
+  color:var(--text);
+  z-index:999;
+  box-shadow:0 8px 32px rgba(0,0,0,.4);
+  display:flex;
+  align-items:center;
+  gap:.75rem;
+  white-space:nowrap;
+  max-width:calc(100vw - 2rem);
+}
+.pwa-banner.hidden{display:none!important}
+.pwa-banner-logo{width:32px;height:32px;border-radius:8px;background:rgba(14,165,233,.1);border:1px solid rgba(14,165,233,.2);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.pwa-banner-text{font-size:.78rem;color:var(--muted);line-height:1.3}
+.pwa-banner-text strong{color:var(--text);display:block}
+.pwa-banner-btn{background:var(--accent);color:#fff;border:none;border-radius:8px;padding:6px 12px;font-family:'DM Sans',sans-serif;font-size:.78rem;font-weight:500;cursor:pointer;flex-shrink:0}
+.pwa-banner-close{background:none;border:none;color:var(--dim);cursor:pointer;font-size:.9rem;padding:4px;flex-shrink:0}
 </style>
 </head>
 <body>
@@ -78,11 +235,11 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
   </div>
 
   <h1 class="card-title">Fábrica de Agentes</h1>
-  <p class="card-sub">Inicia sesión para gestionar tus tokens</p>
+  <p class="card-sub">Inicia sesión para gestionar tus agentes</p>
 
   <div class="field">
     <label>Correo electrónico</label>
-    <input type="email" id="email" placeholder="tu@correo.com" autocomplete="email">
+    <input type="email" id="email" placeholder="tu@correo.com" autocomplete="email" inputmode="email">
   </div>
   <div class="field">
     <label>Contraseña</label>
@@ -96,20 +253,36 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
   <button class="btn-ghost" onclick="registrar()">Crear cuenta nueva</button>
 
   <div class="loading" id="loading">
-    <span class="loading-dot"></span>
-    <span class="loading-dot"></span>
-    <span class="loading-dot"></span>
+    <span class="loading-dot"></span><span class="loading-dot"></span><span class="loading-dot"></span>
   </div>
   <div class="msg" id="msg"></div>
 </div>
 
+<!-- PWA Install Banner -->
+<div class="pwa-banner hidden" id="pwa-banner">
+  <div class="pwa-banner-logo">
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <polygon points="10,2 17,14 3,14" fill="none" stroke="#0ea5e9" stroke-width="2.2" stroke-linejoin="round"/>
+      <line x1="6.5" y1="9.5" x2="13.5" y2="9.5" stroke="#0ea5e9" stroke-width="2" stroke-linecap="round"/>
+    </svg>
+  </div>
+  <div class="pwa-banner-text">
+    <strong>Instalar AUVRO</strong>
+    Agrega la app a tu pantalla de inicio
+  </div>
+  <button class="pwa-banner-btn" onclick="instalarPWA()">Instalar</button>
+  <button class="pwa-banner-close" onclick="cerrarBanner()" aria-label="Cerrar">✕</button>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 const CONFIG = {
-  URL: "https://zsxkfqnalkfvwjrzuqip.supabase.co".trim(),
-  ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzeGtmcW5hbGtmdndqcnp1cWlwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0NDgyODMsImV4cCI6MjA5MjAyNDI4M30.R4j23l3IHEL966VupeR-Sx_KtDQzB8NzfJtEVDGewGs".trim()
+  URL: "https://zsxkfqnalkfvwjrzuqip.supabase.co",
+  ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzeGtmcW5hbGtmdndqcnp1cWlwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0NDgyODMsImV4cCI6MjA5MjAyNDI4M30.R4j23l3IHEL966VupeR-Sx_KtDQzB8NzfJtEVDGewGs"
 };
 const _supabase = supabase.createClient(CONFIG.URL, CONFIG.ANON_KEY);
 
+/* ─── UI ─────────────────────────────────────────────────────────────────── */
 function showMsg(text, type) {
   const el = document.getElementById('msg');
   el.textContent = text;
@@ -120,12 +293,13 @@ function setLoading(on) {
   document.getElementById('msg').className = 'msg';
 }
 
+/* ─── AUTH ───────────────────────────────────────────────────────────────── */
 async function registrar() {
   const email = document.getElementById('email').value.trim();
   const password = document.getElementById('password').value;
   if (!email || !password) return showMsg('Completa todos los campos', 'error');
   setLoading(true);
-  const { data, error } = await _supabase.auth.signUp({ email, password });
+  const { error } = await _supabase.auth.signUp({ email, password });
   setLoading(false);
   if (error) showMsg('Error: ' + error.message, 'error');
   else showMsg('¡Cuenta creada! Revisa tu correo para confirmar.', 'success');
@@ -136,14 +310,68 @@ async function entrar() {
   const password = document.getElementById('password').value;
   if (!email || !password) return showMsg('Completa todos los campos', 'error');
   setLoading(true);
-  const { data, error } = await _supabase.auth.signInWithPassword({ email, password });
+  const { error } = await _supabase.auth.signInWithPassword({ email, password });
   setLoading(false);
   if (error) showMsg('Error: ' + error.message, 'error');
   else window.location.href = 'dashboard.html';
 }
 
-document.addEventListener('keydown', e => {
-  if (e.key === 'Enter') entrar();
+document.addEventListener('keydown', e => { if (e.key === 'Enter') entrar(); });
+
+/* ─── SERVICE WORKER ─────────────────────────────────────────────────────── */
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js', { scope: '/' })
+      .then(reg => {
+        console.log('[SW] Registrado:', reg.scope);
+        // Verificar actualizaciones
+        reg.addEventListener('updatefound', () => {
+          const newWorker = reg.installing;
+          newWorker?.addEventListener('statechange', () => {
+            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+              console.log('[SW] Nueva versión disponible');
+            }
+          });
+        });
+      })
+      .catch(err => console.warn('[SW] Error:', err));
+  });
+}
+
+/* ─── PWA INSTALL BANNER ─────────────────────────────────────────────────── */
+let deferredPrompt = null;
+
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredPrompt = e;
+  // Mostrar banner solo si no lo rechazaron antes
+  try {
+    if (!localStorage.getItem('auvro_pwa_dismissed')) {
+      document.getElementById('pwa-banner').classList.remove('hidden');
+    }
+  } catch(_) {}
+});
+
+async function instalarPWA() {
+  if (!deferredPrompt) return;
+  deferredPrompt.prompt();
+  const { outcome } = await deferredPrompt.userChoice;
+  deferredPrompt = null;
+  document.getElementById('pwa-banner').classList.add('hidden');
+  if (outcome === 'accepted') {
+    try { localStorage.setItem('auvro_pwa_installed', '1'); } catch(_) {}
+  }
+}
+
+function cerrarBanner() {
+  document.getElementById('pwa-banner').classList.add('hidden');
+  try { localStorage.setItem('auvro_pwa_dismissed', '1'); } catch(_) {}
+}
+
+window.addEventListener('appinstalled', () => {
+  document.getElementById('pwa-banner').classList.add('hidden');
+  deferredPrompt = null;
+  console.log('[PWA] App instalada correctamente');
 });
 </script>
 </body>
