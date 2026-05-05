@@ -1460,6 +1460,330 @@ button, a, input, textarea, select {
     }
 }
 
+
+/* ════════════════════════════════════════════════════════════════════════
+   FIX QUIRURGICO MOBILE/PWA — BOTON MENU SIN BLOQUEAR SCROLL
+   Solo corrige la superposición del botón hamburguesa con el logo.
+   No modifica layout, alturas, overflow ni navegación.
+   ════════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 768px) {
+    .mob-toggle {
+        position: fixed !important;
+        top: calc(env(safe-area-inset-top, 0px) + 14px) !important;
+        left: calc(env(safe-area-inset-left, 0px) + 14px) !important;
+        width: 42px !important;
+        height: 42px !important;
+        min-width: 42px !important;
+        min-height: 42px !important;
+        z-index: 1005 !important;
+        border-radius: 12px !important;
+        pointer-events: auto !important;
+        touch-action: manipulation !important;
+    }
+
+    .sidebar {
+        padding-top: calc(env(safe-area-inset-top, 0px) + 72px) !important;
+    }
+
+    .sidebar-logo {
+        margin-top: 0 !important;
+        margin-bottom: 1.35rem !important;
+        padding-left: .35rem !important;
+        padding-right: .35rem !important;
+    }
+
+    .logo-text {
+        max-width: 160px !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        white-space: nowrap !important;
+    }
+
+    .plan-badge-sidebar {
+        margin-top: 0 !important;
+    }
+}
+
+@media (max-width: 390px) {
+    .sidebar {
+        padding-top: calc(env(safe-area-inset-top, 0px) + 78px) !important;
+    }
+}
+
+
+/* ════════════════════════════════════════════════════════════════════════
+   FIX MOBILE BANDEJA — FILTROS COLAPSABLES Y COMPACTOS
+   Mantiene funcionalidades. Solo optimiza espacio en móvil/PWA.
+   ════════════════════════════════════════════════════════════════════════ */
+
+.mobile-filter-toggle,
+.mobile-filter-summary {
+    display: none;
+}
+
+@media (max-width: 768px) {
+    /* Topbar más eficiente */
+    #view-bandeja.active .topbar {
+        gap: .65rem !important;
+        margin-bottom: .65rem !important;
+    }
+
+    #view-bandeja.active .page-title {
+        font-size: clamp(1.45rem, 8vw, 2rem) !important;
+        line-height: 1.02 !important;
+        margin-bottom: .25rem !important;
+        padding-left: 3rem !important;
+    }
+
+    #view-bandeja.active .page-sub {
+        font-size: .82rem !important;
+        line-height: 1.32 !important;
+        padding-left: 3rem !important;
+    }
+
+    #view-bandeja.active .topbar-right {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr 1fr !important;
+        gap: .42rem !important;
+        width: 100% !important;
+        flex-direction: unset !important;
+        align-items: stretch !important;
+    }
+
+    #view-bandeja.active .topbar-right .badge,
+    #view-bandeja.active .topbar-right button {
+        width: 100% !important;
+        height: 34px !important;
+        min-height: 34px !important;
+        padding: 0 .45rem !important;
+        border-radius: 999px !important;
+        justify-content: center !important;
+        font-size: .68rem !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+    }
+
+    #view-bandeja.active .topbar-right button i,
+    #view-bandeja.active .topbar-right .badge i {
+        margin-right: .25rem !important;
+    }
+
+    /* Bandeja más alta para ver conversaciones */
+    #view-bandeja.active {
+        height: auto !important;
+        min-height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - .75rem) !important;
+        overflow: visible !important;
+    }
+
+    body.bandeja-active {
+        overflow: auto !important;
+    }
+
+    body.bandeja-active .main-content {
+        height: auto !important;
+        overflow: visible !important;
+    }
+
+    .inbox-layout {
+        border-radius: 14px !important;
+        min-height: calc(100dvh - 215px) !important;
+        overflow: hidden !important;
+    }
+
+    .inbox-sidebar {
+        height: auto !important;
+        max-height: none !important;
+        min-height: 0 !important;
+    }
+
+    /* Filtros compactos */
+    .inbox-filters {
+        padding: .55rem !important;
+        gap: .45rem !important;
+    }
+
+    .inbox-toolbar {
+        display: grid !important;
+        grid-template-columns: minmax(0, 1fr) auto auto !important;
+        align-items: center !important;
+        gap: .45rem !important;
+        margin: 0 !important;
+    }
+
+    .inbox-toolbar-title {
+        font-size: .95rem !important;
+        line-height: 1 !important;
+        min-width: 0 !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        white-space: nowrap !important;
+    }
+
+    .theme-toggle {
+        height: 32px !important;
+        min-height: 32px !important;
+        padding: 0 .62rem !important;
+        font-size: .7rem !important;
+        border-radius: 999px !important;
+        width: auto !important;
+    }
+
+    .mobile-filter-toggle {
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: .35rem !important;
+        height: 32px !important;
+        min-height: 32px !important;
+        padding: 0 .68rem !important;
+        border-radius: 999px !important;
+        border: 1px solid var(--border2) !important;
+        background: var(--surface) !important;
+        color: var(--accent) !important;
+        font-family: 'DM Sans', sans-serif !important;
+        font-size: .7rem !important;
+        cursor: pointer !important;
+        white-space: nowrap !important;
+    }
+
+    .mobile-filter-summary {
+        display: flex !important;
+        grid-column: 1 / -1 !important;
+        align-items: center !important;
+        gap: .35rem !important;
+        min-height: 26px !important;
+        padding: .22rem .55rem !important;
+        border-radius: 999px !important;
+        background: rgba(14,165,233,.08) !important;
+        border: 1px solid rgba(14,165,233,.16) !important;
+        color: var(--muted) !important;
+        font-size: .68rem !important;
+        overflow: hidden !important;
+        white-space: nowrap !important;
+        text-overflow: ellipsis !important;
+    }
+
+    .mobile-filter-summary strong {
+        color: var(--accent) !important;
+        font-weight: 700 !important;
+    }
+
+    /* Controles de filtros cuando están desplegados */
+    .inbox-filters > select,
+    .inbox-filter-row,
+    .inbox-search-wrap {
+        display: block !important;
+    }
+
+    .inbox-filter-row {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr !important;
+        gap: .42rem !important;
+    }
+
+    .inbox-filters select,
+    .inbox-filters input {
+        height: 34px !important;
+        min-height: 34px !important;
+        padding: 0 .68rem !important;
+        font-size: 12.5px !important;
+        border-radius: 10px !important;
+    }
+
+    .inbox-search-wrap input {
+        padding-left: 32px !important;
+    }
+
+    .inbox-search-wrap i {
+        left: 11px !important;
+        font-size: .72rem !important;
+    }
+
+    /* Estado colapsado por defecto en móvil */
+    .inbox-filters.filters-collapsed > select,
+    .inbox-filters.filters-collapsed .inbox-filter-row,
+    .inbox-filters.filters-collapsed .inbox-search-wrap {
+        display: none !important;
+    }
+
+    .inbox-filters.filters-collapsed {
+        padding-bottom: .5rem !important;
+    }
+
+    .inbox-filters.filters-collapsed .mobile-filter-toggle {
+        background: rgba(14,165,233,.12) !important;
+        border-color: rgba(14,165,233,.28) !important;
+    }
+
+    .inbox-filters:not(.filters-collapsed) .mobile-filter-toggle {
+        background: rgba(34,211,165,.1) !important;
+        border-color: rgba(34,211,165,.24) !important;
+        color: var(--green) !important;
+    }
+
+    /* Más espacio visible para la lista cuando filtros están colapsados */
+    .inbox-filters.filters-collapsed + .conversation-list {
+        min-height: 310px !important;
+    }
+
+    .conversation-list {
+        max-height: none !important;
+    }
+
+    .conversation-item {
+        min-height: 68px !important;
+        padding: .58rem .72rem !important;
+    }
+
+    .conversation-avatar {
+        width: 28px !important;
+        height: 28px !important;
+    }
+
+    .conversation-name {
+        font-size: .78rem !important;
+    }
+
+    .conversation-preview {
+        font-size: .68rem !important;
+        -webkit-line-clamp: 1 !important;
+        line-clamp: 1 !important;
+    }
+
+    .conversation-meta {
+        margin-top: .28rem !important;
+        margin-bottom: .32rem !important;
+    }
+}
+
+@media (max-width: 420px) {
+    #view-bandeja.active .topbar-right {
+        grid-template-columns: 1fr 1fr !important;
+    }
+
+    #view-bandeja.active .topbar-right .badge {
+        grid-column: 1 / -1 !important;
+    }
+
+    .inbox-toolbar {
+        grid-template-columns: minmax(0, 1fr) auto !important;
+    }
+
+    .theme-toggle {
+        display: none !important;
+    }
+
+    .mobile-filter-toggle {
+        padding: 0 .6rem !important;
+    }
+
+    .inbox-filter-row {
+        grid-template-columns: 1fr !important;
+    }
+}
+
 </style>
 </head>
 <body>
@@ -3646,6 +3970,157 @@ setTimeout(() => {
         }
     } catch(_) {}
 }, 8000);
+
+
+
+/* FIX QUIRURGICO: cerrar sidebar móvil al tocar una opción */
+(function(){
+    document.addEventListener('click', function(e){
+        const navItem = e.target.closest && e.target.closest('.sidebar nav a');
+        if (navItem && window.innerWidth <= 768) {
+            setTimeout(function(){
+                const sidebar = document.querySelector('.sidebar');
+                if (sidebar) sidebar.classList.remove('open');
+            }, 80);
+        }
+    }, true);
+})();
+
+
+
+/* ─── FILTROS COLAPSABLES EN BANDEJA MOBILE/PWA ─────────────────────────── */
+(function(){
+    function resumenFiltrosBandeja() {
+        const agent = document.getElementById('inbox-agent-filter');
+        const status = document.getElementById('inbox-status-filter');
+        const channel = document.getElementById('inbox-channel-filter');
+        const search = document.getElementById('inbox-search');
+
+        const partes = [];
+
+        if (agent && agent.value) {
+            partes.push(agent.options[agent.selectedIndex]?.text || 'Agente');
+        }
+
+        if (status && status.value) {
+            partes.push(status.options[status.selectedIndex]?.text || 'Estado');
+        }
+
+        if (channel && channel.value) {
+            partes.push(channel.options[channel.selectedIndex]?.text || 'Canal');
+        }
+
+        if (search && search.value.trim()) {
+            partes.push('Busca: ' + search.value.trim().slice(0, 24));
+        }
+
+        return partes.length ? partes.join(' · ') : 'Sin filtros activos';
+    }
+
+    function actualizarResumenFiltrosBandeja() {
+        const summary = document.getElementById('mobile-filter-summary');
+        if (!summary) return;
+
+        const txt = resumenFiltrosBandeja();
+        const activos = txt !== 'Sin filtros activos';
+
+        summary.innerHTML = activos
+            ? '<i class="fas fa-filter"></i> <strong>Activo:</strong> ' + txt
+            : '<i class="fas fa-filter"></i> Sin filtros activos';
+    }
+
+    function setFiltrosColapsados(colapsar) {
+        const filters = document.querySelector('#view-bandeja .inbox-filters');
+        const btn = document.getElementById('mobile-filter-toggle');
+        if (!filters || !btn) return;
+
+        filters.classList.toggle('filters-collapsed', !!colapsar);
+        btn.innerHTML = colapsar
+            ? '<i class="fas fa-sliders"></i> Filtros'
+            : '<i class="fas fa-chevron-up"></i> Ocultar';
+
+        try { localStorage.setItem('auvro_inbox_filters_collapsed', colapsar ? '1' : '0'); } catch (_) {}
+        actualizarResumenFiltrosBandeja();
+    }
+
+    function inicializarFiltrosMobileBandeja() {
+        const filters = document.querySelector('#view-bandeja .inbox-filters');
+        const toolbar = document.querySelector('#view-bandeja .inbox-toolbar');
+
+        if (!filters || !toolbar || document.getElementById('mobile-filter-toggle')) {
+            actualizarResumenFiltrosBandeja();
+            return;
+        }
+
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.id = 'mobile-filter-toggle';
+        btn.className = 'mobile-filter-toggle';
+        btn.innerHTML = '<i class="fas fa-sliders"></i> Filtros';
+        btn.onclick = function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            setFiltrosColapsados(!filters.classList.contains('filters-collapsed'));
+        };
+
+        toolbar.appendChild(btn);
+
+        const summary = document.createElement('div');
+        summary.id = 'mobile-filter-summary';
+        summary.className = 'mobile-filter-summary';
+        summary.innerHTML = '<i class="fas fa-filter"></i> Sin filtros activos';
+        filters.insertBefore(summary, toolbar.nextSibling);
+
+        ['inbox-agent-filter','inbox-status-filter','inbox-channel-filter','inbox-search'].forEach(id => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.addEventListener('change', actualizarResumenFiltrosBandeja);
+            el.addEventListener('input', actualizarResumenFiltrosBandeja);
+        });
+
+        let collapsed = true;
+        try {
+            const stored = localStorage.getItem('auvro_inbox_filters_collapsed');
+            collapsed = stored === null ? true : stored === '1';
+        } catch (_) {}
+
+        if (window.innerWidth <= 768) {
+            setFiltrosColapsados(collapsed);
+        } else {
+            setFiltrosColapsados(false);
+        }
+    }
+
+    window.inicializarFiltrosMobileBandeja = inicializarFiltrosMobileBandeja;
+    window.actualizarResumenFiltrosBandeja = actualizarResumenFiltrosBandeja;
+
+    const _mostrarVistaOriginal = window.mostrarVista;
+    if (typeof _mostrarVistaOriginal === 'function' && !_mostrarVistaOriginal.__filtersPatch) {
+        const patched = function(vista) {
+            const result = _mostrarVistaOriginal.apply(this, arguments);
+            if (vista === 'bandeja') {
+                setTimeout(inicializarFiltrosMobileBandeja, 120);
+            }
+            return result;
+        };
+        patched.__filtersPatch = true;
+        window.mostrarVista = patched;
+    }
+
+    document.addEventListener('DOMContentLoaded', function(){
+        setTimeout(inicializarFiltrosMobileBandeja, 250);
+    });
+
+    window.addEventListener('resize', function(){
+        const filters = document.querySelector('#view-bandeja .inbox-filters');
+        if (!filters) return;
+        if (window.innerWidth > 768) {
+            filters.classList.remove('filters-collapsed');
+        } else if (!document.getElementById('mobile-filter-toggle')) {
+            inicializarFiltrosMobileBandeja();
+        }
+    });
+})();
 
 </script>
 
