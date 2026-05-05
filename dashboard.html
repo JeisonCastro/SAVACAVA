@@ -2113,6 +2113,143 @@ button, a, input, textarea, select {
     }
 }
 
+
+/* ════════════════════════════════════════════════════════════════════════
+   FIX MOBILE BANDEJA V9 — SCROLL REAL EN LISTA + CHAT TIPO WHATSAPP
+   La lista de conversaciones hace scroll interno en toda el área visible.
+   ════════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 768px) {
+    body.bandeja-active {
+        overflow: hidden !important;
+        height: 100dvh !important;
+        min-height: 100dvh !important;
+    }
+
+    body.bandeja-active .main-content {
+        height: 100dvh !important;
+        min-height: 100dvh !important;
+        overflow: hidden !important;
+        padding-bottom: calc(env(safe-area-inset-bottom, 0px) + .65rem) !important;
+    }
+
+    #view-bandeja.active {
+        height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - .5rem) !important;
+        min-height: 0 !important;
+        display: flex !important;
+        flex-direction: column !important;
+        overflow: hidden !important;
+        gap: .55rem !important;
+    }
+
+    #view-bandeja.active .topbar {
+        flex: 0 0 auto !important;
+        margin-bottom: 0 !important;
+    }
+
+    .inbox-layout {
+        display: flex !important;
+        flex-direction: column !important;
+        flex: 1 1 auto !important;
+        min-height: 0 !important;
+        height: auto !important;
+        overflow: hidden !important;
+        border-radius: 14px !important;
+    }
+
+    .inbox-sidebar {
+        display: flex !important;
+        flex-direction: column !important;
+        flex: 1 1 auto !important;
+        width: 100% !important;
+        height: auto !important;
+        min-height: 0 !important;
+        max-height: none !important;
+        overflow: hidden !important;
+        border-right: none !important;
+        border-bottom: none !important;
+    }
+
+    .inbox-filters {
+        flex: 0 0 auto !important;
+        position: relative !important;
+        top: auto !important;
+        z-index: 8 !important;
+    }
+
+    #conversation-list,
+    .conversation-list {
+        display: block !important;
+        flex: 1 1 auto !important;
+        height: auto !important;
+        min-height: 0 !important;
+        max-height: none !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        -webkit-overflow-scrolling: touch !important;
+        overscroll-behavior: contain !important;
+        touch-action: pan-y !important;
+        padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 1rem) !important;
+        scrollbar-width: thin !important;
+    }
+
+    #conversation-list * {
+        touch-action: pan-y !important;
+    }
+
+    .conversation-item {
+        touch-action: pan-y !important;
+        pointer-events: auto !important;
+    }
+
+    .inbox-panel {
+        position: fixed !important;
+        inset: 0 !important;
+        z-index: 20000 !important;
+        width: 100vw !important;
+        height: 100dvh !important;
+        max-height: 100dvh !important;
+        min-height: 100dvh !important;
+        margin: 0 !important;
+        border-radius: 0 !important;
+        transform: translateX(105%) !important;
+        transition: transform .22s ease !important;
+        display: flex !important;
+        flex-direction: column !important;
+        overflow: hidden !important;
+        background: var(--chat-panel) !important;
+        border: none !important;
+    }
+
+    body.mobile-chat-open .inbox-panel {
+        transform: translateX(0) !important;
+    }
+
+    body.mobile-chat-open {
+        overflow: hidden !important;
+    }
+
+    #conversation-messages,
+    .conversation-messages {
+        flex: 1 1 auto !important;
+        height: auto !important;
+        min-height: 0 !important;
+        max-height: none !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        -webkit-overflow-scrolling: touch !important;
+        overscroll-behavior: contain !important;
+        touch-action: pan-y !important;
+    }
+
+    .inbox-filters:not(.filters-collapsed) + #conversation-list,
+    .inbox-filters:not(.filters-collapsed) + .conversation-list {
+        flex: 1 1 auto !important;
+        min-height: 0 !important;
+        overflow-y: auto !important;
+    }
+}
+
 </style>
 </head>
 <body>
