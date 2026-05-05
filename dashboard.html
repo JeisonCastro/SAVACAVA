@@ -1784,6 +1784,335 @@ button, a, input, textarea, select {
     }
 }
 
+
+/* ════════════════════════════════════════════════════════════════════════
+   FIX MOBILE BANDEJA V7 — SCROLL INTERNO REAL EN LISTA DE CHATS
+   Corrige que en móvil/PWA no se pueda deslizar la bandeja.
+   No modifica lógica ni flujo de atención.
+   ════════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 768px) {
+    html,
+    body {
+        height: auto !important;
+        min-height: 100% !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        overscroll-behavior-y: auto !important;
+    }
+
+    body.bandeja-active {
+        height: auto !important;
+        min-height: 100dvh !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        position: relative !important;
+    }
+
+    body.bandeja-active .main-content {
+        height: auto !important;
+        min-height: 100dvh !important;
+        overflow-y: visible !important;
+        overflow-x: hidden !important;
+        padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 1rem) !important;
+    }
+
+    #view-bandeja.active {
+        height: auto !important;
+        min-height: 0 !important;
+        overflow: visible !important;
+        display: block !important;
+    }
+
+    #view-bandeja.active .topbar {
+        flex: 0 0 auto !important;
+    }
+
+    .inbox-layout {
+        display: flex !important;
+        flex-direction: column !important;
+        height: auto !important;
+        min-height: 0 !important;
+        max-height: none !important;
+        overflow: visible !important;
+    }
+
+    .inbox-sidebar {
+        width: 100% !important;
+        max-width: 100% !important;
+        height: auto !important;
+        max-height: none !important;
+        min-height: 0 !important;
+        overflow: hidden !important;
+        display: flex !important;
+        flex-direction: column !important;
+        flex: 0 0 auto !important;
+    }
+
+    .inbox-filters {
+        flex: 0 0 auto !important;
+    }
+
+    #conversation-list,
+    .conversation-list {
+        flex: 0 0 auto !important;
+        height: min(52dvh, 520px) !important;
+        max-height: min(52dvh, 520px) !important;
+        min-height: 280px !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        -webkit-overflow-scrolling: touch !important;
+        overscroll-behavior: contain !important;
+        touch-action: pan-y !important;
+        scrollbar-width: thin !important;
+    }
+
+    .inbox-panel {
+        height: auto !important;
+        min-height: 56dvh !important;
+        max-height: none !important;
+        overflow: hidden !important;
+        display: flex !important;
+        flex-direction: column !important;
+        flex: 0 0 auto !important;
+        margin-top: .75rem !important;
+    }
+
+    #conversation-messages,
+    .conversation-messages {
+        height: 45dvh !important;
+        min-height: 260px !important;
+        max-height: 52dvh !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        -webkit-overflow-scrolling: touch !important;
+        overscroll-behavior: contain !important;
+        touch-action: pan-y !important;
+    }
+
+    .manual-reply-box {
+        flex: 0 0 auto !important;
+    }
+}
+
+/* En PWA instalada, dar un poco más de alto útil a la lista */
+@media (max-width: 768px) and (display-mode: standalone) {
+    #conversation-list,
+    .conversation-list {
+        height: min(56dvh, 560px) !important;
+        max-height: min(56dvh, 560px) !important;
+    }
+
+    #conversation-messages,
+    .conversation-messages {
+        height: 48dvh !important;
+        max-height: 55dvh !important;
+    }
+}
+
+
+/* ════════════════════════════════════════════════════════════════════════
+   FIX MOBILE BANDEJA V8 — MODO WHATSAPP
+   Lista con scroll amplio + chat en pantalla completa al abrir conversación.
+   ════════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 768px) {
+    body.bandeja-active {
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        touch-action: pan-y !important;
+    }
+
+    #view-bandeja.active {
+        display: block !important;
+        overflow: visible !important;
+        height: auto !important;
+        min-height: 100dvh !important;
+    }
+
+    .inbox-layout {
+        display: block !important;
+        height: auto !important;
+        min-height: 0 !important;
+        overflow: visible !important;
+        border-radius: 14px !important;
+    }
+
+    .inbox-sidebar {
+        display: flex !important;
+        flex-direction: column !important;
+        width: 100% !important;
+        height: auto !important;
+        min-height: calc(100dvh - 250px) !important;
+        max-height: none !important;
+        overflow: visible !important;
+        border-right: none !important;
+    }
+
+    .inbox-filters {
+        flex: 0 0 auto !important;
+        position: sticky !important;
+        top: 0 !important;
+        z-index: 8 !important;
+        background: var(--surface) !important;
+    }
+
+    #conversation-list,
+    .conversation-list {
+        display: block !important;
+        flex: none !important;
+        height: auto !important;
+        max-height: none !important;
+        min-height: 420px !important;
+        overflow: visible !important;
+        touch-action: pan-y !important;
+        -webkit-overflow-scrolling: touch !important;
+        padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 1.25rem) !important;
+    }
+
+    .conversation-item {
+        touch-action: manipulation !important;
+        user-select: none !important;
+        -webkit-user-select: none !important;
+    }
+
+    .inbox-panel {
+        position: fixed !important;
+        inset: 0 !important;
+        z-index: 20000 !important;
+        width: 100vw !important;
+        height: 100dvh !important;
+        max-height: 100dvh !important;
+        min-height: 100dvh !important;
+        margin: 0 !important;
+        border-radius: 0 !important;
+        transform: translateX(105%) !important;
+        transition: transform .22s ease !important;
+        display: flex !important;
+        flex-direction: column !important;
+        overflow: hidden !important;
+        background: var(--chat-panel) !important;
+        border: none !important;
+    }
+
+    body.mobile-chat-open .inbox-panel {
+        transform: translateX(0) !important;
+    }
+
+    body.mobile-chat-open {
+        overflow: hidden !important;
+    }
+
+    body.mobile-chat-open .mob-toggle {
+        display: none !important;
+    }
+
+    .mobile-chat-back {
+        display: none;
+    }
+
+    body.mobile-chat-open .mobile-chat-back {
+        display: inline-flex !important;
+    }
+
+    .inbox-panel-header {
+        min-height: calc(env(safe-area-inset-top, 0px) + 64px) !important;
+        padding: calc(env(safe-area-inset-top, 0px) + .55rem) .7rem .55rem !important;
+        gap: .5rem !important;
+        flex: 0 0 auto !important;
+        border-radius: 0 !important;
+    }
+
+    .mobile-chat-back {
+        width: 38px !important;
+        height: 38px !important;
+        min-width: 38px !important;
+        min-height: 38px !important;
+        border-radius: 999px !important;
+        border: 1px solid var(--border2) !important;
+        background: var(--bg2) !important;
+        color: var(--text) !important;
+        align-items: center !important;
+        justify-content: center !important;
+        cursor: pointer !important;
+        margin-right: .35rem !important;
+        touch-action: manipulation !important;
+    }
+
+    .inbox-contact {
+        min-width: 0 !important;
+        flex: 1 1 auto !important;
+    }
+
+    .inbox-contact-avatar {
+        width: 34px !important;
+        height: 34px !important;
+        flex: 0 0 auto !important;
+    }
+
+    .inbox-header-title {
+        max-width: 42vw !important;
+        font-size: .9rem !important;
+        line-height: 1.1 !important;
+    }
+
+    .inbox-header-sub {
+        max-width: 46vw !important;
+        font-size: .68rem !important;
+    }
+
+    .inbox-actions {
+        flex: 0 0 auto !important;
+        gap: .3rem !important;
+    }
+
+    .inbox-actions .btn-small {
+        min-height: 34px !important;
+        height: 34px !important;
+        padding: 0 .55rem !important;
+        font-size: .68rem !important;
+        border-radius: 10px !important;
+    }
+
+    #conversation-messages,
+    .conversation-messages {
+        flex: 1 1 auto !important;
+        height: auto !important;
+        min-height: 0 !important;
+        max-height: none !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        -webkit-overflow-scrolling: touch !important;
+        overscroll-behavior: contain !important;
+        touch-action: pan-y !important;
+        padding: .75rem .75rem !important;
+    }
+
+    .manual-reply-box {
+        flex: 0 0 auto !important;
+        padding: .55rem .6rem calc(.55rem + env(safe-area-inset-bottom, 0px)) !important;
+        border-radius: 0 !important;
+    }
+
+    .reply-row {
+        gap: .45rem !important;
+    }
+
+    #manual-message {
+        min-height: 40px !important;
+        max-height: 92px !important;
+        font-size: 16px !important;
+    }
+
+    .composer-icon-btn,
+    #btn-send-manual {
+        width: 40px !important;
+        height: 40px !important;
+        min-width: 40px !important;
+        min-height: 40px !important;
+    }
+}
+
 </style>
 </head>
 <body>
@@ -1938,6 +2267,7 @@ button, a, input, textarea, select {
 
             <section class="inbox-panel">
                 <div class="inbox-panel-header" id="inbox-panel-header">
+                    <button type="button" class="mobile-chat-back" id="mobile-chat-back" onclick="cerrarChatMobileBandeja()" aria-label="Volver a conversaciones"><i class="fas fa-arrow-left"></i></button>
                     <div class="inbox-contact">
                         <div class="inbox-contact-avatar" id="inbox-contact-avatar"><i class="fas fa-user"></i></div>
                         <div style="min-width:0">
@@ -4118,6 +4448,48 @@ setTimeout(() => {
             filters.classList.remove('filters-collapsed');
         } else if (!document.getElementById('mobile-filter-toggle')) {
             inicializarFiltrosMobileBandeja();
+        }
+    });
+})();
+
+
+
+/* ─── MOBILE BANDEJA TIPO WHATSAPP ─────────────────────────────────────── */
+(function(){
+    window.cerrarChatMobileBandeja = function(){
+        document.body.classList.remove('mobile-chat-open');
+    };
+
+    function abrirChatMobileSiAplica(){
+        if (window.innerWidth <= 768) {
+            document.body.classList.add('mobile-chat-open');
+            setTimeout(function(){
+                const msgs = document.getElementById('conversation-messages');
+                if (msgs) msgs.scrollTop = msgs.scrollHeight;
+            }, 180);
+        }
+    }
+
+    const originalAbrir = window.abrirConversacionBandeja;
+    if (typeof originalAbrir === 'function' && !originalAbrir.__mobileWhatsappPatch) {
+        const patched = async function(){
+            const r = await originalAbrir.apply(this, arguments);
+            abrirChatMobileSiAplica();
+            return r;
+        };
+        patched.__mobileWhatsappPatch = true;
+        window.abrirConversacionBandeja = patched;
+    }
+
+    document.addEventListener('keydown', function(e){
+        if (e.key === 'Escape' && document.body.classList.contains('mobile-chat-open')) {
+            window.cerrarChatMobileBandeja();
+        }
+    });
+
+    window.addEventListener('resize', function(){
+        if (window.innerWidth > 768) {
+            document.body.classList.remove('mobile-chat-open');
         }
     });
 })();

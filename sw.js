@@ -1,5 +1,5 @@
 /* ─── AUVRO Service Worker v1.0 ─────────────────────────────────────────── */
-const CACHE_NAME = 'auvro-v6';
+const CACHE_NAME = 'auvro-v8';
 const OFFLINE_URL = '/offline.html';
 
 /* Archivos que siempre se cachean en instalación */
