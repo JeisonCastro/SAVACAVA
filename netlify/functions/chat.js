@@ -17,6 +17,39 @@ const supabase = createClient(
     process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
+// ── PUSH NOTIFICATIONS ──────────────────────────────────────────────────────
+async function dispararPush({ userId, title, body, conversationId, canal = 'web' }) {
+    try {
+        if (!userId) return;
+
+        const baseUrl = process.env.URL || process.env.DEPLOY_PRIME_URL || 'https://jeisondigital.netlify.app';
+
+        const res = await fetch(`${baseUrl}/.netlify/functions/send-push`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                user_id: userId,
+                title: title || 'Nuevo mensaje en AUVRO',
+                body: String(body || 'Tienes un nuevo mensaje.').slice(0, 140),
+                url: '/dashboard.html#bandeja',
+                conversationId: conversationId || null,
+                canal
+            })
+        });
+
+        const data = await res.json().catch(() => ({}));
+
+        if (!res.ok || data?.ok === false) {
+            console.warn('[Push] No se pudo enviar:', data);
+        } else {
+            console.log('[Push] Enviado:', data);
+        }
+    } catch (err) {
+        console.warn('[Push] Error enviando:', err.message);
+    }
+}
+
+
 // ── HELPERS ──────────────────────────────────────────────────────────────────
 
 function resolverFecha(texto) {
@@ -882,6 +915,18 @@ await actualizarResumenConversacion({
     ultimoMensaje: prompt,
     ultimoRole: 'user',
     requiereAtencion: debeEscalarAHumano(prompt) ? true : null
+});
+
+// 🔔 Push automático para TODO mensaje entrante del cliente (Web y WhatsApp texto).
+// Se dispara aquí porque chat.js es el punto común para widget web y mensajes WhatsApp de texto.
+await dispararPush({
+    userId: agente.user_id,
+    title: canal === 'whatsapp'
+        ? `💬 WhatsApp ${externalUserIdFinal ? '+' + externalUserIdFinal : ''}`.trim()
+        : `💬 Nuevo mensaje web`,
+    body: prompt,
+    conversationId: conversationIdFinal,
+    canal
 });
 
 if (conversacion.modo_humano === true || conversacion.estado === 'modo_humano') {
