@@ -1,53 +1,78 @@
 <!DOCTYPE html>
 <html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport"
+            content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 
-<!-- PWA Core -->
-<meta name="application-name" content="AUVRO">
-<meta name="description" content="Plataforma SaaS de agentes de IA multicanal con WhatsApp y Web">
-<meta name="theme-color" content="#06090f" media="(prefers-color-scheme: dark)">
-<meta name="theme-color" content="#0ea5e9" media="(prefers-color-scheme: light)">
-<meta name="color-scheme" content="dark light">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="AUVRO">
-<meta name="msapplication-TileColor" content="#06090f">
-<meta name="msapplication-tap-highlight" content="no">
-<meta name="format-detection" content="telephone=no">
+        <!-- PWA Core -->
+        <meta name="application-name" content="AUVRO">
+        <meta name="description"
+            content="Plataforma SaaS de agentes de IA multicanal con WhatsApp y Web">
+        <meta name="theme-color" content="#06090f"
+            media="(prefers-color-scheme: dark)">
+        <meta name="theme-color" content="#0ea5e9"
+            media="(prefers-color-scheme: light)">
+        <meta name="color-scheme" content="dark light">
+        <meta name="mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-status-bar-style"
+            content="black-translucent">
+        <meta name="apple-mobile-web-app-title" content="AUVRO">
+        <meta name="msapplication-TileColor" content="#06090f">
+        <meta name="msapplication-tap-highlight" content="no">
+        <meta name="format-detection" content="telephone=no">
 
-<!-- Manifest -->
-<link rel="manifest" href="/manifest.json">
-<meta name="theme-color" content="#0b1220">
-<!-- Favicons -->
-<link rel="icon" href="/favicon.ico">
-<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
-<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
-<link rel="icon" type="image/svg+xml" href="/icon-192.svg">
+        <!-- Manifest -->
+        <link rel="manifest" href="/manifest.json">
+        <meta name="theme-color" content="#0b1220">
+        <!-- Favicons -->
+        <link rel="icon" href="/favicon.ico">
+        <link rel="icon" type="image/png" sizes="32x32"
+            href="/favicon-32x32.png">
+        <link rel="icon" type="image/png" sizes="16x16"
+            href="/favicon-16x16.png">
+        <link rel="icon" type="image/svg+xml" href="/icon-192.svg">
 
-<!-- Apple Touch Icons -->
-<link rel="apple-touch-icon" href="/icon-192.svg">
-<link rel="apple-touch-icon" sizes="152x152" href="/icon-152.png">
-<link rel="apple-touch-icon" sizes="167x167" href="/icon-167.png">
-<link rel="apple-touch-icon" sizes="180x180" href="/icon-180.png">
+        <!-- Apple Touch Icons -->
+        <link rel="apple-touch-icon" href="/icon-192.svg">
+        <link rel="apple-touch-icon" sizes="152x152" href="/icon-152.png">
+        <link rel="apple-touch-icon" sizes="167x167" href="/icon-167.png">
+        <link rel="apple-touch-icon" sizes="180x180" href="/icon-180.png">
 
-<!-- Apple Splash Screens -->
-<link rel="apple-touch-startup-image" media="screen and (device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="/splash/splash-430x932.png">
-<link rel="apple-touch-startup-image" media="screen and (device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="/splash/splash-393x852.png">
-<link rel="apple-touch-startup-image" media="screen and (device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="/splash/splash-428x926.png">
-<link rel="apple-touch-startup-image" media="screen and (device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="/splash/splash-390x844.png">
-<link rel="apple-touch-startup-image" media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" href="/splash/splash-375x667.png">
-<link rel="apple-touch-startup-image" media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" href="/splash/splash-1024x1366.png">
-    <title>Dashboard | Fábrica de Agentes IA</title>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <link rel="icon" href="/favicon.ico" />
-<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
-<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
-    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-    <style>
+        <!-- Apple Splash Screens -->
+        <link rel="apple-touch-startup-image"
+            media="screen and (device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+            href="/splash/splash-430x932.png">
+        <link rel="apple-touch-startup-image"
+            media="screen and (device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+            href="/splash/splash-393x852.png">
+        <link rel="apple-touch-startup-image"
+            media="screen and (device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+            href="/splash/splash-428x926.png">
+        <link rel="apple-touch-startup-image"
+            media="screen and (device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+            href="/splash/splash-390x844.png">
+        <link rel="apple-touch-startup-image"
+            media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+            href="/splash/splash-375x667.png">
+        <link rel="apple-touch-startup-image"
+            media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+            href="/splash/splash-1024x1366.png">
+        <title>Dashboard | Fábrica de Agentes IA</title>
+        <script
+            src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+        <link rel="icon" href="/favicon.ico" />
+        <link rel="icon" type="image/png" sizes="32x32"
+            href="/favicon-32x32.png">
+        <link rel="icon" type="image/png" sizes="16x16"
+            href="/favicon-16x16.png">
+        <link
+            href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap"
+            rel="stylesheet">
+        <link rel="stylesheet"
+            href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+        <style>
         *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
         :root{
             --bg:#06090f;--bg2:#0d1117;--surface:#161e2a;--border:#1e2d40;--border2:#253648;
@@ -2251,365 +2276,602 @@ button, a, input, textarea, select {
 }
 
 </style>
-</head>
-<body>
+    </head>
+    <body>
 
-<div class="bg-grid"></div>
-<div class="toast" id="toast"></div>
-<div class="media-lightbox" id="media-lightbox" onclick="cerrarMediaLightbox()">
-    <button class="media-lightbox-close" onclick="cerrarMediaLightbox();event.stopPropagation();"><i class="fas fa-times"></i></button>
-    <img id="media-lightbox-img" src="" alt="Vista previa">
-</div>
+        <div class="bg-grid"></div>
+        <div class="toast" id="toast"></div>
+        <div class="media-lightbox" id="media-lightbox"
+            onclick="cerrarMediaLightbox()">
+            <button class="media-lightbox-close"
+                onclick="cerrarMediaLightbox();event.stopPropagation();"><i
+                    class="fas fa-times"></i></button>
+            <img id="media-lightbox-img" src alt="Vista previa">
+        </div>
 
-<button class="mob-toggle" onclick="document.querySelector('.sidebar').classList.toggle('open')">
-    <i class="fas fa-bars" style="font-size:.85rem"></i>
-</button>
-<button class="desktop-sidebar-toggle" id="desktop-sidebar-toggle" onclick="toggleSidebarDesktop()" title="Ocultar/mostrar menú lateral">
-    <i class="fas fa-chevron-left" style="font-size:.85rem"></i>
-</button>
-
-<!-- SIDEBAR -->
-<div class="sidebar">
-    <div>
-        <div class="sidebar-logo">
-            <span class="logo-dot"></span>
-            <span class="logo-text">AUVRO</span>
-        </div>
-        <div class="plan-badge-sidebar" id="sidebar-plan-badge">
-            <i class="fas fa-crown" style="font-size:.6rem"></i>
-            <span id="sidebar-plan-nombre">Cargando...</span>
-        </div>
-        <div class="nav-label">Menú</div>
-        <nav>
-            <a onclick="mostrarVista('agentes')" id="nav-agentes" class="active"><i class="fas fa-robot"></i> Mis Agentes</a>
-            <a onclick="mostrarVista('bandeja')" id="nav-bandeja"><i class="fas fa-inbox"></i> Bandeja</a>
-            <a onclick="mostrarVista('tokens')" id="nav-tokens"><i class="fas fa-coins"></i> Tokens y Planes</a>
-            <a onclick="mostrarVista('integraciones')" id="nav-integraciones"><i class="fas fa-plug"></i> Integraciones</a>
-            <a onclick="mostrarVista('config')" id="nav-config"><i class="fas fa-sliders"></i> Configuración</a>
-        </nav>
-    </div>
-    <div class="sidebar-bottom">
-        <div class="user-row">
-            <div class="user-avatar" id="user-initials">—</div>
-            <span class="user-email-text" id="user-email">Cargando...</span>
-        </div>
-        <button class="btn-logout" onclick="cerrarSesion()">
-            <i class="fas fa-arrow-right-from-bracket"></i> Cerrar sesión
+        <button class="mob-toggle"
+            onclick="document.querySelector('.sidebar').classList.toggle('open')">
+            <i class="fas fa-bars" style="font-size:.85rem"></i>
         </button>
-    </div>
-</div>
+        <button class="desktop-sidebar-toggle" id="desktop-sidebar-toggle"
+            onclick="toggleSidebarDesktop()"
+            title="Ocultar/mostrar menú lateral">
+            <i class="fas fa-chevron-left" style="font-size:.85rem"></i>
+        </button>
 
-<!-- MAIN -->
-<div class="main-content">
-
-    <!-- VISTA AGENTES -->
-    <div class="view active" id="view-agentes">
-        <div class="topbar">
+        <!-- SIDEBAR -->
+        <div class="sidebar">
             <div>
-                <h2 class="page-title">Panel de Control</h2>
-                <p class="page-sub">Gestiona tus agentes de inteligencia artificial</p>
-            </div>
-            <div class="topbar-right">
-                <div class="plan-indicator" id="plan-indicator" style="display:none">
-                    <div>
-                        <div class="plan-info-label">Plan <span id="pi-nombre" style="color:var(--accent)"></span></div>
-                        <div class="plan-info-value"><span id="pi-actual">0</span> / <span id="pi-limite">0</span> agentes</div>
-                        <div class="plan-progress-wrap">
-                            <div class="plan-progress-bar" id="pi-bar" style="width:0%"></div>
-                        </div>
-                    </div>
+                <div class="sidebar-logo">
+                    <span class="logo-dot"></span>
+                    <span class="logo-text">AUVRO</span>
                 </div>
-                <div class="token-card">
-                    <div class="token-icon"><i class="fas fa-bolt"></i></div>
-                    <div>
-                        <div class="token-label">Tokens disponibles</div>
-                        <div id="token-balance">—</div>
-                    </div>
+                <div class="plan-badge-sidebar" id="sidebar-plan-badge">
+                    <i class="fas fa-crown" style="font-size:.6rem"></i>
+                    <span id="sidebar-plan-nombre">Cargando...</span>
                 </div>
+                <div class="nav-label">Menú</div>
+                <nav>
+                    <a onclick="mostrarVista('agentes')" id="nav-agentes"
+                        class="active"><i class="fas fa-robot"></i> Mis
+                        Agentes</a>
+                    <a onclick="mostrarVista('bandeja')" id="nav-bandeja"><i
+                            class="fas fa-inbox"></i> Bandeja</a>
+                    <a onclick="mostrarVista('tokens')" id="nav-tokens"><i
+                            class="fas fa-coins"></i> Tokens y Planes</a>
+                    <a onclick="mostrarVista('integraciones')"
+                        id="nav-integraciones"><i class="fas fa-plug"></i>
+                        Integraciones</a>
+                    <a onclick="mostrarVista('config')" id="nav-config"><i
+                            class="fas fa-sliders"></i> Configuración</a>
+                </nav>
             </div>
-        </div>
-        <div class="grid-2">
-            <div class="card">
-                <div class="card-header">
-                    <div class="card-icon"><i class="fas fa-plus"></i></div>
-                    <span class="card-title">Crear nuevo agente</span>
+            <div class="sidebar-bottom">
+                <div class="user-row">
+                    <div class="user-avatar" id="user-initials">—</div>
+                    <span class="user-email-text"
+                        id="user-email">Cargando...</span>
                 </div>
-                <div class="field"><label>Nombre del agente</label><input type="text" id="bot-name" placeholder="Ej: Vendedor de Streaming"></div>
-                <div class="field"><label>Instrucción maestra (System Prompt)</label><textarea id="bot-prompt" rows="5" placeholder="Eres un asistente que..."></textarea></div>
-                <button class="btn-main" id="btn-crear-agente" onclick="crearAgente()"><i class="fas fa-floppy-disk" style="margin-right:.4rem"></i> Guardar agente</button>
-                <div class="loading-dots" id="create-loading"><span class="loading-dot"></span><span class="loading-dot"></span><span class="loading-dot"></span></div>
-                <div class="msg" id="create-msg"></div>
-            </div>
-            <div class="card">
-                <div class="card-header">
-                    <div class="card-icon"><i class="fas fa-layer-group"></i></div>
-                    <span class="card-title">Tus agentes activos</span>
-                </div>
-                <div id="lista-agentes"><div class="empty-state"><i class="fas fa-robot"></i>Aún no has creado ningún agente.</div></div>
-            </div>
-        </div>
-    </div>
-
-
-    <!-- VISTA BANDEJA -->
-    <div class="view" id="view-bandeja">
-        <div class="topbar">
-            <div>
-                <h2 class="page-title">Bandeja de conversaciones</h2>
-                <p class="page-sub">Visualiza chats por agente, toma control manual y devuelve la conversación a la IA cuando quieras</p>
-            </div>
-            <div class="topbar-right">
-                <span class="badge badge-green" id="realtime-status"><i class="fas fa-circle" style="font-size:.45rem"></i> Tiempo real</span>
-                <button class="btn-small" id="btn-sound-toggle" onclick="toggleSonidoNotificacion()"><i class="fas fa-volume-high" style="margin-right:.35rem"></i> Activar sonido</button>
-               
-  <i class="fas fa-bell" style="margin-right:.35rem"></i> Activar notificaciones
+                <button class="btn-logout" onclick="cerrarSesion()">
+                    <i class="fas fa-arrow-right-from-bracket"></i> Cerrar
+                    sesión
                 </button>
-                <button class="btn-small" onclick="activarPushAuvro()" id="btn-push-test">
-  <i class="fas fa-bell" style="margin-right:.35rem"></i> Activar Push
-</button>
-
-
-  <i class="fas fa-paper-plane" style="margin-right:.35rem"></i> Probar Push
-</button>
-                <button class="btn-small" onclick="cargarBandejaConversaciones()"><i class="fas fa-rotate" style="margin-right:.35rem"></i> Actualizar</button>
             </div>
         </div>
 
-        <div class="inbox-layout">
-            <aside class="inbox-sidebar">
-                <div class="inbox-filters">
-                    <div class="inbox-toolbar">
-                        <div class="inbox-toolbar-title"><i class="fas fa-comments"></i> Conversaciones</div>
-                        <button class="theme-toggle" onclick="toggleTheme()" id="theme-toggle" title="Cambiar modo claro/oscuro">
-                            <i class="fas fa-moon"></i><span>Oscuro</span>
-                        </button>
-                    </div>
-                    <select id="inbox-agent-filter" onchange="cargarBandejaConversaciones()">
-                        <option value="">Todos los agentes</option>
-                    </select>
-                    <div class="inbox-filter-row">
-                        <select id="inbox-status-filter" onchange="cargarBandejaConversaciones()">
-                            <option value="">Todos los estados</option>
-                            <option value="requiere_atencion">Requiere atención</option>
-                            <option value="modo_humano">Modo humano</option>
-                            <option value="ia_activa">IA activa</option>
-                            <option value="cerrada">Cerradas</option>
-                        </select>
-                        <select id="inbox-channel-filter" onchange="cargarBandejaConversaciones()">
-                            <option value="">Todos los canales</option>
-                            <option value="whatsapp">WhatsApp</option>
-                            <option value="web">Widget Web</option>
-                            <option value="dashboard">Dashboard</option>
-                        </select>
-                    </div>
-                    <div class="inbox-search-wrap">
-                        <i class="fas fa-search"></i>
-                        <input type="text" id="inbox-search" placeholder="Buscar por número, agente o mensaje..." oninput="filtrarConversacionesLocal()">
-                    </div>
-                </div>
-                <div class="conversation-list" id="conversation-list">
-                    <div class="empty-state"><i class="fas fa-inbox"></i>Cargando conversaciones...</div>
-                </div>
-            </aside>
+        <!-- MAIN -->
+        <div class="main-content">
 
-            <section class="inbox-panel">
-                <div class="inbox-panel-header" id="inbox-panel-header">
-                    <button type="button" class="mobile-chat-back" id="mobile-chat-back" onclick="cerrarChatMobileBandeja()" aria-label="Volver a conversaciones"><i class="fas fa-arrow-left"></i></button>
-                    <div class="inbox-contact">
-                        <div class="inbox-contact-avatar" id="inbox-contact-avatar"><i class="fas fa-user"></i></div>
-                        <div style="min-width:0">
-                            <div class="inbox-header-title">Selecciona una conversación</div>
-                            <div class="inbox-header-sub">Aquí verás el historial completo y podrás responder manualmente.</div>
+            <!-- VISTA AGENTES -->
+            <div class="view active" id="view-agentes">
+                <div class="topbar">
+                    <div>
+                        <h2 class="page-title">Panel de Control</h2>
+                        <p class="page-sub">Gestiona tus agentes de inteligencia
+                            artificial</p>
+                    </div>
+                    <div class="topbar-right">
+                        <div class="plan-indicator" id="plan-indicator"
+                            style="display:none">
+                            <div>
+                                <div class="plan-info-label">Plan <span
+                                        id="pi-nombre"
+                                        style="color:var(--accent)"></span></div>
+                                <div class="plan-info-value"><span
+                                        id="pi-actual">0</span> / <span
+                                        id="pi-limite">0</span> agentes</div>
+                                <div class="plan-progress-wrap">
+                                    <div class="plan-progress-bar" id="pi-bar"
+                                        style="width:0%"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="token-card">
+                            <div class="token-icon"><i
+                                    class="fas fa-bolt"></i></div>
+                            <div>
+                                <div class="token-label">Tokens
+                                    disponibles</div>
+                                <div id="token-balance">—</div>
+                            </div>
                         </div>
                     </div>
-                    <div class="inbox-actions" id="inbox-actions"></div>
                 </div>
-                <div class="conversation-messages" id="conversation-messages">
-                    <div class="empty-inbox-state">
-                        <i class="fas fa-comments"></i>
-                        <div>Selecciona una conversación de la lista.</div>
+                <div class="grid-2">
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="card-icon"><i
+                                    class="fas fa-plus"></i></div>
+                            <span class="card-title">Crear nuevo agente</span>
+                        </div>
+                        <div class="field"><label>Nombre del
+                                agente</label><input type="text" id="bot-name"
+                                placeholder="Ej: Vendedor de Streaming"></div>
+                        <div class="field"><label>Instrucción maestra (System
+                                Prompt)</label><textarea id="bot-prompt"
+                                rows="5"
+                                placeholder="Eres un asistente que..."></textarea></div>
+                        <button class="btn-main" id="btn-crear-agente"
+                            onclick="crearAgente()"><i
+                                class="fas fa-floppy-disk"
+                                style="margin-right:.4rem"></i> Guardar
+                            agente</button>
+                        <div class="loading-dots" id="create-loading"><span
+                                class="loading-dot"></span><span
+                                class="loading-dot"></span><span
+                                class="loading-dot"></span></div>
+                        <div class="msg" id="create-msg"></div>
+                    </div>
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="card-icon"><i
+                                    class="fas fa-layer-group"></i></div>
+                            <span class="card-title">Tus agentes activos</span>
+                        </div>
+                        <div id="lista-agentes"><div class="empty-state"><i
+                                    class="fas fa-robot"></i>Aún no has creado
+                                ningún agente.</div></div>
                     </div>
                 </div>
-                <div class="manual-reply-box" id="manual-reply-box" style="display:none">
-                    <div class="attachment-preview" id="attachment-preview"></div>
-                    <div class="reply-row">
-                        <input type="file" id="manual-attachments" multiple style="display:none" onchange="manejarAdjuntosManual(event)">
-                        <button class="composer-icon-btn" onclick="document.getElementById('manual-attachments').click()" title="Adjuntar archivo">
-                            <i class="fas fa-paperclip"></i>
+            </div>
+
+            <!-- VISTA BANDEJA -->
+            <div class="view" id="view-bandeja">
+                <div class="topbar">
+                    <div>
+                        <h2 class="page-title">Bandeja de conversaciones</h2>
+                        <p class="page-sub">Visualiza chats por agente, toma
+                            control manual y devuelve la conversación a la IA
+                            cuando quieras</p>
+                    </div>
+                    <div class="topbar-right">
+                        <span class="badge badge-green" id="realtime-status">
+                            <i class="fas fa-circle"
+                                style="font-size:.45rem"></i> Tiempo real
+                        </span>
+
+                        <button class="btn-small" onclick="activarPushAuvro()"
+                            id="btn-push-test">
+                            <i class="fas fa-bell"
+                                style="margin-right:.35rem"></i> Activar
+                            notificaciones
                         </button>
-                        <textarea id="manual-message" placeholder="Escribe un mensaje..." onkeydown="manejarEnterRespuestaManual(event)"></textarea>
-                        <button class="btn-main btn-green send-round" id="btn-send-manual" onclick="enviarRespuestaManual()" title="Enviar">
-                            <i class="fas fa-paper-plane"></i>
+
+                        <button class="btn-small"
+                            onclick="cargarBandejaConversaciones()">
+                            <i class="fas fa-rotate"
+                                style="margin-right:.35rem"></i> Actualizar
                         </button>
                     </div>
                 </div>
-            </section>
-        </div>
-    </div>
 
-    <!-- VISTA TOKENS -->
-    <div class="view" id="view-tokens">
-        <div class="topbar"><div><h2 class="page-title">Tokens y Planes</h2><p class="page-sub">Gestiona tu saldo y revisa tu historial de consumo</p></div></div>
-        <div class="grid-3">
-            <div class="stat-card"><div class="stat-label">Balance actual</div><div class="stat-value green" id="token-balance-2">—</div><div class="stat-sub">tokens disponibles</div></div>
-            <div class="stat-card"><div class="stat-label">Consumido este mes</div><div class="stat-value accent" id="tokens-mes">—</div><div class="stat-sub">tokens usados</div></div>
-            <div class="stat-card"><div class="stat-label">Interacciones</div><div class="stat-value yellow" id="total-logs">—</div><div class="stat-sub">conversaciones totales</div></div>
-        </div>
-        <div class="grid-2 tokens-main-grid" style="margin-bottom:1.5rem">
-            <div class="card">
-                <div class="card-header"><div class="card-icon green"><i class="fas fa-bolt"></i></div><span class="card-title">Recargar tokens</span></div>
-                <p style="font-size:.85rem;color:var(--muted);margin-bottom:1.25rem;line-height:1.6;font-weight:300">Selecciona un plan y te contactaremos por WhatsApp para activarlo de inmediato.</p>
-                <div class="tokens-plan-grid">
-                    <div class="plan-card" onclick="seleccionarPlan(this,100000,'5.000')"><div class="plan-name">Básico</div><div class="plan-tokens">100K <span>tokens</span></div><div class="plan-price">$ 5.000 COP</div></div>
-                    <div class="plan-card featured selected" onclick="seleccionarPlan(this,500000,'20.000')"><div class="plan-badge-card">Popular</div><div class="plan-name">Pro</div><div class="plan-tokens">500K <span>tokens</span></div><div class="plan-price">$ 20.000 COP</div></div>
-                    <div class="plan-card" onclick="seleccionarPlan(this,1000000,'35.000')"><div class="plan-name">Business</div><div class="plan-tokens">1M <span>tokens</span></div><div class="plan-price">$ 35.000 COP</div></div>
-                    <div class="plan-card" onclick="seleccionarPlan(this,0,'personalizado')"><div class="plan-name">Custom</div><div class="plan-tokens" style="font-size:1.3rem">A medida</div><div class="plan-price">Cotizar</div></div>
+                <div class="inbox-layout">
+                    <aside class="inbox-sidebar">
+                        <div class="inbox-filters">
+                            <div class="inbox-toolbar">
+                                <div class="inbox-toolbar-title"><i
+                                        class="fas fa-comments"></i>
+                                    Conversaciones</div>
+                                <button class="theme-toggle"
+                                    onclick="toggleTheme()" id="theme-toggle"
+                                    title="Cambiar modo claro/oscuro">
+                                    <i
+                                        class="fas fa-moon"></i><span>Oscuro</span>
+                                </button>
+                            </div>
+                            <select id="inbox-agent-filter"
+                                onchange="cargarBandejaConversaciones()">
+                                <option value>Todos los agentes</option>
+                            </select>
+                            <div class="inbox-filter-row">
+                                <select id="inbox-status-filter"
+                                    onchange="cargarBandejaConversaciones()">
+                                    <option value>Todos los estados</option>
+                                    <option value="requiere_atencion">Requiere
+                                        atención</option>
+                                    <option value="modo_humano">Modo
+                                        humano</option>
+                                    <option value="ia_activa">IA activa</option>
+                                    <option value="cerrada">Cerradas</option>
+                                </select>
+                                <select id="inbox-channel-filter"
+                                    onchange="cargarBandejaConversaciones()">
+                                    <option value>Todos los canales</option>
+                                    <option value="whatsapp">WhatsApp</option>
+                                    <option value="web">Widget Web</option>
+                                    <option value="dashboard">Dashboard</option>
+                                </select>
+                            </div>
+                            <div class="inbox-search-wrap">
+                                <i class="fas fa-search"></i>
+                                <input type="text" id="inbox-search"
+                                    placeholder="Buscar por número, agente o mensaje..."
+                                    oninput="filtrarConversacionesLocal()">
+                            </div>
+                        </div>
+                        <div class="conversation-list" id="conversation-list">
+                            <div class="empty-state"><i
+                                    class="fas fa-inbox"></i>Cargando
+                                conversaciones...</div>
+                        </div>
+                    </aside>
+
+                    <section class="inbox-panel">
+                        <div class="inbox-panel-header" id="inbox-panel-header">
+                            <button type="button" class="mobile-chat-back"
+                                id="mobile-chat-back"
+                                onclick="cerrarChatMobileBandeja()"
+                                aria-label="Volver a conversaciones"><i
+                                    class="fas fa-arrow-left"></i></button>
+                            <div class="inbox-contact">
+                                <div class="inbox-contact-avatar"
+                                    id="inbox-contact-avatar"><i
+                                        class="fas fa-user"></i></div>
+                                <div style="min-width:0">
+                                    <div class="inbox-header-title">Selecciona
+                                        una conversación</div>
+                                    <div class="inbox-header-sub">Aquí verás el
+                                        historial completo y podrás responder
+                                        manualmente.</div>
+                                </div>
+                            </div>
+                            <div class="inbox-actions" id="inbox-actions"></div>
+                        </div>
+                        <div class="conversation-messages"
+                            id="conversation-messages">
+                            <div class="empty-inbox-state">
+                                <i class="fas fa-comments"></i>
+                                <div>Selecciona una conversación de la
+                                    lista.</div>
+                            </div>
+                        </div>
+                        <div class="manual-reply-box" id="manual-reply-box"
+                            style="display:none">
+                            <div class="attachment-preview"
+                                id="attachment-preview"></div>
+                            <div class="reply-row">
+                                <input type="file" id="manual-attachments"
+                                    multiple style="display:none"
+                                    onchange="manejarAdjuntosManual(event)">
+                                <button class="composer-icon-btn"
+                                    onclick="document.getElementById('manual-attachments').click()"
+                                    title="Adjuntar archivo">
+                                    <i class="fas fa-paperclip"></i>
+                                </button>
+                                <textarea id="manual-message"
+                                    placeholder="Escribe un mensaje..."
+                                    onkeydown="manejarEnterRespuestaManual(event)"></textarea>
+                                <button class="btn-main btn-green send-round"
+                                    id="btn-send-manual"
+                                    onclick="enviarRespuestaManual()"
+                                    title="Enviar">
+                                    <i class="fas fa-paper-plane"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </section>
                 </div>
-                <button class="btn-main btn-wa" onclick="recargarTokens()"><i class="fab fa-whatsapp"></i> Recargar por WhatsApp</button>
             </div>
-            <div class="card">
-                <div class="card-header"><div class="card-icon yellow"><i class="fas fa-clock-rotate-left"></i></div><span class="card-title">Últimas actividades</span></div>
-                <div class="table-wrap activities-table-wrap"><table class="activities-table"><thead><tr><th>Agente</th><th>Tokens</th><th>Fecha</th></tr></thead><tbody id="logs-recientes"><tr><td colspan="3" style="text-align:center;color:var(--dim);padding:1.5rem">Cargando...</td></tr></tbody></table></div>
-            </div>
-        </div>
-        <div class="card" style="margin-bottom:1.5rem">
-            <div class="card-header"><div class="card-icon"><i class="fas fa-crown"></i></div><span class="card-title">Planes de suscripción</span></div>
-            <div class="table-wrap">
-                <table>
-                    <thead><tr><th>Plan</th><th>Agentes</th><th>Precio/mes</th><th>Estado</th></tr></thead>
-                    <tbody id="tabla-planes"><tr><td colspan="4" style="text-align:center;color:var(--dim);padding:1.5rem">Cargando...</td></tr></tbody>
-                </table>
-            </div>
-            <p style="font-size:.8rem;color:var(--dim);margin-top:1rem">Para cambiar de plan contáctanos por WhatsApp.</p>
-        </div>
-        <div class="card">
-            <div class="card-header"><div class="card-icon"><i class="fas fa-list"></i></div><span class="card-title">Historial completo de consumo</span></div>
-            <div class="table-wrap"><table><thead><tr><th>#</th><th>Agente</th><th>Tokens usados</th><th>Fecha y hora</th><th>Estado</th></tr></thead><tbody id="logs-completos"><tr><td colspan="5" style="text-align:center;color:var(--dim);padding:2rem">Cargando historial...</td></tr></tbody></table></div>
-        </div>
-    </div>
 
-    <!-- VISTA INTEGRACIONES -->
-    <div class="view" id="view-integraciones">
-        <div class="topbar"><div><h2 class="page-title">Integraciones</h2><p class="page-sub">Conexiones y herramientas de IA</p></div></div>
-        <div class="card" style="margin-bottom:1.5rem">
-            <div class="card-header">
-                <div class="card-icon"><i class="fas fa-plug"></i></div>
-                <span class="card-title">Conexiones OAuth Activas</span>
-            </div>
-            <div class="table-wrap">
-                <table id="table-connections">
-                    <thead><tr><th>Toolkit</th><th>Fecha Conexión</th><th>Estado</th></tr></thead>
-                    <tbody id="connections-body"></tbody>
-                </table>
-            </div>
-        </div>
-        <div class="card">
-            <div class="card-header"><div class="card-icon"><i class="fas fa-robot"></i></div><span class="card-title">Configuración de Herramientas</span></div>
-            <div style="font-size:.85rem;color:var(--muted);line-height:1.6;font-weight:300;">
-                Las herramientas ahora se gestionan desde el botón <strong>Integraciones</strong> de cada agente en la vista <strong>Mis Agentes</strong>.
-            </div>
-        </div>
-    </div>
-
-    <!-- VISTA CONFIG -->
-    <div class="view" id="view-config">
-        <div class="topbar"><div><h2 class="page-title">Configuración</h2><p class="page-sub">Administra tu perfil y preferencias de cuenta</p></div></div>
-        <div class="grid-2">
-            <div class="card">
-                <div class="card-header"><div class="card-icon"><i class="fas fa-user"></i></div><span class="card-title">Datos del perfil</span></div>
-                <div class="field-row">
-                    <div class="field"><label>Nombre</label><input type="text" id="cfg-nombre" placeholder="Tu nombre"></div>
-                    <div class="field"><label>Apellido</label><input type="text" id="cfg-apellido" placeholder="Tu apellido"></div>
+            <!-- VISTA TOKENS -->
+            <div class="view" id="view-tokens">
+                <div class="topbar"><div><h2 class="page-title">Tokens y
+                            Planes</h2><p class="page-sub">Gestiona tu saldo y
+                            revisa tu historial de consumo</p></div></div>
+                <div class="grid-3">
+                    <div class="stat-card"><div class="stat-label">Balance
+                            actual</div><div class="stat-value green"
+                            id="token-balance-2">—</div><div
+                            class="stat-sub">tokens disponibles</div></div>
+                    <div class="stat-card"><div class="stat-label">Consumido
+                            este mes</div><div class="stat-value accent"
+                            id="tokens-mes">—</div><div class="stat-sub">tokens
+                            usados</div></div>
+                    <div class="stat-card"><div
+                            class="stat-label">Interacciones</div><div
+                            class="stat-value yellow"
+                            id="total-logs">—</div><div
+                            class="stat-sub">conversaciones totales</div></div>
                 </div>
-                <div class="field"><label>Teléfono</label><input type="tel" id="cfg-telefono" placeholder="+57 300 000 0000"></div>
-                <div class="field"><label>Correo electrónico</label><input type="email" id="cfg-email" disabled></div>
-                <button class="btn-main" id="btn-guardar-perfil" onclick="guardarPerfil()"><i class="fas fa-floppy-disk" style="margin-right:.4rem"></i> Guardar cambios</button>
-                <div class="msg" id="config-msg"></div>
-            </div>
-            <div style="display:flex;flex-direction:column;gap:1.5rem">
+                <div class="grid-2 tokens-main-grid"
+                    style="margin-bottom:1.5rem">
+                    <div class="card">
+                        <div class="card-header"><div class="card-icon green"><i
+                                    class="fas fa-bolt"></i></div><span
+                                class="card-title">Recargar tokens</span></div>
+                        <p
+                            style="font-size:.85rem;color:var(--muted);margin-bottom:1.25rem;line-height:1.6;font-weight:300">Selecciona
+                            un plan y te contactaremos por WhatsApp para
+                            activarlo de inmediato.</p>
+                        <div class="tokens-plan-grid">
+                            <div class="plan-card"
+                                onclick="seleccionarPlan(this,100000,'5.000')"><div
+                                    class="plan-name">Básico</div><div
+                                    class="plan-tokens">100K
+                                    <span>tokens</span></div><div
+                                    class="plan-price">$ 5.000 COP</div></div>
+                            <div class="plan-card featured selected"
+                                onclick="seleccionarPlan(this,500000,'20.000')"><div
+                                    class="plan-badge-card">Popular</div><div
+                                    class="plan-name">Pro</div><div
+                                    class="plan-tokens">500K
+                                    <span>tokens</span></div><div
+                                    class="plan-price">$ 20.000 COP</div></div>
+                            <div class="plan-card"
+                                onclick="seleccionarPlan(this,1000000,'35.000')"><div
+                                    class="plan-name">Business</div><div
+                                    class="plan-tokens">1M
+                                    <span>tokens</span></div><div
+                                    class="plan-price">$ 35.000 COP</div></div>
+                            <div class="plan-card"
+                                onclick="seleccionarPlan(this,0,'personalizado')"><div
+                                    class="plan-name">Custom</div><div
+                                    class="plan-tokens"
+                                    style="font-size:1.3rem">A medida</div><div
+                                    class="plan-price">Cotizar</div></div>
+                        </div>
+                        <button class="btn-main btn-wa"
+                            onclick="recargarTokens()"><i
+                                class="fab fa-whatsapp"></i> Recargar por
+                            WhatsApp</button>
+                    </div>
+                    <div class="card">
+                        <div class="card-header"><div
+                                class="card-icon yellow"><i
+                                    class="fas fa-clock-rotate-left"></i></div><span
+                                class="card-title">Últimas
+                                actividades</span></div>
+                        <div class="table-wrap activities-table-wrap"><table
+                                class="activities-table"><thead><tr><th>Agente</th><th>Tokens</th><th>Fecha</th></tr></thead><tbody
+                                    id="logs-recientes"><tr><td colspan="3"
+                                            style="text-align:center;color:var(--dim);padding:1.5rem">Cargando...</td></tr></tbody></table></div>
+                    </div>
+                </div>
+                <div class="card" style="margin-bottom:1.5rem">
+                    <div class="card-header"><div class="card-icon"><i
+                                class="fas fa-crown"></i></div><span
+                            class="card-title">Planes de
+                            suscripción</span></div>
+                    <div class="table-wrap">
+                        <table>
+                            <thead><tr><th>Plan</th><th>Agentes</th><th>Precio/mes</th><th>Estado</th></tr></thead>
+                            <tbody id="tabla-planes"><tr><td colspan="4"
+                                        style="text-align:center;color:var(--dim);padding:1.5rem">Cargando...</td></tr></tbody>
+                        </table>
+                    </div>
+                    <p
+                        style="font-size:.8rem;color:var(--dim);margin-top:1rem">Para
+                        cambiar de plan contáctanos por WhatsApp.</p>
+                </div>
                 <div class="card">
-                    <div class="card-header"><div class="card-icon"><i class="fas fa-shield-halved"></i></div><span class="card-title">Seguridad</span></div>
-                    <p style="font-size:.85rem;color:var(--muted);margin-bottom:1.25rem;font-weight:300;line-height:1.6">Para cambiar tu contraseña recibirás un correo con el enlace de restablecimiento.</p>
-                    <button class="btn-main" style="background:var(--surface);border:1px solid var(--border2);color:var(--text)" onclick="enviarResetPassword()"><i class="fas fa-key" style="margin-right:.4rem"></i> Enviar enlace de cambio de contraseña</button>
-                    <div class="msg" id="security-msg"></div>
+                    <div class="card-header"><div class="card-icon"><i
+                                class="fas fa-list"></i></div><span
+                            class="card-title">Historial completo de
+                            consumo</span></div>
+                    <div
+                        class="table-wrap"><table><thead><tr><th>#</th><th>Agente</th><th>Tokens
+                                        usados</th><th>Fecha y
+                                        hora</th><th>Estado</th></tr></thead><tbody
+                                id="logs-completos"><tr><td colspan="5"
+                                        style="text-align:center;color:var(--dim);padding:2rem">Cargando
+                                        historial...</td></tr></tbody></table></div>
+                </div>
+            </div>
+
+            <!-- VISTA INTEGRACIONES -->
+            <div class="view" id="view-integraciones">
+                <div class="topbar"><div><h2
+                            class="page-title">Integraciones</h2><p
+                            class="page-sub">Conexiones y herramientas de
+                            IA</p></div></div>
+                <div class="card" style="margin-bottom:1.5rem">
+                    <div class="card-header">
+                        <div class="card-icon"><i class="fas fa-plug"></i></div>
+                        <span class="card-title">Conexiones OAuth Activas</span>
+                    </div>
+                    <div class="table-wrap">
+                        <table id="table-connections">
+                            <thead><tr><th>Toolkit</th><th>Fecha
+                                        Conexión</th><th>Estado</th></tr></thead>
+                            <tbody id="connections-body"></tbody>
+                        </table>
+                    </div>
                 </div>
                 <div class="card">
-                    <div class="card-header"><div class="card-icon green"><i class="fas fa-circle-info"></i></div><span class="card-title">Información de cuenta</span></div>
-                    <div style="display:flex;flex-direction:column;gap:.65rem">
-                        <div style="display:flex;justify-content:space-between;font-size:.85rem;padding:.5rem 0;border-bottom:1px solid var(--border)"><span style="color:var(--muted)">User ID</span><span style="color:var(--dim);font-size:.72rem;font-family:monospace" id="cfg-uid">—</span></div>
-                        <div style="display:flex;justify-content:space-between;font-size:.85rem;padding:.5rem 0;border-bottom:1px solid var(--border)"><span style="color:var(--muted)">Miembro desde</span><span style="color:var(--text)" id="cfg-created">—</span></div>
-                        <div style="display:flex;justify-content:space-between;font-size:.85rem;padding:.5rem 0;border-bottom:1px solid var(--border)"><span style="color:var(--muted)">Plan actual</span><span class="badge badge-accent" id="cfg-plan-nombre">—</span></div>
-                        <div style="display:flex;justify-content:space-between;font-size:.85rem;padding:.5rem 0"><span style="color:var(--muted)">Estado</span><span class="badge badge-green">Activo</span></div>
+                    <div class="card-header"><div class="card-icon"><i
+                                class="fas fa-robot"></i></div><span
+                            class="card-title">Configuración de
+                            Herramientas</span></div>
+                    <div
+                        style="font-size:.85rem;color:var(--muted);line-height:1.6;font-weight:300;">
+                        Las herramientas ahora se gestionan desde el botón
+                        <strong>Integraciones</strong> de cada agente en la
+                        vista <strong>Mis Agentes</strong>.
+                    </div>
+                </div>
+            </div>
+
+            <!-- VISTA CONFIG -->
+            <div class="view" id="view-config">
+                <div class="topbar"><div><h2
+                            class="page-title">Configuración</h2><p
+                            class="page-sub">Administra tu perfil y preferencias
+                            de cuenta</p></div></div>
+                <div class="grid-2">
+                    <div class="card">
+                        <div class="card-header"><div class="card-icon"><i
+                                    class="fas fa-user"></i></div><span
+                                class="card-title">Datos del perfil</span></div>
+                        <div class="field-row">
+                            <div class="field"><label>Nombre</label><input
+                                    type="text" id="cfg-nombre"
+                                    placeholder="Tu nombre"></div>
+                            <div class="field"><label>Apellido</label><input
+                                    type="text" id="cfg-apellido"
+                                    placeholder="Tu apellido"></div>
+                        </div>
+                        <div class="field"><label>Teléfono</label><input
+                                type="tel" id="cfg-telefono"
+                                placeholder="+57 300 000 0000"></div>
+                        <div class="field"><label>Correo
+                                electrónico</label><input type="email"
+                                id="cfg-email" disabled></div>
+                        <button class="btn-main" id="btn-guardar-perfil"
+                            onclick="guardarPerfil()"><i
+                                class="fas fa-floppy-disk"
+                                style="margin-right:.4rem"></i> Guardar
+                            cambios</button>
+                        <div class="msg" id="config-msg"></div>
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:1.5rem">
+                        <div class="card">
+                            <div class="card-header"><div class="card-icon"><i
+                                        class="fas fa-shield-halved"></i></div><span
+                                    class="card-title">Seguridad</span></div>
+                            <p
+                                style="font-size:.85rem;color:var(--muted);margin-bottom:1.25rem;font-weight:300;line-height:1.6">Para
+                                cambiar tu contraseña recibirás un correo con el
+                                enlace de restablecimiento.</p>
+                            <button class="btn-main"
+                                style="background:var(--surface);border:1px solid var(--border2);color:var(--text)"
+                                onclick="enviarResetPassword()"><i
+                                    class="fas fa-key"
+                                    style="margin-right:.4rem"></i> Enviar
+                                enlace de cambio de contraseña</button>
+                            <div class="msg" id="security-msg"></div>
+                        </div>
+                        <div class="card">
+                            <div class="card-header"><div
+                                    class="card-icon green"><i
+                                        class="fas fa-circle-info"></i></div><span
+                                    class="card-title">Información de
+                                    cuenta</span></div>
+                            <div
+                                style="display:flex;flex-direction:column;gap:.65rem">
+                                <div
+                                    style="display:flex;justify-content:space-between;font-size:.85rem;padding:.5rem 0;border-bottom:1px solid var(--border)"><span
+                                        style="color:var(--muted)">User
+                                        ID</span><span
+                                        style="color:var(--dim);font-size:.72rem;font-family:monospace"
+                                        id="cfg-uid">—</span></div>
+                                <div
+                                    style="display:flex;justify-content:space-between;font-size:.85rem;padding:.5rem 0;border-bottom:1px solid var(--border)"><span
+                                        style="color:var(--muted)">Miembro
+                                        desde</span><span
+                                        style="color:var(--text)"
+                                        id="cfg-created">—</span></div>
+                                <div
+                                    style="display:flex;justify-content:space-between;font-size:.85rem;padding:.5rem 0;border-bottom:1px solid var(--border)"><span
+                                        style="color:var(--muted)">Plan
+                                        actual</span><span
+                                        class="badge badge-accent"
+                                        id="cfg-plan-nombre">—</span></div>
+                                <div
+                                    style="display:flex;justify-content:space-between;font-size:.85rem;padding:.5rem 0"><span
+                                        style="color:var(--muted)">Estado</span><span
+                                        class="badge badge-green">Activo</span></div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
-</div>
 
-<!-- CHAT MODAL -->
-<div id="chat-modal" style="display:none;position:fixed;bottom:20px;right:20px;width:350px;height:500px;background:var(--surface);border:1px solid var(--border);border-radius:15px;flex-direction:column;z-index:1000;box-shadow:0 10px 30px rgba(0,0,0,0.5);">
-    <div style="padding:15px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;background:var(--bg2);border-radius:15px 15px 0 0;">
-        <span id="chat-agent-name" style="font-family:'Syne',sans-serif;font-weight:700;font-size:0.9rem;">Probando Agente</span>
-        <button onclick="document.getElementById('chat-modal').style.display='none'" style="background:none;border:none;color:var(--muted);cursor:pointer;"><i class="fas fa-times"></i></button>
-    </div>
-    <div id="chat-messages" style="flex:1;padding:15px;overflow-y:auto;display:flex;flex-direction:column;gap:10px;font-size:0.85rem;"></div>
-    <div style="padding:10px;border-top:1px solid var(--border);display:flex;gap:8px;">
-        <input type="text" id="chat-input" placeholder="Escribe un mensaje..." style="flex:1;background:var(--bg);border:1px solid var(--border2);color:white;padding:8px;border-radius:6px;outline:none;">
-        <button onclick="enviarMensaje()" style="background:var(--accent);color:white;border:none;padding:8px 12px;border-radius:6px;cursor:pointer;"><i class="fas fa-paper-plane"></i></button>
-    </div>
-</div>
-
-<!-- EDIT MODAL -->
-<div id="edit-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:1001;align-items:center;justify-content:center;">
-    <div class="card" style="width:400px;max-width:90%;">
-        <h3 class="card-title" style="margin-bottom:1rem">Editar Agente</h3>
-        <input type="hidden" id="edit-id">
-        <div class="field"><label>Nombre</label><input type="text" id="edit-name"></div>
-        <div class="field"><label>Instrucciones</label><textarea id="edit-prompt" rows="3"></textarea></div>
-        <div class="field"><label>Dominios (separados por coma)</label><input type="text" id="edit-domains" placeholder="ej: midominio.com, cliente.com"></div>
-        <div style="display:flex;gap:10px;margin-top:1rem;">
-            <button class="btn-main btn-green" onclick="guardarEdicion(this)">Guardar</button>
-            <button class="btn-main" onclick="document.getElementById('edit-modal').style.display='none'" style="background:var(--red)">Cancelar</button>
+        <!-- CHAT MODAL -->
+        <div id="chat-modal"
+            style="display:none;position:fixed;bottom:20px;right:20px;width:350px;height:500px;background:var(--surface);border:1px solid var(--border);border-radius:15px;flex-direction:column;z-index:1000;box-shadow:0 10px 30px rgba(0,0,0,0.5);">
+            <div
+                style="padding:15px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;background:var(--bg2);border-radius:15px 15px 0 0;">
+                <span id="chat-agent-name"
+                    style="font-family:'Syne',sans-serif;font-weight:700;font-size:0.9rem;">Probando
+                    Agente</span>
+                <button
+                    onclick="document.getElementById('chat-modal').style.display='none'"
+                    style="background:none;border:none;color:var(--muted);cursor:pointer;"><i
+                        class="fas fa-times"></i></button>
+            </div>
+            <div id="chat-messages"
+                style="flex:1;padding:15px;overflow-y:auto;display:flex;flex-direction:column;gap:10px;font-size:0.85rem;"></div>
+            <div
+                style="padding:10px;border-top:1px solid var(--border);display:flex;gap:8px;">
+                <input type="text" id="chat-input"
+                    placeholder="Escribe un mensaje..."
+                    style="flex:1;background:var(--bg);border:1px solid var(--border2);color:white;padding:8px;border-radius:6px;outline:none;">
+                <button onclick="enviarMensaje()"
+                    style="background:var(--accent);color:white;border:none;padding:8px 12px;border-radius:6px;cursor:pointer;"><i
+                        class="fas fa-paper-plane"></i></button>
+            </div>
         </div>
-    </div>
-</div>
 
-<!-- INTEGRATIONS MODAL -->
-<div id="integrations-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:1001;align-items:center;justify-content:center;">
-    <div class="card" style="width:520px;max-width:92%;max-height:90vh;overflow-y:auto;">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
-            <h3 class="card-title" style="margin-bottom:0;">Integraciones del agente</h3>
-            <button onclick="cerrarIntegraciones()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1rem;">
-                <i class="fas fa-times"></i>
-            </button>
+        <!-- EDIT MODAL -->
+        <div id="edit-modal"
+            style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:1001;align-items:center;justify-content:center;">
+            <div class="card" style="width:400px;max-width:90%;">
+                <h3 class="card-title" style="margin-bottom:1rem">Editar
+                    Agente</h3>
+                <input type="hidden" id="edit-id">
+                <div class="field"><label>Nombre</label><input type="text"
+                        id="edit-name"></div>
+                <div class="field"><label>Instrucciones</label><textarea
+                        id="edit-prompt" rows="3"></textarea></div>
+                <div class="field"><label>Dominios (separados por
+                        coma)</label><input type="text" id="edit-domains"
+                        placeholder="ej: midominio.com, cliente.com"></div>
+                <div style="display:flex;gap:10px;margin-top:1rem;">
+                    <button class="btn-main btn-green"
+                        onclick="guardarEdicion(this)">Guardar</button>
+                    <button class="btn-main"
+                        onclick="document.getElementById('edit-modal').style.display='none'"
+                        style="background:var(--red)">Cancelar</button>
+                </div>
+            </div>
         </div>
-        <input type="hidden" id="integrations-agent-id">
-        <div class="field">
-            <label>Agente seleccionado</label>
-            <input type="text" id="integrations-agent-name" disabled>
+
+        <!-- INTEGRATIONS MODAL -->
+        <div id="integrations-modal"
+            style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:1001;align-items:center;justify-content:center;">
+            <div class="card"
+                style="width:520px;max-width:92%;max-height:90vh;overflow-y:auto;">
+                <div
+                    style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+                    <h3 class="card-title"
+                        style="margin-bottom:0;">Integraciones del agente</h3>
+                    <button onclick="cerrarIntegraciones()"
+                        style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1rem;">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <input type="hidden" id="integrations-agent-id">
+                <div class="field">
+                    <label>Agente seleccionado</label>
+                    <input type="text" id="integrations-agent-name" disabled>
+                </div>
+                <div id="integrations-apps-container"
+                    style="display:flex;flex-direction:column;gap:.75rem;margin-top:1rem;"></div>
+            </div>
         </div>
-        <div id="integrations-apps-container" style="display:flex;flex-direction:column;gap:.75rem;margin-top:1rem;"></div>
-    </div>
-</div>
 
-<!-- UPGRADE MODAL -->
-<div class="upgrade-modal" id="upgrade-modal">
-    <div class="upgrade-card">
-        <div class="upgrade-icon"><i class="fas fa-rocket"></i></div>
-        <div class="upgrade-title">Límite de plan alcanzado</div>
-        <div class="upgrade-msg" id="upgrade-msg">Has alcanzado el límite de agentes de tu plan.</div>
-        <div class="upgrade-plans" id="upgrade-plans-grid"></div>
-        <button class="btn-main btn-wa" onclick="contactarUpgrade()" style="margin-bottom:.75rem">
-            <i class="fab fa-whatsapp"></i> Mejorar plan por WhatsApp
-        </button>
-        <button onclick="document.getElementById('upgrade-modal').style.display='none'" style="background:none;border:none;color:var(--dim);font-size:.85rem;cursor:pointer;font-family:'DM Sans',sans-serif">
-            Cerrar
-        </button>
-    </div>
-</div>
+        <!-- UPGRADE MODAL -->
+        <div class="upgrade-modal" id="upgrade-modal">
+            <div class="upgrade-card">
+                <div class="upgrade-icon"><i class="fas fa-rocket"></i></div>
+                <div class="upgrade-title">Límite de plan alcanzado</div>
+                <div class="upgrade-msg" id="upgrade-msg">Has alcanzado el
+                    límite de agentes de tu plan.</div>
+                <div class="upgrade-plans" id="upgrade-plans-grid"></div>
+                <button class="btn-main btn-wa" onclick="contactarUpgrade()"
+                    style="margin-bottom:.75rem">
+                    <i class="fab fa-whatsapp"></i> Mejorar plan por WhatsApp
+                </button>
+                <button
+                    onclick="document.getElementById('upgrade-modal').style.display='none'"
+                    style="background:none;border:none;color:var(--dim);font-size:.85rem;cursor:pointer;font-family:'DM Sans',sans-serif">
+                    Cerrar
+                </button>
+            </div>
+        </div>
 
-<script>
+        <script>
     const SUPABASE_URL = "https://zsxkfqnalkfvwjrzuqip.supabase.co";
     const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzeGtmcW5hbGtmdndqcnp1cWlwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0NDgyODMsImV4cCI6MjA5MjAyNDI4M30.R4j23l3IHEL966VupeR-Sx_KtDQzB8NzfJtEVDGewGs";
     const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -4676,21 +4938,27 @@ async function debugPush() {
 }
 </script>
 
-<!-- PWA Install Banner -->
-<div class="pwa-install-banner" id="pwa-install-banner">
-    <div>
-        <svg width="32" height="32" viewBox="0 0 32 32" fill="none" style="border-radius:8px;background:rgba(14,165,233,.1);border:1px solid rgba(14,165,233,.2);padding:6px">
-            <polygon points="16,4 26,22 6,22" fill="none" stroke="#0ea5e9" stroke-width="2.5" stroke-linejoin="round"/>
-            <line x1="10" y1="14" x2="22" y2="14" stroke="#0ea5e9" stroke-width="2.5" stroke-linecap="round"/>
-        </svg>
-    </div>
-    <div class="pwa-install-banner-text">
-        <strong>Instalar AUVRO</strong>
-        Agrega a pantalla de inicio
-    </div>
-    <button class="pwa-install-btn" onclick="instalarPWA()">Instalar</button>
-    <button class="pwa-install-close" onclick="cerrarBannerPWA()" aria-label="Cerrar">✕</button>
-</div>
+        <!-- PWA Install Banner -->
+        <div class="pwa-install-banner" id="pwa-install-banner">
+            <div>
+                <svg width="32" height="32" viewBox="0 0 32 32" fill="none"
+                    style="border-radius:8px;background:rgba(14,165,233,.1);border:1px solid rgba(14,165,233,.2);padding:6px">
+                    <polygon points="16,4 26,22 6,22" fill="none"
+                        stroke="#0ea5e9" stroke-width="2.5"
+                        stroke-linejoin="round" />
+                    <line x1="10" y1="14" x2="22" y2="14" stroke="#0ea5e9"
+                        stroke-width="2.5" stroke-linecap="round" />
+                </svg>
+            </div>
+            <div class="pwa-install-banner-text">
+                <strong>Instalar AUVRO</strong>
+                Agrega a pantalla de inicio
+            </div>
+            <button class="pwa-install-btn"
+                onclick="instalarPWA()">Instalar</button>
+            <button class="pwa-install-close" onclick="cerrarBannerPWA()"
+                aria-label="Cerrar">✕</button>
+        </div>
 
-</body>
+    </body>
 </html>
