@@ -4657,7 +4657,22 @@ setTimeout(() => {
         }
     });
 })();
-
+async function debugPush() {
+  const msgs = [];
+  msgs.push('SW: ' + ('serviceWorker' in navigator));
+  msgs.push('Push: ' + ('PushManager' in window));
+  msgs.push('Permiso: ' + Notification.permission);
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    msgs.push('SW ready: sí');
+    const sub = await reg.pushManager.getSubscription();
+    msgs.push('Suscripción: ' + (sub ? 'SÍ existe' : 'NO existe'));
+    if (sub) msgs.push('Endpoint: ' + sub.endpoint.slice(0,40) + '...');
+  } catch(e) {
+    msgs.push('Error: ' + e.message);
+  }
+  alert(msgs.join('\n'));
+}
 </script>
 
 <!-- PWA Install Banner -->
