@@ -7,6 +7,38 @@ const supabase = createClient(
 
 const VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN || 'jeison_digital_verify_token';
 
+// ── PUSH NOTIFICATIONS ──────────────────────────────────────────────────────
+async function dispararPush({ userId, title, body, conversationId }) {
+  try {
+    if (!userId) return;
+
+    const baseUrl = process.env.URL || process.env.DEPLOY_PRIME_URL || 'https://jeisondigital.netlify.app';
+
+    const res = await fetch(`${baseUrl}/.netlify/functions/send-push`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        user_id: userId,
+        title: title || 'Nuevo mensaje en AUVRO',
+        body: String(body || 'Tienes un nuevo mensaje.').slice(0, 140),
+        url: '/dashboard.html#bandeja',
+        conversationId: conversationId || null,
+        canal: 'whatsapp'
+      })
+    });
+
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || data?.ok === false) {
+      console.warn('[Push] No se pudo enviar:', data);
+    } else {
+      console.log('[Push] Enviado:', data);
+    }
+  } catch (err) {
+    console.warn('[Push] Error enviando:', err.message);
+  }
+}
+
+
 function extraerContenidoMensaje(message) {
   const type = message?.type || 'text';
 
@@ -267,6 +299,15 @@ exports.handler = async (event) => {
         agenteId,
         contenido,
         rawMessage: message
+      });
+
+      // 🔔 Push automático para adjuntos entrantes de WhatsApp.
+      // Los mensajes de texto ya pasan por chat.js, por eso aquí solo media.
+      await dispararPush({
+        userId: agente.user_id,
+        title: `📱 WhatsApp +${from}`,
+        body: contenido.content || 'Adjunto recibido',
+        conversationId: conversacion.id
       });
 
       return {
