@@ -4382,15 +4382,33 @@ async function solicitarPermisosNotificacion() {
 }
 
 async function suscribirPush() {
-    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
-    try {
-        const reg = await navigator.serviceWorker.ready;
-        const existing = await reg.pushManager.getSubscription();
-        if (existing) return;
-        console.log('[Push] Listo para suscripción VAPID');
-    } catch (err) {
-        console.warn('[Push] Error al suscribir:', err);
-    }
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    const existing = await reg.pushManager.getSubscription();
+    if (existing) return;
+
+    const subscription = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: 'BCC6RwTglPI8GO7qtT9zrkR9LncjIbC827LvTs0iw_HmQrnfSSfnnMHn5MUsHYj5ptLw1YxnDTrUxdSA897kTbg'
+    });
+
+    const { data: { session } } = await _supabase.auth.getSession();
+    if (!session) return;
+
+    await fetch('/.netlify/functions/save-push-subscription', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        subscription: subscription.toJSON(),
+        user_id: session.user.id
+      })
+    });
+
+    console.log('[Push] Suscripción guardada');
+  } catch (err) {
+    console.warn('[Push] Error al suscribir:', err);
+  }
 }
 
 let _deferredPWAPrompt = null;
