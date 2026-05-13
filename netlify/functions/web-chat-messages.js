@@ -5,55 +5,164 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-function jsonResponse(statusCode, body) {
-  return {
-    statusCode,
-    headers: {
-      'Content-Type': 'application/json',
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Headers': 'Content-Type',
-      'Access-Control-Allow-Methods': 'POST, OPTIONS'
-    },
-    body: JSON.stringify(body)
-  };
+const VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN || 'jeison_digital_verify_token';
+
+// ── NUEVA FUNCIÓN: disparar push ──────────────────────────────────────────
+async function dispararPush({ userId, title, body, conversationId }) {
+  try {
+    const baseUrl = process.env.URL || 'https://jeisondigital.netlify.app';
+    await fetch(`${baseUrl}/.netlify/functions/send-push`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        user_id: userId,
+        title,
+        body,
+        url: `/dashboard.html`,
+        conversationId
+      })
+    });
+  } catch (err) {
+    console.warn('Push no enviado:', err.message);
+  }
+}
+
+function extraerContenidoMensaje(message) {
+  const type = message?.type || 'text';
+  if (type === 'text') return { type, content: message.text?.body || '', media_id: null, mime_type: null, filename: null, caption: null };
+  if (type === 'image') return { type, content: message.image?.caption || '📷 Imagen recibida', media_id: message.image?.id || null, mime_type: message.image?.mime_type || null, filename: 'imagen-whatsapp.jpg', caption: message.image?.caption || null };
+  if (type === 'document') return { type, content: message.document?.caption || `📎 Documento recibido${message.document?.filename ? ': ' + message.document.filename : ''}`, media_id: message.document?.id || null, mime_type: message.document?.mime_type || null, filename: message.document?.filename || 'documento-whatsapp', caption: message.document?.caption || null };
+  if (type === 'audio') return { type, content: '🎧 Audio recibido', media_id: message.audio?.id || null, mime_type: message.audio?.mime_type || null, filename: 'audio-whatsapp.ogg', caption: null };
+  if (type === 'video') return { type, content: message.video?.caption || '🎥 Video recibido', media_id: message.video?.id || null, mime_type: message.video?.mime_type || null, filename: 'video-whatsapp.mp4', caption: message.video?.caption || null };
+  if (type === 'sticker') return { type, content: '🏷️ Sticker recibido', media_id: message.sticker?.id || null, mime_type: message.sticker?.mime_type || null, filename: 'sticker-whatsapp.webp', caption: null };
+  return { type, content: `Mensaje ${type} recibido`, media_id: null, mime_type: null, filename: null, caption: null };
+}
+
+async function obtenerOCrearConversacion({ agenteId, userId, canal, externalUserId }) {
+  const { data: existente, error } = await supabase
+    .from('conversaciones')
+    .select('*')
+    .eq('agente_id', agenteId)
+    .eq('canal', canal)
+    .eq('external_user_id', externalUserId)
+    .maybeSingle();
+  if (error) console.error('Error buscando conversación:', error);
+  if (existente) return existente;
+  const { data: nueva, error: insertError } = await supabase
+    .from('conversaciones')
+    .insert([{ agente_id: agenteId, user_id: userId, canal, external_user_id: externalUserId, titulo: `WhatsApp ${externalUserId}`, estado: 'ia_activa', modo_humano: false, requiere_atencion: false, ultimo_mensaje: '', ultimo_role: 'user', updated_at: new Date().toISOString() }])
+    .select('*')
+    .single();
+  if (insertError) throw new Error('No se pudo crear conversación: ' + insertError.message);
+  return nueva;
+}
+
+async function guardarMensajeMediaEntrante({ conversacion, agenteId, contenido, rawMessage }) {
+  await supabase.from('mensajes_conversacion').insert([{ conversacion_id: conversacion.id, agente_id: agenteId, role: 'user', content: contenido.content || 'Adjunto recibido', origen: 'cliente', metadata: { origen: 'cliente', tipo: contenido.type, media_id: contenido.media_id, mime_type: contenido.mime_type, filename: contenido.filename, caption: contenido.caption, whatsapp_message_id: rawMessage.id || null, from: rawMessage.from || null, timestamp: rawMessage.timestamp || null } }]);
+  await supabase.from('conversaciones').update({ ultimo_mensaje: contenido.content || 'Adjunto recibido', ultimo_role: 'user', requiere_atencion: true, updated_at: new Date().toISOString() }).eq('id', conversacion.id);
 }
 
 exports.handler = async (event) => {
-  if (event.httpMethod === 'OPTIONS') return jsonResponse(200, { ok: true });
-  if (event.httpMethod !== 'POST') return jsonResponse(405, { error: 'Method Not Allowed' });
-
   try {
-    const body = JSON.parse(event.body || '{}');
-    const agenteId = body.agente_id || body.agent_id;
-    const externalUserId = String(body.external_user_id || '').trim();
-
-    if (!agenteId || !externalUserId) {
-      return jsonResponse(400, { error: 'Falta agente_id o external_user_id.' });
+    if (event.httpMethod === 'GET') {
+      const params = event.queryStringParameters || {};
+      const mode = params['hub.mode'];
+      const token = params['hub.verify_token'];
+      const challenge = params['hub.challenge'];
+      if (mode === 'subscribe' && token === VERIFY_TOKEN) return { statusCode: 200, body: challenge };
+      return { statusCode: 403, body: 'Token de verificación inválido' };
     }
 
-    const { data: conversacion, error: convError } = await supabase
-      .from('conversaciones')
-      .select('id, estado, modo_humano, requiere_atencion, updated_at')
-      .eq('agente_id', parseInt(agenteId))
-      .eq('canal', 'web')
-      .eq('external_user_id', externalUserId)
+    if (event.httpMethod !== 'POST') return { statusCode: 405, body: 'Method Not Allowed' };
+
+    const body = JSON.parse(event.body || '{}');
+    const entry = body.entry?.[0];
+    const change = entry?.changes?.[0];
+    const value = change?.value;
+    const phoneNumberId = value?.metadata?.phone_number_id;
+    const message = value?.messages?.[0];
+
+    if (!phoneNumberId || !message) return { statusCode: 200, body: JSON.stringify({ ok: true, ignored: true }) };
+
+    const from = message.from;
+    const contenido = extraerContenidoMensaje(message);
+    const text = contenido.type === 'text' ? contenido.content : '';
+
+    if (!from) return { statusCode: 200, body: JSON.stringify({ ok: true, ignored: true }) };
+
+    const { data: waConnection, error: waError } = await supabase
+      .from('whatsapp_connections')
+      .select('*')
+      .eq('phone_number_id', phoneNumberId)
+      .eq('activo', true)
       .maybeSingle();
 
-    if (convError) return jsonResponse(500, { error: 'Error consultando conversación: ' + convError.message });
-    if (!conversacion) return jsonResponse(200, { ok: true, conversation: null, messages: [] });
+    if (waError || !waConnection) return { statusCode: 200, body: JSON.stringify({ ok: false, error: 'Conexión WhatsApp no encontrada' }) };
 
-    const { data: mensajes, error: msgError } = await supabase
-      .from('mensajes_conversacion')
-      .select('id, role, content, origen, metadata, created_at')
-      .eq('conversacion_id', conversacion.id)
-      .order('created_at', { ascending: true })
-      .limit(300);
+    const agenteId = waConnection.agente_id;
 
-    if (msgError) return jsonResponse(500, { error: 'Error consultando mensajes: ' + msgError.message });
+    const { data: agente, error: agenteError } = await supabase
+      .from('agentes_ia')
+      .select('id, user_id, nombre_agente')
+      .eq('id', agenteId)
+      .maybeSingle();
 
-    return jsonResponse(200, { ok: true, conversation: conversacion, messages: mensajes || [] });
+    if (agenteError || !agente) return { statusCode: 200, body: JSON.stringify({ ok: false, error: 'Agente no encontrado' }) };
+
+    // ── MEDIA: guardar + push ─────────────────────────────────────────────
+    if (contenido.type !== 'text') {
+      const conversacion = await obtenerOCrearConversacion({ agenteId, userId: agente.user_id, canal: 'whatsapp', externalUserId: from });
+      await guardarMensajeMediaEntrante({ conversacion, agenteId, contenido, rawMessage: message });
+
+      // 🔔 Push para media
+      await dispararPush({
+        userId: agente.user_id,
+        title: `📱 WhatsApp +${from}`,
+        body: contenido.content,
+        conversationId: conversacion.id
+      });
+
+      return { statusCode: 200, body: JSON.stringify({ ok: true, received_media: true, type: contenido.type, conversation_id: conversacion.id }) };
+    }
+
+    if (!text.trim()) return { statusCode: 200, body: JSON.stringify({ ok: true, ignored: true }) };
+
+    const conversationId = `wa_${agenteId}_${from}`;
+
+    const chatUrl = `${process.env.URL || 'https://jeisondigital.netlify.app'}/.netlify/functions/chat`;
+    const chatRes = await fetch(chatUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt: text, agente_id: agenteId, conversation_id: conversationId, historial: [], canal: 'whatsapp', external_user_id: from })
+    });
+
+    const chatData = await chatRes.json();
+
+    if (chatData.skipped === true) return { statusCode: 200, body: JSON.stringify({ ok: true, skipped: true, motivo: chatData.motivo, conversation_id: chatData.conversation_id }) };
+
+    const respuesta = chatData.respuesta || chatData.error || 'Lo siento, no pude procesar tu mensaje en este momento.';
+
+    // 🔔 Push para texto — usar conversation_id real de chatData
+    await dispararPush({
+      userId: agente.user_id,
+      title: `💬 WhatsApp +${from}`,
+      body: text.slice(0, 100),
+      conversationId: chatData.conversation_id || conversationId
+    });
+
+    const sendRes = await fetch(`https://graph.facebook.com/v19.0/${phoneNumberId}/messages`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${waConnection.access_token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messaging_product: 'whatsapp', to: from, type: 'text', text: { body: respuesta.slice(0, 4000) } })
+    });
+
+    const sendData = await sendRes.json();
+    if (!sendRes.ok) console.error('Error enviando WhatsApp:', sendData);
+
+    return { statusCode: 200, body: JSON.stringify({ ok: true, received: text, response: respuesta, whatsapp_send: sendData }) };
+
   } catch (error) {
-    console.error('web-chat-messages error:', error);
-    return jsonResponse(500, { error: error.message || 'Error interno.' });
+    console.error('whatsapp-webhook error:', error);
+    return { statusCode: 200, body: JSON.stringify({ ok: false, error: error.message }) };
   }
 };
