@@ -2277,96 +2277,98 @@ button, a, input, textarea, select {
 
 
 /* ════════════════════════════════════════════════════════════════════════
-   AUVRO BANDEJA PRO V10 — NO LEÍDOS + SONIDO + ESTADOS VISUALES
-   - Punto de no leído en cada conversación.
-   - Indicador en menú Bandeja.
-   - Conversaciones recientes arriba.
-   - Botón activar/desactivar sonido.
-   - Checks visuales en mensajes salientes.
+   AUVRO V11 — NO LEÍDOS + SONIDO + CHECKS VISUALES
+   - Punto/contador de chats nuevos
+   - Badge en menú Bandeja
+   - Conversaciones nuevas resaltadas
+   - Checks visuales en mensajes salientes
    ════════════════════════════════════════════════════════════════════════ */
-
-.nav-unread-badge{
-    display:none;
+.conversation-item.has-unread{
+    background:rgba(14,165,233,.075)!important;
+}
+.conversation-item.has-unread .conversation-name{
+    color:var(--text)!important;
+    font-weight:900!important;
+}
+.conversation-item.has-unread .conversation-preview{
+    color:var(--text)!important;
+    font-weight:650!important;
+}
+.conversation-avatar-wrap{
+    position:relative;
+    flex:0 0 auto;
+}
+.conversation-avatar-wrap .conversation-avatar{
+    position:relative;
+}
+.unread-dot{
+    position:absolute;
+    right:-2px;
+    top:-2px;
+    width:10px;
+    height:10px;
+    border-radius:50%;
+    background:var(--green);
+    border:2px solid var(--bg2);
+    box-shadow:0 0 0 3px rgba(34,211,165,.12);
+}
+.unread-count{
+    margin-left:auto;
     min-width:18px;
     height:18px;
     padding:0 5px;
     border-radius:999px;
-    background:var(--red);
-    color:#fff;
-    font-size:10px;
-    line-height:18px;
-    text-align:center;
-    margin-left:auto;
-    box-shadow:0 0 0 3px rgba(248,113,113,.12);
-}
-.nav-unread-badge.visible{display:inline-block}
-
-.conversation-item.unread{
-    background:rgba(14,165,233,.075);
-}
-.conversation-item.unread .conversation-name{
-    color:var(--text);
-}
-.conversation-item.unread .conversation-preview{
-    color:var(--text);
-    font-weight:650;
-}
-.conversation-unread-dot{
-    width:9px;
-    height:9px;
-    border-radius:50%;
-    background:var(--green);
-    box-shadow:0 0 0 4px rgba(34,211,165,.13);
-    flex:0 0 auto;
-}
-.conversation-unread-pill{
     display:inline-flex;
     align-items:center;
     justify-content:center;
+    background:var(--green);
+    color:#03120e;
+    font-size:.62rem;
+    font-weight:900;
+    line-height:1;
+    box-shadow:0 0 0 3px rgba(34,211,165,.12);
+}
+.nav-unread-badge{
+    margin-left:auto;
     min-width:18px;
     height:18px;
-    padding:0 6px;
+    padding:0 5px;
     border-radius:999px;
-    background:var(--green);
-    color:#03130f;
-    font-size:10px;
+    display:none;
+    align-items:center;
+    justify-content:center;
+    background:var(--red);
+    color:white;
+    font-size:.62rem;
     font-weight:900;
-    margin-left:.35rem;
+    line-height:1;
 }
-.conversation-read-mark{
+.nav-unread-badge.visible{
+    display:inline-flex;
+}
+.msg-checks{
     display:inline-flex;
     align-items:center;
-    gap:2px;
-    color:var(--accent);
-    font-size:.68rem;
-    margin-right:.25rem;
-}
-.conversation-seen-local{
+    gap:1px;
+    margin-left:5px;
     color:var(--dim);
-    font-size:.63rem;
-    display:inline-flex;
-    align-items:center;
-    gap:.2rem;
-}
-.msg-delivery-state{
-    display:inline-flex;
-    align-items:center;
-    gap:3px;
-    margin-left:6px;
-    color:var(--accent2);
     font-size:9px;
     vertical-align:middle;
 }
-.msg-delivery-state .fa-check-double{
-    letter-spacing:-2px;
+.msg-checks.read{
+    color:var(--accent2);
 }
-body.light-mode .conversation-item.unread{
-    background:#e6f7ff;
+.msg-checks.sent{
+    color:var(--muted);
 }
-body.light-mode .conversation-unread-pill{
-    color:#fff;
+.msg-meta .msg-checks{
+    margin-left:4px;
 }
-
+#btn-sound-toggle.green{
+    background:rgba(34,211,165,.10)!important;
+    border-color:rgba(34,211,165,.26)!important;
+    color:var(--green)!important;
+}
 @media(max-width:768px){
     #view-bandeja.active .topbar-right{
         grid-template-columns:1fr 1fr!important;
@@ -2374,10 +2376,8 @@ body.light-mode .conversation-unread-pill{
     #view-bandeja.active .topbar-right .badge{
         grid-column:1 / -1!important;
     }
-    #btn-sound-toggle.green{
-        background:rgba(34,211,165,.12)!important;
-        border-color:rgba(34,211,165,.34)!important;
-        color:var(--green)!important;
+    #view-bandeja.active .topbar-right button{
+        min-width:0!important;
     }
 }
 
@@ -2546,8 +2546,7 @@ body.light-mode .conversation-unread-pill{
                         <button class="btn-small" onclick="toggleSonidoNotificacion()"
                             id="btn-sound-toggle">
                             <i class="fas fa-volume-high"
-                                style="margin-right:.35rem"></i> Activar
-                            sonido
+                                style="margin-right:.35rem"></i> Activar sonido
                         </button>
 
                         <button class="btn-small"
@@ -5099,6 +5098,374 @@ async function debugPush() {
   }
   alert(msgs.join('\n'));
 }
+
+
+/* ════════════════════════════════════════════════════════════════════════
+   AUVRO V11 — lógica de no leídos, orden, sonido y checks visuales
+   ════════════════════════════════════════════════════════════════════════ */
+(function(){
+    const LAST_READ_KEY = 'auvro_inbox_last_read_v1';
+    const SOUND_KEY = 'auvrouter_sound_enabled';
+
+    function parseMap(key){
+        try { return JSON.parse(localStorage.getItem(key) || '{}') || {}; }
+        catch(_) { return {}; }
+    }
+
+    function saveMap(key, value){
+        try { localStorage.setItem(key, JSON.stringify(value || {})); } catch(_) {}
+    }
+
+    window.getAuvroLastReadMap = function(){
+        return parseMap(LAST_READ_KEY);
+    };
+
+    window.setAuvroConversationRead = function(conversationId, timestamp){
+        if (!conversationId) return;
+        const map = parseMap(LAST_READ_KEY);
+        map[conversationId] = timestamp || new Date().toISOString();
+        saveMap(LAST_READ_KEY, map);
+        actualizarIndicadorNoLeidosGlobal();
+    };
+
+    window.isAuvroConversationUnread = function(c){
+        if (!c || !c.id) return false;
+        if (String(c.ultimo_role || '').toLowerCase() !== 'user') return false;
+
+        const map = parseMap(LAST_READ_KEY);
+        const lastRead = map[c.id];
+        const updated = c.updated_at || c.created_at;
+
+        if (!lastRead) return true;
+
+        try {
+            return new Date(updated).getTime() > new Date(lastRead).getTime() + 800;
+        } catch(_) {
+            return true;
+        }
+    };
+
+    function getUnreadCount(){
+        try {
+            return (conversacionesBandeja || []).filter(c => window.isAuvroConversationUnread(c)).length;
+        } catch(_) {
+            return 0;
+        }
+    }
+
+    window.actualizarIndicadorNoLeidosGlobal = function(){
+        const count = getUnreadCount();
+
+        const nav = document.getElementById('nav-bandeja');
+        if (nav && !nav.querySelector('.nav-unread-badge')) {
+            const badge = document.createElement('span');
+            badge.className = 'nav-unread-badge';
+            nav.appendChild(badge);
+        }
+
+        const badge = nav?.querySelector('.nav-unread-badge');
+        if (badge) {
+            badge.textContent = count > 99 ? '99+' : String(count);
+            badge.classList.toggle('visible', count > 0);
+        }
+
+        const title = document.title.replace(/^\(\d+\)\s*/, '');
+        document.title = count > 0 ? `(${count}) ${title}` : title;
+    };
+
+    window.marcarConversacionSeleccionadaComoLeida = function(){
+        const conv = conversacionSeleccionada || window.conversacionSeleccionada;
+        if (!conv?.id) return;
+        window.setAuvroConversationRead(conv.id, conv.updated_at || new Date().toISOString());
+        renderConversacionesBandeja(conversacionesBandeja || []);
+    };
+
+    window.actualizarBotonSonido = function(){
+        const btn = document.getElementById('btn-sound-toggle');
+        if (!btn) return;
+
+        const activo = localStorage.getItem(SOUND_KEY) === '1';
+        notificacionesSonidoHabilitadas = activo;
+
+        if (activo) {
+            btn.innerHTML = '<i class="fas fa-volume-xmark" style="margin-right:.35rem"></i> Desactivar sonido';
+            btn.classList.add('green');
+        } else {
+            btn.innerHTML = '<i class="fas fa-volume-high" style="margin-right:.35rem"></i> Activar sonido';
+            btn.classList.remove('green');
+        }
+    };
+
+    window.inicializarPreferenciaSonido = function(){
+        notificacionesSonidoHabilitadas = localStorage.getItem(SOUND_KEY) === '1';
+        setTimeout(window.actualizarBotonSonido, 0);
+    };
+
+    window.toggleSonidoNotificacion = async function(){
+        const nuevo = localStorage.getItem(SOUND_KEY) !== '1';
+        try { localStorage.setItem(SOUND_KEY, nuevo ? '1' : '0'); } catch(_) {}
+        notificacionesSonidoHabilitadas = nuevo;
+        window.actualizarBotonSonido();
+
+        if (nuevo) {
+            showToast('Sonidos de notificación activados');
+            reproducirSonidoNotificacion(true);
+            if ('Notification' in window && Notification.permission === 'default') {
+                try { await Notification.requestPermission(); } catch(_) {}
+            }
+        } else {
+            showToast('Sonidos de notificación desactivados');
+        }
+    };
+
+    function checksHtmlForMessage(m){
+        const origen = m?.origen || m?.metadata?.origen || '';
+        const isOutgoing = m?.role !== 'user';
+        if (!isOutgoing) return '';
+
+        const metadata = m?.metadata || {};
+        const read =
+            metadata.read_by_client === true ||
+            metadata.leido_cliente === true ||
+            metadata.read_at ||
+            metadata.visto_en ||
+            metadata.client_read_at;
+
+        const delivered =
+            read ||
+            metadata.delivered === true ||
+            metadata.entregado === true ||
+            metadata.delivered_at ||
+            metadata.whatsapp_send ||
+            metadata.meta;
+
+        if (read) return '<span class="msg-checks read" title="Leído por el cliente"><i class="fas fa-check"></i><i class="fas fa-check"></i></span>';
+        if (delivered) return '<span class="msg-checks sent" title="Entregado"><i class="fas fa-check"></i><i class="fas fa-check"></i></span>';
+        if (origen === 'humano' || m?.role === 'assistant') return '<span class="msg-checks sent" title="Enviado"><i class="fas fa-check"></i></span>';
+
+        return '';
+    }
+
+    // Reemplaza render de conversaciones para incluir no leídos.
+    window.renderConversacionesBandeja = function(items) {
+        const list = document.getElementById('conversation-list');
+        if (!list) return;
+
+        if (!items || items.length === 0) {
+            list.innerHTML = '<div class="empty-state"><i class="fas fa-inbox"></i>No hay conversaciones para estos filtros.</div>';
+            actualizarIndicadorNoLeidosGlobal();
+            return;
+        }
+
+        const ordered = [...items].sort((a, b) => {
+            const au = window.isAuvroConversationUnread(a) ? 1 : 0;
+            const bu = window.isAuvroConversationUnread(b) ? 1 : 0;
+            if (au !== bu) return bu - au;
+            return new Date(b.updated_at || b.created_at || 0) - new Date(a.updated_at || a.created_at || 0);
+        });
+
+        list.innerHTML = ordered.map(c => {
+            const selected = conversacionSeleccionada?.id === c.id ? 'active' : '';
+            const unread = window.isAuvroConversationUnread(c);
+            const cliente = nombreClienteConversacion(c);
+            const inicial = String(cliente || 'C').replace('+','').trim().slice(0,1).toUpperCase() || 'C';
+
+            return `
+                <div class="conversation-item ${selected} ${unread ? 'has-unread' : ''}" onclick="abrirConversacionBandeja('${c.id}')">
+                    <div class="conversation-item-title">
+                        <div class="conversation-name-wrap">
+                            <div class="conversation-avatar-wrap">
+                                <div class="conversation-avatar">${escapeHtml(inicial)}</div>
+                                ${unread ? '<span class="unread-dot"></span>' : ''}
+                            </div>
+                            <div class="conversation-name">${escapeHtml(cliente)}</div>
+                        </div>
+                        <div class="conversation-time">${formatoFechaCorta(c.updated_at || c.created_at)}</div>
+                    </div>
+                    <div class="conversation-meta">
+                        ${labelCanal(c.canal)}
+                        ${labelEstado(c)}
+                        ${unread ? '<span class="unread-count">1</span>' : ''}
+                    </div>
+                    <div class="conversation-preview"><strong>${escapeHtml(nombreAgentePorId(c.agente_id))}</strong><br>${escapeHtml(c.ultimo_mensaje || 'Sin mensajes recientes')}</div>
+                </div>
+            `;
+        }).join('');
+
+        actualizarIndicadorNoLeidosGlobal();
+    };
+
+    // Reemplaza abrir conversación para marcar leído al abrir.
+    const _abrirConversacionBandejaBase = window.abrirConversacionBandeja;
+    window.abrirConversacionBandeja = async function(id){
+        const result = await _abrirConversacionBandejaBase.apply(this, arguments);
+        const conv = (conversacionesBandeja || []).find(c => c.id === id);
+        if (conv) {
+            window.setAuvroConversationRead(conv.id, conv.updated_at || new Date().toISOString());
+            renderConversacionesBandeja(conversacionesBandeja || []);
+        }
+        return result;
+    };
+
+    // Reemplaza render de mensajes para agregar checks visuales.
+    window.renderMensajesConversacion = function() {
+        const box = document.getElementById('conversation-messages');
+
+        if (!mensajesConversacionActual.length) {
+            box.innerHTML = '<div class="empty-inbox-state"><i class="fas fa-comment-slash"></i><div>Esta conversación aún no tiene mensajes.</div></div>';
+            return;
+        }
+
+        box.innerHTML = '';
+        let ultimoDia = '';
+
+        mensajesConversacionActual.forEach(m => {
+            const origen = m.origen || m.metadata?.origen || (m.role === 'user' ? 'cliente' : 'ia');
+            const cls = m.role === 'user' ? 'user' : (origen === 'humano' ? 'humano' : (m.role === 'system' ? 'system' : 'assistant'));
+            const autor = m.role === 'user' ? 'Cliente' : (origen === 'humano' ? 'Tú' : (m.role === 'system' ? 'Sistema' : 'IA'));
+            const icono = m.role === 'user' ? 'fa-user' : (origen === 'humano' ? 'fa-headset' : (m.role === 'system' ? 'fa-circle-info' : 'fa-robot'));
+            const media = obtenerMediaInfoMensaje(m);
+            const tieneMedia = !!media;
+
+            try {
+                const dia = new Date(m.created_at).toLocaleDateString('es-CO', { year:'numeric', month:'long', day:'numeric' });
+                if (dia !== ultimoDia) {
+                    ultimoDia = dia;
+                    const chip = document.createElement('div');
+                    chip.className = 'inbox-date-chip';
+                    chip.textContent = dia;
+                    box.appendChild(chip);
+                }
+            } catch (_) {}
+
+            const row = document.createElement('div');
+            row.className = `msg-row ${cls}${tieneMedia ? ' media-row' : ''}`;
+
+            const bubble = document.createElement('div');
+            bubble.className = `inbox-msg ${cls}${tieneMedia ? ' media-msg' : ''}`;
+
+            const strong = document.createElement('strong');
+            strong.innerHTML = `<i class="fas ${icono}"></i> ${escapeHtml(autor)}`;
+            bubble.appendChild(strong);
+
+            const contenidoOriginal = String(m.content || '').trim();
+            const esTextoRedundanteMedia = tieneMedia && /^(📷\s*)?Imagen recibida$|^(🎧\s*)?Audio recibido$|^(🎥\s*)?Video recibido$|^(📎\s*)?Documento recibido/i.test(contenidoOriginal);
+
+            if (contenidoOriginal && !esTextoRedundanteMedia) {
+                const span = document.createElement('span');
+                span.className = 'msg-text';
+                span.textContent = contenidoOriginal;
+                bubble.appendChild(span);
+            }
+
+            if (tieneMedia) {
+                const temp = document.createElement('div');
+                temp.innerHTML = renderMediaPlaceholder(m);
+                Array.from(temp.childNodes).forEach(node => bubble.appendChild(node));
+            }
+
+            const meta = document.createElement('div');
+            meta.className = 'msg-meta';
+            const hora = typeof formatoHoraMensaje === 'function' ? formatoHoraMensaje(m.created_at) : formatoFechaCorta(m.created_at);
+            meta.innerHTML = `${escapeHtml(hora)}${checksHtmlForMessage(m)}`;
+            bubble.appendChild(meta);
+
+            row.appendChild(bubble);
+            box.appendChild(row);
+        });
+
+        box.scrollTop = box.scrollHeight;
+        setTimeout(cargarMediasPendientes, 80);
+    };
+
+    // Reemplaza notificación entrante: marca no leído si no está abierto ese chat.
+    window.notificarMensajeEntrante = function(msg) {
+        if (!msg || msg.role !== 'user') return;
+        if (String(msg.id) === String(ultimoMensajeNotificadoId)) return;
+
+        ultimoMensajeNotificadoId = msg.id;
+
+        const convId = msg.conversacion_id;
+        const convAbierta = conversacionSeleccionada?.id === convId && document.getElementById('view-bandeja')?.classList.contains('active');
+
+        if (!convAbierta) {
+            reproducirSonidoNotificacion();
+        }
+
+        if (document.hidden && 'Notification' in window && Notification.permission === 'granted') {
+            new Notification('Nuevo mensaje en AUVRO', { body: String(msg.content || 'Nuevo mensaje').slice(0, 100) });
+        }
+
+        actualizarIndicadorNoLeidosGlobal();
+    };
+
+    // Asegura que las conversaciones nuevas hagan sonido, queden arriba y con punto.
+    const _iniciarRealtimeBandejaBase = window.iniciarRealtimeBandeja;
+    window.iniciarRealtimeBandeja = function(){
+        if (!currentUser || realtimeBandejaIniciada) return;
+
+        if (realtimeConversacionesChannel) {
+            _supabase.removeChannel(realtimeConversacionesChannel);
+            realtimeConversacionesChannel = null;
+        }
+
+        realtimeConversacionesChannel = _supabase
+            .channel(`conversaciones-user-v11-${currentUser.id}`)
+            .on(
+                'postgres_changes',
+                {
+                    event: '*',
+                    schema: 'public',
+                    table: 'conversaciones',
+                    filter: `user_id=eq.${currentUser.id}`
+                },
+                payload => {
+                    const c = payload.new || payload.old;
+                    console.log('Realtime conversaciones v11:', payload.eventType, c);
+
+                    if (payload.new) {
+                        const idx = (conversacionesBandeja || []).findIndex(x => x.id === payload.new.id);
+                        if (idx >= 0) conversacionesBandeja[idx] = { ...conversacionesBandeja[idx], ...payload.new };
+                        else conversacionesBandeja.unshift(payload.new);
+
+                        const esEntrante = payload.new.ultimo_role === 'user';
+                        const estaAbierta = conversacionSeleccionada?.id === payload.new.id;
+
+                        if (esEntrante && !estaAbierta) {
+                            reproducirSonidoNotificacion();
+                        }
+
+                        renderConversacionesBandeja(conversacionesBandeja);
+                    }
+
+                    debounceRecargaBandeja();
+                }
+            )
+            .subscribe(status => {
+                console.log('Estado realtime conversaciones v11:', status);
+                if (status === 'SUBSCRIBED') {
+                    realtimeBandejaIniciada = true;
+                    setRealtimeStatus('Tiempo real');
+                }
+                if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+                    realtimeBandejaIniciada = false;
+                    setRealtimeStatus('Reconectando', 'error');
+                    setTimeout(iniciarRealtimeBandeja, 2500);
+                }
+            });
+    };
+
+    document.addEventListener('DOMContentLoaded', function(){
+        window.actualizarBotonSonido();
+        setTimeout(actualizarIndicadorNoLeidosGlobal, 600);
+    });
+
+    setTimeout(function(){
+        window.actualizarBotonSonido();
+        actualizarIndicadorNoLeidosGlobal();
+    }, 900);
+})();
+
 </script>
 
         <!-- PWA Install Banner -->
