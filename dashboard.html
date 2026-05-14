@@ -2275,6 +2275,112 @@ button, a, input, textarea, select {
     }
 }
 
+
+/* ════════════════════════════════════════════════════════════════════════
+   AUVRO BANDEJA PRO V10 — NO LEÍDOS + SONIDO + ESTADOS VISUALES
+   - Punto de no leído en cada conversación.
+   - Indicador en menú Bandeja.
+   - Conversaciones recientes arriba.
+   - Botón activar/desactivar sonido.
+   - Checks visuales en mensajes salientes.
+   ════════════════════════════════════════════════════════════════════════ */
+
+.nav-unread-badge{
+    display:none;
+    min-width:18px;
+    height:18px;
+    padding:0 5px;
+    border-radius:999px;
+    background:var(--red);
+    color:#fff;
+    font-size:10px;
+    line-height:18px;
+    text-align:center;
+    margin-left:auto;
+    box-shadow:0 0 0 3px rgba(248,113,113,.12);
+}
+.nav-unread-badge.visible{display:inline-block}
+
+.conversation-item.unread{
+    background:rgba(14,165,233,.075);
+}
+.conversation-item.unread .conversation-name{
+    color:var(--text);
+}
+.conversation-item.unread .conversation-preview{
+    color:var(--text);
+    font-weight:650;
+}
+.conversation-unread-dot{
+    width:9px;
+    height:9px;
+    border-radius:50%;
+    background:var(--green);
+    box-shadow:0 0 0 4px rgba(34,211,165,.13);
+    flex:0 0 auto;
+}
+.conversation-unread-pill{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    min-width:18px;
+    height:18px;
+    padding:0 6px;
+    border-radius:999px;
+    background:var(--green);
+    color:#03130f;
+    font-size:10px;
+    font-weight:900;
+    margin-left:.35rem;
+}
+.conversation-read-mark{
+    display:inline-flex;
+    align-items:center;
+    gap:2px;
+    color:var(--accent);
+    font-size:.68rem;
+    margin-right:.25rem;
+}
+.conversation-seen-local{
+    color:var(--dim);
+    font-size:.63rem;
+    display:inline-flex;
+    align-items:center;
+    gap:.2rem;
+}
+.msg-delivery-state{
+    display:inline-flex;
+    align-items:center;
+    gap:3px;
+    margin-left:6px;
+    color:var(--accent2);
+    font-size:9px;
+    vertical-align:middle;
+}
+.msg-delivery-state .fa-check-double{
+    letter-spacing:-2px;
+}
+body.light-mode .conversation-item.unread{
+    background:#e6f7ff;
+}
+body.light-mode .conversation-unread-pill{
+    color:#fff;
+}
+
+@media(max-width:768px){
+    #view-bandeja.active .topbar-right{
+        grid-template-columns:1fr 1fr!important;
+    }
+    #view-bandeja.active .topbar-right .badge{
+        grid-column:1 / -1!important;
+    }
+    #btn-sound-toggle.green{
+        background:rgba(34,211,165,.12)!important;
+        border-color:rgba(34,211,165,.34)!important;
+        color:var(--green)!important;
+    }
+}
+
 </style>
     </head>
     <body>
@@ -2435,6 +2541,13 @@ button, a, input, textarea, select {
                             <i class="fas fa-bell"
                                 style="margin-right:.35rem"></i> Activar
                             notificaciones
+                        </button>
+
+                        <button class="btn-small" onclick="toggleSonidoNotificacion()"
+                            id="btn-sound-toggle">
+                            <i class="fas fa-volume-high"
+                                style="margin-right:.35rem"></i> Activar
+                            sonido
                         </button>
 
                         <button class="btn-small"
