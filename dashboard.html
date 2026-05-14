@@ -2381,6 +2381,267 @@ button, a, input, textarea, select {
     }
 }
 
+
+/* ════════════════════════════════════════════════════════════════════════
+   AUVRO V12 — UX PRO FINAL
+   - Tema oscuro negro profesional, no azul dominante
+   - Botón claro/oscuro en zona de usuario/cerrar sesión
+   - Chat móvil tipo app: al abrir no mueve toda la bandeja
+   - Mensajes siempre bajan al final del chat
+   - Estado visual Enviado / Entregado / Leído estilo WhatsApp
+   ════════════════════════════════════════════════════════════════════════ */
+
+:root{
+    --bg:#030712!important;
+    --bg2:#050914!important;
+    --surface:#0b1220!important;
+    --border:#172033!important;
+    --border2:#25324a!important;
+    --chat-bg:#07111d!important;
+    --chat-panel:#0b1220!important;
+    --bubble-user:#0b1220!important;
+    --bubble-ai:#07324a!important;
+    --bubble-human:#07513f!important;
+}
+
+body.light-mode{
+    --bg:#f5f8fb!important;
+    --bg2:#ffffff!important;
+    --surface:#ffffff!important;
+    --border:#dce7ef!important;
+    --border2:#c7d8e6!important;
+    --chat-bg:#edf5f9!important;
+    --chat-panel:#ffffff!important;
+    --bubble-user:#ffffff!important;
+    --bubble-ai:#e3f4ff!important;
+    --bubble-human:#dcfce7!important;
+}
+
+.sidebar{
+    background:linear-gradient(180deg,var(--bg2),#030712)!important;
+    box-shadow:12px 0 40px rgba(0,0,0,.22)!important;
+}
+body.light-mode .sidebar{
+    background:linear-gradient(180deg,#ffffff,#f7fbff)!important;
+    box-shadow:12px 0 40px rgba(15,23,42,.06)!important;
+}
+.sidebar-logo{
+    padding:.35rem .5rem .85rem!important;
+    border-bottom:1px solid var(--border)!important;
+    margin-bottom:1rem!important;
+}
+.sidebar nav a{
+    min-height:42px!important;
+    border:1px solid transparent!important;
+}
+.sidebar nav a:hover{
+    border-color:var(--border)!important;
+}
+.sidebar nav a.active{
+    border-color:rgba(14,165,233,.18)!important;
+    box-shadow:inset 3px 0 0 var(--accent)!important;
+}
+
+.sidebar-bottom{
+    display:flex!important;
+    flex-direction:column!important;
+    gap:.65rem!important;
+}
+.sidebar-theme-toggle{
+    width:100%!important;
+    min-height:42px!important;
+    display:flex!important;
+    align-items:center!important;
+    justify-content:space-between!important;
+    gap:.75rem!important;
+    padding:.62rem .75rem!important;
+    border-radius:12px!important;
+    border:1px solid var(--border)!important;
+    background:var(--surface)!important;
+    color:var(--muted)!important;
+    font-family:'DM Sans',sans-serif!important;
+    font-size:.8rem!important;
+    cursor:pointer!important;
+    transition:all .2s!important;
+}
+.sidebar-theme-toggle:hover{
+    border-color:rgba(14,165,233,.35)!important;
+    color:var(--accent)!important;
+    transform:translateY(-1px)!important;
+}
+.sidebar-theme-toggle .theme-pill{
+    min-width:42px!important;
+    height:22px!important;
+    border-radius:999px!important;
+    background:var(--bg)!important;
+    border:1px solid var(--border2)!important;
+    position:relative!important;
+}
+.sidebar-theme-toggle .theme-pill::after{
+    content:''!important;
+    width:16px!important;
+    height:16px!important;
+    border-radius:50%!important;
+    background:var(--accent)!important;
+    position:absolute!important;
+    top:2px!important;
+    left:3px!important;
+    transition:transform .2s!important;
+}
+body.light-mode .sidebar-theme-toggle .theme-pill::after{
+    transform:translateX(19px)!important;
+    background:var(--yellow)!important;
+}
+
+/* Oculta el toggle duplicado dentro del header de filtros; ahora vive en el menú */
+.inbox-toolbar .theme-toggle{
+    display:none!important;
+}
+
+/* Estado de mensaje tipo WhatsApp */
+.msg-state{
+    display:inline-flex!important;
+    align-items:center!important;
+    gap:3px!important;
+    margin-left:6px!important;
+    font-size:9px!important;
+    color:var(--dim)!important;
+    vertical-align:middle!important;
+    white-space:nowrap!important;
+}
+.msg-state i{
+    font-size:9px!important;
+    line-height:1!important;
+}
+.msg-state.sent,
+.msg-state.delivered{
+    color:var(--muted)!important;
+}
+.msg-state.read{
+    color:#38bdf8!important;
+}
+.msg-state-label{
+    font-size:9px!important;
+    line-height:1!important;
+    opacity:.78!important;
+}
+@media(max-width:520px){
+    .msg-state-label{display:none!important;}
+}
+
+/* Scroll infalible en la bandeja */
+body.bandeja-active{
+    overflow:hidden!important;
+}
+#view-bandeja.active{
+    height:calc(100dvh - 4rem)!important;
+    min-height:0!important;
+    overflow:hidden!important;
+}
+#view-bandeja.active .inbox-layout{
+    height:100%!important;
+    min-height:0!important;
+}
+#conversation-messages{
+    scroll-behavior:auto!important;
+    overflow-anchor:none!important;
+}
+
+/* Móvil: lista y chat como app */
+@media(max-width:768px){
+    body.bandeja-active{
+        height:100dvh!important;
+        overflow:hidden!important;
+        position:fixed!important;
+        inset:0!important;
+        width:100%!important;
+    }
+
+    body.bandeja-active .main-content{
+        height:100dvh!important;
+        overflow:hidden!important;
+        padding-top:calc(env(safe-area-inset-top, 0px) + .75rem)!important;
+    }
+
+    #view-bandeja.active{
+        height:calc(100dvh - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px) - .75rem)!important;
+        overflow:hidden!important;
+        display:flex!important;
+        flex-direction:column!important;
+    }
+
+    #view-bandeja.active .topbar{
+        flex:0 0 auto!important;
+    }
+
+    .inbox-layout{
+        flex:1 1 auto!important;
+        min-height:0!important;
+        overflow:hidden!important;
+        display:flex!important;
+        flex-direction:column!important;
+    }
+
+    .inbox-sidebar{
+        flex:1 1 auto!important;
+        min-height:0!important;
+        overflow:hidden!important;
+    }
+
+    #conversation-list,
+    .conversation-list{
+        flex:1 1 auto!important;
+        min-height:0!important;
+        height:auto!important;
+        max-height:none!important;
+        overflow-y:auto!important;
+        -webkit-overflow-scrolling:touch!important;
+        touch-action:pan-y!important;
+    }
+
+    .inbox-panel{
+        position:fixed!important;
+        inset:0!important;
+        width:100vw!important;
+        height:100dvh!important;
+        z-index:20000!important;
+        transform:translateX(105%)!important;
+        transition:transform .22s ease!important;
+        overflow:hidden!important;
+        display:flex!important;
+        flex-direction:column!important;
+        border-radius:0!important;
+        background:var(--chat-panel)!important;
+    }
+
+    body.mobile-chat-open .inbox-panel{
+        transform:translateX(0)!important;
+    }
+
+    body.mobile-chat-open{
+        overflow:hidden!important;
+    }
+
+    .inbox-panel-header{
+        flex:0 0 auto!important;
+    }
+
+    #conversation-messages,
+    .conversation-messages{
+        flex:1 1 auto!important;
+        min-height:0!important;
+        height:auto!important;
+        max-height:none!important;
+        overflow-y:auto!important;
+        -webkit-overflow-scrolling:touch!important;
+        touch-action:pan-y!important;
+    }
+
+    .manual-reply-box{
+        flex:0 0 auto!important;
+    }
+}
+
 </style>
     </head>
     <body>
@@ -2438,6 +2699,11 @@ button, a, input, textarea, select {
                     <span class="user-email-text"
                         id="user-email">Cargando...</span>
                 </div>
+
+                <button class="sidebar-theme-toggle" onclick="toggleTheme()" id="sidebar-theme-toggle" title="Cambiar modo claro/oscuro">
+                    <span><i class="fas fa-moon" style="margin-right:.45rem"></i><span id="sidebar-theme-label">Modo oscuro</span></span>
+                    <span class="theme-pill"></span>
+                </button>
                 <button class="btn-logout" onclick="cerrarSesion()">
                     <i class="fas fa-arrow-right-from-bracket"></i> Cerrar
                     sesión
@@ -5464,6 +5730,156 @@ async function debugPush() {
         window.actualizarBotonSonido();
         actualizarIndicadorNoLeidosGlobal();
     }, 900);
+})();
+
+
+
+/* ════════════════════════════════════════════════════════════════════════
+   AUVRO V12 — UX PRO: tema sidebar, scroll estable y estados de lectura
+   ════════════════════════════════════════════════════════════════════════ */
+(function(){
+    function syncSidebarThemeButton(){
+        const claro = document.body.classList.contains('light-mode');
+        const label = document.getElementById('sidebar-theme-label');
+        const btn = document.getElementById('sidebar-theme-toggle');
+        if (label) label.textContent = claro ? 'Modo claro' : 'Modo oscuro';
+        if (btn) {
+            const icon = btn.querySelector('i');
+            if (icon) icon.className = claro ? 'fas fa-sun' : 'fas fa-moon';
+        }
+    }
+
+    const oldActualizarBotonTema = window.actualizarBotonTema;
+    window.actualizarBotonTema = function(){
+        if (typeof oldActualizarBotonTema === 'function') {
+            try { oldActualizarBotonTema(); } catch(_) {}
+        }
+        syncSidebarThemeButton();
+    };
+
+    const oldToggleTheme = window.toggleTheme;
+    window.toggleTheme = function(){
+        if (typeof oldToggleTheme === 'function') {
+            oldToggleTheme();
+        } else {
+            const claro = document.body.classList.toggle('light-mode');
+            try { localStorage.setItem('auvrouter_theme', claro ? 'light' : 'dark'); } catch(_) {}
+        }
+        syncSidebarThemeButton();
+    };
+
+    function scrollChatAlFinal(force){
+        const box = document.getElementById('conversation-messages');
+        if (!box) return;
+        const run = () => { box.scrollTop = box.scrollHeight; };
+        run();
+        if (force) {
+            requestAnimationFrame(run);
+            setTimeout(run, 80);
+            setTimeout(run, 220);
+        }
+    }
+
+    window.scrollChatAlFinal = scrollChatAlFinal;
+
+    function estadoMensajeHtml(m){
+        if (!m || m.role === 'user' || m.role === 'system') return '';
+
+        const md = m.metadata || {};
+        const read =
+            md.read_by_client === true ||
+            md.leido_cliente === true ||
+            md.read_at ||
+            md.visto_en ||
+            md.client_read_at ||
+            md.web_read_at;
+
+        const delivered =
+            read ||
+            md.delivered === true ||
+            md.entregado === true ||
+            md.delivered_at ||
+            md.whatsapp_send ||
+            md.meta;
+
+        if (read) {
+            return '<span class="msg-state read" title="Leído por el cliente"><i class="fas fa-check-double"></i><span class="msg-state-label">Leído</span></span>';
+        }
+
+        if (delivered) {
+            return '<span class="msg-state delivered" title="Entregado al canal"><i class="fas fa-check-double"></i><span class="msg-state-label">Entregado</span></span>';
+        }
+
+        return '<span class="msg-state sent" title="Enviado"><i class="fas fa-check"></i><span class="msg-state-label">Enviado</span></span>';
+    }
+
+    window.estadoMensajeHtml = estadoMensajeHtml;
+
+    const oldRenderMensajes = window.renderMensajesConversacion;
+    window.renderMensajesConversacion = function(){
+        if (typeof oldRenderMensajes === 'function') {
+            oldRenderMensajes.apply(this, arguments);
+        }
+
+        const box = document.getElementById('conversation-messages');
+        if (!box || !Array.isArray(window.mensajesConversacionActual || mensajesConversacionActual)) {
+            scrollChatAlFinal(true);
+            return;
+        }
+
+        const mensajes = window.mensajesConversacionActual || mensajesConversacionActual || [];
+        const metas = box.querySelectorAll('.msg-row .msg-meta, .inbox-msg .msg-meta');
+
+        metas.forEach((meta, idx) => {
+            const m = mensajes[idx];
+            if (!m || m.role === 'user' || m.role === 'system') return;
+            if (meta.querySelector('.msg-state')) return;
+            meta.insertAdjacentHTML('beforeend', estadoMensajeHtml(m));
+        });
+
+        scrollChatAlFinal(true);
+    };
+
+    const oldAbrir = window.abrirConversacionBandeja;
+    window.abrirConversacionBandeja = async function(id){
+        const y = window.scrollY;
+        const result = oldAbrir ? await oldAbrir.apply(this, arguments) : undefined;
+
+        document.body.classList.add('mobile-chat-open');
+
+        // En móvil no debe moverse toda la página/lista al abrir chat.
+        if (window.innerWidth <= 768) {
+            requestAnimationFrame(() => window.scrollTo(0, y));
+            setTimeout(() => window.scrollTo(0, y), 80);
+        }
+
+        scrollChatAlFinal(true);
+        return result;
+    };
+
+    const oldCerrarMobile = window.cerrarChatMobileBandeja;
+    window.cerrarChatMobileBandeja = function(){
+        document.body.classList.remove('mobile-chat-open');
+        if (typeof oldCerrarMobile === 'function') {
+            return oldCerrarMobile.apply(this, arguments);
+        }
+    };
+
+    const oldCargarMensajes = window.cargarMensajesConversacion;
+    if (typeof oldCargarMensajes === 'function') {
+        window.cargarMensajesConversacion = async function(){
+            const r = await oldCargarMensajes.apply(this, arguments);
+            scrollChatAlFinal(true);
+            return r;
+        };
+    }
+
+    document.addEventListener('DOMContentLoaded', function(){
+        syncSidebarThemeButton();
+        setTimeout(() => scrollChatAlFinal(true), 600);
+    });
+
+    setTimeout(syncSidebarThemeButton, 500);
 })();
 
 </script>
