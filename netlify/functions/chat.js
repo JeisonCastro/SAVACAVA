@@ -713,25 +713,42 @@ async function manejarPendingAction({
 // ── HANDLER ──────────────────────────────────────────────────────────────────
 
 async function obtenerOCrearConversacion({ agente, targetID, canal, externalUserId, conversationId }) {
-    let query = supabase
+    /*
+      FIX IMPORTANTE:
+      Antes se usaba maybeSingle(). Si ya existían duplicados para el mismo
+      agente + canal + external_user_id, Supabase devolvía error por múltiples filas.
+      El código ignoraba el error y creaba otra conversación nueva en cada mensaje.
+
+      Ahora siempre buscamos con .limit(1) y tomamos la conversación más reciente.
+      Así el mismo número de WhatsApp sigue entrando al mismo chat.
+    */
+    const baseQuery = supabase
         .from('conversaciones')
         .select('*')
         .eq('agente_id', targetID)
         .eq('canal', canal);
 
-    if (conversationId) {
-        query = query.eq('id', conversationId);
+    let query;
+
+    if (conversationId && /^[0-9a-f-]{36}$/i.test(String(conversationId))) {
+        query = baseQuery.eq('id', conversationId);
     } else {
-        query = query.eq('external_user_id', externalUserId);
+        query = baseQuery.eq('external_user_id', String(externalUserId || '').trim());
     }
 
-    let { data: conversacion, error } = await query.maybeSingle();
+    const { data: conversaciones, error } = await query
+        .order('updated_at', { ascending: false, nullsFirst: false })
+        .order('created_at', { ascending: false, nullsFirst: false })
+        .limit(1);
 
     if (error) {
         console.error("Error buscando conversación:", error);
     }
 
+    const conversacion = Array.isArray(conversaciones) ? conversaciones[0] : null;
     if (conversacion) return conversacion;
+
+    const externalIdFinal = String(externalUserId || conversationId || `${canal}_${targetID}_anon`).trim();
 
     const { data: nueva, error: insertError } = await supabase
         .from('conversaciones')
@@ -739,8 +756,14 @@ async function obtenerOCrearConversacion({ agente, targetID, canal, externalUser
             agente_id: targetID,
             user_id: agente.user_id,
             canal,
-            external_user_id: externalUserId,
-            titulo: `Conversación ${canal}`
+            external_user_id: externalIdFinal,
+            titulo: canal === 'whatsapp' ? `WhatsApp ${externalIdFinal}` : `Conversación ${canal}`,
+            estado: 'ia_activa',
+            modo_humano: false,
+            requiere_atencion: false,
+            ultimo_mensaje: '',
+            ultimo_role: 'user',
+            updated_at: new Date().toISOString()
         }])
         .select('*')
         .single();
