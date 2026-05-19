@@ -119,18 +119,29 @@ function extraerContenidoMensaje(message) {
 }
 
 async function obtenerOCrearConversacion({ agenteId, userId, canal, externalUserId }) {
-  const { data: existente, error } = await supabase
+  /*
+    FIX IMPORTANTE:
+    Si ya había conversaciones duplicadas del mismo número, maybeSingle()
+    fallaba por múltiples filas y el webhook creaba otra conversación nueva.
+    Ahora se toma la conversación más reciente para agente + canal + número.
+  */
+  const externalIdFinal = String(externalUserId || '').trim();
+
+  const { data: existentes, error } = await supabase
     .from('conversaciones')
     .select('*')
     .eq('agente_id', agenteId)
     .eq('canal', canal)
-    .eq('external_user_id', externalUserId)
-    .maybeSingle();
+    .eq('external_user_id', externalIdFinal)
+    .order('updated_at', { ascending: false, nullsFirst: false })
+    .order('created_at', { ascending: false, nullsFirst: false })
+    .limit(1);
 
   if (error) {
     console.error('Error buscando conversación:', error);
   }
 
+  const existente = Array.isArray(existentes) ? existentes[0] : null;
   if (existente) return existente;
 
   const { data: nueva, error: insertError } = await supabase
@@ -139,8 +150,8 @@ async function obtenerOCrearConversacion({ agenteId, userId, canal, externalUser
       agente_id: agenteId,
       user_id: userId,
       canal,
-      external_user_id: externalUserId,
-      titulo: `WhatsApp ${externalUserId}`,
+      external_user_id: externalIdFinal,
+      titulo: `WhatsApp ${externalIdFinal}`,
       estado: 'ia_activa',
       modo_humano: false,
       requiere_atencion: false,
