@@ -67,9 +67,7 @@
             href="/favicon-32x32.png">
         <link rel="icon" type="image/png" sizes="16x16"
             href="/favicon-16x16.png">
-        <link
-            href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap"
-            rel="stylesheet">
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
         <link rel="stylesheet"
             href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
         <style>
@@ -88,7 +86,7 @@
             --chat-bg:#e7f0f4;--chat-panel:#f7fbfd;--bubble-user:#ffffff;--bubble-ai:#dff3ff;--bubble-human:#dcfce7;
             --shadow-soft:0 18px 60px rgba(15,23,42,.10);
         }
-        html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);overflow-x:hidden}
+        html,body{height:100%;font-family:'Inter',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);overflow-x:hidden}
         .bg-grid{position:fixed;inset:0;left:var(--sidebar);background-image:linear-gradient(var(--border) 1px,transparent 1px),linear-gradient(90deg,var(--border) 1px,transparent 1px);background-size:60px 60px;opacity:.15;pointer-events:none;z-index:0}
 
         /* SIDEBAR */
@@ -96,7 +94,7 @@
         .sidebar-logo{display:flex;align-items:center;gap:8px;margin-bottom:2rem;padding:0 .5rem}
         .logo-dot{width:7px;height:7px;border-radius:50%;background:var(--accent);animation:pulse 2s infinite;flex-shrink:0}
         @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
-        .logo-text{font-family:'Syne',sans-serif;font-weight:800;font-size:.9rem;letter-spacing:.04em;color:var(--text)}
+        .logo-text{font-family:'Inter',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-weight:800;font-size:.9rem;letter-spacing:.04em;color:var(--text)}
         .nav-label{font-size:.7rem;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);padding:0 .75rem;margin-bottom:.5rem}
         .sidebar nav a{display:flex;align-items:center;gap:.75rem;padding:.6rem .75rem;border-radius:8px;color:var(--muted);text-decoration:none;font-size:.875rem;font-weight:400;transition:all .2s;margin-bottom:.2rem;cursor:pointer}
         .sidebar nav a i{width:16px;text-align:center;font-size:.85rem}
@@ -106,9 +104,9 @@
         .plan-badge-sidebar{display:inline-flex;align-items:center;gap:.35rem;font-size:.7rem;padding:.25rem .6rem;border-radius:20px;background:rgba(14,165,233,.1);color:var(--accent);border:1px solid rgba(14,165,233,.2);margin:0 .5rem .75rem;font-weight:500}
         .sidebar-bottom{border-top:1px solid var(--border);padding-top:1rem}
         .user-row{display:flex;align-items:center;gap:.65rem;padding:.5rem .5rem .75rem}
-        .user-avatar{width:30px;height:30px;border-radius:50%;background:rgba(14,165,233,.15);border:1px solid rgba(14,165,233,.25);display:flex;align-items:center;justify-content:center;font-size:.75rem;color:var(--accent);flex-shrink:0;font-family:'Syne',sans-serif;font-weight:700}
+        .user-avatar{width:30px;height:30px;border-radius:50%;background:rgba(14,165,233,.15);border:1px solid rgba(14,165,233,.25);display:flex;align-items:center;justify-content:center;font-size:.75rem;color:var(--accent);flex-shrink:0;font-family:'Inter',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-weight:700}
         .user-email-text{font-size:.78rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px}
-        .btn-logout{display:flex;align-items:center;gap:.65rem;width:100%;padding:.55rem .75rem;border-radius:8px;background:none;border:none;color:var(--dim);font-size:.82rem;font-family:'DM Sans',sans-serif;cursor:pointer;transition:all .2s}
+        .btn-logout{display:flex;align-items:center;gap:.65rem;width:100%;padding:.55rem .75rem;border-radius:8px;background:none;border:none;color:var(--dim);font-size:.82rem;font-family:'Inter',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;cursor:pointer;transition:all .2s}
         .btn-logout:hover{color:var(--red);background:rgba(248,113,113,.07)}
 
         /* MAIN */
@@ -125,18 +123,18 @@
 
         /* TOPBAR */
         .topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:2rem;flex-wrap:wrap;gap:1rem}
-        .page-title{font-family:'Syne',sans-serif;font-size:1.4rem;font-weight:800;color:var(--text)}
+        .page-title{font-family:'Inter',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:1.4rem;font-weight:800;color:var(--text)}
         .page-sub{font-size:.82rem;color:var(--muted);margin-top:.2rem;font-weight:300}
         .topbar-right{display:flex;align-items:center;gap:.75rem;flex-wrap:wrap}
         .token-card{display:flex;align-items:center;gap:1rem;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:.75rem 1.1rem}
         .token-icon{width:36px;height:36px;border-radius:8px;background:rgba(34,211,165,.1);border:1px solid rgba(34,211,165,.2);display:flex;align-items:center;justify-content:center;color:var(--green);font-size:.9rem}
         .token-label{font-size:.7rem;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
-        #token-balance,#token-balance-2{font-family:'Syne',sans-serif;font-size:1.3rem;font-weight:800;color:var(--green)}
+        #token-balance,#token-balance-2{font-family:'Inter',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:1.3rem;font-weight:800;color:var(--green)}
 
         /* PLAN INDICATOR */
         .plan-indicator{display:flex;align-items:center;gap:.75rem;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:.65rem 1rem}
         .plan-info-label{font-size:.7rem;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
-        .plan-info-value{font-family:'Syne',sans-serif;font-size:.95rem;font-weight:700;color:var(--text)}
+        .plan-info-value{font-family:'Inter',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:.95rem;font-weight:700;color:var(--text)}
         .plan-progress-wrap{width:80px;height:5px;background:var(--border);border-radius:3px;margin-top:3px}
         .plan-progress-bar{height:5px;border-radius:3px;background:var(--accent);transition:width .4s}
         .plan-progress-bar.warning{background:var(--yellow)}
@@ -153,25 +151,25 @@
         .card-icon{width:32px;height:32px;border-radius:8px;background:rgba(14,165,233,.1);display:flex;align-items:center;justify-content:center;color:var(--accent);font-size:.85rem;flex-shrink:0}
         .card-icon.green{background:rgba(34,211,165,.1);color:var(--green)}
         .card-icon.yellow{background:rgba(251,191,36,.1);color:var(--yellow)}
-        .card-title{font-family:'Syne',sans-serif;font-size:1rem;font-weight:700;color:var(--text)}
+        .card-title{font-family:'Inter',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:1rem;font-weight:700;color:var(--text)}
 
         /* STATS */
         .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.25rem 1.5rem}
         .stat-label{font-size:.72rem;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:.4rem}
-        .stat-value{font-family:'Syne',sans-serif;font-size:1.8rem;font-weight:800;color:var(--text)}
+        .stat-value{font-family:'Inter',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:1.8rem;font-weight:800;color:var(--text)}
         .stat-value.green{color:var(--green)}.stat-value.accent{color:var(--accent)}.stat-value.yellow{color:var(--yellow)}
         .stat-sub{font-size:.75rem;color:var(--dim);margin-top:.3rem}
 
         /* FORM */
         .field{margin-bottom:.9rem}
         .field label{display:block;font-size:.74rem;font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:.4rem}
-        .field input,.field textarea{width:100%;padding:10px 13px;background:var(--bg2);border:1px solid var(--border2);border-radius:8px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:.88rem;outline:none;transition:border-color .2s;resize:none}
+        .field input,.field textarea{width:100%;padding:10px 13px;background:var(--bg2);border:1px solid var(--border2);border-radius:8px;color:var(--text);font-family:'Inter',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:.88rem;outline:none;transition:border-color .2s;resize:none}
         .field input:focus,.field textarea:focus{border-color:var(--accent)}
         .field input::placeholder,.field textarea::placeholder{color:var(--dim)}
         .field input:disabled{opacity:.5;cursor:not-allowed}
         .field-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
         @media(max-width:600px){.field-row{grid-template-columns:1fr}}
-        .btn-main{width:100%;padding:11px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-weight:500;font-size:.9rem;cursor:pointer;transition:all .2s;margin-top:.25rem}
+        .btn-main{width:100%;padding:11px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-family:'Inter',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-weight:500;font-size:.9rem;cursor:pointer;transition:all .2s;margin-top:.25rem}
         .btn-main:hover{background:var(--accent2);transform:translateY(-1px)}
         .btn-main:disabled{opacity:.5;cursor:not-allowed;transform:none}
         .btn-green{background:var(--green)!important;color:#06090f!important}
@@ -184,7 +182,7 @@
         .empty-state i{font-size:2rem;margin-bottom:.75rem;display:block;color:var(--border2)}
         .agent-item{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;padding:.9rem 1rem;background:var(--bg2);border:1px solid var(--border);border-radius:10px;margin-bottom:.65rem;transition:border-color .2s}
         .agent-item:hover{border-color:var(--border2)}
-        .agent-name{font-family:'Syne',sans-serif;font-size:.88rem;font-weight:700;color:var(--text);margin-bottom:.25rem}
+        .agent-name{font-family:'Inter',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:.88rem;font-weight:700;color:var(--text);margin-bottom:.25rem}
         .agent-prompt{font-size:.78rem;color:var(--muted);line-height:1.5;font-weight:300;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 
         /* TABLE */
@@ -219,8 +217,8 @@
         .plan-card:hover{border-color:var(--border2)}
         .plan-card.selected{outline:2px solid var(--accent)}
         .plan-card.featured{border-color:rgba(14,165,233,.35);background:rgba(14,165,233,.04)}
-        .plan-name{font-family:'Syne',sans-serif;font-size:.8rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.4rem}
-        .plan-tokens{font-family:'Syne',sans-serif;font-size:1.6rem;font-weight:800;color:var(--text)}
+        .plan-name{font-family:'Inter',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:.8rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.4rem}
+        .plan-tokens{font-family:'Inter',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:1.6rem;font-weight:800;color:var(--text)}
         .plan-tokens span{font-size:.8rem;color:var(--muted);font-weight:400}
         .plan-price{font-size:.82rem;color:var(--green);margin:.4rem 0 0;font-weight:500}
         .plan-badge-card{display:inline-block;font-size:.65rem;padding:.15rem .5rem;border-radius:20px;background:rgba(14,165,233,.15);color:var(--accent);border:1px solid rgba(14,165,233,.3);margin-bottom:.5rem}
@@ -230,13 +228,13 @@
         .upgrade-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:1002;align-items:center;justify-content:center}
         .upgrade-card{background:var(--surface);border:1px solid var(--border2);border-radius:16px;padding:2rem;width:460px;max-width:92%;text-align:center}
         .upgrade-icon{width:56px;height:56px;border-radius:50%;background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.3);display:flex;align-items:center;justify-content:center;margin:0 auto 1.25rem;font-size:1.4rem;color:var(--yellow)}
-        .upgrade-title{font-family:'Syne',sans-serif;font-size:1.2rem;font-weight:800;color:var(--text);margin-bottom:.6rem}
+        .upgrade-title{font-family:'Inter',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:1.2rem;font-weight:800;color:var(--text);margin-bottom:.6rem}
         .upgrade-msg{font-size:.9rem;color:var(--muted);line-height:1.65;margin-bottom:1.75rem;font-weight:300}
         .upgrade-plans{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.65rem;margin-bottom:1.5rem}
         .upgrade-plan-item{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:.85rem .5rem;cursor:pointer;transition:all .2s}
         .upgrade-plan-item:hover{border-color:var(--border2)}
         .upgrade-plan-item.selected{border-color:var(--accent);background:rgba(14,165,233,.06)}
-        .upgrade-plan-name{font-family:'Syne',sans-serif;font-size:.78rem;font-weight:700;color:var(--text);margin-bottom:.2rem}
+        .upgrade-plan-name{font-family:'Inter',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:.78rem;font-weight:700;color:var(--text);margin-bottom:.2rem}
         .upgrade-plan-agents{font-size:.72rem;color:var(--accent);margin-bottom:.2rem}
         .upgrade-plan-price{font-size:.72rem;color:var(--green)}
 
@@ -261,11 +259,11 @@
         .inbox-sidebar{background:var(--bg2);border-right:1px solid var(--border);overflow:hidden;display:flex;flex-direction:column;height:100%;min-height:0}
         .inbox-filters{padding:.85rem;border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:.6rem;flex:0 0 auto;background:linear-gradient(180deg,var(--surface),var(--bg2))}
         .inbox-toolbar{display:flex;align-items:center;justify-content:space-between;gap:.65rem}
-        .inbox-toolbar-title{font-family:'Syne',sans-serif;font-size:.9rem;font-weight:800;color:var(--text);display:flex;align-items:center;gap:.45rem}
+        .inbox-toolbar-title{font-family:'Inter',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:.9rem;font-weight:800;color:var(--text);display:flex;align-items:center;gap:.45rem}
         .theme-toggle{display:inline-flex;align-items:center;gap:.45rem;padding:7px 9px;border-radius:999px;border:1px solid var(--border2);background:var(--surface);color:var(--muted);font-size:.74rem;cursor:pointer;transition:all .2s}
         .theme-toggle:hover{border-color:var(--accent);color:var(--accent)}
         .inbox-filter-row{display:grid;grid-template-columns:1fr 1fr;gap:.5rem}
-        .inbox-filters select,.inbox-filters input{width:100%;padding:9px 11px;background:var(--bg);border:1px solid var(--border2);border-radius:10px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:.8rem;outline:none}
+        .inbox-filters select,.inbox-filters input{width:100%;padding:9px 11px;background:var(--bg);border:1px solid var(--border2);border-radius:10px;color:var(--text);font-family:'Inter',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:.8rem;outline:none}
         .inbox-filters input{padding-left:34px}
         .inbox-search-wrap{position:relative}
         .inbox-search-wrap i{position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:.78rem;color:var(--dim)}
@@ -278,7 +276,7 @@
         .conversation-item-title{display:flex;justify-content:space-between;gap:.55rem;align-items:center;margin-bottom:.35rem}
         .conversation-name-wrap{display:flex;align-items:center;gap:.55rem;min-width:0}
         .conversation-avatar{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:rgba(14,165,233,.12);border:1px solid rgba(14,165,233,.22);color:var(--accent);font-size:.82rem;flex:0 0 auto}
-        .conversation-name{font-family:'Syne',sans-serif;font-size:.84rem;font-weight:800;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+        .conversation-name{font-family:'Inter',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:.84rem;font-weight:800;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
         .conversation-time{font-size:.67rem;color:var(--dim);white-space:nowrap}
         .conversation-meta{display:flex;align-items:center;gap:.35rem;flex-wrap:wrap;margin:.35rem 0 .45rem 2.8rem}
         .conversation-preview{font-size:.76rem;color:var(--muted);line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin-left:2.8rem}
@@ -287,10 +285,10 @@
         .inbox-panel-header{padding:.85rem 1rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:1rem;background:var(--surface);flex:0 0 auto}
         .inbox-contact{display:flex;align-items:center;gap:.75rem;min-width:0}
         .inbox-contact-avatar{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:rgba(34,211,165,.12);border:1px solid rgba(34,211,165,.24);color:var(--green);font-weight:800;flex:0 0 auto}
-        .inbox-header-title{font-family:'Syne',sans-serif;font-size:1rem;font-weight:800;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:520px}
+        .inbox-header-title{font-family:'Inter',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:1rem;font-weight:800;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:520px}
         .inbox-header-sub{font-size:.76rem;color:var(--muted);margin-top:.18rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:640px}
         .inbox-actions{display:flex;align-items:center;gap:.45rem;flex-wrap:wrap;justify-content:flex-end}
-        .btn-small{padding:8px 10px;border-radius:10px;border:1px solid var(--border2);background:var(--surface);color:var(--text);font-family:'DM Sans',sans-serif;font-size:.76rem;cursor:pointer;transition:all .2s}
+        .btn-small{padding:8px 10px;border-radius:10px;border:1px solid var(--border2);background:var(--surface);color:var(--text);font-family:'Inter',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:.76rem;cursor:pointer;transition:all .2s}
         .btn-small:hover{border-color:var(--accent);color:var(--accent);transform:translateY(-1px)}
         .btn-small.danger{background:rgba(248,113,113,.08);border-color:rgba(248,113,113,.22);color:var(--red)}
         .btn-small.green{background:rgba(34,211,165,.08);border-color:rgba(34,211,165,.22);color:var(--green)}
@@ -315,7 +313,7 @@
         .reply-row{display:flex;gap:.55rem;align-items:flex-end}
         .composer-icon-btn{width:40px;height:40px;border-radius:12px;border:1px solid var(--border2);background:var(--bg);color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;flex:0 0 auto}
         .composer-icon-btn:hover{border-color:var(--accent);color:var(--accent)}
-        .manual-reply-box textarea{flex:1;min-height:42px;max-height:118px;padding:11px 12px;background:var(--bg);border:1px solid var(--border2);border-radius:14px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:.86rem;resize:none;outline:none}
+        .manual-reply-box textarea{flex:1;min-height:42px;max-height:118px;padding:11px 12px;background:var(--bg);border:1px solid var(--border2);border-radius:14px;color:var(--text);font-family:'Inter',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:.86rem;resize:none;outline:none}
         .manual-reply-box textarea:focus{border-color:var(--accent)}
         .send-round{width:42px;height:42px;border-radius:50%!important;padding:0!important;display:flex;align-items:center;justify-content:center;margin:0!important}
         .empty-inbox-state{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100%;color:var(--dim);text-align:center;padding:2rem;font-size:.9rem}
@@ -2459,7 +2457,7 @@ body.light-mode .sidebar{
     border:1px solid var(--border)!important;
     background:var(--surface)!important;
     color:var(--muted)!important;
-    font-family:'DM Sans',sans-serif!important;
+    font-family:'Inter',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif!important;
     font-size:.8rem!important;
     cursor:pointer!important;
     transition:all .2s!important;
@@ -2642,6 +2640,58 @@ body.bandeja-active{
     }
 }
 
+
+
+        /* =========================================================
+           AUVRO UI TYPOGRAPHY PATCH — fuente más limpia y profesional
+           Ajuste visual únicamente: no toca lógica, endpoints ni funciones.
+        ========================================================= */
+        :root{
+            --font-ui:'Inter',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;
+        }
+        html,body,button,input,select,textarea{
+            font-family:var(--font-ui)!important;
+            -webkit-font-smoothing:antialiased;
+            -moz-osx-font-smoothing:grayscale;
+            text-rendering:geometricPrecision;
+        }
+        body{
+            letter-spacing:-0.011em;
+        }
+        .logo-text,.page-title,.card-title,.stat-value,.agent-name,
+        .conversation-name,.inbox-header-title,.inbox-toolbar-title,
+        h1,h2,h3,h4,.section-title,.sec-title{
+            font-family:var(--font-ui)!important;
+            letter-spacing:-0.025em;
+        }
+        .sidebar nav a,.page-sub,.field label,.badge,.btn-small,
+        .conversation-preview,.conversation-time,.msg-meta,.inbox-header-sub{
+            letter-spacing:-0.005em;
+        }
+        .inbox-msg{
+            font-size:.835rem!important;
+            line-height:1.42!important;
+            font-weight:400!important;
+        }
+        .inbox-msg strong{
+            font-size:.68rem!important;
+            font-weight:700!important;
+            letter-spacing:-0.006em!important;
+        }
+        .manual-reply-box textarea,
+        .field input,.field textarea,
+        .inbox-filters select,.inbox-filters input{
+            font-size:.84rem!important;
+            font-weight:400!important;
+        }
+        .conversation-name{font-size:.82rem!important;font-weight:700!important}
+        .conversation-preview{font-size:.745rem!important;line-height:1.35!important}
+        .page-title{font-size:1.35rem!important;font-weight:800!important}
+        .page-sub{font-size:.81rem!important;line-height:1.45!important}
+        .btn-main,.btn-small,.theme-toggle,.btn-logout{
+            font-weight:600!important;
+        }
+    
 </style>
     </head>
     <body>
@@ -3161,7 +3211,7 @@ body.bandeja-active{
             <div
                 style="padding:15px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;background:var(--bg2);border-radius:15px 15px 0 0;">
                 <span id="chat-agent-name"
-                    style="font-family:'Syne',sans-serif;font-weight:700;font-size:0.9rem;">Probando
+                    style="font-family:'Inter',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-weight:700;font-size:0.9rem;">Probando
                     Agente</span>
                 <button
                     onclick="document.getElementById('chat-modal').style.display='none'"
@@ -3243,7 +3293,7 @@ body.bandeja-active{
                 </button>
                 <button
                     onclick="document.getElementById('upgrade-modal').style.display='none'"
-                    style="background:none;border:none;color:var(--dim);font-size:.85rem;cursor:pointer;font-family:'DM Sans',sans-serif">
+                    style="background:none;border:none;color:var(--dim);font-size:.85rem;cursor:pointer;font-family:'Inter',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">
                     Cerrar
                 </button>
             </div>
@@ -3686,7 +3736,7 @@ body.bandeja-active{
                             <div>
                                 <div style="display:flex;align-items:center;gap:.5rem;">
                                     <i class="fab fa-whatsapp" style="color:#25d366;font-size:1rem;"></i>
-                                    <span style="font-family:'Syne',sans-serif;font-size:.9rem;font-weight:700;color:var(--text);">${app.nombre}</span>
+                                    <span style="font-family:'Inter',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:.9rem;font-weight:700;color:var(--text);">${app.nombre}</span>
                                     ${phoneDisplay}
                                 </div>
                                 <div style="font-size:.75rem;color:${estaConectado ? '#25d366' : 'var(--dim)'}; margin-top:.2rem;">
@@ -3725,14 +3775,14 @@ body.bandeja-active{
                             <div style="display:flex;gap:.5rem;margin-top:.25rem;">
                                 <button
                                     onclick="guardarConexionWA('${agenteId}')"
-                                    style="flex:1;padding:10px;background:#25d366;color:#06090f;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-weight:600;font-size:.85rem;cursor:pointer;">
+                                    style="flex:1;padding:10px;background:#25d366;color:#06090f;border:none;border-radius:8px;font-family:'Inter',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-weight:600;font-size:.85rem;cursor:pointer;">
                                     <i class="fab fa-whatsapp" style="margin-right:.35rem"></i>
                                     ${estaConectado ? 'Actualizar conexión' : 'Guardar y conectar'}
                                 </button>
                                 ${estaConectado ? `
                                 <button
                                     onclick="desconectarWA('${agenteId}')"
-                                    style="padding:10px 14px;background:rgba(248,113,113,.1);color:var(--red);border:1px solid rgba(248,113,113,.2);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:.82rem;cursor:pointer;">
+                                    style="padding:10px 14px;background:rgba(248,113,113,.1);color:var(--red);border:1px solid rgba(248,113,113,.2);border-radius:8px;font-family:'Inter',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:.82rem;cursor:pointer;">
                                     Desconectar
                                 </button>` : ''}
                             </div>
@@ -3771,7 +3821,7 @@ body.bandeja-active{
                 <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:1rem;">
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem;gap:1rem;">
                         <div>
-                            <div style="font-family:'Syne',sans-serif;font-size:.9rem;font-weight:700;color:var(--text);">${app.nombre}</div>
+                            <div style="font-family:'Inter',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:.9rem;font-weight:700;color:var(--text);">${app.nombre}</div>
                             <div style="font-size:.75rem;color:${estaConectado ? 'var(--green)' : 'var(--dim)'};">
                                 ${estaConectado ? 'Conectado' : 'No conectado'}
                             </div>
@@ -4044,10 +4094,10 @@ body.bandeja-active{
         if (todosLosPlanes.length === 0) await cargarTodosLosPlanes();
         tbPlanes.innerHTML = todosLosPlanes.map(p => `
             <tr>
-                <td style="font-family:'Syne',sans-serif;font-weight:700;color:var(--text)">${p.nombre} ${p.nombre === planActual.nombre ? '<span class="badge badge-accent" style="margin-left:.4rem">Tu plan</span>' : ''}</td>
+                <td style="font-family:'Inter',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-weight:700;color:var(--text)">${p.nombre} ${p.nombre === planActual.nombre ? '<span class="badge badge-accent" style="margin-left:.4rem">Tu plan</span>' : ''}</td>
                 <td>${p.limite_agentes >= 999 ? 'Ilimitados' : p.limite_agentes}</td>
                 <td style="color:var(--green)">$${p.precio.toLocaleString()} COP/mes</td>
-                <td>${p.nombre === planActual.nombre ? '<span class="badge badge-green">Activo</span>' : `<button onclick="contactarPlan('${p.nombre}',${p.limite_agentes},${p.precio})" style="background:rgba(14,165,233,.1);color:var(--accent);border:1px solid rgba(14,165,233,.2);padding:4px 10px;border-radius:6px;font-size:.75rem;cursor:pointer;font-family:'DM Sans',sans-serif">Contratar</button>`}</td>
+                <td>${p.nombre === planActual.nombre ? '<span class="badge badge-green">Activo</span>' : `<button onclick="contactarPlan('${p.nombre}',${p.limite_agentes},${p.precio})" style="background:rgba(14,165,233,.1);color:var(--accent);border:1px solid rgba(14,165,233,.2);padding:4px 10px;border-radius:6px;font-size:.75rem;cursor:pointer;font-family:'Inter',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">Contratar</button>`}</td>
             </tr>
         `).join('');
     }
