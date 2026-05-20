@@ -67,7 +67,9 @@
             href="/favicon-32x32.png">
         <link rel="icon" type="image/png" sizes="16x16"
             href="/favicon-16x16.png">
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+        <link
+            href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
+            rel="stylesheet">
         <link rel="stylesheet"
             href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
         <style>
@@ -86,7 +88,7 @@
             --chat-bg:#e7f0f4;--chat-panel:#f7fbfd;--bubble-user:#ffffff;--bubble-ai:#dff3ff;--bubble-human:#dcfce7;
             --shadow-soft:0 18px 60px rgba(15,23,42,.10);
         }
-        html,body{height:100%;font-family:'Inter',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);overflow-x:hidden}
+        html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);overflow-x:hidden}
         .bg-grid{position:fixed;inset:0;left:var(--sidebar);background-image:linear-gradient(var(--border) 1px,transparent 1px),linear-gradient(90deg,var(--border) 1px,transparent 1px);background-size:60px 60px;opacity:.15;pointer-events:none;z-index:0}
 
         /* SIDEBAR */
@@ -94,7 +96,7 @@
         .sidebar-logo{display:flex;align-items:center;gap:8px;margin-bottom:2rem;padding:0 .5rem}
         .logo-dot{width:7px;height:7px;border-radius:50%;background:var(--accent);animation:pulse 2s infinite;flex-shrink:0}
         @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
-        .logo-text{font-family:'Inter',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-weight:800;font-size:.9rem;letter-spacing:.04em;color:var(--text)}
+        .logo-text{font-family:'Syne',sans-serif;font-weight:800;font-size:.9rem;letter-spacing:.04em;color:var(--text)}
         .nav-label{font-size:.7rem;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);padding:0 .75rem;margin-bottom:.5rem}
         .sidebar nav a{display:flex;align-items:center;gap:.75rem;padding:.6rem .75rem;border-radius:8px;color:var(--muted);text-decoration:none;font-size:.875rem;font-weight:400;transition:all .2s;margin-bottom:.2rem;cursor:pointer}
         .sidebar nav a i{width:16px;text-align:center;font-size:.85rem}
@@ -104,9 +106,9 @@
         .plan-badge-sidebar{display:inline-flex;align-items:center;gap:.35rem;font-size:.7rem;padding:.25rem .6rem;border-radius:20px;background:rgba(14,165,233,.1);color:var(--accent);border:1px solid rgba(14,165,233,.2);margin:0 .5rem .75rem;font-weight:500}
         .sidebar-bottom{border-top:1px solid var(--border);padding-top:1rem}
         .user-row{display:flex;align-items:center;gap:.65rem;padding:.5rem .5rem .75rem}
-        .user-avatar{width:30px;height:30px;border-radius:50%;background:rgba(14,165,233,.15);border:1px solid rgba(14,165,233,.25);display:flex;align-items:center;justify-content:center;font-size:.75rem;color:var(--accent);flex-shrink:0;font-family:'Inter',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-weight:700}
+        .user-avatar{width:30px;height:30px;border-radius:50%;background:rgba(14,165,233,.15);border:1px solid rgba(14,165,233,.25);display:flex;align-items:center;justify-content:center;font-size:.75rem;color:var(--accent);flex-shrink:0;font-family:'Syne',sans-serif;font-weight:700}
         .user-email-text{font-size:.78rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px}
-        .btn-logout{display:flex;align-items:center;gap:.65rem;width:100%;padding:.55rem .75rem;border-radius:8px;background:none;border:none;color:var(--dim);font-size:.82rem;font-family:'Inter',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;cursor:pointer;transition:all .2s}
+        .btn-logout{display:flex;align-items:center;gap:.65rem;width:100%;padding:.55rem .75rem;border-radius:8px;background:none;border:none;color:var(--dim);font-size:.82rem;font-family:'DM Sans',sans-serif;cursor:pointer;transition:all .2s}
         .btn-logout:hover{color:var(--red);background:rgba(248,113,113,.07)}
 
         /* MAIN */
@@ -123,18 +125,18 @@
 
         /* TOPBAR */
         .topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:2rem;flex-wrap:wrap;gap:1rem}
-        .page-title{font-family:'Inter',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:1.4rem;font-weight:800;color:var(--text)}
+        .page-title{font-family:'Syne',sans-serif;font-size:1.4rem;font-weight:800;color:var(--text)}
         .page-sub{font-size:.82rem;color:var(--muted);margin-top:.2rem;font-weight:300}
         .topbar-right{display:flex;align-items:center;gap:.75rem;flex-wrap:wrap}
         .token-card{display:flex;align-items:center;gap:1rem;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:.75rem 1.1rem}
         .token-icon{width:36px;height:36px;border-radius:8px;background:rgba(34,211,165,.1);border:1px solid rgba(34,211,165,.2);display:flex;align-items:center;justify-content:center;color:var(--green);font-size:.9rem}
         .token-label{font-size:.7rem;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
-        #token-balance,#token-balance-2{font-family:'Inter',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:1.3rem;font-weight:800;color:var(--green)}
+        #token-balance,#token-balance-2{font-family:'Syne',sans-serif;font-size:1.3rem;font-weight:800;color:var(--green)}
 
         /* PLAN INDICATOR */
         .plan-indicator{display:flex;align-items:center;gap:.75rem;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:.65rem 1rem}
         .plan-info-label{font-size:.7rem;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
-        .plan-info-value{font-family:'Inter',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:.95rem;font-weight:700;color:var(--text)}
+        .plan-info-value{font-family:'Syne',sans-serif;font-size:.95rem;font-weight:700;color:var(--text)}
         .plan-progress-wrap{width:80px;height:5px;background:var(--border);border-radius:3px;margin-top:3px}
         .plan-progress-bar{height:5px;border-radius:3px;background:var(--accent);transition:width .4s}
         .plan-progress-bar.warning{background:var(--yellow)}
@@ -151,25 +153,25 @@
         .card-icon{width:32px;height:32px;border-radius:8px;background:rgba(14,165,233,.1);display:flex;align-items:center;justify-content:center;color:var(--accent);font-size:.85rem;flex-shrink:0}
         .card-icon.green{background:rgba(34,211,165,.1);color:var(--green)}
         .card-icon.yellow{background:rgba(251,191,36,.1);color:var(--yellow)}
-        .card-title{font-family:'Inter',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:1rem;font-weight:700;color:var(--text)}
+        .card-title{font-family:'Syne',sans-serif;font-size:1rem;font-weight:700;color:var(--text)}
 
         /* STATS */
         .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.25rem 1.5rem}
         .stat-label{font-size:.72rem;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:.4rem}
-        .stat-value{font-family:'Inter',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:1.8rem;font-weight:800;color:var(--text)}
+        .stat-value{font-family:'Syne',sans-serif;font-size:1.8rem;font-weight:800;color:var(--text)}
         .stat-value.green{color:var(--green)}.stat-value.accent{color:var(--accent)}.stat-value.yellow{color:var(--yellow)}
         .stat-sub{font-size:.75rem;color:var(--dim);margin-top:.3rem}
 
         /* FORM */
         .field{margin-bottom:.9rem}
         .field label{display:block;font-size:.74rem;font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:.4rem}
-        .field input,.field textarea{width:100%;padding:10px 13px;background:var(--bg2);border:1px solid var(--border2);border-radius:8px;color:var(--text);font-family:'Inter',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:.88rem;outline:none;transition:border-color .2s;resize:none}
+        .field input,.field textarea{width:100%;padding:10px 13px;background:var(--bg2);border:1px solid var(--border2);border-radius:8px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:.88rem;outline:none;transition:border-color .2s;resize:none}
         .field input:focus,.field textarea:focus{border-color:var(--accent)}
         .field input::placeholder,.field textarea::placeholder{color:var(--dim)}
         .field input:disabled{opacity:.5;cursor:not-allowed}
         .field-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
         @media(max-width:600px){.field-row{grid-template-columns:1fr}}
-        .btn-main{width:100%;padding:11px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-family:'Inter',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-weight:500;font-size:.9rem;cursor:pointer;transition:all .2s;margin-top:.25rem}
+        .btn-main{width:100%;padding:11px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-weight:500;font-size:.9rem;cursor:pointer;transition:all .2s;margin-top:.25rem}
         .btn-main:hover{background:var(--accent2);transform:translateY(-1px)}
         .btn-main:disabled{opacity:.5;cursor:not-allowed;transform:none}
         .btn-green{background:var(--green)!important;color:#06090f!important}
@@ -182,7 +184,7 @@
         .empty-state i{font-size:2rem;margin-bottom:.75rem;display:block;color:var(--border2)}
         .agent-item{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;padding:.9rem 1rem;background:var(--bg2);border:1px solid var(--border);border-radius:10px;margin-bottom:.65rem;transition:border-color .2s}
         .agent-item:hover{border-color:var(--border2)}
-        .agent-name{font-family:'Inter',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:.88rem;font-weight:700;color:var(--text);margin-bottom:.25rem}
+        .agent-name{font-family:'Syne',sans-serif;font-size:.88rem;font-weight:700;color:var(--text);margin-bottom:.25rem}
         .agent-prompt{font-size:.78rem;color:var(--muted);line-height:1.5;font-weight:300;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 
         /* TABLE */
@@ -217,8 +219,8 @@
         .plan-card:hover{border-color:var(--border2)}
         .plan-card.selected{outline:2px solid var(--accent)}
         .plan-card.featured{border-color:rgba(14,165,233,.35);background:rgba(14,165,233,.04)}
-        .plan-name{font-family:'Inter',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:.8rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.4rem}
-        .plan-tokens{font-family:'Inter',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:1.6rem;font-weight:800;color:var(--text)}
+        .plan-name{font-family:'Syne',sans-serif;font-size:.8rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.4rem}
+        .plan-tokens{font-family:'Syne',sans-serif;font-size:1.6rem;font-weight:800;color:var(--text)}
         .plan-tokens span{font-size:.8rem;color:var(--muted);font-weight:400}
         .plan-price{font-size:.82rem;color:var(--green);margin:.4rem 0 0;font-weight:500}
         .plan-badge-card{display:inline-block;font-size:.65rem;padding:.15rem .5rem;border-radius:20px;background:rgba(14,165,233,.15);color:var(--accent);border:1px solid rgba(14,165,233,.3);margin-bottom:.5rem}
@@ -228,13 +230,13 @@
         .upgrade-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:1002;align-items:center;justify-content:center}
         .upgrade-card{background:var(--surface);border:1px solid var(--border2);border-radius:16px;padding:2rem;width:460px;max-width:92%;text-align:center}
         .upgrade-icon{width:56px;height:56px;border-radius:50%;background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.3);display:flex;align-items:center;justify-content:center;margin:0 auto 1.25rem;font-size:1.4rem;color:var(--yellow)}
-        .upgrade-title{font-family:'Inter',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:1.2rem;font-weight:800;color:var(--text);margin-bottom:.6rem}
+        .upgrade-title{font-family:'Syne',sans-serif;font-size:1.2rem;font-weight:800;color:var(--text);margin-bottom:.6rem}
         .upgrade-msg{font-size:.9rem;color:var(--muted);line-height:1.65;margin-bottom:1.75rem;font-weight:300}
         .upgrade-plans{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.65rem;margin-bottom:1.5rem}
         .upgrade-plan-item{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:.85rem .5rem;cursor:pointer;transition:all .2s}
         .upgrade-plan-item:hover{border-color:var(--border2)}
         .upgrade-plan-item.selected{border-color:var(--accent);background:rgba(14,165,233,.06)}
-        .upgrade-plan-name{font-family:'Inter',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:.78rem;font-weight:700;color:var(--text);margin-bottom:.2rem}
+        .upgrade-plan-name{font-family:'Syne',sans-serif;font-size:.78rem;font-weight:700;color:var(--text);margin-bottom:.2rem}
         .upgrade-plan-agents{font-size:.72rem;color:var(--accent);margin-bottom:.2rem}
         .upgrade-plan-price{font-size:.72rem;color:var(--green)}
 
@@ -259,11 +261,11 @@
         .inbox-sidebar{background:var(--bg2);border-right:1px solid var(--border);overflow:hidden;display:flex;flex-direction:column;height:100%;min-height:0}
         .inbox-filters{padding:.85rem;border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:.6rem;flex:0 0 auto;background:linear-gradient(180deg,var(--surface),var(--bg2))}
         .inbox-toolbar{display:flex;align-items:center;justify-content:space-between;gap:.65rem}
-        .inbox-toolbar-title{font-family:'Inter',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:.9rem;font-weight:800;color:var(--text);display:flex;align-items:center;gap:.45rem}
+        .inbox-toolbar-title{font-family:'Syne',sans-serif;font-size:.9rem;font-weight:800;color:var(--text);display:flex;align-items:center;gap:.45rem}
         .theme-toggle{display:inline-flex;align-items:center;gap:.45rem;padding:7px 9px;border-radius:999px;border:1px solid var(--border2);background:var(--surface);color:var(--muted);font-size:.74rem;cursor:pointer;transition:all .2s}
         .theme-toggle:hover{border-color:var(--accent);color:var(--accent)}
         .inbox-filter-row{display:grid;grid-template-columns:1fr 1fr;gap:.5rem}
-        .inbox-filters select,.inbox-filters input{width:100%;padding:9px 11px;background:var(--bg);border:1px solid var(--border2);border-radius:10px;color:var(--text);font-family:'Inter',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:.8rem;outline:none}
+        .inbox-filters select,.inbox-filters input{width:100%;padding:9px 11px;background:var(--bg);border:1px solid var(--border2);border-radius:10px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:.8rem;outline:none}
         .inbox-filters input{padding-left:34px}
         .inbox-search-wrap{position:relative}
         .inbox-search-wrap i{position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:.78rem;color:var(--dim)}
@@ -276,7 +278,7 @@
         .conversation-item-title{display:flex;justify-content:space-between;gap:.55rem;align-items:center;margin-bottom:.35rem}
         .conversation-name-wrap{display:flex;align-items:center;gap:.55rem;min-width:0}
         .conversation-avatar{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:rgba(14,165,233,.12);border:1px solid rgba(14,165,233,.22);color:var(--accent);font-size:.82rem;flex:0 0 auto}
-        .conversation-name{font-family:'Inter',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:.84rem;font-weight:800;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+        .conversation-name{font-family:'Syne',sans-serif;font-size:.84rem;font-weight:800;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
         .conversation-time{font-size:.67rem;color:var(--dim);white-space:nowrap}
         .conversation-meta{display:flex;align-items:center;gap:.35rem;flex-wrap:wrap;margin:.35rem 0 .45rem 2.8rem}
         .conversation-preview{font-size:.76rem;color:var(--muted);line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin-left:2.8rem}
@@ -285,10 +287,10 @@
         .inbox-panel-header{padding:.85rem 1rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:1rem;background:var(--surface);flex:0 0 auto}
         .inbox-contact{display:flex;align-items:center;gap:.75rem;min-width:0}
         .inbox-contact-avatar{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:rgba(34,211,165,.12);border:1px solid rgba(34,211,165,.24);color:var(--green);font-weight:800;flex:0 0 auto}
-        .inbox-header-title{font-family:'Inter',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:1rem;font-weight:800;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:520px}
+        .inbox-header-title{font-family:'Syne',sans-serif;font-size:1rem;font-weight:800;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:520px}
         .inbox-header-sub{font-size:.76rem;color:var(--muted);margin-top:.18rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:640px}
         .inbox-actions{display:flex;align-items:center;gap:.45rem;flex-wrap:wrap;justify-content:flex-end}
-        .btn-small{padding:8px 10px;border-radius:10px;border:1px solid var(--border2);background:var(--surface);color:var(--text);font-family:'Inter',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:.76rem;cursor:pointer;transition:all .2s}
+        .btn-small{padding:8px 10px;border-radius:10px;border:1px solid var(--border2);background:var(--surface);color:var(--text);font-family:'DM Sans',sans-serif;font-size:.76rem;cursor:pointer;transition:all .2s}
         .btn-small:hover{border-color:var(--accent);color:var(--accent);transform:translateY(-1px)}
         .btn-small.danger{background:rgba(248,113,113,.08);border-color:rgba(248,113,113,.22);color:var(--red)}
         .btn-small.green{background:rgba(34,211,165,.08);border-color:rgba(34,211,165,.22);color:var(--green)}
@@ -313,7 +315,7 @@
         .reply-row{display:flex;gap:.55rem;align-items:flex-end}
         .composer-icon-btn{width:40px;height:40px;border-radius:12px;border:1px solid var(--border2);background:var(--bg);color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;flex:0 0 auto}
         .composer-icon-btn:hover{border-color:var(--accent);color:var(--accent)}
-        .manual-reply-box textarea{flex:1;min-height:42px;max-height:118px;padding:11px 12px;background:var(--bg);border:1px solid var(--border2);border-radius:14px;color:var(--text);font-family:'Inter',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:.86rem;resize:none;outline:none}
+        .manual-reply-box textarea{flex:1;min-height:42px;max-height:118px;padding:11px 12px;background:var(--bg);border:1px solid var(--border2);border-radius:14px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:.86rem;resize:none;outline:none}
         .manual-reply-box textarea:focus{border-color:var(--accent)}
         .send-round{width:42px;height:42px;border-radius:50%!important;padding:0!important;display:flex;align-items:center;justify-content:center;margin:0!important}
         .empty-inbox-state{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100%;color:var(--dim);text-align:center;padding:2rem;font-size:.9rem}
@@ -2457,7 +2459,7 @@ body.light-mode .sidebar{
     border:1px solid var(--border)!important;
     background:var(--surface)!important;
     color:var(--muted)!important;
-    font-family:'Inter',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif!important;
+    font-family:'DM Sans',sans-serif!important;
     font-size:.8rem!important;
     cursor:pointer!important;
     transition:all .2s!important;
@@ -2641,62 +2643,708 @@ body.bandeja-active{
 }
 
 
+/* ==========================================================================
+   AUVRO — PATCH UI PRO MOBILE-FIRST
+   Objetivo: panel más limpio, menú móvil correcto, cards compactas y tipografía premium.
+   No modifica endpoints ni lógica funcional.
+   ========================================================================== */
 
-        /* =========================================================
-           AUVRO UI TYPOGRAPHY PATCH — fuente más limpia y profesional
-           Ajuste visual únicamente: no toca lógica, endpoints ni funciones.
-        ========================================================= */
-        :root{
-            --font-ui:'Inter',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;
-        }
-        html,body,button,input,select,textarea{
-            font-family:var(--font-ui)!important;
-            -webkit-font-smoothing:antialiased;
-            -moz-osx-font-smoothing:grayscale;
-            text-rendering:geometricPrecision;
-        }
-        body{
-            letter-spacing:-0.011em;
-        }
-        .logo-text,.page-title,.card-title,.stat-value,.agent-name,
-        .conversation-name,.inbox-header-title,.inbox-toolbar-title,
-        h1,h2,h3,h4,.section-title,.sec-title{
-            font-family:var(--font-ui)!important;
-            letter-spacing:-0.025em;
-        }
-        .sidebar nav a,.page-sub,.field label,.badge,.btn-small,
-        .conversation-preview,.conversation-time,.msg-meta,.inbox-header-sub{
-            letter-spacing:-0.005em;
-        }
-        .inbox-msg{
-            font-size:.835rem!important;
-            line-height:1.42!important;
-            font-weight:400!important;
-        }
-        .inbox-msg strong{
-            font-size:.68rem!important;
-            font-weight:700!important;
-            letter-spacing:-0.006em!important;
-        }
-        .manual-reply-box textarea,
-        .field input,.field textarea,
-        .inbox-filters select,.inbox-filters input{
-            font-size:.84rem!important;
-            font-weight:400!important;
-        }
-        .conversation-name{font-size:.82rem!important;font-weight:700!important}
-        .conversation-preview{font-size:.745rem!important;line-height:1.35!important}
-        .page-title{font-size:1.35rem!important;font-weight:800!important}
-        .page-sub{font-size:.81rem!important;line-height:1.45!important}
-        .btn-main,.btn-small,.theme-toggle,.btn-logout{
-            font-weight:600!important;
-        }
-    
+:root{
+    --bg:#05070d;
+    --bg2:#090e18;
+    --surface:rgba(14,20,34,.92);
+    --border:rgba(148,163,184,.14);
+    --border2:rgba(148,163,184,.22);
+    --accent:#0ea5e9;
+    --accent2:#38bdf8;
+    --green:#20d6a3;
+    --red:#fb7185;
+    --yellow:#fbbf24;
+    --text:#f3f7fb;
+    --muted:#8ea3bd;
+    --dim:#65758a;
+    --sidebar:264px;
+    --shadow-soft:0 20px 70px rgba(0,0,0,.34);
+}
+
+body.light-mode{
+    --bg:#f5f8fb;
+    --bg2:#ffffff;
+    --surface:rgba(255,255,255,.94);
+    --border:rgba(15,23,42,.10);
+    --border2:rgba(15,23,42,.16);
+    --text:#0f172a;
+    --muted:#56687e;
+    --dim:#8492a6;
+    --shadow-soft:0 20px 55px rgba(15,23,42,.10);
+}
+
+html,body{
+    font-family:'Inter',system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif!important;
+    letter-spacing:-.015em;
+    -webkit-font-smoothing:antialiased;
+    text-rendering:geometricPrecision;
+}
+
+body{
+    background:
+        radial-gradient(circle at 16% 8%, rgba(14,165,233,.08), transparent 26%),
+        radial-gradient(circle at 90% 18%, rgba(32,214,163,.06), transparent 24%),
+        var(--bg)!important;
+}
+
+.bg-grid{
+    opacity:.085!important;
+    background-size:72px 72px!important;
+}
+
+/* Cards / formularios más SaaS */
+.card,.stat-card,.token-card,.plan-indicator,.agent-item,.upgrade-card,.inbox-layout{
+    background:linear-gradient(180deg,rgba(15,23,42,.92),rgba(8,13,23,.94))!important;
+    border-color:var(--border)!important;
+    box-shadow:0 16px 48px rgba(0,0,0,.18);
+}
+
+body.light-mode .card,
+body.light-mode .stat-card,
+body.light-mode .token-card,
+body.light-mode .plan-indicator,
+body.light-mode .agent-item,
+body.light-mode .upgrade-card,
+body.light-mode .inbox-layout{
+    background:rgba(255,255,255,.92)!important;
+    box-shadow:0 16px 42px rgba(15,23,42,.08);
+}
+
+.card{
+    border-radius:20px!important;
+    padding:1.45rem!important;
+}
+
+.card-header{
+    margin-bottom:1.1rem!important;
+}
+
+.card-icon{
+    width:42px!important;
+    height:42px!important;
+    border-radius:14px!important;
+    font-size:1rem!important;
+}
+
+.card-title{
+    font-family:'Inter',system-ui,sans-serif!important;
+    font-size:1.05rem!important;
+    font-weight:800!important;
+    letter-spacing:-.035em;
+}
+
+.page-title{
+    font-family:'Inter',system-ui,sans-serif!important;
+    font-size:1.45rem!important;
+    line-height:1.05;
+    font-weight:900!important;
+    letter-spacing:-.045em;
+}
+
+.page-sub{
+    font-size:.86rem!important;
+    line-height:1.35;
+}
+
+.field label{
+    font-size:.72rem!important;
+    letter-spacing:.08em!important;
+    font-weight:800!important;
+    color:var(--muted)!important;
+}
+
+.field input,
+.field textarea,
+.inbox-filters select,
+.inbox-filters input,
+.manual-reply-box textarea{
+    border-radius:14px!important;
+    border-color:var(--border2)!important;
+    background:rgba(3,7,18,.62)!important;
+    font-family:'Inter',system-ui,sans-serif!important;
+}
+
+body.light-mode .field input,
+body.light-mode .field textarea,
+body.light-mode .inbox-filters select,
+body.light-mode .inbox-filters input,
+body.light-mode .manual-reply-box textarea{
+    background:#f8fafc!important;
+}
+
+.btn-main,.btn-small,.btn-logout,.sidebar-theme-toggle,.composer-icon-btn{
+    font-family:'Inter',system-ui,sans-serif!important;
+}
+
+.btn-main{
+    min-height:46px!important;
+    border-radius:15px!important;
+    font-weight:800!important;
+    box-shadow:0 10px 30px rgba(14,165,233,.20);
+}
+
+/* Sidebar desktop más premium */
+.sidebar{
+    background:linear-gradient(180deg,rgba(8,13,23,.98),rgba(5,8,14,.98))!important;
+    border-right:1px solid var(--border)!important;
+    box-shadow:18px 0 60px rgba(0,0,0,.18);
+}
+
+body.light-mode .sidebar{
+    background:rgba(255,255,255,.96)!important;
+}
+
+.sidebar-logo{
+    min-height:46px;
+}
+
+.logo-text{
+    font-family:'Inter',system-ui,sans-serif!important;
+    font-size:1rem!important;
+    font-weight:900!important;
+    letter-spacing:-.025em!important;
+}
+
+.sidebar nav a{
+    border-radius:14px!important;
+    padding:.78rem .82rem!important;
+    font-size:.88rem!important;
+    font-weight:700!important;
+}
+
+.sidebar nav a.active{
+    background:linear-gradient(135deg,rgba(14,165,233,.16),rgba(32,214,163,.08))!important;
+    color:#eaf8ff!important;
+    box-shadow:inset 0 0 0 1px rgba(14,165,233,.15);
+}
+
+body.light-mode .sidebar nav a.active{
+    color:#0369a1!important;
+}
+
+/* Botón hamburguesa móvil ya no flota encima del contenido de forma agresiva */
+.mob-toggle{
+    border-radius:18px!important;
+    width:46px!important;
+    height:46px!important;
+    top:calc(env(safe-area-inset-top,0px) + 12px)!important;
+    left:14px!important;
+    background:rgba(12,18,31,.88)!important;
+    backdrop-filter:blur(18px);
+    box-shadow:0 16px 42px rgba(0,0,0,.32);
+}
+
+body.light-mode .mob-toggle{
+    background:rgba(255,255,255,.9)!important;
+}
+
+.mobile-menu-overlay{
+    display:none;
+}
+
+/* Bottom nav oculta en desktop */
+.mobile-bottom-nav{
+    display:none;
+}
+
+/* Agentes */
+.agent-item{
+    border-radius:18px!important;
+    padding:1rem!important;
+}
+
+.agent-name{
+    font-family:'Inter',system-ui,sans-serif!important;
+    font-size:1rem!important;
+    font-weight:900!important;
+    letter-spacing:-.035em;
+}
+
+.agent-prompt{
+    font-size:.86rem!important;
+    line-height:1.48!important;
+    color:var(--muted)!important;
+}
+
+.agent-actions .btn-small,
+.agent-actions button{
+    width:42px;
+    height:42px;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    border-radius:14px!important;
+    padding:0!important;
+}
+
+/* Bandeja compacta */
+.inbox-layout{
+    border-radius:22px!important;
+}
+
+.inbox-msg{
+    font-size:.84rem!important;
+    line-height:1.42!important;
+    padding:8px 10px!important;
+    border-radius:14px!important;
+    box-shadow:0 8px 24px rgba(0,0,0,.15)!important;
+}
+
+.inbox-msg strong{
+    font-size:.68rem!important;
+    margin-bottom:.18rem!important;
+}
+
+.conversation-name{
+    font-family:'Inter',system-ui,sans-serif!important;
+    font-weight:900!important;
+}
+
+.conversation-preview{
+    font-size:.76rem!important;
+}
+
+/* Móvil */
+@media(max-width:768px){
+    :root{
+        --sidebar:286px;
+    }
+
+    html,body{
+        overflow-x:hidden!important;
+    }
+
+    body{
+        padding-bottom:calc(78px + env(safe-area-inset-bottom,0px));
+    }
+
+    .bg-grid{
+        opacity:.045!important;
+        background-size:54px 54px!important;
+    }
+
+    .main-content{
+        padding:
+            calc(env(safe-area-inset-top,0px) + 74px)
+            .95rem
+            calc(92px + env(safe-area-inset-bottom,0px))!important;
+        margin-left:0!important;
+    }
+
+    .topbar{
+        margin-bottom:1rem!important;
+        gap:.75rem!important;
+    }
+
+    .page-title{
+        font-size:1.28rem!important;
+        line-height:1.08!important;
+    }
+
+    .page-sub{
+        font-size:.78rem!important;
+        max-width:310px;
+    }
+
+    .topbar-right{
+        display:grid!important;
+        grid-template-columns:1fr!important;
+        gap:.62rem!important;
+        width:100%!important;
+    }
+
+    .plan-indicator,
+    .token-card{
+        width:100%!important;
+        min-height:74px!important;
+        border-radius:20px!important;
+        padding:.85rem 1rem!important;
+    }
+
+    .plan-info-label,
+    .token-label{
+        font-size:.68rem!important;
+        letter-spacing:.13em!important;
+        font-weight:900!important;
+    }
+
+    .plan-info-value{
+        font-size:1rem!important;
+        font-weight:900!important;
+        letter-spacing:-.03em!important;
+    }
+
+    #token-balance,#token-balance-2{
+        font-family:'Inter',system-ui,sans-serif!important;
+        font-size:1.38rem!important;
+        font-weight:900!important;
+        letter-spacing:-.055em!important;
+    }
+
+    .token-icon{
+        width:42px!important;
+        height:42px!important;
+        border-radius:15px!important;
+        font-size:1.05rem!important;
+    }
+
+    .grid-2,.grid-3{
+        gap:1rem!important;
+    }
+
+    .card{
+        padding:1rem!important;
+        border-radius:20px!important;
+    }
+
+    .card-header{
+        gap:.75rem!important;
+        margin-bottom:1rem!important;
+    }
+
+    .card-icon{
+        width:44px!important;
+        height:44px!important;
+    }
+
+    .card-title{
+        font-size:1.03rem!important;
+        line-height:1.1!important;
+    }
+
+    .field{
+        margin-bottom:.78rem!important;
+    }
+
+    .field label{
+        font-size:.68rem!important;
+        white-space:normal!important;
+        line-height:1.2!important;
+    }
+
+    .field input{
+        height:48px!important;
+        padding:0 13px!important;
+        font-size:.9rem!important;
+    }
+
+    .field textarea{
+        min-height:132px!important;
+        font-size:.9rem!important;
+        line-height:1.45!important;
+    }
+
+    .btn-main{
+        height:48px!important;
+        font-size:.9rem!important;
+    }
+
+    .agent-item{
+        display:block!important;
+        border-radius:20px!important;
+        padding:1rem!important;
+        margin-bottom:.85rem!important;
+        overflow:hidden!important;
+    }
+
+    .agent-top-row{
+        display:block!important;
+    }
+
+    .agent-name{
+        font-size:1.05rem!important;
+        line-height:1.16!important;
+        margin-bottom:.5rem!important;
+    }
+
+    .agent-prompt{
+        font-size:.86rem!important;
+        line-height:1.48!important;
+        max-height:3.9em!important;
+        overflow:hidden!important;
+        display:-webkit-box!important;
+        -webkit-line-clamp:2!important;
+        -webkit-box-orient:vertical!important;
+    }
+
+    .agent-actions{
+        margin-top:.85rem!important;
+        display:flex!important;
+        gap:.55rem!important;
+        justify-content:flex-start!important;
+        flex-wrap:wrap!important;
+    }
+
+    .agent-actions .btn-small,
+    .agent-actions button{
+        width:42px!important;
+        height:42px!important;
+        min-width:42px!important;
+        border-radius:14px!important;
+    }
+
+    /* Drawer móvil real */
+    .sidebar{
+        width:min(86vw,320px)!important;
+        z-index:220!important;
+        padding:
+            calc(env(safe-area-inset-top,0px) + 1.05rem)
+            .9rem
+            calc(env(safe-area-inset-bottom,0px) + 1rem)!important;
+        transform:translateX(calc(-100% - 18px))!important;
+        border-radius:0 26px 26px 0!important;
+        box-shadow:30px 0 80px rgba(0,0,0,.50)!important;
+    }
+
+    .sidebar.open{
+        transform:translateX(0)!important;
+    }
+
+    body.mobile-menu-open{
+        overflow:hidden!important;
+    }
+
+    body.mobile-menu-open .mobile-menu-overlay{
+        display:block;
+        position:fixed;
+        inset:0;
+        z-index:210;
+        background:rgba(0,0,0,.58);
+        backdrop-filter:blur(7px);
+    }
+
+    .sidebar-logo{
+        margin-bottom:1rem!important;
+    }
+
+    .plan-badge-sidebar{
+        width:100%;
+        justify-content:center;
+        padding:.55rem .75rem!important;
+        border-radius:999px!important;
+        margin:0 0 1rem 0!important;
+    }
+
+    .sidebar nav a{
+        min-height:46px;
+        font-size:.92rem!important;
+        margin-bottom:.35rem!important;
+    }
+
+    .sidebar-bottom{
+        padding-top:.9rem!important;
+    }
+
+    .mob-toggle{
+        display:flex!important;
+        z-index:205!important;
+    }
+
+    body.mobile-menu-open .mob-toggle{
+        z-index:230!important;
+    }
+
+    /* Nav inferior tipo app */
+    .mobile-bottom-nav{
+        position:fixed;
+        left:10px;
+        right:10px;
+        bottom:calc(10px + env(safe-area-inset-bottom,0px));
+        height:66px;
+        z-index:190;
+        display:grid;
+        grid-template-columns:repeat(4,1fr);
+        gap:4px;
+        padding:7px;
+        border-radius:24px;
+        background:rgba(9,14,24,.88);
+        border:1px solid rgba(148,163,184,.16);
+        box-shadow:0 18px 54px rgba(0,0,0,.42);
+        backdrop-filter:blur(20px);
+    }
+
+    body.light-mode .mobile-bottom-nav{
+        background:rgba(255,255,255,.88);
+        box-shadow:0 18px 44px rgba(15,23,42,.14);
+    }
+
+    .mobile-bottom-item{
+        border:0;
+        background:transparent;
+        color:var(--muted);
+        border-radius:18px;
+        display:flex;
+        flex-direction:column;
+        align-items:center;
+        justify-content:center;
+        gap:4px;
+        font-family:'Inter',system-ui,sans-serif;
+        font-size:.66rem;
+        font-weight:800;
+        cursor:pointer;
+    }
+
+    .mobile-bottom-item i{
+        font-size:1rem;
+    }
+
+    .mobile-bottom-item.active{
+        background:linear-gradient(135deg,rgba(14,165,233,.22),rgba(32,214,163,.10));
+        color:var(--accent2);
+        box-shadow:inset 0 0 0 1px rgba(14,165,233,.16);
+    }
+
+    /* Bandeja en móvil sin romper scroll */
+    #view-bandeja.active{
+        height:calc(100vh - 168px)!important;
+        min-height:0!important;
+        overflow:hidden!important;
+    }
+
+    body.bandeja-active{
+        overflow:hidden!important;
+    }
+
+    body.bandeja-active .main-content{
+        height:100vh!important;
+        overflow:hidden!important;
+        padding-top:calc(env(safe-area-inset-top,0px) + 66px)!important;
+        padding-bottom:calc(78px + env(safe-area-inset-bottom,0px))!important;
+    }
+
+    #view-bandeja.active .topbar{
+        display:none!important;
+    }
+
+    .inbox-layout{
+        height:100%!important;
+        min-height:0!important;
+        border-radius:22px!important;
+        overflow:hidden!important;
+        grid-template-columns:1fr!important;
+    }
+
+    .inbox-sidebar{
+        height:100%!important;
+        min-height:0!important;
+        border-right:none!important;
+        border-bottom:none!important;
+    }
+
+    .inbox-panel{
+        height:100%!important;
+        min-height:0!important;
+    }
+
+    .conversation-list{
+        min-height:0!important;
+        overflow-y:auto!important;
+        -webkit-overflow-scrolling:touch!important;
+        padding-bottom:12px!important;
+    }
+
+    .inbox-filters{
+        padding:.75rem!important;
+        gap:.55rem!important;
+    }
+
+    .inbox-toolbar-title{
+        font-family:'Inter',system-ui,sans-serif!important;
+        font-size:.92rem!important;
+        font-weight:900!important;
+    }
+
+    .inbox-filter-row{
+        grid-template-columns:1fr 1fr!important;
+        gap:.45rem!important;
+    }
+
+    .inbox-filters select,
+    .inbox-filters input{
+        height:40px!important;
+        font-size:.78rem!important;
+        border-radius:13px!important;
+    }
+
+    .conversation-item{
+        padding:.78rem .85rem!important;
+    }
+
+    .conversation-avatar{
+        width:32px!important;
+        height:32px!important;
+    }
+
+    .conversation-name{
+        font-size:.86rem!important;
+    }
+
+    .conversation-meta,
+    .conversation-preview{
+        margin-left:2.55rem!important;
+    }
+
+    .inbox-msg{
+        max-width:86%!important;
+        min-width:0!important;
+    }
+}
+
+@media(max-width:420px){
+    .main-content{
+        padding-left:.78rem!important;
+        padding-right:.78rem!important;
+    }
+
+    .page-title{
+        font-size:1.18rem!important;
+    }
+
+    .card{
+        padding:.9rem!important;
+    }
+
+    .field textarea{
+        min-height:118px!important;
+    }
+
+    .inbox-filter-row{
+        grid-template-columns:1fr!important;
+    }
+}
+
 </style>
     </head>
     <body>
 
         <div class="bg-grid"></div>
+        <div class="mobile-menu-overlay" id="mobile-menu-overlay" onclick="toggleMobileMenu(false)"></div>
+
+        <nav class="mobile-bottom-nav" aria-label="Navegación móvil">
+            <button type="button" class="mobile-bottom-item active" id="bottom-agentes" onclick="mostrarVista('agentes')">
+                <i class="fas fa-robot"></i>
+                <span>Agentes</span>
+            </button>
+            <button type="button" class="mobile-bottom-item" id="bottom-bandeja" onclick="mostrarVista('bandeja')">
+                <i class="fas fa-comments"></i>
+                <span>Chats</span>
+            </button>
+            <button type="button" class="mobile-bottom-item" id="bottom-tokens" onclick="mostrarVista('tokens')">
+                <i class="fas fa-bolt"></i>
+                <span>Tokens</span>
+            </button>
+            <button type="button" class="mobile-bottom-item" id="bottom-config" onclick="mostrarVista('config')">
+                <i class="fas fa-gear"></i>
+                <span>Ajustes</span>
+            </button>
+        </nav>
+
         <div class="toast" id="toast"></div>
         <div class="media-lightbox" id="media-lightbox"
             onclick="cerrarMediaLightbox()">
@@ -2707,7 +3355,7 @@ body.bandeja-active{
         </div>
 
         <button class="mob-toggle"
-            onclick="document.querySelector('.sidebar').classList.toggle('open')">
+            onclick="toggleMobileMenu()">
             <i class="fas fa-bars" style="font-size:.85rem"></i>
         </button>
         <button class="desktop-sidebar-toggle" id="desktop-sidebar-toggle"
@@ -3211,7 +3859,7 @@ body.bandeja-active{
             <div
                 style="padding:15px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;background:var(--bg2);border-radius:15px 15px 0 0;">
                 <span id="chat-agent-name"
-                    style="font-family:'Inter',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-weight:700;font-size:0.9rem;">Probando
+                    style="font-family:'Syne',sans-serif;font-weight:700;font-size:0.9rem;">Probando
                     Agente</span>
                 <button
                     onclick="document.getElementById('chat-modal').style.display='none'"
@@ -3293,7 +3941,7 @@ body.bandeja-active{
                 </button>
                 <button
                     onclick="document.getElementById('upgrade-modal').style.display='none'"
-                    style="background:none;border:none;color:var(--dim);font-size:.85rem;cursor:pointer;font-family:'Inter',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">
+                    style="background:none;border:none;color:var(--dim);font-size:.85rem;cursor:pointer;font-family:'DM Sans',sans-serif">
                     Cerrar
                 </button>
             </div>
@@ -3736,7 +4384,7 @@ body.bandeja-active{
                             <div>
                                 <div style="display:flex;align-items:center;gap:.5rem;">
                                     <i class="fab fa-whatsapp" style="color:#25d366;font-size:1rem;"></i>
-                                    <span style="font-family:'Inter',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:.9rem;font-weight:700;color:var(--text);">${app.nombre}</span>
+                                    <span style="font-family:'Syne',sans-serif;font-size:.9rem;font-weight:700;color:var(--text);">${app.nombre}</span>
                                     ${phoneDisplay}
                                 </div>
                                 <div style="font-size:.75rem;color:${estaConectado ? '#25d366' : 'var(--dim)'}; margin-top:.2rem;">
@@ -3775,14 +4423,14 @@ body.bandeja-active{
                             <div style="display:flex;gap:.5rem;margin-top:.25rem;">
                                 <button
                                     onclick="guardarConexionWA('${agenteId}')"
-                                    style="flex:1;padding:10px;background:#25d366;color:#06090f;border:none;border-radius:8px;font-family:'Inter',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-weight:600;font-size:.85rem;cursor:pointer;">
+                                    style="flex:1;padding:10px;background:#25d366;color:#06090f;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-weight:600;font-size:.85rem;cursor:pointer;">
                                     <i class="fab fa-whatsapp" style="margin-right:.35rem"></i>
                                     ${estaConectado ? 'Actualizar conexión' : 'Guardar y conectar'}
                                 </button>
                                 ${estaConectado ? `
                                 <button
                                     onclick="desconectarWA('${agenteId}')"
-                                    style="padding:10px 14px;background:rgba(248,113,113,.1);color:var(--red);border:1px solid rgba(248,113,113,.2);border-radius:8px;font-family:'Inter',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:.82rem;cursor:pointer;">
+                                    style="padding:10px 14px;background:rgba(248,113,113,.1);color:var(--red);border:1px solid rgba(248,113,113,.2);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:.82rem;cursor:pointer;">
                                     Desconectar
                                 </button>` : ''}
                             </div>
@@ -3821,7 +4469,7 @@ body.bandeja-active{
                 <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:1rem;">
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem;gap:1rem;">
                         <div>
-                            <div style="font-family:'Inter',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:.9rem;font-weight:700;color:var(--text);">${app.nombre}</div>
+                            <div style="font-family:'Syne',sans-serif;font-size:.9rem;font-weight:700;color:var(--text);">${app.nombre}</div>
                             <div style="font-size:.75rem;color:${estaConectado ? 'var(--green)' : 'var(--dim)'};">
                                 ${estaConectado ? 'Conectado' : 'No conectado'}
                             </div>
@@ -4094,10 +4742,10 @@ body.bandeja-active{
         if (todosLosPlanes.length === 0) await cargarTodosLosPlanes();
         tbPlanes.innerHTML = todosLosPlanes.map(p => `
             <tr>
-                <td style="font-family:'Inter',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-weight:700;color:var(--text)">${p.nombre} ${p.nombre === planActual.nombre ? '<span class="badge badge-accent" style="margin-left:.4rem">Tu plan</span>' : ''}</td>
+                <td style="font-family:'Syne',sans-serif;font-weight:700;color:var(--text)">${p.nombre} ${p.nombre === planActual.nombre ? '<span class="badge badge-accent" style="margin-left:.4rem">Tu plan</span>' : ''}</td>
                 <td>${p.limite_agentes >= 999 ? 'Ilimitados' : p.limite_agentes}</td>
                 <td style="color:var(--green)">$${p.precio.toLocaleString()} COP/mes</td>
-                <td>${p.nombre === planActual.nombre ? '<span class="badge badge-green">Activo</span>' : `<button onclick="contactarPlan('${p.nombre}',${p.limite_agentes},${p.precio})" style="background:rgba(14,165,233,.1);color:var(--accent);border:1px solid rgba(14,165,233,.2);padding:4px 10px;border-radius:6px;font-size:.75rem;cursor:pointer;font-family:'Inter',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">Contratar</button>`}</td>
+                <td>${p.nombre === planActual.nombre ? '<span class="badge badge-green">Activo</span>' : `<button onclick="contactarPlan('${p.nombre}',${p.limite_agentes},${p.precio})" style="background:rgba(14,165,233,.1);color:var(--accent);border:1px solid rgba(14,165,233,.2);padding:4px 10px;border-radius:6px;font-size:.75rem;cursor:pointer;font-family:'DM Sans',sans-serif">Contratar</button>`}</td>
             </tr>
         `).join('');
     }
@@ -5956,5 +6604,59 @@ async function debugPush() {
                 aria-label="Cerrar">✕</button>
         </div>
 
-    </body>
-</html>
+    
+<script>
+/* ==========================================================================
+   AUVRO — JS UI PRO
+   Drawer móvil + bottom nav sincronizado.
+   No toca lógica de Supabase, agentes, WhatsApp ni endpoints.
+   ========================================================================== */
+(function(){
+    const originalMostrarVista = window.mostrarVista;
+
+    window.toggleMobileMenu = function(force){
+        const sidebar = document.querySelector('.sidebar');
+        const open = typeof force === 'boolean' ? force : !document.body.classList.contains('mobile-menu-open');
+        document.body.classList.toggle('mobile-menu-open', open);
+        if (sidebar) sidebar.classList.toggle('open', open);
+    };
+
+    window.syncMobileBottomNav = function(vista){
+        document.querySelectorAll('.mobile-bottom-item').forEach(btn => btn.classList.remove('active'));
+        const active = document.getElementById('bottom-' + vista);
+        if (active) active.classList.add('active');
+    };
+
+    window.mostrarVista = function(vista){
+        if (typeof originalMostrarVista === 'function') {
+            originalMostrarVista(vista);
+        }
+        window.syncMobileBottomNav(vista);
+        window.toggleMobileMenu(false);
+
+        if (window.innerWidth <= 768) {
+            window.scrollTo({ top: 0, behavior: 'instant' in window ? 'instant' : 'auto' });
+        }
+    };
+
+    document.addEventListener('click', function(e){
+        const navItem = e.target.closest && e.target.closest('.sidebar nav a');
+        if (navItem && window.innerWidth <= 768) {
+            window.toggleMobileMenu(false);
+        }
+    }, true);
+
+    document.addEventListener('keydown', function(e){
+        if (e.key === 'Escape') window.toggleMobileMenu(false);
+    });
+
+    document.addEventListener('DOMContentLoaded', function(){
+        const activeView = document.querySelector('.view.active');
+        if (activeView && activeView.id) {
+            window.syncMobileBottomNav(activeView.id.replace('view-',''));
+        }
+    });
+})();
+</script>
+
+</body>
