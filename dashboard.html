@@ -3731,6 +3731,85 @@ body.light-mode .mob-toggle{
     }
 }
 
+
+/* ==========================================================================
+   AUVRO — FIX SIN SOBREPOSICION EN CHAT
+   - En Bandeja/Chat movil NO se muestra bottom nav ni boton Inicio flotante.
+   - Se conserva la flecha de volver propia del chat.
+   - El composer queda limpio y usable.
+   ========================================================================== */
+@media(max-width:768px){
+    body.bandeja-active .mobile-bottom-nav,
+    body.bandeja-active .mobile-chat-exit{
+        display:none!important;
+        pointer-events:none!important;
+    }
+
+    body.bandeja-active{
+        padding-bottom:0!important;
+        overflow:hidden!important;
+    }
+
+    body.bandeja-active .main-content{
+        padding:0!important;
+        height:100dvh!important;
+        min-height:100dvh!important;
+        overflow:hidden!important;
+    }
+
+    body.bandeja-active #view-bandeja.active{
+        height:100dvh!important;
+        min-height:100dvh!important;
+        overflow:hidden!important;
+    }
+
+    body.bandeja-active .inbox-layout{
+        height:100dvh!important;
+        min-height:100dvh!important;
+        border-radius:0!important;
+        border:0!important;
+    }
+
+    body.bandeja-active .inbox-panel{
+        height:100dvh!important;
+        min-height:100dvh!important;
+        display:flex!important;
+        flex-direction:column!important;
+        overflow:hidden!important;
+    }
+
+    body.bandeja-active .conversation-messages{
+        flex:1 1 auto!important;
+        min-height:0!important;
+        overflow-y:auto!important;
+        padding-bottom:1rem!important;
+        scroll-padding-bottom:120px!important;
+    }
+
+    body.bandeja-active .manual-reply-box{
+        flex:0 0 auto!important;
+        position:relative!important;
+        z-index:40!important;
+        padding-bottom:calc(.75rem + env(safe-area-inset-bottom,0px))!important;
+        background:rgba(8,13,23,.97)!important;
+        border-top:1px solid rgba(148,163,184,.16)!important;
+        backdrop-filter:blur(18px)!important;
+    }
+
+    body.bandeja-active .reply-row{
+        width:100%!important;
+        display:grid!important;
+        grid-template-columns:44px minmax(0,1fr) 48px!important;
+        gap:.5rem!important;
+        align-items:end!important;
+    }
+
+    body.bandeja-active .manual-reply-box textarea{
+        min-width:0!important;
+        width:100%!important;
+    }
+}
+
 </style>
     </head>
     <body>
