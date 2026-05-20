@@ -3319,6 +3319,38 @@ body.light-mode .mob-toggle{
     }
 }
 
+
+/* ==========================================================================
+   FIX: en la bandeja de chats NO mostrar navegación inferior encima del composer
+   ========================================================================== */
+@media(max-width:768px){
+    body.bandeja-active .mobile-bottom-nav{
+        display:none!important;
+    }
+
+    body.bandeja-active{
+        padding-bottom:0!important;
+    }
+
+    body.bandeja-active .main-content{
+        padding-bottom:0!important;
+    }
+
+    body.bandeja-active #view-bandeja.active{
+        height:calc(100vh - env(safe-area-inset-top,0px) - 66px)!important;
+    }
+
+    body.bandeja-active .manual-reply-box{
+        padding-bottom:calc(.75rem + env(safe-area-inset-bottom,0px))!important;
+        position:relative!important;
+        z-index:20!important;
+    }
+
+    body.bandeja-active .conversation-messages{
+        padding-bottom:1rem!important;
+    }
+}
+
 </style>
     </head>
     <body>
@@ -6660,3 +6692,4 @@ async function debugPush() {
 </script>
 
 </body>
+</html>
