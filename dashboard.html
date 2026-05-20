@@ -3877,6 +3877,141 @@ body{
     }
 }
 
+
+/* ==========================================================================
+   AUVRO — WHATSAPP STYLE NAV FIX
+   Referencia WhatsApp:
+   - Sin botones flotantes "Inicio".
+   - Lista de chats: navegacion inferior tipo app.
+   - Chat abierto: navegacion inferior oculta para no tapar el input.
+   - Tema negro real, menos azul.
+   ========================================================================== */
+
+:root{
+    --bg:#000000!important;
+    --bg2:#050505!important;
+    --surface:#0b0b0b!important;
+    --chat-bg:#050505!important;
+    --chat-panel:#050505!important;
+    --border:rgba(255,255,255,.08)!important;
+    --border2:rgba(255,255,255,.13)!important;
+}
+
+body{
+    background:#000!important;
+}
+
+.bg-grid{
+    opacity:.035!important;
+}
+
+.card,
+.agent-item,
+.inbox-layout,
+.sidebar,
+.inbox-sidebar,
+.inbox-panel,
+.inbox-filters,
+.inbox-panel-header,
+.manual-reply-box{
+    background:#050505!important;
+}
+
+.conversation-item{
+    background:#050505!important;
+    border-bottom:1px solid rgba(255,255,255,.075)!important;
+}
+
+.conversation-item:hover,
+.conversation-item.active{
+    background:#0b1318!important;
+}
+
+.conversation-item.active{
+    box-shadow:inset 4px 0 0 #0ea5e9!important;
+}
+
+@media(max-width:768px){
+
+    /* Quitar definitivamente los botones flotantes duplicados */
+    .bandeja-home-btn,
+    .mobile-chat-exit{
+        display:none!important;
+        visibility:hidden!important;
+        pointer-events:none!important;
+    }
+
+    /* Lista de conversaciones: bottom nav visible tipo WhatsApp */
+    body.bandeja-active:not(.chat-open-mobile) .mobile-bottom-nav{
+        display:grid!important;
+    }
+
+    body.bandeja-active:not(.chat-open-mobile){
+        padding-bottom:calc(78px + env(safe-area-inset-bottom,0px))!important;
+    }
+
+    body.bandeja-active:not(.chat-open-mobile) .main-content{
+        padding-bottom:calc(86px + env(safe-area-inset-bottom,0px))!important;
+    }
+
+    body.bandeja-active:not(.chat-open-mobile) #view-bandeja.active{
+        height:calc(100dvh - 86px - env(safe-area-inset-bottom,0px))!important;
+    }
+
+    /* Chat abierto: bottom nav oculto para no tapar composer */
+    body.bandeja-active.chat-open-mobile .mobile-bottom-nav{
+        display:none!important;
+    }
+
+    body.bandeja-active.chat-open-mobile{
+        padding-bottom:0!important;
+    }
+
+    body.bandeja-active.chat-open-mobile .main-content{
+        padding:0!important;
+        height:100dvh!important;
+        overflow:hidden!important;
+    }
+
+    body.bandeja-active.chat-open-mobile #view-bandeja.active,
+    body.bandeja-active.chat-open-mobile .inbox-layout,
+    body.bandeja-active.chat-open-mobile .inbox-panel{
+        height:100dvh!important;
+        min-height:100dvh!important;
+        border-radius:0!important;
+        border:0!important;
+    }
+
+    body.bandeja-active.chat-open-mobile .manual-reply-box{
+        padding-bottom:calc(.75rem + env(safe-area-inset-bottom,0px))!important;
+    }
+
+    body.bandeja-active.chat-open-mobile .conversation-messages{
+        padding-bottom:1rem!important;
+    }
+
+    /* Bottom nav mas parecido a WhatsApp oscuro */
+    .mobile-bottom-nav{
+        background:rgba(22,22,22,.92)!important;
+        border:1px solid rgba(255,255,255,.09)!important;
+        box-shadow:0 16px 45px rgba(0,0,0,.55)!important;
+    }
+
+    .mobile-bottom-item.active{
+        background:rgba(255,255,255,.12)!important;
+        color:#fff!important;
+        box-shadow:none!important;
+    }
+
+    .mobile-bottom-item{
+        color:#b7b7b7!important;
+    }
+
+    .mobile-bottom-item i{
+        color:inherit!important;
+    }
+}
+
 </style>
     </head>
     <body>
@@ -7225,6 +7360,54 @@ async function debugPush() {
         if (activeView && activeView.id) {
             window.syncMobileBottomNav(activeView.id.replace('view-',''));
         }
+    });
+})();
+</script>
+
+
+<script>
+/* ==========================================================================
+   AUVRO — WHATSAPP STYLE NAV STATE
+   No reemplaza funciones criticas.
+   Solo marca si en movil estas dentro de un chat para ocultar el bottom nav.
+   ========================================================================== */
+(function(){
+    function isMobile(){ return window.innerWidth <= 768; }
+
+    function setChatOpen(open){
+        if (!isMobile()) {
+            document.body.classList.remove('chat-open-mobile');
+            return;
+        }
+        document.body.classList.toggle('chat-open-mobile', !!open);
+    }
+
+    document.addEventListener('click', function(e){
+        const conversation = e.target.closest && e.target.closest('.conversation-item');
+        if (conversation) {
+            setTimeout(function(){ setChatOpen(true); }, 120);
+            return;
+        }
+
+        const back = e.target.closest && e.target.closest(
+            '.mobile-back-btn,.inbox-back-btn,[data-mobile-back],.btn-back,.back-btn,.inbox-panel-header button:first-child'
+        );
+        if (back) {
+            setTimeout(function(){ setChatOpen(false); }, 120);
+        }
+    }, true);
+
+    document.addEventListener('DOMContentLoaded', function(){
+        const navButtons = document.querySelectorAll('.mobile-bottom-item');
+        navButtons.forEach(function(btn){
+            btn.addEventListener('click', function(){
+                setChatOpen(false);
+            }, true);
+        });
+    });
+
+    window.addEventListener('resize', function(){
+        if (!isMobile()) setChatOpen(false);
     });
 })();
 </script>
