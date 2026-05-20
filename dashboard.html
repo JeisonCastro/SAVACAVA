@@ -3677,12 +3677,78 @@ body.light-mode .mob-toggle{
     }
 }
 
+
+/* ==========================================================================
+   AUVRO — FIX NAVEGACION CHATS
+   - En la lista de conversaciones si aparece menu inferior para salir.
+   - En el chat abierto se oculta para no tapar el composer.
+   - Agrega un boton flotante "Inicio" en Bandeja movil.
+   ========================================================================== */
+@media(max-width:768px){
+    body.bandeja-active:not(.mobile-chat-open) .mobile-bottom-nav{
+        display:grid!important;
+    }
+
+    body.bandeja-active.mobile-chat-open .mobile-bottom-nav{
+        display:none!important;
+    }
+
+    body.bandeja-active:not(.mobile-chat-open){
+        padding-bottom:calc(78px + env(safe-area-inset-bottom,0px))!important;
+    }
+
+    body.bandeja-active:not(.mobile-chat-open) .main-content{
+        padding-bottom:calc(88px + env(safe-area-inset-bottom,0px))!important;
+    }
+
+    body.bandeja-active:not(.mobile-chat-open) #view-bandeja.active{
+        height:calc(100dvh - 88px - env(safe-area-inset-bottom,0px))!important;
+    }
+
+    .mobile-chat-exit{
+        display:none;
+    }
+
+    body.bandeja-active:not(.mobile-chat-open) .mobile-chat-exit{
+        position:fixed;
+        right:14px;
+        bottom:calc(86px + env(safe-area-inset-bottom,0px));
+        z-index:205;
+        display:inline-flex;
+        align-items:center;
+        gap:.45rem;
+        height:42px;
+        padding:0 .9rem;
+        border-radius:999px;
+        border:1px solid rgba(14,165,233,.28);
+        background:rgba(8,13,23,.86);
+        color:#38bdf8;
+        font-family:'Inter',system-ui,sans-serif;
+        font-size:.78rem;
+        font-weight:900;
+        box-shadow:0 16px 45px rgba(0,0,0,.35);
+        backdrop-filter:blur(18px);
+    }
+
+    body.light-mode.bandeja-active:not(.mobile-chat-open) .mobile-chat-exit{
+        background:rgba(255,255,255,.88);
+        color:#0284c7;
+        box-shadow:0 16px 38px rgba(15,23,42,.14);
+    }
+}
+
 </style>
     </head>
     <body>
 
         <div class="bg-grid"></div>
         <div class="mobile-menu-overlay" id="mobile-menu-overlay" onclick="toggleMobileMenu(false)"></div>
+
+        
+        <button type="button" class="mobile-chat-exit" onclick="mostrarVista('agentes')" aria-label="Salir de chats">
+            <i class="fas fa-house"></i>
+            <span>Inicio</span>
+        </button>
 
         <nav class="mobile-bottom-nav" aria-label="Navegacion movil">
             <button type="button" class="mobile-bottom-item active" id="bottom-agentes" onclick="mostrarVista('agentes')">
@@ -7013,6 +7079,65 @@ async function debugPush() {
         if (activeView && activeView.id) {
             window.syncMobileBottomNav(activeView.id.replace('view-',''));
         }
+    });
+})();
+</script>
+
+
+<script>
+/* ==========================================================================
+   AUVRO — FIX ESTADO CHAT MOVIL
+   Detecta si el panel de conversacion esta abierto para ocultar/mostrar navegacion.
+   ========================================================================== */
+(function(){
+    function updateMobileChatState(){
+        if (window.innerWidth > 768) {
+            document.body.classList.remove('mobile-chat-open');
+            return;
+        }
+
+        const bandeja = document.getElementById('view-bandeja');
+        const bandejaActiva = bandeja && bandeja.classList.contains('active');
+
+        if (!bandejaActiva) {
+            document.body.classList.remove('mobile-chat-open');
+            return;
+        }
+
+        const panel = document.querySelector('.inbox-panel');
+        const sidebar = document.querySelector('.inbox-sidebar');
+        const hasSelected =
+            !!document.querySelector('.conversation-item.active') ||
+            !!window.conversacionSeleccionada ||
+            !!window.selectedConversationId;
+
+        const panelVisible = panel && getComputedStyle(panel).display !== 'none';
+        const sidebarHidden = sidebar && getComputedStyle(sidebar).display === 'none';
+
+        document.body.classList.toggle('mobile-chat-open', !!(hasSelected && panelVisible && sidebarHidden));
+    }
+
+    const oldMostrarVista = window.mostrarVista;
+    window.mostrarVista = function(vista){
+        if (typeof oldMostrarVista === 'function') oldMostrarVista(vista);
+        setTimeout(updateMobileChatState, 80);
+        setTimeout(updateMobileChatState, 350);
+    };
+
+    document.addEventListener('click', function(e){
+        if (e.target.closest && e.target.closest('.conversation-item,.mobile-back-btn,.inbox-back-btn,[data-mobile-back]')) {
+            setTimeout(updateMobileChatState, 80);
+            setTimeout(updateMobileChatState, 350);
+        }
+    }, true);
+
+    window.addEventListener('resize', updateMobileChatState);
+    document.addEventListener('DOMContentLoaded', function(){
+        updateMobileChatState();
+
+        const target = document.body;
+        const obs = new MutationObserver(updateMobileChatState);
+        obs.observe(target, { attributes:true, childList:true, subtree:true, attributeFilter:['class','style'] });
     });
 })();
 </script>
