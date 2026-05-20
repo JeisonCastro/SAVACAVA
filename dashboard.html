@@ -3679,37 +3679,31 @@ body.light-mode .mob-toggle{
 
 
 /* ==========================================================================
-   AUVRO — FIX NAVEGACION CHATS
-   - En la lista de conversaciones si aparece menu inferior para salir.
-   - En el chat abierto se oculta para no tapar el composer.
-   - Agrega un boton flotante "Inicio" en Bandeja movil.
+   AUVRO — FIX ESTABLE SALIR DE CHATS
+   No toca la logica de abrir conversaciones.
    ========================================================================== */
 @media(max-width:768px){
-    body.bandeja-active:not(.mobile-chat-open) .mobile-bottom-nav{
+    body.bandeja-active .mobile-bottom-nav{
         display:grid!important;
     }
 
-    body.bandeja-active.mobile-chat-open .mobile-bottom-nav{
-        display:none!important;
-    }
-
-    body.bandeja-active:not(.mobile-chat-open){
-        padding-bottom:calc(78px + env(safe-area-inset-bottom,0px))!important;
-    }
-
-    body.bandeja-active:not(.mobile-chat-open) .main-content{
+    body.bandeja-active .main-content{
         padding-bottom:calc(88px + env(safe-area-inset-bottom,0px))!important;
     }
 
-    body.bandeja-active:not(.mobile-chat-open) #view-bandeja.active{
+    body.bandeja-active #view-bandeja.active{
         height:calc(100dvh - 88px - env(safe-area-inset-bottom,0px))!important;
+    }
+
+    body.bandeja-active .manual-reply-box{
+        padding-bottom:calc(.72rem + env(safe-area-inset-bottom,0px))!important;
     }
 
     .mobile-chat-exit{
         display:none;
     }
 
-    body.bandeja-active:not(.mobile-chat-open) .mobile-chat-exit{
+    body.bandeja-active .mobile-chat-exit{
         position:fixed;
         right:14px;
         bottom:calc(86px + env(safe-area-inset-bottom,0px));
@@ -3730,7 +3724,7 @@ body.light-mode .mob-toggle{
         backdrop-filter:blur(18px);
     }
 
-    body.light-mode.bandeja-active:not(.mobile-chat-open) .mobile-chat-exit{
+    body.light-mode.bandeja-active .mobile-chat-exit{
         background:rgba(255,255,255,.88);
         color:#0284c7;
         box-shadow:0 16px 38px rgba(15,23,42,.14);
@@ -7079,65 +7073,6 @@ async function debugPush() {
         if (activeView && activeView.id) {
             window.syncMobileBottomNav(activeView.id.replace('view-',''));
         }
-    });
-})();
-</script>
-
-
-<script>
-/* ==========================================================================
-   AUVRO — FIX ESTADO CHAT MOVIL
-   Detecta si el panel de conversacion esta abierto para ocultar/mostrar navegacion.
-   ========================================================================== */
-(function(){
-    function updateMobileChatState(){
-        if (window.innerWidth > 768) {
-            document.body.classList.remove('mobile-chat-open');
-            return;
-        }
-
-        const bandeja = document.getElementById('view-bandeja');
-        const bandejaActiva = bandeja && bandeja.classList.contains('active');
-
-        if (!bandejaActiva) {
-            document.body.classList.remove('mobile-chat-open');
-            return;
-        }
-
-        const panel = document.querySelector('.inbox-panel');
-        const sidebar = document.querySelector('.inbox-sidebar');
-        const hasSelected =
-            !!document.querySelector('.conversation-item.active') ||
-            !!window.conversacionSeleccionada ||
-            !!window.selectedConversationId;
-
-        const panelVisible = panel && getComputedStyle(panel).display !== 'none';
-        const sidebarHidden = sidebar && getComputedStyle(sidebar).display === 'none';
-
-        document.body.classList.toggle('mobile-chat-open', !!(hasSelected && panelVisible && sidebarHidden));
-    }
-
-    const oldMostrarVista = window.mostrarVista;
-    window.mostrarVista = function(vista){
-        if (typeof oldMostrarVista === 'function') oldMostrarVista(vista);
-        setTimeout(updateMobileChatState, 80);
-        setTimeout(updateMobileChatState, 350);
-    };
-
-    document.addEventListener('click', function(e){
-        if (e.target.closest && e.target.closest('.conversation-item,.mobile-back-btn,.inbox-back-btn,[data-mobile-back]')) {
-            setTimeout(updateMobileChatState, 80);
-            setTimeout(updateMobileChatState, 350);
-        }
-    }, true);
-
-    window.addEventListener('resize', updateMobileChatState);
-    document.addEventListener('DOMContentLoaded', function(){
-        updateMobileChatState();
-
-        const target = document.body;
-        const obs = new MutationObserver(updateMobileChatState);
-        obs.observe(target, { attributes:true, childList:true, subtree:true, attributeFilter:['class','style'] });
     });
 })();
 </script>
