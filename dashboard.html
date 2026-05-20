@@ -3773,6 +3773,110 @@ body.light-mode .mob-toggle{
     }
 }
 
+
+/* ==========================================================================
+   AUVRO — DARK UX FIX
+   - Boton Inicio pequeno y abajo SOLO en lista de bandeja.
+   - NO tapa filtros.
+   - Tema mas negro premium.
+   - Recupera boton sonido/notificaciones.
+   ========================================================================== */
+
+:root{
+    --bg:#03050a!important;
+    --bg2:#050811!important;
+    --surface:#070b14!important;
+}
+
+body{
+    background:
+        radial-gradient(circle at 12% 8%, rgba(14,165,233,.05), transparent 24%),
+        radial-gradient(circle at 88% 14%, rgba(34,197,94,.04), transparent 22%),
+        #03050a!important;
+}
+
+/* Fondo menos azul */
+.card,
+.agent-item,
+.inbox-layout,
+.sidebar{
+    background:linear-gradient(180deg,#070b14,#04070d)!important;
+}
+
+/* Boton Inicio elegante y discreto */
+@media(max-width:768px){
+
+    .bandeja-home-btn{
+        display:none!important;
+    }
+
+    /* SOLO en lista de conversaciones */
+    body.bandeja-active .inbox-sidebar:not([style*="display: none"]) ~ .bandeja-home-btn,
+    body.bandeja-active .bandeja-home-btn{
+        display:flex!important;
+    }
+
+    body.bandeja-active .bandeja-home-btn{
+        position:fixed!important;
+        right:14px!important;
+        bottom:18px!important;
+        top:auto!important;
+        z-index:120!important;
+
+        height:40px!important;
+        padding:0 .82rem!important;
+        border-radius:999px!important;
+
+        background:rgba(4,8,15,.92)!important;
+        border:1px solid rgba(255,255,255,.08)!important;
+
+        color:#38bdf8!important;
+        font-size:.76rem!important;
+        font-weight:800!important;
+
+        box-shadow:0 10px 35px rgba(0,0,0,.45)!important;
+        backdrop-filter:blur(18px)!important;
+    }
+
+    /* Si el chat esta abierto -> ocultar */
+    body.bandeja-active .inbox-panel:not([style*="display: none"]) ~ .bandeja-home-btn{
+        display:none!important;
+    }
+
+    /* Recuperar boton sonido/notificaciones */
+    .sound-toggle,
+    .notification-toggle,
+    #toggle-sound,
+    #sound-toggle{
+        display:flex!important;
+        opacity:1!important;
+        visibility:visible!important;
+    }
+
+    /* Composer oscuro */
+    .manual-reply-box{
+        background:#050811!important;
+        border-top:1px solid rgba(255,255,255,.06)!important;
+    }
+
+    .manual-reply-box textarea{
+        background:#02040a!important;
+        border:1px solid rgba(255,255,255,.08)!important;
+    }
+
+    /* Header chats mas oscuro */
+    .inbox-panel-header,
+    .inbox-filters{
+        background:rgba(5,8,15,.96)!important;
+        backdrop-filter:blur(16px)!important;
+    }
+
+    /* Burbujas */
+    .inbox-msg{
+        box-shadow:none!important;
+    }
+}
+
 </style>
     </head>
     <body>
