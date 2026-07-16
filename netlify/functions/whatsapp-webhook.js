@@ -12,7 +12,7 @@ async function dispararPush({ userId, title, body, conversationId }) {
   try {
     if (!userId) return;
 
-    const baseUrl = process.env.URL || process.env.DEPLOY_PRIME_URL || 'https://jeisondigital.netlify.app';
+    const baseUrl = process.env.URL || process.env.DEPLOY_PRIME_URL || 'https://auvro.netlify.app';
 
     const res = await fetch(`${baseUrl}/.netlify/functions/send-push`, {
       method: 'POST',
@@ -344,7 +344,7 @@ exports.handler = async (event) => {
     const conversationId = `wa_${agenteId}_${from}`;
 
     // 6. Llamar a la función chat
-    const chatUrl = `${process.env.URL || 'https://jeisondigital.netlify.app'}/.netlify/functions/chat`;
+    const chatUrl = `${process.env.URL || 'https://auvro.netlify.app'}/.netlify/functions/chat`;
 
     const chatRes = await fetch(chatUrl, {
       method: 'POST',
