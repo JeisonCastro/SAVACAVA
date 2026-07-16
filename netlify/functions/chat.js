@@ -22,7 +22,7 @@ async function dispararPush({ userId, title, body, conversationId, canal = 'web'
     try {
         if (!userId) return;
 
-        const baseUrl = process.env.URL || process.env.DEPLOY_PRIME_URL || 'https://jeisondigital.netlify.app';
+        const baseUrl = process.env.URL || process.env.DEPLOY_PRIME_URL || 'https://auvro.netlify.app';
 
         const res = await fetch(`${baseUrl}/.netlify/functions/send-push`, {
             method: 'POST',
@@ -891,7 +891,7 @@ exports.handler = async (event) => {
         }
 
         const origin = event.headers.origin || "";
-        const esDashboard = origin.includes("jeisondigital.netlify.app");
+        const esDashboard = origin.includes("auvro.netlify.app");
         const esWhatsapp = canal === "whatsapp";
 
         if (!esDashboard && !esWhatsapp && (!agente.dominios_permitidos || agente.dominios_permitidos.length === 0)) {
