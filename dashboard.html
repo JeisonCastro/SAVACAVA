@@ -4873,7 +4873,7 @@ body{
         await _supabase.auth.signOut();
         localStorage.clear();
         sessionStorage.clear();
-        window.location.replace('https://jeisondigital.netlify.app/login');
+        window.location.replace('https://auvro.netlify.app/login');
     }
 
     // ── CREAR AGENTE ──
@@ -4976,7 +4976,7 @@ body{
     }
 
     function copiarCDN(id) {
-        navigator.clipboard.writeText(`<script src="https://jeisondigital.netlify.app/widget.js" data-id="${id}"><\/script>`);
+        navigator.clipboard.writeText(`<script src="https://auvro.netlify.app/login/widget.js" data-id="${id}"><\/script>`);
         showToast('Codigo CDN copiado al portapapeles');
     }
 
