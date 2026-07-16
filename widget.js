@@ -11,7 +11,7 @@
     try {
       return new URL(script.src).origin;
     } catch (_) {
-      return 'https://jeisondigital.netlify.app';
+      return 'https://auvro.netlify.app';
     }
   })();
 
