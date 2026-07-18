@@ -1,4 +1,5 @@
 const { createClient } = require('@supabase/supabase-js');
+const chatHandler = require('./chat.js').handler;
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -343,13 +344,12 @@ exports.handler = async (event) => {
     // Conversation estable por agente + número del usuario
     const conversationId = `wa_${agenteId}_${from}`;
 
-    // 6. Llamar a la función chat
-    const chatUrl = `${process.env.URL || 'https://auvro.netlify.app'}/.netlify/functions/chat`;
-
-    const chatRes = await fetch(chatUrl, {
-      method: 'POST',
+    // 6. Llamar a chat.js directamente (sin HTTP)
+    const chatEvent = {
+      httpMethod: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'origin': ''
       },
       body: JSON.stringify({
         prompt: text,
@@ -359,9 +359,29 @@ exports.handler = async (event) => {
         canal: "whatsapp",
         external_user_id: from
       })
-    });
+    };
 
-    const chatData = await chatRes.json();
+    let chatResult;
+    try {
+      chatResult = await chatHandler(chatEvent);
+    } catch (chatErr) {
+      console.error('Error ejecutando chat handler:', chatErr);
+      return {
+        statusCode: 200,
+        body: JSON.stringify({
+          ok: false,
+          error: 'Error procesando mensaje: ' + chatErr.message
+        })
+      };
+    }
+
+    let chatData;
+    try {
+      chatData = JSON.parse(chatResult.body || '{}');
+    } catch (parseErr) {
+      console.error('Error parseando respuesta de chat:', parseErr);
+      chatData = {};
+    }
 
     if (chatData.skipped === true) {
       return {
