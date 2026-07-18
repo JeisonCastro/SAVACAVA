@@ -994,17 +994,25 @@ exports.handler = async (event) => {
             };
         }
 
-        const historialDB = await cargarHistorialConversacion(conversationIdFinal, 12);
+        const [
+            historialDB,
+            perfilResult,
+            agentToolsResult,
+            userConnectionsResult,
+            pendingActionResult
+        ] = await Promise.all([
+            cargarHistorialConversacion(conversationIdFinal, 8),
+            supabase.from('perfiles').select('token_balance').eq('id', agente.user_id).single(),
+            supabase.from('agente_tools').select('tool_key, toolkit, enabled').eq('agente_id', targetID).eq('enabled', true),
+            supabase.from('composio_connections').select('toolkit, composio_entity_id, connected_at').eq('user_id', agente.user_id),
+            supabase.from('pending_tool_actions').select('*').eq('user_id', agente.user_id).eq('agente_id', targetID).eq('conversation_id', conversationIdFinal).eq('status', 'pending').gte('expires_at', new Date().toISOString()).order('created_at', { ascending: false }).limit(1).maybeSingle()
+        ]);
+
         const historialSinDuplicado = (historialDB || []).filter(
             (m, i, arr) => !(i === arr.length - 1 && m.role === 'user' && m.content === prompt)
         );
 
-
-        const { data: perfil, error: errPerfil } = await supabase
-            .from('perfiles')
-            .select('token_balance')
-            .eq('id', agente.user_id)
-            .single();
+        const { data: perfil, error: errPerfil } = perfilResult;
 
         if (errPerfil || !perfil) {
             return {
@@ -1024,16 +1032,8 @@ exports.handler = async (event) => {
             };
         }
 
-        const { data: agentTools } = await supabase
-            .from('agente_tools')
-            .select('tool_key, toolkit, enabled')
-            .eq('agente_id', targetID)
-            .eq('enabled', true);
-
-        const { data: userConnections } = await supabase
-            .from('composio_connections')
-            .select('toolkit, composio_entity_id, connected_at')
-            .eq('user_id', agente.user_id);
+        const { data: agentTools } = agentToolsResult;
+        const { data: userConnections } = userConnectionsResult;
 
         const toolkitsConectados = new Set((userConnections || []).map(c => normalizarToolkit(c.toolkit)));
 
@@ -1043,17 +1043,7 @@ exports.handler = async (event) => {
 
         console.log("Tools disponibles:", toolsDisponibles.map(t => t.tool_key));
 
-        const { data: pendingAction } = await supabase
-            .from('pending_tool_actions')
-            .select('*')
-            .eq('user_id', agente.user_id)
-            .eq('agente_id', targetID)
-            .eq('conversation_id', conversationIdFinal)
-            .eq('status', 'pending')
-            .gte('expires_at', new Date().toISOString())
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .maybeSingle();
+        const { data: pendingAction } = pendingActionResult;
 
         console.log("Pending action:", pendingAction ? pendingAction.action : 'ninguno');
 
@@ -1144,7 +1134,7 @@ INSTRUCCIONES:
 
         const mensajes = [
             { role: "system", content: systemFinal },
-            ...historialSinDuplicado.slice(-12),
+            ...historialSinDuplicado.slice(-8),
             { role: "user", content: prompt }
         ];
 
@@ -1155,7 +1145,7 @@ INSTRUCCIONES:
         console.log("Llamando a DeepSeek...");
 
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 20000);
+        const timeout = setTimeout(() => controller.abort(), 7000);
 
         let aiResponse;
         let aiData;
