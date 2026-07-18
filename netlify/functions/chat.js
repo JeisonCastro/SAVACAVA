@@ -150,7 +150,7 @@ function parseActionPayload(text = "") {
 
     try {
         return JSON.parse(raw);
-    } catch (_) {}
+    } catch (_) { }
 
     const sinFence = raw
         .replace(/^```json\s*/i, "")
@@ -160,7 +160,7 @@ function parseActionPayload(text = "") {
 
     try {
         return JSON.parse(sinFence);
-    } catch (_) {}
+    } catch (_) { }
 
     const match = sinFence.match(/\{[\s\S]*\}/);
     if (!match) return null;
@@ -537,11 +537,11 @@ async function ejecutarDriveDirecto({ payload, agente, targetID, userConnections
 
     const respuestaIA = archivos.length > 0
         ? `Encontré ${archivos.length} archivo(s):\n` +
-          archivos.slice(0, 5).map(f => {
-              const nombre = f.name || f.title || f.file_name || 'Archivo sin nombre';
-              const link = f.webViewLink || f.url || f.link || '';
-              return `📄 ${nombre}${link ? ` — ${link}` : ''}`;
-          }).join('\n')
+        archivos.slice(0, 5).map(f => {
+            const nombre = f.name || f.title || f.file_name || 'Archivo sin nombre';
+            const link = f.webViewLink || f.url || f.link || '';
+            return `📄 ${nombre}${link ? ` — ${link}` : ''}`;
+        }).join('\n')
         : "No encontré archivos que coincidan con tu búsqueda.";
 
     const tokensUsados = await registrarConsumo({
@@ -853,14 +853,14 @@ exports.handler = async (event) => {
 
     try {
         const body = JSON.parse(event.body || '{}');
-        const { 
-  prompt, 
-  agente_id, 
-  historial = [], 
-  conversation_id = null, 
-  canal = "web",
-  external_user_id = null
-} = body;
+        const {
+            prompt,
+            agente_id,
+            historial = [],
+            conversation_id = null,
+            canal = "web",
+            external_user_id = null
+        } = body;
         const targetID = agente_id || process.env.AGENTE_MAESTRO_ID;
 
         if (!prompt || !String(prompt).trim()) {
@@ -871,7 +871,7 @@ exports.handler = async (event) => {
             };
         }
 
-        
+
 
         const { data: agente, error: errAgente } = await supabase
             .from('agentes_ia')
@@ -891,93 +891,119 @@ exports.handler = async (event) => {
         }
 
         const origin = event.headers.origin || "";
+
         const esDashboard = origin.includes("auvro.netlify.app");
         const esWhatsapp = canal === "whatsapp";
+        const esLocal =
+            origin.includes("localhost") ||
+            origin.includes("127.0.0.1");
 
-        if (!esDashboard && !esWhatsapp && (!agente.dominios_permitidos || agente.dominios_permitidos.length === 0)) {
-            return {
-                statusCode: 403,
-                headers,
-                body: JSON.stringify({ respuesta: "Seguridad: No hay dominios configurados para este agente." })
-            };
+        let dominioActual = "";
+
+        try {
+            dominioActual = new URL(origin).hostname;
+        } catch (e) {
+            dominioActual = "";
         }
 
-        if (!esDashboard && !esWhatsapp && !agente.dominios_permitidos.includes(origin)) {
-            return {
-                statusCode: 403,
-                headers,
-                body: JSON.stringify({ respuesta: "Este dominio no tiene permiso." })
-            };
+        if (!esDashboard && !esWhatsapp && !esLocal) {
+
+            const dominios = agente.dominios_permitidos || [];
+
+            if (dominios.length === 0) {
+                return {
+                    statusCode: 403,
+                    headers,
+                    body: JSON.stringify({
+                        respuesta: "Seguridad: Este agente no tiene dominios configurados."
+                    })
+                };
+            }
+
+
+            const dominioAutorizado = dominios.includes(dominioActual);
+
+
+            if (!dominioAutorizado) {
+                return {
+                    statusCode: 403,
+                    headers,
+                    body: JSON.stringify({
+                        respuesta: "Seguridad: Este dominio no está autorizado para este agente."
+                    })
+                };
+            }
         }
+
 
         const externalUserIdFinal =
-    external_user_id ||
-    conversation_id ||
-    `${canal}_${targetID}_anon`;
+            external_user_id ||
+            conversation_id ||
+            `${canal}_${targetID}_anon`;
 
-const conversacion = await obtenerOCrearConversacion({
-    agente,
-    targetID,
-    canal,
-    externalUserId: externalUserIdFinal,
-    conversationId: conversation_id && /^[0-9a-f-]{36}$/i.test(conversation_id) ? conversation_id : null
-});
+        const conversacion = await obtenerOCrearConversacion({
+            agente,
+            targetID,
+            canal,
+            externalUserId: externalUserIdFinal,
+            conversationId: conversation_id && /^[0-9a-f-]{36}$/i.test(conversation_id) ? conversation_id : null
+        });
 
-const conversationIdFinal = conversacion.id;
+        const conversationIdFinal = conversacion.id;
 
-await guardarMensajeConversacion({
-    conversacionId: conversationIdFinal,
-    agenteId: targetID,
-    role: 'user',
-    content: prompt,
-    metadata: { canal, origen: 'cliente' }
-});
+        await guardarMensajeConversacion({
+            conversacionId: conversationIdFinal,
+            agenteId: targetID,
+            role: 'user',
+            content: prompt,
+            metadata: { canal, origen: 'cliente' }
+        });
 
-await actualizarResumenConversacion({
-    conversacionId: conversationIdFinal,
-    ultimoMensaje: prompt,
-    ultimoRole: 'user',
-    requiereAtencion: debeEscalarAHumano(prompt) ? true : null
-});
+        await actualizarResumenConversacion({
+            conversacionId: conversationIdFinal,
+            ultimoMensaje: prompt,
+            ultimoRole: 'user',
+            requiereAtencion: debeEscalarAHumano(prompt) ? true : null
+        });
 
-// 🔔 Push automático para TODO mensaje entrante del cliente (Web y WhatsApp texto).
-// Se dispara aquí porque chat.js es el punto común para widget web y mensajes WhatsApp de texto.
-await dispararPush({
-    userId: agente.user_id,
-    title: canal === 'whatsapp'
-        ? `💬 WhatsApp ${externalUserIdFinal ? '+' + externalUserIdFinal : ''}`.trim()
-        : `💬 Nuevo mensaje web`,
-    body: prompt,
-    conversationId: conversationIdFinal,
-    canal
-});
+        // 🔔 Push automático para TODO mensaje entrante del cliente (Web y WhatsApp texto).
+        // Se dispara aquí porque chat.js es el punto común para widget web y mensajes WhatsApp de texto.
+        await dispararPush({
+            userId: agente.user_id,
+            title: canal === 'whatsapp'
+                ? `💬 WhatsApp ${externalUserIdFinal ? '+' + externalUserIdFinal : ''}`.trim()
+                : `💬 Nuevo mensaje web`,
+            body: prompt,
+            conversationId: conversationIdFinal,
+            canal
+        });
 
-if (conversacion.modo_humano === true || conversacion.estado === 'modo_humano') {
-    await actualizarResumenConversacion({
-        conversacionId: conversationIdFinal,
-        ultimoMensaje: prompt,
-        ultimoRole: 'user',
-        requiereAtencion: true
-    });
+        if (conversacion.modo_humano === true || conversacion.estado === 'modo_humano') {
+            await actualizarResumenConversacion({
+                conversacionId: conversationIdFinal,
+                ultimoMensaje: prompt,
+                ultimoRole: 'user',
+                requiereAtencion: true
+            });
 
-    return {
-        statusCode: 200,
-        headers,
-        body: JSON.stringify({
-            respuesta: "Tu mensaje fue recibido. Un asesor humano continuará la conversación.",
-            skipped: true,
-            motivo: 'modo_humano',
-            modo_humano: true,
-            conversation_id: conversationIdFinal
-        })
-    };
-}
+            return {
+                statusCode: 200,
+                headers,
+                body: JSON.stringify({
+                    respuesta: "Tu mensaje fue recibido. Un asesor humano continuará la conversación.",
+                    skipped: true,
+                    motivo: 'modo_humano',
+                    modo_humano: true,
+                    conversation_id: conversationIdFinal
+                })
+            };
+        }
 
-const historialDB = await cargarHistorialConversacion(conversationIdFinal, 12);
+        const historialDB = await cargarHistorialConversacion(conversationIdFinal, 12);
         const historialSinDuplicado = (historialDB || []).filter(
-    (m, i, arr) => !(i === arr.length - 1 && m.role === 'user' && m.content === prompt)
-);
-        
+            (m, i, arr) => !(i === arr.length - 1 && m.role === 'user' && m.content === prompt)
+        );
+
 
         const { data: perfil, error: errPerfil } = await supabase
             .from('perfiles')
@@ -1055,12 +1081,12 @@ const historialDB = await cargarHistorialConversacion(conversationIdFinal, 12);
 
         if (resultadoPending) {
             await guardarMensajeConversacion({
-    conversacionId: conversationIdFinal,
-    agenteId: targetID,
-    role: 'assistant',
-    content: resultadoPending.respuesta,
-    metadata: { canal, origen: 'ia' }
-});
+                conversacionId: conversationIdFinal,
+                agenteId: targetID,
+                role: 'assistant',
+                content: resultadoPending.respuesta,
+                metadata: { canal, origen: 'ia' }
+            });
             await actualizarResumenConversacion({ conversacionId: conversationIdFinal, ultimoMensaje: resultadoPending.respuesta, ultimoRole: 'assistant', requiereAtencion: false });
             return {
                 statusCode: resultadoPending.statusCode || 200,
@@ -1122,15 +1148,15 @@ INSTRUCCIONES:
         }
 
         const mensajes = [
-    { role: "system", content: systemFinal },
-    ...historialSinDuplicado.slice(-12),
-    { role: "user", content: prompt }
-];
+            { role: "system", content: systemFinal },
+            ...historialSinDuplicado.slice(-12),
+            { role: "user", content: prompt }
+        ];
 
-        
+
 
         console.log("Turnos de historial enviados a DeepSeek:", historialDB.length);
-console.log("Conversation ID final:", conversationIdFinal);
+        console.log("Conversation ID final:", conversationIdFinal);
         console.log("Llamando a DeepSeek...");
 
         const controller = new AbortController();
@@ -1201,65 +1227,65 @@ console.log("Conversation ID final:", conversationIdFinal);
             }
         }
         if (actionPayload?.action === 'GMAIL_FETCH_EMAILS') {
-    if (!toolDisponible(toolsDisponibles, 'GMAIL_FETCH_EMAILS')) {
-        respuestaIA = "Gmail lectura no está habilitada para este agente.";
-    } else {
-        const gmailConn = obtenerConexion(userConnections, 'gmail');
+            if (!toolDisponible(toolsDisponibles, 'GMAIL_FETCH_EMAILS')) {
+                respuestaIA = "Gmail lectura no está habilitada para este agente.";
+            } else {
+                const gmailConn = obtenerConexion(userConnections, 'gmail');
 
-        if (!gmailConn?.composio_entity_id) {
-            await guardarMensajeConversacion({
-        conversacionId: conversationIdFinal,
-        agenteId: targetID,
-        role: 'assistant',
-        content: "Gmail no está conectado para este usuario.",
-        metadata: { canal, action: 'GMAIL_FETCH_EMAILS', origen: 'ia' }
-    });
-            await actualizarResumenConversacion({ conversacionId: conversationIdFinal, ultimoMensaje: 'Gmail no está conectado para este usuario.', ultimoRole: 'assistant', requiereAtencion: true });
-            return {
-                statusCode: 400,
-                headers,
-                body: JSON.stringify({
-                    respuesta: "Gmail no está conectado para este usuario.",
-                    conversation_id: conversationIdFinal
-                })
-            };
+                if (!gmailConn?.composio_entity_id) {
+                    await guardarMensajeConversacion({
+                        conversacionId: conversationIdFinal,
+                        agenteId: targetID,
+                        role: 'assistant',
+                        content: "Gmail no está conectado para este usuario.",
+                        metadata: { canal, action: 'GMAIL_FETCH_EMAILS', origen: 'ia' }
+                    });
+                    await actualizarResumenConversacion({ conversacionId: conversationIdFinal, ultimoMensaje: 'Gmail no está conectado para este usuario.', ultimoRole: 'assistant', requiereAtencion: true });
+                    return {
+                        statusCode: 400,
+                        headers,
+                        body: JSON.stringify({
+                            respuesta: "Gmail no está conectado para este usuario.",
+                            conversation_id: conversationIdFinal
+                        })
+                    };
+                }
+
+                const payloadGmail = {
+                    query: actionPayload.data?.query || 'in:inbox',
+                    max_results: actionPayload.data?.max_results || 2
+                };
+
+                const resultado = await ejecutarToolComposio(
+                    'GMAIL_FETCH_EMAILS',
+                    gmailConn.composio_entity_id,
+                    agente.user_id,
+                    payloadGmail
+                );
+
+                console.log("Resultado Gmail Fetch:", JSON.stringify(resultado));
+
+                const correos =
+                    resultado?.data?.response_data?.messages ||
+                    resultado?.data?.response_data?.emails ||
+                    resultado?.data?.messages ||
+                    resultado?.data?.emails ||
+                    resultado?.messages ||
+                    resultado?.emails ||
+                    [];
+
+                if (!correos.length) {
+                    respuestaIA = "No encontré correos recientes en tu bandeja.";
+                } else {
+                    respuestaIA = "Encontré estos correos recientes:\n\n" + correos.slice(0, payloadGmail.max_results).map((c, i) => {
+                        const from = c.from || c.sender || c.from_email || 'Remitente no disponible';
+                        const subject = c.subject || 'Sin asunto';
+                        const snippet = c.snippet || c.body_preview || c.text || c.body || '';
+                        return `${i + 1}. De: ${from}\nAsunto: ${subject}\nResumen: ${String(snippet).slice(0, 300)}`;
+                    }).join("\n\n");
+                }
+            }
         }
-
-        const payloadGmail = {
-            query: actionPayload.data?.query || 'in:inbox',
-            max_results: actionPayload.data?.max_results || 2
-        };
-
-        const resultado = await ejecutarToolComposio(
-            'GMAIL_FETCH_EMAILS',
-            gmailConn.composio_entity_id,
-            agente.user_id,
-            payloadGmail
-        );
-
-        console.log("Resultado Gmail Fetch:", JSON.stringify(resultado));
-
-        const correos =
-            resultado?.data?.response_data?.messages ||
-            resultado?.data?.response_data?.emails ||
-            resultado?.data?.messages ||
-            resultado?.data?.emails ||
-            resultado?.messages ||
-            resultado?.emails ||
-            [];
-
-        if (!correos.length) {
-            respuestaIA = "No encontré correos recientes en tu bandeja.";
-        } else {
-            respuestaIA = "Encontré estos correos recientes:\n\n" + correos.slice(0, payloadGmail.max_results).map((c, i) => {
-                const from = c.from || c.sender || c.from_email || 'Remitente no disponible';
-                const subject = c.subject || 'Sin asunto';
-                const snippet = c.snippet || c.body_preview || c.text || c.body || '';
-                return `${i + 1}. De: ${from}\nAsunto: ${subject}\nResumen: ${String(snippet).slice(0, 300)}`;
-            }).join("\n\n");
-        }
-    }
-}
         if (actionPayload?.action === 'GMAIL_SEND_EMAIL') {
             if (!toolDisponible(toolsDisponibles, 'GMAIL_SEND_EMAIL')) {
                 respuestaIA = "Gmail no está habilitado para este agente.";
@@ -1315,16 +1341,16 @@ console.log("Conversation ID final:", conversationIdFinal);
                         saldoActual,
                         prompt
                     });
-                     await guardarMensajeConversacion({
-    conversacionId: conversationIdFinal,
-    agenteId: targetID,
-    role: 'assistant',
-    content: driveResult.respuesta,
-    metadata: { canal, action: 'GOOGLEDRIVE_FIND_FILE', origen: 'ia' }
-});
+                    await guardarMensajeConversacion({
+                        conversacionId: conversationIdFinal,
+                        agenteId: targetID,
+                        role: 'assistant',
+                        content: driveResult.respuesta,
+                        metadata: { canal, action: 'GOOGLEDRIVE_FIND_FILE', origen: 'ia' }
+                    });
                     await actualizarResumenConversacion({ conversacionId: conversationIdFinal, ultimoMensaje: driveResult.respuesta, ultimoRole: 'assistant', requiereAtencion: false });
                     return {
-                        
+
                         statusCode: driveResult.statusCode || 200,
                         headers,
                         body: JSON.stringify({
@@ -1346,12 +1372,12 @@ console.log("Conversation ID final:", conversationIdFinal);
         });
 
         await guardarMensajeConversacion({
-    conversacionId: conversationIdFinal,
-    agenteId: targetID,
-    role: 'assistant',
-    content: respuestaIA,
-    metadata: { canal, origen: 'ia' }
-});
+            conversacionId: conversationIdFinal,
+            agenteId: targetID,
+            role: 'assistant',
+            content: respuestaIA,
+            metadata: { canal, origen: 'ia' }
+        });
 
         await actualizarResumenConversacion({
             conversacionId: conversationIdFinal,
