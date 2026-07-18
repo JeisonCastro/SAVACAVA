@@ -12,6 +12,21 @@ const {
     enrichDrivePayloadFromText
 } = require('./tool-workflows');
 
+// ── HELPERS DE OPTIMIZACIÓN ─────────────────────────────────────────────────
+
+function truncarMensaje(texto, maxChars = 2000) {
+    if (!texto || texto.length <= maxChars) return texto;
+    const inicio = texto.slice(0, Math.floor(maxChars * 0.6));
+    const fin = texto.slice(-Math.floor(maxChars * 0.3));
+    return `${inicio}\n\n[...mensaje truncado por longitud...]\n\n${fin}`;
+}
+
+function calcularTimeout(inputChars) {
+    const base = 5000;
+    const extra = Math.min(inputChars / 500, 4) * 1000;
+    return Math.min(base + extra, 9000);
+}
+
 // ── PUSH NOTIFICATIONS ──────────────────────────────────────────────────────
 async function dispararPush({ userId, title, body, conversationId, canal = 'web' }) {
     try {
@@ -1098,16 +1113,6 @@ REGLAS DE CONVERSACIÓN:
 - Si el usuario ya expresó una necesidad, continúa desde esa necesidad sin reiniciar la conversación.
 - Si hay historial conversacional, continúa con naturalidad y no vuelvas a presentarte.
 - Evita responder con "¿en qué necesitas apoyo hoy?" si el usuario ya dijo lo que necesita.
-
-REGLAS DE HERRAMIENTAS:
-- DeepSeek decide la intención principal del usuario.
-- Si el usuario quiere enviar correo, usa GMAIL_SEND_EMAIL.
-- Si el usuario quiere agendar o crear evento, usa GOOGLECALENDAR_CREATE_EVENT.
-- Si el usuario quiere buscar archivo, usa GOOGLEDRIVE_FIND_FILE.
-- Si faltan campos, responde en lenguaje natural preguntando solo lo que falta.
-- Si tienes todos los campos para una herramienta, responde únicamente JSON válido con action y data.
-- No confundas correos con reuniones.
-- Si el usuario corrige la intención, respeta la corrección inmediatamente.
 `;
 
         if (!esSaludoSimple) {
@@ -1132,20 +1137,23 @@ INSTRUCCIONES:
 `;
         }
 
+        const promptTruncado = truncarMensaje(prompt, 2000);
+
         const mensajes = [
             { role: "system", content: systemFinal },
             ...historialSinDuplicado.slice(-8),
-            { role: "user", content: prompt }
+            { role: "user", content: promptTruncado }
         ];
 
-
+        const inputChars = mensajes.reduce((sum, m) => sum + (m.content?.length || 0), 0);
 
         console.log("Turnos de historial enviados a DeepSeek:", historialDB.length);
         console.log("Conversation ID final:", conversationIdFinal);
+        console.log("Caracteres input total:", inputChars);
         console.log("Llamando a DeepSeek...");
 
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 9000);
+        const timeout = setTimeout(() => controller.abort(), calcularTimeout(inputChars));
 
         const aiResponse = await fetch('https://api.deepseek.com/v1/chat/completions', {
             method: 'POST',
@@ -1156,7 +1164,8 @@ INSTRUCCIONES:
             body: JSON.stringify({
                 model: "deepseek-v4-flash",
                 messages: mensajes,
-                temperature: 0.2
+                temperature: 0.2,
+                max_tokens: 1024
             }),
             signal: controller.signal
         });
