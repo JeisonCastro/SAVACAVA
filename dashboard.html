@@ -4859,11 +4859,27 @@ body{
     }
 
     // ── PANEL ADMIN ──
-    const ADMIN_USER_IDS = [];
+    let _isAdmin = false;
 
-    function esAdmin() {
-        if (ADMIN_USER_IDS.length > 0) return ADMIN_USER_IDS.includes(currentUser.id);
-        return currentUser.email === 'admin@auvro.com' || currentUser.email?.endsWith('@auvro.com');
+    function esAdmin() { return _isAdmin; }
+
+    async function verificarAdmin() {
+        try {
+            const res = await fetch('/.netlify/functions/admin-check', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${currentSession?.access_token || ''}`
+                },
+                body: JSON.stringify({ action: 'check' })
+            });
+            const data = await res.json();
+            _isAdmin = !!data.isAdmin;
+            document.getElementById('nav-admin').style.display = _isAdmin ? '' : 'none';
+        } catch (_) {
+            _isAdmin = false;
+            document.getElementById('nav-admin').style.display = 'none';
+        }
     }
 
     async function cargarAdmin() {
@@ -5063,13 +5079,6 @@ body{
 
     function cerrarAdminModal() {
         document.getElementById('admin-modal').style.display = 'none';
-    }
-
-    // Detectar admin al cargar perfil
-    function verificarAdmin() {
-        if (esAdmin()) {
-            document.getElementById('nav-admin').style.display = '';
-        }
     }
 
     function toggleSidebarDesktop() {

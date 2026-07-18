@@ -539,6 +539,7 @@ plan_id         uuid/int (FK → planes)
 nombre          text
 apellido        text
 telefono        text
+is_admin        boolean (default false)
 ```
 
 ## Tabla: agentes_ia
