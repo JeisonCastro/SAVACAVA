@@ -1145,33 +1145,28 @@ INSTRUCCIONES:
         console.log("Llamando a DeepSeek...");
 
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 7000);
+        const timeout = setTimeout(() => controller.abort(), 9000);
 
-        let aiResponse;
-        let aiData;
+        const aiResponse = await fetch('https://api.deepseek.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${process.env.DEEPSEEK_API_KEY}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                model: "deepseek-v4-flash",
+                messages: mensajes,
+                temperature: 0.2
+            }),
+            signal: controller.signal
+        });
 
-        try {
-            aiResponse = await fetch('https://api.deepseek.com/v1/chat/completions', {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${process.env.DEEPSEEK_API_KEY}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    model: "deepseek-v4-flash",
-                    messages: mensajes,
-                    temperature: 0.2
-                }),
-                signal: controller.signal
-            });
+        clearTimeout(timeout);
 
-            console.log("DeepSeek respondió con status:", aiResponse.status);
+        console.log("DeepSeek respondió con status:", aiResponse.status);
 
-            aiData = await aiResponse.json();
-            console.log("Respuesta JSON DeepSeek:", JSON.stringify(aiData));
-        } finally {
-            clearTimeout(timeout);
-        }
+        const aiData = await aiResponse.json();
+        console.log("Respuesta JSON DeepSeek:", JSON.stringify(aiData));
 
         if (!aiResponse.ok || !aiData?.choices) {
             console.error("Error DeepSeek:", aiData);
