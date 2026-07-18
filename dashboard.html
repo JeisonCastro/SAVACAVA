@@ -4885,82 +4885,91 @@ body{
     async function cargarAdmin() {
         if (!esAdmin()) { mostrarVista('agentes'); return; }
 
-        const [usersRes, plansRes, agentsRes, logsRes] = await Promise.all([
-            _supabase.from('perfiles').select('*, planes(id, nombre, limite_agentes, precio)'),
-            _supabase.from('planes').select('*').order('precio'),
-            _supabase.from('agentes_ia').select('id, user_id'),
-            _supabase.from('logs_consumo').select('user_id, tokens_usados')
-        ]);
+        try {
+            const res = await fetch('/.netlify/functions/admin-data', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${currentSession?.access_token || ''}`
+                },
+                body: JSON.stringify({})
+            });
+            const data = await res.json();
 
-        const perfiles = usersRes.data || [];
-        const planes = plansRes.data || [];
-        const agentes = agentsRes.data || [];
-        const logs = logsRes.data || [];
+            if (!data.ok) {
+                document.getElementById('admin-users-body').innerHTML =
+                    '<tr><td colspan="6" style="text-align:center;color:var(--red);padding:1.5rem">' + (data.error || 'Error cargando datos') + '</td></tr>';
+                return;
+            }
 
-        const totalTokens = logs.reduce((s, l) => s + (l.tokens_usados || 0), 0);
+            const { perfiles, planes, totalAgentes, totalTokens, agentes, logs } = data;
 
-        document.getElementById('admin-stats').innerHTML = `
-            <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:1rem">
-                <div style="font-size:.75rem;color:var(--dim);margin-bottom:.3rem">Usuarios</div>
-                <div style="font-size:1.6rem;font-weight:800;font-family:'Syne',sans-serif;color:var(--accent)">${perfiles.length}</div>
-            </div>
-            <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:1rem">
-                <div style="font-size:.75rem;color:var(--dim);margin-bottom:.3rem">Agentes Creados</div>
-                <div style="font-size:1.6rem;font-weight:800;font-family:'Syne',sans-serif;color:var(--green)">${agentes.length}</div>
-            </div>
-            <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:1rem">
-                <div style="font-size:.75rem;color:var(--dim);margin-bottom:.3rem">Tokens Consumidos</div>
-                <div style="font-size:1.6rem;font-weight:800;font-family:'Syne',sans-serif;color:var(--yellow)">${totalTokens.toLocaleString()}</div>
-            </div>
-            <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:1rem">
-                <div style="font-size:.75rem;color:var(--dim);margin-bottom:.3rem">Planes</div>
-                <div style="font-size:1.6rem;font-weight:800;font-family:'Syne',sans-serif;color:var(--muted)">${planes.length}</div>
-            </div>
-        `;
+            document.getElementById('admin-stats').innerHTML = `
+                <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:1rem">
+                    <div style="font-size:.75rem;color:var(--dim);margin-bottom:.3rem">Usuarios</div>
+                    <div style="font-size:1.6rem;font-weight:800;font-family:'Syne',sans-serif;color:var(--accent)">${perfiles.length}</div>
+                </div>
+                <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:1rem">
+                    <div style="font-size:.75rem;color:var(--dim);margin-bottom:.3rem">Agentes Creados</div>
+                    <div style="font-size:1.6rem;font-weight:800;font-family:'Syne',sans-serif;color:var(--green)">${totalAgentes}</div>
+                </div>
+                <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:1rem">
+                    <div style="font-size:.75rem;color:var(--dim);margin-bottom:.3rem">Tokens Consumidos</div>
+                    <div style="font-size:1.6rem;font-weight:800;font-family:'Syne',sans-serif;color:var(--yellow)">${totalTokens.toLocaleString()}</div>
+                </div>
+                <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:1rem">
+                    <div style="font-size:.75rem;color:var(--dim);margin-bottom:.3rem">Planes</div>
+                    <div style="font-size:1.6rem;font-weight:800;font-family:'Syne',sans-serif;color:var(--muted)">${planes.length}</div>
+                </div>
+            `;
 
-        const usersBody = document.getElementById('admin-users-body');
-        if (!perfiles.length) {
-            usersBody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--dim);padding:1.5rem">No hay usuarios registrados</td></tr>';
-        } else {
-            usersBody.innerHTML = perfiles.map(p => {
-                const agentCount = agentes.filter(a => a.user_id === p.id).length;
-                const userTokens = logs.filter(l => l.user_id === p.id).reduce((s, l) => s + (l.tokens_usados || 0), 0);
-                const planName = p.plan_id && p.planes ? p.planes.nombre : 'Sin plan';
-                return `<tr>
-                    <td style="font-weight:600">${p.nombre || ''} ${p.apellido || ''}</td>
-                    <td style="color:var(--muted);font-size:.82rem">${p.id || ''}</td>
-                    <td><span class="badge badge-accent">${planName}</span></td>
-                    <td style="text-align:center;font-weight:700">${agentCount}</td>
-                    <td style="font-weight:600;color:var(--yellow)">${userTokens.toLocaleString()}</td>
+            const usersBody = document.getElementById('admin-users-body');
+            if (!perfiles.length) {
+                usersBody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--dim);padding:1.5rem">No hay usuarios registrados</td></tr>';
+            } else {
+                usersBody.innerHTML = perfiles.map(p => {
+                    const agentCount = (agentes || []).filter(a => a.user_id === p.id).length;
+                    const userTokens = (logs || []).filter(l => l.user_id === p.id).reduce((s, l) => s + (l.tokens_usados || 0), 0);
+                    const planName = p.plan_id && p.planes ? p.planes.nombre : 'Sin plan';
+                    return `<tr>
+                        <td style="font-weight:600">${p.nombre || ''} ${p.apellido || ''}</td>
+                        <td style="color:var(--muted);font-size:.82rem">${p.id || ''}</td>
+                        <td><span class="badge badge-accent">${planName}</span></td>
+                        <td style="text-align:center;font-weight:700">${agentCount}</td>
+                        <td style="font-weight:600;color:var(--yellow)">${userTokens.toLocaleString()}</td>
+                        <td>
+                            <button class="btn-small" onclick="abrirModalTokens('${p.id}', '${(p.nombre||'') + ' ' + (p.apellido||'')}', ${p.token_balance || 0})" style="font-size:.75rem;padding:4px 8px">
+                                <i class="fas fa-coins" style="margin-right:.2rem"></i>Tokens
+                            </button>
+                            <button class="btn-small" onclick="abrirModalPlanUsuario('${p.id}', '${(p.nombre||'') + ' ' + (p.apellido||'')}', '${p.plan_id || ''}')" style="font-size:.75rem;padding:4px 8px;margin-left:.3rem">
+                                <i class="fas fa-crown" style="margin-right:.2rem"></i>Plan
+                            </button>
+                        </td>
+                    </tr>`;
+                }).join('');
+            }
+
+            const plansBody = document.getElementById('admin-plans-body');
+            if (!planes.length) {
+                plansBody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--dim);padding:1.5rem">No hay planes creados</td></tr>';
+            } else {
+                plansBody.innerHTML = planes.map(p => `<tr>
+                    <td style="font-weight:600">${p.nombre}</td>
+                    <td style="text-align:center">${p.limite_agentes}</td>
+                    <td style="font-weight:600;color:var(--green)">$${(p.precio || 0).toLocaleString()}</td>
                     <td>
-                        <button class="btn-small" onclick="abrirModalTokens('${p.id}', '${(p.nombre||'') + ' ' + (p.apellido||'')}', ${p.token_balance || 0})" style="font-size:.75rem;padding:4px 8px">
-                            <i class="fas fa-coins" style="margin-right:.2rem"></i>Tokens
+                        <button class="btn-small" onclick="editarPlan('${p.id}', '${p.nombre}', ${p.limite_agentes}, ${p.precio || 0})" style="font-size:.75rem;padding:4px 8px">
+                            <i class="fas fa-pen" style="margin-right:.2rem"></i>Editar
                         </button>
-                        <button class="btn-small" onclick="abrirModalPlanUsuario('${p.id}', '${(p.nombre||'') + ' ' + (p.apellido||'')}', '${p.plan_id || ''}')" style="font-size:.75rem;padding:4px 8px;margin-left:.3rem">
-                            <i class="fas fa-crown" style="margin-right:.2rem"></i>Plan
+                        <button class="btn-small danger" onclick="eliminarPlan('${p.id}', '${p.nombre}')" style="font-size:.75rem;padding:4px 8px;margin-left:.3rem">
+                            <i class="fas fa-trash" style="margin-right:.2rem"></i>Eliminar
                         </button>
                     </td>
-                </tr>`;
-            }).join('');
-        }
-
-        const plansBody = document.getElementById('admin-plans-body');
-        if (!planes.length) {
-            plansBody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--dim);padding:1.5rem">No hay planes creados</td></tr>';
-        } else {
-            plansBody.innerHTML = planes.map(p => `<tr>
-                <td style="font-weight:600">${p.nombre}</td>
-                <td style="text-align:center">${p.limite_agentes}</td>
-                <td style="font-weight:600;color:var(--green)">$${(p.precio || 0).toLocaleString()}</td>
-                <td>
-                    <button class="btn-small" onclick="editarPlan('${p.id}', '${p.nombre}', ${p.limite_agentes}, ${p.precio || 0})" style="font-size:.75rem;padding:4px 8px">
-                        <i class="fas fa-pen" style="margin-right:.2rem"></i>Editar
-                    </button>
-                    <button class="btn-small danger" onclick="eliminarPlan('${p.id}', '${p.nombre}')" style="font-size:.75rem;padding:4px 8px;margin-left:.3rem">
-                        <i class="fas fa-trash" style="margin-right:.2rem"></i>Eliminar
-                    </button>
-                </td>
-            </tr>`).join('');
+                </tr>`).join('');
+            }
+        } catch (err) {
+            document.getElementById('admin-users-body').innerHTML =
+                '<tr><td colspan="6" style="text-align:center;color:var(--red);padding:1.5rem">Error de conexion</td></tr>';
         }
     }
 
@@ -4981,8 +4990,13 @@ body{
         const amount = parseInt(input.value);
         if (!amount || amount <= 0) return showToast('Ingresa una cantidad valida', 'error');
 
-        const { error } = await _supabase.from('perfiles').update({ token_balance: current + amount }).eq('id', userId);
-        if (error) return showToast('Error: ' + error.message, 'error');
+        const res = await fetch('/.netlify/functions/admin-data', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${currentSession?.access_token || ''}` },
+            body: JSON.stringify({ action: 'set_tokens', user_id: userId, amount })
+        });
+        const data = await res.json();
+        if (!data.ok) return showToast('Error: ' + (data.error || 'Desconocido'), 'error');
         showToast(`+${amount.toLocaleString()} tokens agregados`);
         cerrarAdminModal();
         cargarAdmin();
@@ -4990,8 +5004,12 @@ body{
 
     function abrirModalPlanUsuario(userId, nombre, currentPlanId) {
         document.getElementById('admin-modal-title').textContent = `Cambiar plan de ${nombre}`;
-        _supabase.from('planes').select('*').order('precio').then(({ data }) => {
-            const planes = data || [];
+        fetch('/.netlify/functions/admin-data', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${currentSession?.access_token || ''}` },
+            body: JSON.stringify({ action: 'get' })
+        }).then(r => r.json()).then(data => {
+            const planes = data.planes || [];
             document.getElementById('admin-modal-body').innerHTML = `
                 <div class="field"><label>Seleccionar plan</label>
                     <select id="admin-plan-select" style="width:100%;padding:8px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text)">
@@ -5009,8 +5027,13 @@ body{
 
     async function guardarPlanUsuario(userId) {
         const planId = document.getElementById('admin-plan-select').value || null;
-        const { error } = await _supabase.from('perfiles').update({ plan_id: planId }).eq('id', userId);
-        if (error) return showToast('Error: ' + error.message, 'error');
+        const res = await fetch('/.netlify/functions/admin-data', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${currentSession?.access_token || ''}` },
+            body: JSON.stringify({ action: 'set_plan', user_id: userId, plan_id: planId })
+        });
+        const data = await res.json();
+        if (!data.ok) return showToast('Error: ' + (data.error || 'Desconocido'), 'error');
         showToast('Plan actualizado');
         cerrarAdminModal();
         cargarAdmin();
@@ -5036,8 +5059,13 @@ body{
         if (!nombre) return showToast('Nombre requerido', 'error');
         if (!agentes) return showToast('Limite de agentes requerido', 'error');
 
-        const { error } = await _supabase.from('planes').insert({ nombre, limite_agentes: agentes, precio });
-        if (error) return showToast('Error: ' + error.message, 'error');
+        const res = await fetch('/.netlify/functions/admin-data', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${currentSession?.access_token || ''}` },
+            body: JSON.stringify({ action: 'create_plan', nombre, limite_agentes: agentes, precio })
+        });
+        const data = await res.json();
+        if (!data.ok) return showToast('Error: ' + (data.error || 'Desconocido'), 'error');
         showToast('Plan creado');
         cerrarAdminModal();
         cargarAdmin();
@@ -5062,8 +5090,13 @@ body{
         const precio = parseInt(document.getElementById('plan-precio').value) || 0;
         if (!nombre || !agentes) return showToast('Completa todos los campos', 'error');
 
-        const { error } = await _supabase.from('planes').update({ nombre, limite_agentes: agentes, precio }).eq('id', id);
-        if (error) return showToast('Error: ' + error.message, 'error');
+        const res = await fetch('/.netlify/functions/admin-data', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${currentSession?.access_token || ''}` },
+            body: JSON.stringify({ action: 'update_plan', plan_id: id, nombre, limite_agentes: agentes, precio })
+        });
+        const data = await res.json();
+        if (!data.ok) return showToast('Error: ' + (data.error || 'Desconocido'), 'error');
         showToast('Plan actualizado');
         cerrarAdminModal();
         cargarAdmin();
@@ -5071,8 +5104,13 @@ body{
 
     async function eliminarPlan(id, nombre) {
         if (!confirm(`Eliminar el plan "${nombre}"?`)) return;
-        const { error } = await _supabase.from('planes').delete().eq('id', id);
-        if (error) return showToast('Error: ' + error.message, 'error');
+        const res = await fetch('/.netlify/functions/admin-data', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${currentSession?.access_token || ''}` },
+            body: JSON.stringify({ action: 'delete_plan', plan_id: id })
+        });
+        const data = await res.json();
+        if (!data.ok) return showToast('Error: ' + (data.error || 'Desconocido'), 'error');
         showToast('Plan eliminado');
         cargarAdmin();
     }
