@@ -518,6 +518,136 @@ Deploy.
 
 #### Media WhatsApp
 - Resolver permisos de Graph API para lectura de medios recibidos (error: "Object with ID does not exist, cannot be loaded due to missing permissions"). Requiere permiso `whatsapp_business_messaging` en Meta Developer Dashboard.
+
+---
+
+# Esquema de Base de Datos (Reconstruido desde código)
+
+## Tabla: planes
+```
+id          uuid/int PK
+nombre      text
+limite_agentes int
+precio      numeric
+```
+
+## Tabla: perfiles
+```
+id              uuid PK (FK → auth.users)
+token_balance   int
+plan_id         uuid/int (FK → planes)
+nombre          text
+apellido        text
+telefono        text
+```
+
+## Tabla: agentes_ia
+```
+id                  serial PK
+user_id             uuid (FK → auth.users)
+nombre_agente       text
+prompt_sistema      text
+dominios_permitidos jsonb/text[]
+```
+
+## Tabla: conversaciones (REALTIME)
+```
+id                  uuid PK
+agente_id           int (FK → agentes_ia)
+user_id             uuid (FK → auth.users)
+canal               text
+external_user_id    text
+titulo              text
+estado              text
+modo_humano         boolean
+requiere_atencion   boolean
+ultimo_mensaje      text
+ultimo_role         text
+intervenida_por     uuid
+intervenida_en      timestamptz
+created_at          timestamptz
+updated_at          timestamptz
+```
+
+## Tabla: mensajes_conversacion (REALTIME)
+```
+id              uuid PK
+conversacion_id uuid (FK → conversaciones)
+agente_id       int (FK → agentes_ia)
+role            text
+content         text
+origen          text
+metadata        jsonb
+created_at      timestamptz
+```
+
+## Tabla: agente_tools
+```
+id          serial PK
+agente_id   int (FK → agentes_ia)
+tool_key    text
+toolkit     text
+enabled     boolean
+```
+
+## Tabla: composio_connections
+```
+id                  serial PK
+user_id             uuid (FK → auth.users)
+toolkit             text
+composio_entity_id  text
+connected_at        timestamptz
+```
+
+## Tabla: whatsapp_connections
+```
+id                      serial PK
+user_id                 uuid (FK → auth.users)
+agente_id               int (FK → agentes_ia)
+phone_number_id         text
+whatsapp_business_id    text
+access_token            text
+phone_number            text
+activo                  boolean
+```
+
+## Tabla: logs_consumo
+```
+id              serial PK
+user_id         uuid (FK → auth.users)
+agente_id       int (FK → agentes_ia)
+nombre_agente   text
+tokens_usados   int
+created_at      timestamptz
+```
+
+## Tabla: pending_tool_actions
+```
+id              uuid PK
+user_id         uuid (FK → auth.users)
+agente_id       int (FK → agentes_ia)
+conversation_id uuid (FK → conversaciones)
+action          text
+payload         jsonb
+status          text
+expires_at      timestamptz
+created_at      timestamptz
+```
+
+## Tabla: push_subscriptions
+```
+id              serial PK
+user_id         uuid (FK → auth.users)
+endpoint        text
+subscription    text
+updated_at      timestamptz
+UNIQUE(user_id, endpoint)
+```
+
+## RPC Function
+```
+increment_agent_consumption(agent_id int, tokens int)
+```
 Reglas de Desarrollo
 
 Antes de realizar cambios:

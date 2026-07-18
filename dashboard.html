@@ -4098,6 +4098,8 @@ body{
                         Integraciones</a>
                     <a onclick="mostrarVista('config')" id="nav-config"><i
                             class="fas fa-sliders"></i> Configuracion</a>
+                    <a onclick="mostrarVista('admin')" id="nav-admin" style="display:none"><i
+                            class="fas fa-gauge-high"></i> Admin</a>
                 </nav>
             </div>
             <div class="sidebar-bottom">
@@ -4560,6 +4562,81 @@ body{
                     </div>
                 </div>
             </div>
+
+            <!-- VISTA ADMIN -->
+            <div class="view" id="view-admin">
+                <div class="topbar">
+                    <div>
+                        <h2 class="page-title">Panel Admin</h2>
+                        <p class="page-sub">Gestion de usuarios, planes y tokens</p>
+                    </div>
+                </div>
+
+                <!-- STATS -->
+                <div class="stats-row" id="admin-stats" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem;margin-bottom:1.5rem"></div>
+
+                <!-- TAB: Usuarios -->
+                <div class="card" style="margin-bottom:1.5rem">
+                    <div class="card-header">
+                        <div class="card-icon"><i class="fas fa-users"></i></div>
+                        <span class="card-title">Usuarios Registrados</span>
+                    </div>
+                    <div class="table-wrap">
+                        <table id="admin-users-table">
+                            <thead>
+                                <tr>
+                                    <th>Nombre</th>
+                                    <th>Email</th>
+                                    <th>Plan</th>
+                                    <th>Agentes</th>
+                                    <th>Tokens</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="admin-users-body">
+                                <tr><td colspan="6" style="text-align:center;color:var(--dim);padding:2rem">Cargando...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- TAB: Planes -->
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-icon"><i class="fas fa-crown"></i></div>
+                        <span class="card-title">Planes</span>
+                        <button class="btn-main" style="margin-left:auto;font-size:.8rem;padding:6px 12px" onclick="abrirModalPlan()">
+                            <i class="fas fa-plus" style="margin-right:.3rem"></i> Nuevo Plan
+                        </button>
+                    </div>
+                    <div class="table-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Nombre</th>
+                                    <th>Limite Agentes</th>
+                                    <th>Precio</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="admin-plans-body">
+                                <tr><td colspan="4" style="text-align:center;color:var(--dim);padding:2rem">Cargando...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- MODAL: Agregar tokens / Editar plan -->
+                <div id="admin-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;align-items:center;justify-content:center">
+                    <div style="background:var(--surface);border:1px solid var(--border2);border-radius:14px;padding:1.5rem;width:90%;max-width:420px;box-shadow:var(--shadow-soft)">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+                            <h3 style="font-family:'Syne',sans-serif;font-weight:700;font-size:1rem" id="admin-modal-title">Titulo</h3>
+                            <button onclick="cerrarAdminModal()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1.1rem"><i class="fas fa-times"></i></button>
+                        </div>
+                        <div id="admin-modal-body"></div>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- CHAT MODAL -->
@@ -4778,6 +4855,221 @@ body{
         if (vista === 'bandeja') inicializarBandeja();
         if (vista === 'config') cargarPerfil();
         if (vista === 'integraciones') cargarIntegraciones();
+        if (vista === 'admin') cargarAdmin();
+    }
+
+    // ── PANEL ADMIN ──
+    const ADMIN_USER_IDS = [];
+
+    function esAdmin() {
+        if (ADMIN_USER_IDS.length > 0) return ADMIN_USER_IDS.includes(currentUser.id);
+        return currentUser.email === 'admin@auvro.com' || currentUser.email?.endsWith('@auvro.com');
+    }
+
+    async function cargarAdmin() {
+        if (!esAdmin()) { mostrarVista('agentes'); return; }
+
+        const [usersRes, plansRes, agentsRes, logsRes] = await Promise.all([
+            _supabase.from('perfiles').select('*, planes(id, nombre, limite_agentes, precio)'),
+            _supabase.from('planes').select('*').order('precio'),
+            _supabase.from('agentes_ia').select('id, user_id'),
+            _supabase.from('logs_consumo').select('user_id, tokens_usados')
+        ]);
+
+        const perfiles = usersRes.data || [];
+        const planes = plansRes.data || [];
+        const agentes = agentsRes.data || [];
+        const logs = logsRes.data || [];
+
+        const totalTokens = logs.reduce((s, l) => s + (l.tokens_usados || 0), 0);
+
+        document.getElementById('admin-stats').innerHTML = `
+            <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:1rem">
+                <div style="font-size:.75rem;color:var(--dim);margin-bottom:.3rem">Usuarios</div>
+                <div style="font-size:1.6rem;font-weight:800;font-family:'Syne',sans-serif;color:var(--accent)">${perfiles.length}</div>
+            </div>
+            <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:1rem">
+                <div style="font-size:.75rem;color:var(--dim);margin-bottom:.3rem">Agentes Creados</div>
+                <div style="font-size:1.6rem;font-weight:800;font-family:'Syne',sans-serif;color:var(--green)">${agentes.length}</div>
+            </div>
+            <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:1rem">
+                <div style="font-size:.75rem;color:var(--dim);margin-bottom:.3rem">Tokens Consumidos</div>
+                <div style="font-size:1.6rem;font-weight:800;font-family:'Syne',sans-serif;color:var(--yellow)">${totalTokens.toLocaleString()}</div>
+            </div>
+            <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:1rem">
+                <div style="font-size:.75rem;color:var(--dim);margin-bottom:.3rem">Planes</div>
+                <div style="font-size:1.6rem;font-weight:800;font-family:'Syne',sans-serif;color:var(--muted)">${planes.length}</div>
+            </div>
+        `;
+
+        const usersBody = document.getElementById('admin-users-body');
+        if (!perfiles.length) {
+            usersBody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--dim);padding:1.5rem">No hay usuarios registrados</td></tr>';
+        } else {
+            usersBody.innerHTML = perfiles.map(p => {
+                const agentCount = agentes.filter(a => a.user_id === p.id).length;
+                const userTokens = logs.filter(l => l.user_id === p.id).reduce((s, l) => s + (l.tokens_usados || 0), 0);
+                const planName = p.plan_id && p.planes ? p.planes.nombre : 'Sin plan';
+                return `<tr>
+                    <td style="font-weight:600">${p.nombre || ''} ${p.apellido || ''}</td>
+                    <td style="color:var(--muted);font-size:.82rem">${p.id || ''}</td>
+                    <td><span class="badge badge-accent">${planName}</span></td>
+                    <td style="text-align:center;font-weight:700">${agentCount}</td>
+                    <td style="font-weight:600;color:var(--yellow)">${userTokens.toLocaleString()}</td>
+                    <td>
+                        <button class="btn-small" onclick="abrirModalTokens('${p.id}', '${(p.nombre||'') + ' ' + (p.apellido||'')}', ${p.token_balance || 0})" style="font-size:.75rem;padding:4px 8px">
+                            <i class="fas fa-coins" style="margin-right:.2rem"></i>Tokens
+                        </button>
+                        <button class="btn-small" onclick="abrirModalPlanUsuario('${p.id}', '${(p.nombre||'') + ' ' + (p.apellido||'')}', '${p.plan_id || ''}')" style="font-size:.75rem;padding:4px 8px;margin-left:.3rem">
+                            <i class="fas fa-crown" style="margin-right:.2rem"></i>Plan
+                        </button>
+                    </td>
+                </tr>`;
+            }).join('');
+        }
+
+        const plansBody = document.getElementById('admin-plans-body');
+        if (!planes.length) {
+            plansBody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--dim);padding:1.5rem">No hay planes creados</td></tr>';
+        } else {
+            plansBody.innerHTML = planes.map(p => `<tr>
+                <td style="font-weight:600">${p.nombre}</td>
+                <td style="text-align:center">${p.limite_agentes}</td>
+                <td style="font-weight:600;color:var(--green)">$${(p.precio || 0).toLocaleString()}</td>
+                <td>
+                    <button class="btn-small" onclick="editarPlan('${p.id}', '${p.nombre}', ${p.limite_agentes}, ${p.precio || 0})" style="font-size:.75rem;padding:4px 8px">
+                        <i class="fas fa-pen" style="margin-right:.2rem"></i>Editar
+                    </button>
+                    <button class="btn-small danger" onclick="eliminarPlan('${p.id}', '${p.nombre}')" style="font-size:.75rem;padding:4px 8px;margin-left:.3rem">
+                        <i class="fas fa-trash" style="margin-right:.2rem"></i>Eliminar
+                    </button>
+                </td>
+            </tr>`).join('');
+        }
+    }
+
+    function abrirModalTokens(userId, nombre, current) {
+        document.getElementById('admin-modal-title').textContent = `Agregar Tokens a ${nombre}`;
+        document.getElementById('admin-modal-body').innerHTML = `
+            <p style="font-size:.85rem;color:var(--muted);margin-bottom:1rem">Saldo actual: <strong style="color:var(--yellow)">${current.toLocaleString()}</strong> tokens</p>
+            <div class="field"><label>Cantidad a agregar</label><input type="number" id="admin-tokens-input" placeholder="Ej: 50000" min="1" style="width:100%;padding:8px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text)"></div>
+            <button class="btn-main" style="width:100%;margin-top:1rem" onclick="guardarTokens('${userId}', ${current})">
+                <i class="fas fa-check" style="margin-right:.3rem"></i> Guardar
+            </button>
+        `;
+        document.getElementById('admin-modal').style.display = 'flex';
+    }
+
+    async function guardarTokens(userId, current) {
+        const input = document.getElementById('admin-tokens-input');
+        const amount = parseInt(input.value);
+        if (!amount || amount <= 0) return showToast('Ingresa una cantidad valida', 'error');
+
+        const { error } = await _supabase.from('perfiles').update({ token_balance: current + amount }).eq('id', userId);
+        if (error) return showToast('Error: ' + error.message, 'error');
+        showToast(`+${amount.toLocaleString()} tokens agregados`);
+        cerrarAdminModal();
+        cargarAdmin();
+    }
+
+    function abrirModalPlanUsuario(userId, nombre, currentPlanId) {
+        document.getElementById('admin-modal-title').textContent = `Cambiar plan de ${nombre}`;
+        _supabase.from('planes').select('*').order('precio').then(({ data }) => {
+            const planes = data || [];
+            document.getElementById('admin-modal-body').innerHTML = `
+                <div class="field"><label>Seleccionar plan</label>
+                    <select id="admin-plan-select" style="width:100%;padding:8px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text)">
+                        <option value="">Sin plan</option>
+                        ${planes.map(p => `<option value="${p.id}" ${p.id === currentPlanId ? 'selected' : ''}>${p.nombre} — $${(p.precio||0).toLocaleString()}</option>`).join('')}
+                    </select>
+                </div>
+                <button class="btn-main" style="width:100%;margin-top:1rem" onclick="guardarPlanUsuario('${userId}')">
+                    <i class="fas fa-check" style="margin-right:.3rem"></i> Guardar
+                </button>
+            `;
+            document.getElementById('admin-modal').style.display = 'flex';
+        });
+    }
+
+    async function guardarPlanUsuario(userId) {
+        const planId = document.getElementById('admin-plan-select').value || null;
+        const { error } = await _supabase.from('perfiles').update({ plan_id: planId }).eq('id', userId);
+        if (error) return showToast('Error: ' + error.message, 'error');
+        showToast('Plan actualizado');
+        cerrarAdminModal();
+        cargarAdmin();
+    }
+
+    function abrirModalPlan() {
+        document.getElementById('admin-modal-title').textContent = 'Nuevo Plan';
+        document.getElementById('admin-modal-body').innerHTML = `
+            <div class="field"><label>Nombre</label><input type="text" id="plan-nombre" placeholder="Ej: Pro" style="width:100%;padding:8px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text)"></div>
+            <div class="field"><label>Limite de agentes</label><input type="number" id="plan-agentes" placeholder="Ej: 10" min="1" style="width:100%;padding:8px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text)"></div>
+            <div class="field"><label>Precio</label><input type="number" id="plan-precio" placeholder="Ej: 49000" min="0" style="width:100%;padding:8px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text)"></div>
+            <button class="btn-main" style="width:100%;margin-top:1rem" onclick="guardarNuevoPlan()">
+                <i class="fas fa-check" style="margin-right:.3rem"></i> Crear Plan
+            </button>
+        `;
+        document.getElementById('admin-modal').style.display = 'flex';
+    }
+
+    async function guardarNuevoPlan() {
+        const nombre = document.getElementById('plan-nombre').value.trim();
+        const agentes = parseInt(document.getElementById('plan-agentes').value);
+        const precio = parseInt(document.getElementById('plan-precio').value) || 0;
+        if (!nombre) return showToast('Nombre requerido', 'error');
+        if (!agentes) return showToast('Limite de agentes requerido', 'error');
+
+        const { error } = await _supabase.from('planes').insert({ nombre, limite_agentes: agentes, precio });
+        if (error) return showToast('Error: ' + error.message, 'error');
+        showToast('Plan creado');
+        cerrarAdminModal();
+        cargarAdmin();
+    }
+
+    function editarPlan(id, nombre, agentes, precio) {
+        document.getElementById('admin-modal-title').textContent = 'Editar Plan';
+        document.getElementById('admin-modal-body').innerHTML = `
+            <div class="field"><label>Nombre</label><input type="text" id="plan-nombre" value="${nombre}" style="width:100%;padding:8px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text)"></div>
+            <div class="field"><label>Limite de agentes</label><input type="number" id="plan-agentes" value="${agentes}" min="1" style="width:100%;padding:8px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text)"></div>
+            <div class="field"><label>Precio</label><input type="number" id="plan-precio" value="${precio}" min="0" style="width:100%;padding:8px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text)"></div>
+            <button class="btn-main" style="width:100%;margin-top:1rem" onclick="actualizarPlan('${id}')">
+                <i class="fas fa-check" style="margin-right:.3rem"></i> Actualizar
+            </button>
+        `;
+        document.getElementById('admin-modal').style.display = 'flex';
+    }
+
+    async function actualizarPlan(id) {
+        const nombre = document.getElementById('plan-nombre').value.trim();
+        const agentes = parseInt(document.getElementById('plan-agentes').value);
+        const precio = parseInt(document.getElementById('plan-precio').value) || 0;
+        if (!nombre || !agentes) return showToast('Completa todos los campos', 'error');
+
+        const { error } = await _supabase.from('planes').update({ nombre, limite_agentes: agentes, precio }).eq('id', id);
+        if (error) return showToast('Error: ' + error.message, 'error');
+        showToast('Plan actualizado');
+        cerrarAdminModal();
+        cargarAdmin();
+    }
+
+    async function eliminarPlan(id, nombre) {
+        if (!confirm(`Eliminar el plan "${nombre}"?`)) return;
+        const { error } = await _supabase.from('planes').delete().eq('id', id);
+        if (error) return showToast('Error: ' + error.message, 'error');
+        showToast('Plan eliminado');
+        cargarAdmin();
+    }
+
+    function cerrarAdminModal() {
+        document.getElementById('admin-modal').style.display = 'none';
+    }
+
+    // Detectar admin al cargar perfil
+    function verificarAdmin() {
+        if (esAdmin()) {
+            document.getElementById('nav-admin').style.display = '';
+        }
     }
 
     function toggleSidebarDesktop() {
@@ -4826,6 +5118,7 @@ body{
             cargarPlanUsuario(currentUser.id),
             cargarTodosLosPlanes()
         ]);
+        verificarAdmin();
         cargarAgentes();
     }
 
