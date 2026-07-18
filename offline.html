@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#06090f">
+    <title>Sin conexion | AUVRO</title>
+    <link rel="icon" href="/favicon.ico">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+    <link rel="icon" type="image/svg+xml" href="/icon-192.svg">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+        html,body{height:100%}
+        body{
+            font-family:'Inter',system-ui,-apple-system,sans-serif;
+            background:#06090f;
+            color:#e8f0f8;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            text-align:center;
+            padding:2rem;
+            overflow:hidden;
+        }
+        .offline-container{
+            max-width:380px;
+            animation:fadeIn .5s ease;
+        }
+        @keyframes fadeIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+        .offline-icon{
+            width:80px;height:80px;border-radius:20px;
+            background:rgba(248,113,113,.1);
+            border:1px solid rgba(248,113,113,.2);
+            display:flex;align-items:center;justify-content:center;
+            margin:0 auto 1.5rem;font-size:2rem;color:#f87171;
+        }
+        .offline-title{
+            font-size:1.4rem;font-weight:800;letter-spacing:-.03em;
+            margin-bottom:.6rem;
+        }
+        .offline-msg{
+            font-size:.9rem;color:#7a98b8;line-height:1.6;margin-bottom:1.75rem;
+        }
+        .offline-btn{
+            display:inline-flex;align-items:center;gap:.5rem;
+            padding:12px 28px;border-radius:12px;border:none;
+            background:#0ea5e9;color:#fff;font-family:inherit;
+            font-size:.9rem;font-weight:600;cursor:pointer;
+            transition:all .2s;
+        }
+        .offline-btn:hover{background:#38bdf8;transform:translateY(-1px)}
+        .offline-btn:active{transform:translateY(0)}
+        .offline-btn i{font-size:.85rem}
+        .offline-hint{
+            font-size:.75rem;color:#4a6580;margin-top:1.2rem;
+        }
+        @media(prefers-color-scheme:light){
+            body{background:#f5f8fb;color:#0f172a}
+            .offline-msg{color:#56687e}
+            .offline-hint{color:#8492a6}
+        }
+    </style>
+</head>
+<body>
+    <div class="offline-container">
+        <div class="offline-icon">
+            <i class="fas fa-wifi-slash"></i>
+        </div>
+        <h1 class="offline-title">Sin conexion a internet</h1>
+        <p class="offline-msg">
+            No se pudo conectar con el servidor. Verifica tu conexion a internet e intentalo de nuevo.
+        </p>
+        <button class="offline-btn" onclick="location.reload()">
+            <i class="fas fa-rotate"></i> Reintentar
+        </button>
+        <p class="offline-hint">
+            AUVRO funciona offline para datos cacheados.
+        </p>
+    </div>
+</body>
+</html>
