@@ -1,4 +1,4 @@
-const { createClient } = require('@supabase/supabase-js');
+const { supabase } = require('./supabase-admin');
 const {
     esConfirmacion,
     esCancelacion,
@@ -11,11 +11,6 @@ const {
     enrichEmailPayloadFromText,
     enrichDrivePayloadFromText
 } = require('./tool-workflows');
-
-const supabase = createClient(
-    process.env.SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY
-);
 
 // ── PUSH NOTIFICATIONS ──────────────────────────────────────────────────────
 async function dispararPush({ userId, title, body, conversationId, canal = 'web' }) {

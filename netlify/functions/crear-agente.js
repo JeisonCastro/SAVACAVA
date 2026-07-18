@@ -1,11 +1,5 @@
 
-const { createClient } = require('@supabase/supabase-js');
-
-// Usamos SERVICE_ROLE para que el backend pueda leer sin restricciones de RLS
-const supabase = createClient(
-    process.env.SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY
-);
+const { supabase } = require('./supabase-admin');
 
 const headers = {
     "Access-Control-Allow-Origin": "*",

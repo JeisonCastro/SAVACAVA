@@ -1,10 +1,5 @@
 const webpush = require('web-push');
-const { createClient } = require('@supabase/supabase-js');
-
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
+const { supabase } = require('./supabase-admin');
 
 webpush.setVapidDetails(
   process.env.VAPID_SUBJECT,

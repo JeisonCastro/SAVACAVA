@@ -1,10 +1,5 @@
-const { createClient } = require('@supabase/supabase-js');
+const { supabase } = require('./supabase-admin');
 const chatHandler = require('./chat.js').handler;
-
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
 
 const VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN || 'jeison_digital_verify_token';
 
