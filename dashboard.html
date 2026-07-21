@@ -4668,14 +4668,14 @@ body{
         <!-- EDIT MODAL -->
         <div id="edit-modal"
             style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:1001;align-items:center;justify-content:center;">
-            <div class="card" style="width:500px;max-width:90%;">
+            <div class="card" style="width:700px;max-width:90%;">
                 <h3 class="card-title" style="margin-bottom:1rem">Editar
                     Agente</h3>
                 <input type="hidden" id="edit-id">
                 <div class="field"><label>Nombre</label><input type="text"
                         id="edit-name"></div>
                 <div class="field"><label>Instrucciones</label><textarea
-                        id="edit-prompt" rows="3"></textarea></div>
+                        id="edit-prompt" rows="8" style="min-height:160px;resize:vertical;"></textarea></div>
                 <div class="field"><label>Dominios (separados por
                         coma)</label><input type="text" id="edit-domains"
                         placeholder="ej: midominio.com, cliente.com"></div>
