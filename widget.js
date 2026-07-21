@@ -15,6 +15,64 @@
     }
   })();
 
+  const DEFAULTS = {
+    primary: '#0ea5e9',
+    bgPanel: '#07111d',
+    bgHeader: '#0f172a',
+    bgInput: '#020617',
+    bgInputWrap: '#0f172a',
+    colorText: '#e5edf7',
+    colorTextSecondary: '#8fb8d9',
+    bubbleUserBg: '#0f766e',
+    bubbleBotBg: '#111827',
+    bubbleHumanBg: '#083f3a',
+    font: 'Inter, Arial, sans-serif',
+    borderRadius: '20px'
+  };
+
+  function loadConfig() {
+    let config = {};
+    try {
+      if (window.AUVRO_CONFIG && typeof window.AUVRO_CONFIG === 'object') {
+        config = { ...window.AUVRO_CONFIG };
+      }
+    } catch (_) {}
+    try {
+      const raw = script?.getAttribute('data-theme');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === 'object') {
+          config = { ...config, ...parsed };
+        }
+      }
+    } catch (_) {}
+    return { ...DEFAULTS, ...config };
+  }
+
+  function applyTheme(cfg) {
+    const vars = {
+      '--auvro-primary': cfg.primary,
+      '--auvro-bg-panel': cfg.bgPanel,
+      '--auvro-bg-header': cfg.bgHeader,
+      '--auvro-bg-input': cfg.bgInput,
+      '--auvro-bg-input-wrap': cfg.bgInputWrap,
+      '--auvro-color-text': cfg.colorText,
+      '--auvro-color-text-secondary': cfg.colorTextSecondary,
+      '--auvro-bubble-user-bg': cfg.bubbleUserBg,
+      '--auvro-bubble-bot-bg': cfg.bubbleBotBg,
+      '--auvro-bubble-human-bg': cfg.bubbleHumanBg,
+      '--auvro-font': cfg.font,
+      '--auvro-border-radius': cfg.borderRadius
+    };
+    const root = document.documentElement;
+    for (const [k, v] of Object.entries(vars)) {
+      root.style.setProperty(k, v);
+    }
+  }
+
+  const themeConfig = loadConfig();
+  applyTheme(themeConfig);
+
   const storageKey = `auvro_widget_session_${agenteId}`;
   const openKey = `auvro_widget_open_${agenteId}`;
 
@@ -43,18 +101,18 @@
       right:22px;
       bottom:22px;
       z-index:2147483000;
-      font-family:Inter,Arial,sans-serif;
-      color:#e5edf7;
+      font-family:var(--auvro-font);
+      color:var(--auvro-color-text);
     }
 
     .auvro-launcher{
       width:60px;
       height:60px;
       border-radius:50%;
-      border:1px solid rgba(14,165,233,.42);
-      background:linear-gradient(135deg,#0ea5e9,#22d3ee);
+      border:1px solid color-mix(in srgb, var(--auvro-primary) 42%, transparent);
+      background:linear-gradient(135deg, var(--auvro-primary), color-mix(in srgb, var(--auvro-primary) 70%, #22d3ee));
       color:white;
-      box-shadow:0 18px 50px rgba(14,165,233,.36);
+      box-shadow:0 18px 50px color-mix(in srgb, var(--auvro-primary) 36%, transparent);
       cursor:pointer;
       font-size:25px;
       display:flex;
@@ -65,7 +123,7 @@
 
     .auvro-launcher:hover{
       transform:translateY(-2px) scale(1.03);
-      box-shadow:0 22px 60px rgba(14,165,233,.44);
+      box-shadow:0 22px 60px color-mix(in srgb, var(--auvro-primary) 44%, transparent);
     }
 
     .auvro-panel{
@@ -73,11 +131,11 @@
       max-width:calc(100vw - 28px);
       height:560px;
       max-height:calc(100vh - 98px);
-      border-radius:20px;
+      border-radius:var(--auvro-border-radius);
       overflow:hidden;
       box-shadow:0 28px 85px rgba(0,0,0,.46);
-      background:#07111d;
-      border:1px solid rgba(56,189,248,.22);
+      background:var(--auvro-bg-panel);
+      border:1px solid color-mix(in srgb, var(--auvro-primary) 22%, transparent);
       display:none;
       flex-direction:column;
       backdrop-filter:blur(14px);
@@ -94,14 +152,14 @@
     }
 
     .auvro-header{
-      background:linear-gradient(135deg,#0f172a,#111827 72%,#082f49);
+      background:var(--auvro-bg-header);
       color:white;
       padding:14px 15px;
       display:flex;
       align-items:center;
       justify-content:space-between;
       gap:12px;
-      border-bottom:1px solid rgba(56,189,248,.18);
+      border-bottom:1px solid color-mix(in srgb, var(--auvro-primary) 18%, transparent);
     }
 
     .auvro-header-left{
@@ -115,14 +173,14 @@
       width:38px;
       height:38px;
       border-radius:50%;
-      background:rgba(14,165,233,.12);
-      border:1px solid rgba(14,165,233,.42);
+      background:color-mix(in srgb, var(--auvro-primary) 12%, transparent);
+      border:1px solid color-mix(in srgb, var(--auvro-primary) 42%, transparent);
       display:flex;
       align-items:center;
       justify-content:center;
-      color:#38bdf8;
+      color:var(--auvro-primary);
       flex:0 0 auto;
-      box-shadow:0 0 0 4px rgba(14,165,233,.08);
+      box-shadow:0 0 0 4px color-mix(in srgb, var(--auvro-primary) 8%, transparent);
     }
 
     .auvro-title{
@@ -138,7 +196,7 @@
 
     .auvro-status{
       font-size:11px;
-      color:#8fb8d9;
+      color:var(--auvro-color-text-secondary);
       margin-top:3px;
       display:flex;
       align-items:center;
@@ -176,7 +234,7 @@
       padding:14px;
       background:
         radial-gradient(circle at 14px 14px, rgba(148,163,184,.08) 1.4px, transparent 1.4px),
-        linear-gradient(180deg,#08131f,#0b1623);
+        linear-gradient(180deg, color-mix(in srgb, var(--auvro-bg-panel) 90%, black), var(--auvro-bg-panel));
       background-size:28px 28px, auto;
       overflow-y:auto;
       overflow-x:hidden;
@@ -198,7 +256,7 @@
     .auvro-date-chip{
       align-self:center;
       font-size:10px;
-      color:#8fb8d9;
+      color:var(--auvro-color-text-secondary);
       background:rgba(15,23,42,.82);
       border:1px solid rgba(148,163,184,.16);
       padding:4px 9px;
@@ -222,33 +280,33 @@
 
     .auvro-bubble.user{
       align-self:flex-end;
-      background:#0f766e;
-      border:1px solid rgba(45,212,191,.28);
+      background:var(--auvro-bubble-user-bg);
+      border:1px solid color-mix(in srgb, var(--auvro-bubble-user-bg) 60%, white);
       color:#ecfeff;
       border-bottom-right-radius:4px;
     }
 
     .auvro-bubble.bot{
       align-self:flex-start;
-      background:#111827;
+      background:var(--auvro-bubble-bot-bg);
       border:1px solid rgba(148,163,184,.18);
-      color:#e5edf7;
+      color:var(--auvro-color-text);
       border-bottom-left-radius:4px;
     }
 
     .auvro-bubble.human{
       align-self:flex-start;
-      background:#083f3a;
-      border:1px solid rgba(34,211,165,.32);
+      background:var(--auvro-bubble-human-bg);
+      border:1px solid color-mix(in srgb, var(--auvro-bubble-human-bg) 65%, #22d3a5);
       color:#eafff8;
       border-bottom-left-radius:4px;
     }
 
     .auvro-bubble.system{
       align-self:center;
-      background:rgba(14,165,233,.10);
-      border:1px solid rgba(14,165,233,.22);
-      color:#93d9ff;
+      background:color-mix(in srgb, var(--auvro-primary) 10%, transparent);
+      border:1px solid color-mix(in srgb, var(--auvro-primary) 22%, transparent);
+      color:color-mix(in srgb, var(--auvro-primary) 60%, white);
       font-size:12px;
       max-width:92%;
       text-align:center;
@@ -289,9 +347,9 @@
 
     .auvro-typing{
       align-self:flex-start;
-      background:#111827;
+      background:var(--auvro-bubble-bot-bg);
       border:1px solid rgba(148,163,184,.18);
-      color:#8fb8d9;
+      color:var(--auvro-color-text-secondary);
       border-radius:11px;
       border-bottom-left-radius:4px;
       padding:8px 10px;
@@ -306,7 +364,7 @@
       width:6px;
       height:6px;
       border-radius:50%;
-      background:#38bdf8;
+      background:var(--auvro-primary);
       opacity:.35;
       animation:auvroTyping 1s infinite;
     }
@@ -321,8 +379,8 @@
 
     .auvro-input-wrap{
       padding:10px;
-      background:#0f172a;
-      border-top:1px solid rgba(56,189,248,.18);
+      background:var(--auvro-bg-input-wrap);
+      border-top:1px solid color-mix(in srgb, var(--auvro-primary) 18%, transparent);
       display:flex;
       gap:8px;
       align-items:flex-end;
@@ -331,15 +389,15 @@
     .auvro-input{
       flex:1;
       border:1px solid rgba(148,163,184,.24);
-      background:#020617;
-      color:#e5edf7;
+      background:var(--auvro-bg-input);
+      color:var(--auvro-color-text);
       border-radius:15px;
       padding:11px 12px;
       min-height:42px;
       max-height:96px;
       resize:none;
       outline:none;
-      font:13px Inter,Arial,sans-serif;
+      font:13px var(--auvro-font);
       line-height:1.35;
       scrollbar-width:thin;
     }
@@ -349,8 +407,8 @@
     }
 
     .auvro-input:focus{
-      border-color:#38bdf8;
-      box-shadow:0 0 0 3px rgba(14,165,233,.10);
+      border-color:var(--auvro-primary);
+      box-shadow:0 0 0 3px color-mix(in srgb, var(--auvro-primary) 10%, transparent);
     }
 
     .auvro-send{
@@ -358,7 +416,7 @@
       height:43px;
       border-radius:50%;
       border:none;
-      background:linear-gradient(135deg,#0ea5e9,#22d3ee);
+      background:linear-gradient(135deg, var(--auvro-primary), color-mix(in srgb, var(--auvro-primary) 70%, #22d3ee));
       color:white;
       cursor:pointer;
       font-size:16px;
@@ -367,7 +425,7 @@
       justify-content:center;
       flex:0 0 auto;
       transition:all .16s ease;
-      box-shadow:0 10px 28px rgba(14,165,233,.25);
+      box-shadow:0 10px 28px color-mix(in srgb, var(--auvro-primary) 25%, transparent);
     }
 
     .auvro-send:hover{
@@ -385,7 +443,7 @@
       color:#64748b;
       text-align:center;
       padding:0 10px 8px;
-      background:#0f172a;
+      background:var(--auvro-bg-input-wrap);
     }
 
     @media(max-width:480px){
