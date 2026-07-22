@@ -1586,79 +1586,77 @@ INSTRUCCIONES:
                                 : 'Error desconocido de Shopify';
                         respuestaIA = `Error de Shopify: ${errMsg}`;
                     } else {
+                        const data = shopifyResult?.data?.response_data || shopifyResult?.data || shopifyResult;
 
-                    const data = shopifyResult?.data?.response_data || shopifyResult?.data || shopifyResult;
-
-                    if (actionPayload.action === 'SHOPIFY_SEARCH_PRODUCTS' || actionPayload.action === 'SHOPIFY_LIST_PRODUCTS') {
-                        const products = data?.products?.nodes || data?.products || data?.nodes || data || [];
-                        if (!products.length) {
-                            respuestaIA = "No encontré productos que coincidan con tu búsqueda.";
-                        } else {
-                            respuestaIA = `Encontré ${products.length} productos:\n\n` +
-                                products.slice(0, 20).map((p, i) => {
-                                    const price = p.variants?.nodes?.[0]?.price || p.variants?.[0]?.price || 'N/A';
-                                    const inventory = p.totalInventory ?? p.inventory_quantity ?? 'N/A';
-                                    return `${i + 1}. ${p.title}\n   Precio: $${price}\n   Stock: ${inventory} unidades`;
-                                }).join("\n\n");
+                        if (actionPayload.action === 'SHOPIFY_SEARCH_PRODUCTS' || actionPayload.action === 'SHOPIFY_LIST_PRODUCTS') {
+                            const products = data?.products?.nodes || data?.products || data?.nodes || data || [];
+                            if (!products.length) {
+                                respuestaIA = "No encontré productos que coincidan con tu búsqueda.";
+                            } else {
+                                respuestaIA = `Encontré ${products.length} productos:\n\n` +
+                                    products.slice(0, 20).map((p, i) => {
+                                        const price = p.variants?.nodes?.[0]?.price || p.variants?.[0]?.price || 'N/A';
+                                        const inventory = p.totalInventory ?? p.inventory_quantity ?? 'N/A';
+                                        return `${i + 1}. ${p.title}\n   Precio: $${price}\n   Stock: ${inventory} unidades`;
+                                    }).join("\n\n");
+                            }
+                        } else if (actionPayload.action === 'SHOPIFY_GET_PRODUCT') {
+                            const product = data?.product || data;
+                            if (!product) {
+                                respuestaIA = "No encontré el producto solicitado.";
+                            } else {
+                                const variants = product.variants?.nodes || product.variants || [];
+                                respuestaIA = `📦 ${product.title}\n\n` +
+                                    `Descripción: ${product.description?.slice(0, 200) || 'Sin descripción'}\n\n` +
+                                    `Variantes:\n` +
+                                    variants.slice(0, 10).map(v =>
+                                        `• ${v.title || 'Principal'} - $${v.price || 'N/A'} - Stock: ${v.inventoryQuantity ?? v.inventory_quantity ?? 'N/A'}`
+                                    ).join("\n");
+                            }
+                        } else if (actionPayload.action === 'SHOPIFY_GET_PRODUCT_VARIANTS') {
+                            const variants = data?.product?.variants?.nodes || data?.variants?.nodes || data?.variants || data || [];
+                            if (!variants.length) {
+                                respuestaIA = "No encontré variantes para este producto.";
+                            } else {
+                                respuestaIA = `Variantes del producto:\n\n` +
+                                    variants.slice(0, 20).map((v, i) =>
+                                        `${i + 1}. ${v.title || 'Principal'} - $${v.price || 'N/A'} - SKU: ${v.sku || 'N/A'} - Stock: ${v.inventoryQuantity ?? v.inventory_quantity ?? 'N/A'}`
+                                    ).join("\n");
+                            }
+                        } else if (actionPayload.action === 'SHOPIFY_CREATE_DRAFT_ORDER') {
+                            const draftOrder = data?.draftOrderCreate?.draftOrder || data?.draftOrder || data;
+                            if (!draftOrder?.id) {
+                                respuestaIA = "No pude crear el borrador de orden. Verifica los datos e intenta de nuevo.";
+                            } else {
+                                respuestaIA = `✅ Borrador de orden creado\n\n` +
+                                    `ID: ${draftOrder.id}\n` +
+                                    `Estado: ${draftOrder.status || 'DRAFT'}\n` +
+                                    `Total: $${draftOrder.totalPrice || 'N/A'}\n\n` +
+                                    `Ahora obtengo tu link de pago...`;
+                                await guardarMensajeConversacion({
+                                    conversacionId: conversationIdFinal,
+                                    agenteId: targetID,
+                                    role: 'assistant',
+                                    content: respuestaIA,
+                                    metadata: { canal, action: actionPayload.action, origen: 'ia', draftOrderId: draftOrder.id }
+                                });
+                                await actualizarResumenConversacion({ conversacionId: conversationIdFinal, ultimoMensaje: respuestaIA, ultimoRole: 'assistant', requiereAtencion: false });
+                                return {
+                                    statusCode: 200,
+                                    headers: { ...headersCORS, 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ respuesta: respuestaIA, conversationId: conversationIdFinal, draftOrderId: draftOrder.id })
+                                };
+                            }
+                        } else if (actionPayload.action === 'SHOPIFY_GET_CHECKOUT_URL') {
+                            const checkoutData = data?.draftOrderFetch?.invoiceUrl || data?.invoiceUrl || data?.checkoutUrl || data;
+                            if (!checkoutData) {
+                                respuestaIA = "No pude obtener el link de pago. Verifica la orden e intenta de nuevo.";
+                            } else {
+                                respuestaIA = `💳 Link de pago listo\n\n` +
+                                    `${checkoutData}\n\n` +
+                                    `Haz clic en el link para completar tu pago de forma segura en Shopify.`;
+                            }
                         }
-                    } else if (actionPayload.action === 'SHOPIFY_GET_PRODUCT') {
-                        const product = data?.product || data;
-                        if (!product) {
-                            respuestaIA = "No encontré el producto solicitado.";
-                        } else {
-                            const variants = product.variants?.nodes || product.variants || [];
-                            respuestaIA = `📦 ${product.title}\n\n` +
-                                `Descripción: ${product.description?.slice(0, 200) || 'Sin descripción'}\n\n` +
-                                `Variantes:\n` +
-                                variants.slice(0, 10).map(v =>
-                                    `• ${v.title || 'Principal'} - $${v.price || 'N/A'} - Stock: ${v.inventoryQuantity ?? v.inventory_quantity ?? 'N/A'}`
-                                ).join("\n");
-                        }
-                    } else if (actionPayload.action === 'SHOPIFY_GET_PRODUCT_VARIANTS') {
-                        const variants = data?.product?.variants?.nodes || data?.variants?.nodes || data?.variants || data || [];
-                        if (!variants.length) {
-                            respuestaIA = "No encontré variantes para este producto.";
-                        } else {
-                            respuestaIA = `Variantes del producto:\n\n` +
-                                variants.slice(0, 20).map((v, i) =>
-                                    `${i + 1}. ${v.title || 'Principal'} - $${v.price || 'N/A'} - SKU: ${v.sku || 'N/A'} - Stock: ${v.inventoryQuantity ?? v.inventory_quantity ?? 'N/A'}`
-                                ).join("\n");
-                        }
-                    } else if (actionPayload.action === 'SHOPIFY_CREATE_DRAFT_ORDER') {
-                        const draftOrder = data?.draftOrderCreate?.draftOrder || data?.draftOrder || data;
-                        if (!draftOrder?.id) {
-                            respuestaIA = "No pude crear el borrador de orden. Verifica los datos e intenta de nuevo.";
-                        } else {
-                            respuestaIA = `✅ Borrador de orden creado\n\n` +
-                                `ID: ${draftOrder.id}\n` +
-                                `Estado: ${draftOrder.status || 'DRAFT'}\n` +
-                                `Total: $${draftOrder.totalPrice || 'N/A'}\n\n` +
-                                `Ahora obtengo tu link de pago...`;
-                            await guardarMensajeConversacion({
-                                conversacionId: conversationIdFinal,
-                                agenteId: targetID,
-                                role: 'assistant',
-                                content: respuestaIA,
-                                metadata: { canal, action: actionPayload.action, origen: 'ia', draftOrderId: draftOrder.id }
-                            });
-                            await actualizarResumenConversacion({ conversacionId: conversationIdFinal, ultimoMensaje: respuestaIA, ultimoRole: 'assistant', requiereAtencion: false });
-                            return {
-                                statusCode: 200,
-                                headers: { ...headersCORS, 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ respuesta: respuestaIA, conversationId: conversationIdFinal, draftOrderId: draftOrder.id })
-                            };
-                        }
-                    } else if (actionPayload.action === 'SHOPIFY_GET_CHECKOUT_URL') {
-                        const checkoutData = data?.draftOrderFetch?.invoiceUrl || data?.invoiceUrl || data?.checkoutUrl || data;
-                        if (!checkoutData) {
-                            respuestaIA = "No pude obtener el link de pago. Verifica la orden e intenta de nuevo.";
-                        } else {
-                            respuestaIA = `💳 Link de pago listo\n\n` +
-                                `${checkoutData}\n\n` +
-                                `Haz clic en el link para completar tu pago de forma segura en Shopify.`;
-                        }
-                    } else {
-                        respuestaIA = "Error de Shopify: " + JSON.stringify(shopifyResult?.error || shopifyResult);
                     }
 
                     await guardarMensajeConversacion({
