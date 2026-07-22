@@ -5415,6 +5415,19 @@ body{
                 nombre: 'WhatsApp Business',
                 tipo: 'meta',
                 tools: [{ tool_key: 'WHATSAPP_SEND_MESSAGE', label: 'Canal de conversacion activo' }]
+            },
+            {
+                toolkit: 'shopify',
+                nombre: 'Shopify',
+                tipo: 'composio',
+                tools: [
+                    { tool_key: 'SHOPIFY_SEARCH_PRODUCTS', label: 'Buscar productos' },
+                    { tool_key: 'SHOPIFY_LIST_PRODUCTS', label: 'Listar productos' },
+                    { tool_key: 'SHOPIFY_GET_PRODUCT', label: 'Ver detalle de producto' },
+                    { tool_key: 'SHOPIFY_GET_PRODUCT_VARIANTS', label: 'Ver variantes (tallas/colores)' },
+                    { tool_key: 'SHOPIFY_CREATE_DRAFT_ORDER', label: 'Crear orden de compra' },
+                    { tool_key: 'SHOPIFY_GET_CHECKOUT_URL', label: 'Generar link de pago' }
+                ]
             }
         ];
 
