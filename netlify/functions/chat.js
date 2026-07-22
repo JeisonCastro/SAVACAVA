@@ -1022,7 +1022,7 @@ exports.handler = async (event) => {
             cargarHistorialConversacion(conversationIdFinal, 8),
             supabase.from('perfiles').select('token_balance').eq('id', agente.user_id).single(),
             supabase.from('agente_tools').select('tool_key, toolkit, enabled').eq('agente_id', targetID).eq('enabled', true),
-            supabase.from('composio_connections').select('toolkit, composio_entity_id, connected_at').eq('user_id', agente.user_id),
+            supabase.from('composio_connections').select('toolkit, composio_entity_id, connected_at, shopify_store_url, access_token').eq('user_id', agente.user_id),
             supabase.from('pending_tool_actions').select('*').eq('user_id', agente.user_id).eq('agente_id', targetID).eq('conversation_id', conversationIdFinal).eq('status', 'pending').gte('expires_at', new Date().toISOString()).order('created_at', { ascending: false }).limit(1).maybeSingle()
         ]);
 
