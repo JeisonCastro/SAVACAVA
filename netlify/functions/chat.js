@@ -1163,19 +1163,35 @@ INSTRUCCIONES:
         console.log("Turnos de historial enviados a DeepSeek:", historialDB.length);
         console.log("Conversation ID final:", conversationIdFinal);
         console.log("Caracteres input total:", inputChars);
-        console.log("Llamando a DeepSeek...");
+        console.log(image_url ? "Usando OpenAI GPT-4o (vision)..." : "Llamando a DeepSeek...");
 
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), calcularTimeout(inputChars));
 
-        const aiResponse = await fetch('https://api.deepseek.com/v1/chat/completions', {
+        const useOpenAI = !!image_url;
+        const apiEndpoint = useOpenAI
+            ? 'https://api.openai.com/v1/chat/completions'
+            : 'https://api.deepseek.com/v1/chat/completions';
+        const apiKey = useOpenAI
+            ? process.env.OPENAI_KEY
+            : process.env.DEEPSEEK_API_KEY;
+        const model = useOpenAI ? 'gpt-4o' : 'deepseek-v4-flash';
+
+        if (!apiKey) {
+            clearTimeout(timeout);
+            throw new Error(useOpenAI
+                ? "OPENAI_KEY no configurada en el servidor"
+                : "DEEPSEEK_API_KEY no configurada en el servidor");
+        }
+
+        const aiResponse = await fetch(apiEndpoint, {
             method: 'POST',
             headers: {
-                'Authorization': `Bearer ${process.env.DEEPSEEK_API_KEY}`,
+                'Authorization': `Bearer ${apiKey}`,
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                model: "deepseek-v4-flash",
+                model,
                 messages: mensajes,
                 temperature: 0.2,
                 max_tokens: 1024
@@ -1185,18 +1201,19 @@ INSTRUCCIONES:
 
         clearTimeout(timeout);
 
-        console.log("DeepSeek respondió con status:", aiResponse.status);
+        const provider = useOpenAI ? 'OpenAI' : 'DeepSeek';
+        console.log(`${provider} respondió con status:`, aiResponse.status);
 
         const aiData = await aiResponse.json();
-        console.log("Respuesta JSON DeepSeek:", JSON.stringify(aiData));
+        console.log(`Respuesta JSON ${provider}:`, JSON.stringify(aiData));
 
         if (!aiResponse.ok || !aiData?.choices) {
-            console.error("Error DeepSeek:", aiData);
+            console.error(`Error ${provider}:`, aiData);
             throw new Error(aiData?.error?.message || "Error en la respuesta de la IA");
         }
 
         let respuestaIA = limpiarTextoIA(aiData.choices[0].message.content);
-        console.log("Respuesta raw DeepSeek:", respuestaIA);
+        console.log("Respuesta raw IA:", respuestaIA);
 
         const actionPayload = parseActionPayload(respuestaIA);
         console.log("Action payload parseado:", actionPayload ? actionPayload.action : 'null');
