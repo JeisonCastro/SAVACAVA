@@ -5533,6 +5533,75 @@ body{
             const conexion = (conexiones || []).find(c => c.toolkit === app.toolkit);
             const estaConectado = !!conexion;
 
+            // Shopify tiene formulario especial con credenciales
+            if (app.toolkit === 'shopify') {
+                return `
+                    <div style="background:var(--bg2);border:1px solid ${estaConectado ? 'rgba(14,165,233,.3)' : 'var(--border)'};border-radius:10px;padding:1rem;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem;gap:1rem;">
+                            <div>
+                                <div style="display:flex;align-items:center;gap:.5rem;">
+                                    <i class="fab fa-shopify" style="color:#96bf48;font-size:1rem;"></i>
+                                    <span style="font-family:'Syne',sans-serif;font-size:.9rem;font-weight:700;color:var(--text);">${app.nombre}</span>
+                                </div>
+                                <div style="font-size:.75rem;color:${estaConectado ? 'var(--green)' : 'var(--dim)'}; margin-top:.2rem;">
+                                    ${estaConectado ? '✓ Conectado — El agente puede gestionar tu tienda' : 'No conectado'}
+                                </div>
+                            </div>
+                            <button
+                                onclick="toggleFormularioShopify('${agenteId}')"
+                                id="btn-shopify-${agenteId}"
+                                style="background:rgba(14,165,233,.1);color:var(--accent);border:1px solid var(--border);padding:8px 10px;border-radius:8px;cursor:pointer;white-space:nowrap;font-size:.82rem;">
+                                ${estaConectado ? 'Actualizar' : 'Conectar'}
+                            </button>
+                        </div>
+
+                        <!-- FORMULARIO SHOPIFY -->
+                        <div class="wa-form" id="shopify-form-${agenteId}">
+                            <p style="font-size:.78rem;color:var(--muted);margin-bottom:.75rem;line-height:1.5;">
+                                Ingresa las credenciales de tu tienda Shopify. Ve a <strong>Admin → Settings → Apps → Develop apps</strong> para crear una app y obtener el Access Token.
+                            </p>
+                            <div class="field">
+                                <label>URL de la tienda (sin https://)</label>
+                                <input type="text" id="shopify-url-${agenteId}" placeholder="Ej: mitienda.myshopify.com" value="${conexion?.shopify_store_url || ''}">
+                            </div>
+                            <div class="field">
+                                <label>Access Token (Admin API)</label>
+                                <input type="password" id="shopify-token-${agenteId}" placeholder="shpat_xxxxxxxxxxxxxxxx" value="${conexion?.access_token || ''}">
+                            </div>
+                            <div style="display:flex;gap:.5rem;margin-top:.25rem;">
+                                <button
+                                    onclick="guardarConexionShopify('${agenteId}')"
+                                    style="flex:1;padding:10px;background:var(--accent);color:#06090f;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-weight:600;font-size:.85rem;cursor:pointer;">
+                                    <i class="fab fa-shopify" style="margin-right:.35rem"></i>
+                                    ${estaConectado ? 'Actualizar conexion' : 'Guardar y conectar'}
+                                </button>
+                                ${estaConectado ? `
+                                <button
+                                    onclick="desconectarShopify('${agenteId}')"
+                                    style="padding:10px 14px;background:rgba(248,113,113,.1);color:var(--red);border:1px solid rgba(248,113,113,.2);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:.82rem;cursor:pointer;">
+                                    Desconectar
+                                </button>` : ''}
+                            </div>
+                            <div id="shopify-msg-${agenteId}" class="msg" style="margin-top:.5rem;display:none;"></div>
+                        </div>
+
+                        <!-- TOOL CHECKBOX (solo si esta conectado) -->
+                        ${estaConectado ? app.tools.map(tool => {
+                            const activa = (toolsActivas || []).find(t => t.tool_key === tool.tool_key && t.enabled === true);
+                            return `
+                                <label style="display:flex;align-items:center;justify-content:space-between;padding:.55rem 0;border-top:1px solid var(--border);margin-top:.5rem;font-size:.85rem;color:var(--text);">
+                                    <span>${tool.label}</span>
+                                    <input
+                                        type="checkbox"
+                                        ${activa ? 'checked' : ''}
+                                        onchange="toggleHerramientaAgente('${agenteId}', '${app.toolkit}', '${tool.tool_key}', this.checked)">
+                                </label>
+                            `;
+                        }).join('') : ''}
+                    </div>
+                `;
+            }
+
             const toolsHtml = app.tools.map(tool => {
                 const activa = (toolsActivas || []).find(t => t.tool_key === tool.tool_key && t.enabled === true);
                 return `
@@ -5664,6 +5733,102 @@ body{
 
         if (error) { showToast('Error al desconectar: ' + error.message, 'error'); return; }
         showToast('WhatsApp desconectado');
+        cargarIntegracionesAgente(agenteId);
+    }
+
+    // ── TOGGLE FORMULARIO SHOPIFY ──
+    function toggleFormularioShopify(agenteId) {
+        const form = document.getElementById(`shopify-form-${agenteId}`);
+        form.classList.toggle('visible');
+    }
+
+    // ── GUARDAR CONEXION SHOPIFY ──
+    async function guardarConexionShopify(agenteId) {
+        const storeUrl = document.getElementById(`shopify-url-${agenteId}`).value.trim();
+        const accessToken = document.getElementById(`shopify-token-${agenteId}`).value.trim();
+        const msgEl = document.getElementById(`shopify-msg-${agenteId}`);
+
+        if (!storeUrl || !accessToken) {
+            msgEl.textContent = 'Por favor completa todos los campos.';
+            msgEl.className = 'msg error';
+            msgEl.style.display = 'block';
+            return;
+        }
+
+        msgEl.textContent = 'Guardando...';
+        msgEl.className = 'msg';
+        msgEl.style.display = 'block';
+
+        try {
+            // Verificar si ya existe una conexion para este agente
+            const { data: existente } = await _supabase
+                .from('composio_connections')
+                .select('id')
+                .eq('agente_id', agenteId)
+                .eq('toolkit', 'shopify')
+                .maybeSingle();
+
+            let error;
+
+            if (existente) {
+                // Actualizar
+                ({ error } = await _supabase
+                    .from('composio_connections')
+                    .update({
+                        shopify_store_url: storeUrl,
+                        access_token: accessToken,
+                        connected_at: new Date().toISOString()
+                    })
+                    .eq('id', existente.id));
+            } else {
+                // Crear nueva conexion
+                ({ error } = await _supabase
+                    .from('composio_connections')
+                    .insert({
+                        user_id: currentUser.id,
+                        agente_id: agenteId,
+                        toolkit: 'shopify',
+                        shopify_store_url: storeUrl,
+                        access_token: accessToken,
+                        composio_entity_id: currentUser.id,
+                        connected_at: new Date().toISOString()
+                    }));
+            }
+
+            if (error) {
+                msgEl.textContent = 'Error al guardar: ' + error.message;
+                msgEl.className = 'msg error';
+                msgEl.style.display = 'block';
+                return;
+            }
+
+            msgEl.textContent = '✓ Conexion guardada correctamente.';
+            msgEl.className = 'msg success';
+            msgEl.style.display = 'block';
+            showToast('Shopify conectado');
+
+            // Recargar integraciones para reflejar el nuevo estado
+            setTimeout(() => cargarIntegracionesAgente(agenteId), 1200);
+
+        } catch (err) {
+            msgEl.textContent = 'Error inesperado: ' + err.message;
+            msgEl.className = 'msg error';
+            msgEl.style.display = 'block';
+        }
+    }
+
+    // ── DESCONECTAR SHOPIFY ──
+    async function desconectarShopify(agenteId) {
+        if (!confirm('¿Desconectar Shopify de este agente? El agente dejara de acceder a tu tienda.')) return;
+
+        const { error } = await _supabase
+            .from('composio_connections')
+            .delete()
+            .eq('agente_id', agenteId)
+            .eq('toolkit', 'shopify');
+
+        if (error) { showToast('Error al desconectar: ' + error.message, 'error'); return; }
+        showToast('Shopify desconectado');
         cargarIntegracionesAgente(agenteId);
     }
 

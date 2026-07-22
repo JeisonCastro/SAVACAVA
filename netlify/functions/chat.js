@@ -1407,7 +1407,12 @@ INSTRUCCIONES:
             } else {
                 const shopifyConn = obtenerConexion(userConnections, 'shopify');
 
-                if (!shopifyConn?.composio_entity_id) {
+                // Shopify puede usar credenciales directas (shopify_store_url + access_token)
+                // o Composio entity ID para OAuth
+                const tieneCredencialesDirectas = shopifyConn?.shopify_store_url && shopifyConn?.access_token;
+                const tieneComposio = shopifyConn?.composio_entity_id;
+
+                if (!tieneCredencialesDirectas && !tieneComposio) {
                     respuestaIA = "La tienda Shopify no está conectada. Por favor, conecta tu tienda desde la configuración.";
                 } else {
                     const toolDef = TOOL_DEFINITIONS[actionPayload.action];
@@ -1450,12 +1455,116 @@ INSTRUCCIONES:
 
                     console.log("Ejecutando Shopify:", actionPayload.action, JSON.stringify(payloadShopify));
 
-                    const shopifyResult = await ejecutarToolComposio(
-                        actionPayload.action,
-                        shopifyConn.composio_entity_id,
-                        agente.user_id,
-                        payloadShopify
-                    );
+                    let shopifyResult;
+
+                    // Si tiene credenciales directas, ejecutar via API de Shopify directamente
+                    if (tieneCredencialesDirectas) {
+                        const shopifyStoreUrl = shopifyConn.shopify_store_url.replace(/^https?:\/\//, '');
+                        const accessToken = shopifyConn.access_token;
+
+                        // Construir query GraphQL segun la accion
+                        let query = '';
+                        let variables = {};
+
+                        if (actionPayload.action === 'SHOPIFY_SEARCH_PRODUCTS') {
+                            query = `query SearchProducts($query: String!, $first: Int!) {
+                                products(first: $first, query: $query) {
+                                    nodes {
+                                        id title descriptionHtml
+                                        variants(first: 10) {
+                                            nodes { id title price inventoryQuantity sku }
+                                        }
+                                        totalInventory
+                                    }
+                                }
+                            }`;
+                            variables = { query: payloadShopify.query || '', first: payloadShopify.first || 20 };
+                        } else if (actionPayload.action === 'SHOPIFY_LIST_PRODUCTS') {
+                            query = `query ListProducts($first: Int!) {
+                                products(first: $first) {
+                                    nodes {
+                                        id title
+                                        variants(first: 10) {
+                                            nodes { id title price inventoryQuantity }
+                                        }
+                                        totalInventory
+                                    }
+                                }
+                            }`;
+                            variables = { first: payloadShopify.first || 20 };
+                        } else if (actionPayload.action === 'SHOPIFY_GET_PRODUCT') {
+                            query = `query GetProduct($id: ID!) {
+                                product(id: $id) {
+                                    id title descriptionHtml
+                                    variants(first: 25) {
+                                        nodes { id title price inventoryQuantity sku }
+                                    }
+                                }
+                            }`;
+                            variables = { id: payloadShopify.productId };
+                        } else if (actionPayload.action === 'SHOPIFY_GET_PRODUCT_VARIANTS') {
+                            query = `query GetVariants($id: ID!) {
+                                product(id: $id) {
+                                    variants(first: 50) {
+                                        nodes { id title price inventoryQuantity sku }
+                                    }
+                                }
+                            }`;
+                            variables = { id: payloadShopify.productId };
+                        } else if (actionPayload.action === 'SHOPIFY_CREATE_DRAFT_ORDER') {
+                            const lineItemsInput = (payloadShopify.lineItems || []).map(item => ({
+                                variantId: item.variantId,
+                                quantity: item.quantity
+                            }));
+                            const input = {
+                                lineItems: lineItemsInput,
+                                customer: {
+                                    firstName: (payloadShopify.customerName || '').split(' ')[0],
+                                    lastName: (payloadShopify.customerName || '').split(' ').slice(1).join(' '),
+                                    email: payloadShopify.customerEmail
+                                }
+                            };
+                            if (payloadShopify.shippingAddress) {
+                                input.shippingAddress = payloadShopify.shippingAddress;
+                            }
+                            if (payloadShopify.note) {
+                                input.note = payloadShopify.note;
+                            }
+                            query = `mutation CreateDraftOrder($input: DraftOrderInput!) {
+                                draftOrderCreate(input: $input) {
+                                    draftOrder { id name status totalPrice }
+                                    userErrors { field message }
+                                }
+                            }`;
+                            variables = { input };
+                        } else if (actionPayload.action === 'SHOPIFY_GET_CHECKOUT_URL') {
+                            query = `query GetCheckoutUrl($id: ID!) {
+                                draftOrder(id: $id) { invoiceUrl }
+                            }`;
+                            variables = { id: payloadShopify.draftOrderId };
+                        }
+
+                        // Ejecutar query GraphQL
+                        const shopifyResponse = await fetch(`https://${shopifyStoreUrl}/admin/api/2024-01/graphql.json`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-Shopify-Access-Token': accessToken
+                            },
+                            body: JSON.stringify({ query, variables })
+                        });
+
+                        const shopifyData = await shopifyResponse.json();
+                        shopifyResult = { data: shopifyData.data };
+                    } else {
+                        // Usar Composio para ejecutar la herramienta
+                        shopifyResult = await ejecutarToolComposio(
+                            actionPayload.action,
+                            shopifyConn.composio_entity_id,
+                            agente.user_id,
+                            payloadShopify
+                        );
+                    }
 
                     console.log("Resultado Shopify:", JSON.stringify(shopifyResult));
 

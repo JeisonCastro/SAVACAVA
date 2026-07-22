@@ -103,14 +103,104 @@ exports.handler = async (event) => {
         (cfg?.status === 'ENABLED' || !cfg?.status)
     );
 
+    // Si no existe auth config habilitado, crear uno automáticamente (para Shopify API_KEY)
     if (!authConfig?.id) {
-      return {
-        statusCode: 400,
+      console.log(`No auth config found for ${toolkit}, creating one with API_KEY scheme...`);
+
+      const createConfigRes = await fetch('https://backend.composio.dev/api/v3/auth_configs', {
+        method: 'POST',
+        headers: {
+          'x-api-key': composioApiKey,
+          'Content-Type': 'application/json'
+        },
         body: JSON.stringify({
-          error: `No existe un auth config habilitado para ${toolkit} en Composio`,
-          debug: authConfigsData
+          toolkit: { slug: toolkit },
+          auth_config: {
+            type: 'use_custom_auth',
+            auth_scheme: 'API_KEY',
+            credentials: {}
+          }
         })
-      };
+      });
+
+      const createConfigRaw = await createConfigRes.text();
+      let createConfigData;
+      try {
+        createConfigData = JSON.parse(createConfigRaw);
+      } catch (e) {
+        return {
+          statusCode: 500,
+          body: JSON.stringify({
+            error: 'Error parseando respuesta de creación de auth config',
+            debug: createConfigRaw
+          })
+        };
+      }
+
+      if (!createConfigRes.ok) {
+        return {
+          statusCode: createConfigRes.status,
+          body: JSON.stringify({
+            error: createConfigData?.error || createConfigData?.message || 'No se pudo crear auth config para ' + toolkit,
+            debug: createConfigData
+          })
+        };
+      }
+
+      // Usar el auth config recién creado
+      const newAuthConfig = createConfigData?.auth_config || createConfigData;
+      if (newAuthConfig?.id) {
+        console.log(`Auth config created for ${toolkit}:`, newAuthConfig.id);
+
+        // Crear link de conexión con el nuevo auth config
+        const linkRes = await fetch('https://backend.composio.dev/api/v3/connected_accounts/link', {
+          method: 'POST',
+          headers: {
+            'x-api-key': composioApiKey,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            auth_config_id: newAuthConfig.id,
+            user_id: user.id,
+            callback_url: callbackUrl
+          })
+        });
+
+        const linkRaw = await linkRes.text();
+        let linkData;
+        try {
+          linkData = JSON.parse(linkRaw);
+        } catch (e) {
+          return {
+            statusCode: 500,
+            body: JSON.stringify({
+              error: 'Error parseando respuesta de link OAuth',
+              debug: linkRaw
+            })
+          };
+        }
+
+        if (!linkRes.ok) {
+          return {
+            statusCode: linkRes.status,
+            body: JSON.stringify({
+              error: linkData?.error || linkData?.message || 'No se pudo crear el link OAuth',
+              debug: linkData
+            })
+          };
+        }
+
+        return {
+          statusCode: 200,
+          body: JSON.stringify({
+            ok: true,
+            toolkit,
+            authConfigId: newAuthConfig.id,
+            connectedAccountId: linkData.connected_account_id || null,
+            redirectUrl: linkData.redirect_url || null
+          })
+        };
+      }
     }
 
     // 2) Crear link OAuth para el usuario
