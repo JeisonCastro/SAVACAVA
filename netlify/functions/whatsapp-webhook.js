@@ -2,6 +2,62 @@ const { supabase } = require('./supabase-admin');
 const chatHandler = require('./chat.js').handler;
 
 const VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN || 'jeison_digital_verify_token';
+const GRAPH_VERSION = process.env.WHATSAPP_GRAPH_VERSION || 'v19.0';
+
+async function getMetaMediaUrl(mediaId, accessToken) {
+  const res = await fetch(`https://graph.facebook.com/${GRAPH_VERSION}/${mediaId}`, {
+    method: 'GET',
+    headers: { Authorization: `Bearer ${accessToken}` }
+  });
+  const data = await res.json().catch(() => null);
+  if (!res.ok || !data?.url) throw new Error(data?.error?.message || 'No se pudo obtener la URL del media.');
+  return data;
+}
+
+async function downloadMetaMedia(url, accessToken) {
+  const res = await fetch(url, {
+    method: 'GET',
+    headers: { Authorization: `Bearer ${accessToken}` }
+  });
+  if (!res.ok) throw new Error('No se pudo descargar el media desde Meta.');
+  const arrayBuffer = await res.arrayBuffer();
+  const buffer = Buffer.from(arrayBuffer);
+  const contentType = res.headers.get('content-type') || 'application/octet-stream';
+  return { buffer, contentType };
+}
+
+async function enviarWhatsapp({ to, text, accessToken, phoneNumberId }) {
+  const res = await fetch(
+    `https://graph.facebook.com/${GRAPH_VERSION}/${phoneNumberId}/messages`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        messaging_product: 'whatsapp',
+        to,
+        type: 'text',
+        text: { body: text.slice(0, 4000) }
+      })
+    }
+  );
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) console.error('Error enviando WhatsApp:', data);
+  return data;
+}
+
+async function guardarMensajeSaliente({ conversacion, agenteId, text, origen = 'ia' }) {
+  await supabase.from('mensajes_conversacion').insert({
+    conversacion_id: conversacion.id,
+    agente_id: agenteId,
+    role: 'assistant',
+    content: text,
+    origen,
+    metadata: { canal: 'whatsapp' }
+  });
+}
 
 // ── PUSH NOTIFICATIONS ──────────────────────────────────────────────────────
 async function dispararPush({ userId, title, body, conversationId }) {
@@ -292,7 +348,7 @@ exports.handler = async (event) => {
       };
     }
 
-    // 5. Si es media, guardar y NO llamar IA
+    // 5. Si es media, procesar según tipo
     if (contenido.type !== 'text') {
       const conversacion = await obtenerOCrearConversacion({
         agenteId,
@@ -309,13 +365,55 @@ exports.handler = async (event) => {
       });
 
       // 🔔 Push automático para adjuntos entrantes de WhatsApp.
-      // Los mensajes de texto ya pasan por chat.js, por eso aquí solo media.
       await dispararPush({
         userId: agente.user_id,
         title: `📱 WhatsApp +${from}`,
         body: contenido.content || 'Adjunto recibido',
         conversationId: conversacion.id
       });
+
+      // Si es imagen, descargar y enviar a la IA para análisis
+      if (contenido.type === 'image' && contenido.media_id && waConnection.access_token) {
+        try {
+          const metaUrl = await getMetaMediaUrl(contenido.media_id, waConnection.access_token);
+          const downloaded = await downloadMetaMedia(metaUrl.url, waConnection.access_token);
+          const imageDataUrl = `data:${downloaded.contentType};base64,${downloaded.buffer.toString('base64')}`;
+
+          const imagePrompt = contenido.caption || 'Describe esta imagen en detalle';
+          const chatEvent = {
+            httpMethod: 'POST',
+            headers: { 'Content-Type': 'application/json', 'origin': '' },
+            body: JSON.stringify({
+              prompt: imagePrompt,
+              agente_id: agenteId,
+              canal: 'whatsapp',
+              external_user_id: from,
+              image_url: imageDataUrl
+            })
+          };
+
+          const chatResponse = await chatHandler(chatEvent);
+          const chatData = JSON.parse(chatResponse.body || '{}');
+
+          if (chatData.respuesta) {
+            await enviarWhatsapp({
+              to: from,
+              text: chatData.respuesta,
+              accessToken: waConnection.access_token,
+              phoneNumberId: waConnection.phone_number_id
+            });
+
+            await guardarMensajeSaliente({
+              conversacion,
+              agenteId,
+              text: chatData.respuesta,
+              origen: 'ia'
+            });
+          }
+        } catch (imgErr) {
+          console.error('Error procesando imagen con IA:', imgErr.message);
+        }
+      }
 
       return {
         statusCode: 200,

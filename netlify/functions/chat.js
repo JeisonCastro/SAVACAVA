@@ -869,7 +869,8 @@ exports.handler = async (event) => {
             historial = [],
             conversation_id = null,
             canal = "web",
-            external_user_id = null
+            external_user_id = null,
+            image_url = null
         } = body;
         const targetID = agente_id || process.env.AGENTE_MAESTRO_ID;
 
@@ -966,7 +967,7 @@ exports.handler = async (event) => {
             agenteId: targetID,
             role: 'user',
             content: prompt,
-            metadata: { canal, origen: 'cliente' }
+            metadata: { canal, origen: 'cliente', ...(image_url ? { image_url } : {}) }
         });
 
         await actualizarResumenConversacion({
@@ -1139,13 +1140,25 @@ INSTRUCCIONES:
 
         const promptTruncado = truncarMensaje(prompt, 2000);
 
+        const userMessage = image_url
+            ? { role: "user", content: [
+                { type: "text", text: promptTruncado },
+                { type: "image_url", image_url: { url: image_url } }
+            ]}
+            : { role: "user", content: promptTruncado };
+
         const mensajes = [
             { role: "system", content: systemFinal },
             ...historialSinDuplicado.slice(-8),
-            { role: "user", content: promptTruncado }
+            userMessage
         ];
 
-        const inputChars = mensajes.reduce((sum, m) => sum + (m.content?.length || 0), 0);
+        const inputChars = mensajes.reduce((sum, m) => {
+            if (Array.isArray(m.content)) {
+                return sum + m.content.reduce((s, p) => s + (p.text?.length || 0), 0);
+            }
+            return sum + (m.content?.length || 0);
+        }, 0);
 
         console.log("Turnos de historial enviados a DeepSeek:", historialDB.length);
         console.log("Conversation ID final:", conversationIdFinal);

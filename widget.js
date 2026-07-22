@@ -446,6 +446,71 @@
       background:var(--auvro-bg-input-wrap);
     }
 
+    .auvro-attach-btn{
+      width:36px;
+      height:36px;
+      border-radius:50%;
+      border:none;
+      background:transparent;
+      color:var(--auvro-color-text-secondary);
+      cursor:pointer;
+      font-size:15px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      flex:0 0 auto;
+      transition:all .16s ease;
+    }
+
+    .auvro-attach-btn:hover{
+      color:var(--auvro-primary);
+      transform:scale(1.1);
+    }
+
+    .auvro-image-preview{
+      padding:6px 10px;
+      background:var(--auvro-bg-input-wrap);
+      border-top:1px solid rgba(148,163,184,.12);
+      display:none;
+      align-items:center;
+      gap:8px;
+    }
+
+    .auvro-image-preview.visible{
+      display:flex;
+    }
+
+    .auvro-image-preview img{
+      width:48px;
+      height:48px;
+      object-fit:cover;
+      border-radius:8px;
+      border:1px solid rgba(148,163,184,.2);
+    }
+
+    .auvro-image-preview .auvro-image-name{
+      flex:1;
+      font-size:11px;
+      color:var(--auvro-color-text-secondary);
+      overflow:hidden;
+      text-overflow:ellipsis;
+      white-space:nowrap;
+    }
+
+    .auvro-image-preview .auvro-image-remove{
+      background:none;
+      border:none;
+      color:var(--auvro-color-text-secondary);
+      cursor:pointer;
+      font-size:14px;
+      padding:2px;
+      transition:color .16s;
+    }
+
+    .auvro-image-preview .auvro-image-remove:hover{
+      color:#f87171;
+    }
+
     @media(max-width:480px){
       .auvro-widget-root{
         right:10px;
@@ -485,7 +550,14 @@
         <button class="auvro-close" type="button" aria-label="Cerrar">×</button>
       </div>
       <div class="auvro-messages"></div>
+      <div class="auvro-image-preview" id="auvro-image-preview">
+        <img id="auvro-image-thumb" src="" alt="Preview">
+        <span class="auvro-image-name" id="auvro-image-name"></span>
+        <button class="auvro-image-remove" id="auvro-image-remove" type="button" aria-label="Quitar imagen">×</button>
+      </div>
       <div class="auvro-input-wrap">
+        <input type="file" id="auvro-file-input" accept="image/*" style="display:none">
+        <button class="auvro-attach-btn" type="button" aria-label="Adjuntar imagen" id="auvro-attach-btn">📎</button>
         <textarea class="auvro-input" rows="1" placeholder="Escribe un mensaje..."></textarea>
         <button class="auvro-send" type="button" aria-label="Enviar">➤</button>
       </div>
@@ -504,6 +576,43 @@
   const sendBtn = root.querySelector('.auvro-send');
   const statusText = root.querySelector('.auvro-status-text');
   const statusDot = root.querySelector('.auvro-status-dot');
+  const fileInput = root.querySelector('#auvro-file-input');
+  const attachBtn = root.querySelector('#auvro-attach-btn');
+  const imagePreview = root.querySelector('#auvro-image-preview');
+  const imageThumb = root.querySelector('#auvro-image-thumb');
+  const imageName = root.querySelector('#auvro-image-name');
+  const imageRemove = root.querySelector('#auvro-image-remove');
+
+  let pendingImage = null;
+
+  attachBtn.onclick = () => fileInput.click();
+
+  fileInput.onchange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      fileInput.value = '';
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      fileInput.value = '';
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      pendingImage = { dataUrl: reader.result, name: file.name };
+      imageThumb.src = reader.result;
+      imageName.textContent = file.name;
+      imagePreview.classList.add('visible');
+    };
+    reader.readAsDataURL(file);
+  };
+
+  imageRemove.onclick = () => {
+    pendingImage = null;
+    fileInput.value = '';
+    imagePreview.classList.remove('visible');
+  };
 
   function hora(value) {
     try {
@@ -626,6 +735,13 @@
       text.textContent = m.text;
       div.appendChild(text);
 
+      if (m.image) {
+        const imgBadge = document.createElement('span');
+        imgBadge.textContent = ' 📷';
+        imgBadge.style.fontSize = '11px';
+        div.appendChild(imgBadge);
+      }
+
       if (m.role !== 'system') {
         const meta = document.createElement('div');
         meta.className = 'auvro-meta';
@@ -679,10 +795,18 @@
 
   async function enviar() {
     const text = input.value.trim();
-    if (!text || sending) return;
+    const hasImage = !!pendingImage;
+    if ((!text && !hasImage) || sending) return;
 
     sending = true;
     sendBtn.disabled = true;
+
+    const displayText = text || (hasImage ? '📷 Imagen' : '');
+    const imageToSend = pendingImage?.dataUrl || null;
+
+    pendingImage = null;
+    fileInput.value = '';
+    imagePreview.classList.remove('visible');
 
     input.value = '';
     autoResizeInput();
@@ -690,24 +814,28 @@
     localMessages.push({
       id: 'local_' + Date.now(),
       role: 'user',
-      text,
+      text: displayText,
       time: new Date().toISOString(),
-      origen: 'cliente'
+      origen: 'cliente',
+      ...(hasImage ? { image: true } : {})
     });
 
     render(localMessages);
     addTyping();
 
     try {
+      const payload = {
+        prompt: text || 'Describe esta imagen',
+        agente_id: agenteId,
+        canal: 'web',
+        external_user_id: externalUserId
+      };
+      if (imageToSend) payload.image_url = imageToSend;
+
       const res = await fetch(`${baseUrl}/.netlify/functions/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          prompt: text,
-          agente_id: agenteId,
-          canal: 'web',
-          external_user_id: externalUserId
-        })
+        body: JSON.stringify(payload)
       });
 
       const data = await res.json().catch(() => ({}));
