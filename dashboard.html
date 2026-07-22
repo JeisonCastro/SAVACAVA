@@ -265,6 +265,11 @@
         .theme-toggle{display:inline-flex;align-items:center;gap:.45rem;padding:7px 9px;border-radius:999px;border:1px solid var(--border2);background:var(--surface);color:var(--muted);font-size:.74rem;cursor:pointer;transition:all .2s}
         .theme-toggle:hover{border-color:var(--accent);color:var(--accent)}
         .inbox-filter-row{display:grid;grid-template-columns:1fr 1fr;gap:.5rem}
+        .inbox-filter-row-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.35rem}
+        .inbox-filter-row-3 select{padding:6px 24px 6px 8px!important;font-size:.72rem!important}
+        .inbox-tool-row{display:flex;gap:.35rem;padding:0 .85rem .55rem;border-bottom:1px solid var(--border)}
+        .inbox-icon-btn{width:30px;height:30px;border-radius:8px;border:1px solid var(--border2);background:var(--surface);color:var(--muted);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:.75rem;transition:all .2s;padding:0}
+        .inbox-icon-btn:hover{border-color:var(--accent);color:var(--accent);transform:translateY(-1px)}
         .inbox-filters select{width:100%;padding:8px 28px 8px 10px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:.78rem;outline:none;cursor:pointer;transition:border-color .2s;appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%237a98b8' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center}
         .inbox-filters select:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(14,165,233,.12)}
         .inbox-filters select:hover{border-color:var(--border2)}
@@ -325,7 +330,7 @@
         .empty-inbox-state{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100%;color:var(--dim);text-align:center;padding:2rem;font-size:.9rem}
         .empty-inbox-state i{font-size:2.4rem;margin-bottom:1rem;color:var(--border2)}
         @media(max-width:1120px){.inbox-layout{grid-template-columns:320px minmax(0,1fr)}.inbox-msg{max-width:76%}}
-        @media(max-width:980px){body.bandeja-active{overflow:auto}body.bandeja-active .main-content{height:auto;overflow:visible}#view-bandeja.active{height:auto;overflow:visible}.inbox-layout{grid-template-columns:1fr;height:auto;max-height:none;min-height:0}.inbox-sidebar{height:340px;min-height:0;border-right:none;border-bottom:1px solid var(--border)}.inbox-panel{height:calc(100vh - 180px);min-height:560px}.desktop-sidebar-toggle{display:none}.inbox-msg{max-width:88%;min-width:150px}.inbox-filter-row{grid-template-columns:1fr}.inbox-header-title{max-width:300px}}
+        @media(max-width:980px){body.bandeja-active{overflow:auto}body.bandeja-active .main-content{height:auto;overflow:visible}#view-bandeja.active{height:auto;overflow:visible}.inbox-layout{grid-template-columns:1fr;height:auto;max-height:none;min-height:0}.inbox-sidebar{height:340px;min-height:0;border-right:none;border-bottom:1px solid var(--border)}.inbox-panel{height:calc(100vh - 180px);min-height:560px}.desktop-sidebar-toggle{display:none}.inbox-msg{max-width:88%;min-width:150px}.inbox-filter-row,.inbox-filter-row-3{grid-template-columns:1fr}.inbox-header-title{max-width:300px}}
 
         /* MOBILE */
         .mob-toggle{display:none;position:fixed;top:1rem;left:1rem;z-index:100;width:36px;height:36px;background:var(--surface);border:1px solid var(--border);border-radius:8px;align-items:center;justify-content:center;cursor:pointer;color:var(--muted)}
@@ -1706,7 +1711,7 @@ button, a, input, textarea, select {
         display: block !important;
     }
 
-    .inbox-filter-row {
+    .inbox-filter-row, .inbox-filter-row-3 {
         display: grid !important;
         grid-template-columns: 1fr 1fr !important;
         gap: .42rem !important;
@@ -1808,7 +1813,7 @@ button, a, input, textarea, select {
         padding: 0 .6rem !important;
     }
 
-    .inbox-filter-row {
+    .inbox-filter-row, .inbox-filter-row-3 {
         grid-template-columns: 1fr !important;
     }
 }
@@ -2782,7 +2787,18 @@ body.light-mode .manual-reply-box textarea{
     background:#f8fafc!important;
 }
 
-.btn-main,.btn-small,.btn-logout,.sidebar-theme-toggle,.composer-icon-btn{
+body.light-mode .inbox-icon-btn{
+    background:#f8fafc!important;
+    border-color:#e2e8f0!important;
+    color:#64748b!important;
+}
+
+body.light-mode .inbox-icon-btn:hover{
+    border-color:var(--accent)!important;
+    color:var(--accent)!important;
+}
+
+.btn-main,.btn-small,.btn-logout,.sidebar-theme-toggle,.composer-icon-btn,.inbox-icon-btn{
     font-family:'Inter',system-ui,sans-serif!important;
 }
 
@@ -3264,7 +3280,7 @@ body.light-mode .mob-toggle{
         font-weight:900!important;
     }
 
-    .inbox-filter-row{
+    .inbox-filter-row, .inbox-filter-row-3{
         grid-template-columns:1fr 1fr!important;
         gap:.45rem!important;
     }
@@ -3318,7 +3334,7 @@ body.light-mode .mob-toggle{
         min-height:118px!important;
     }
 
-    .inbox-filter-row{
+    .inbox-filter-row, .inbox-filter-row-3{
         grid-template-columns:1fr!important;
     }
 }
@@ -4198,37 +4214,15 @@ body{
 
             <!-- VISTA BANDEJA -->
             <div class="view" id="view-bandeja">
-                <div class="topbar">
+                <div class="topbar" style="padding:.55rem 1rem">
                     <div>
-                        <h2 class="page-title">Bandeja de conversaciones</h2>
-                        <p class="page-sub">Visualiza chats por agente, toma
-                            control manual y devuelve la conversacion a la IA
-                            cuando quieras</p>
+                        <h2 class="page-title" style="font-size:1.05rem">Bandeja</h2>
                     </div>
                     <div class="topbar-right">
                         <span class="badge badge-green" id="realtime-status">
                             <i class="fas fa-circle"
                                 style="font-size:.45rem"></i> Tiempo real
                         </span>
-
-                        <button class="btn-small" onclick="activarPushAuvro()"
-                            id="btn-push-test">
-                            <i class="fas fa-bell"
-                                style="margin-right:.35rem"></i> Activar
-                            notificaciones
-                        </button>
-
-                        <button class="btn-small" onclick="toggleSonidoNotificacion()"
-                            id="btn-sound-toggle">
-                            <i class="fas fa-volume-high"
-                                style="margin-right:.35rem"></i> Activar sonido
-                        </button>
-
-                        <button class="btn-small"
-                            onclick="cargarBandejaConversaciones()">
-                            <i class="fas fa-rotate"
-                                style="margin-right:.35rem"></i> Actualizar
-                        </button>
                     </div>
                 </div>
 
@@ -4246,18 +4240,30 @@ body{
                                         class="fas fa-moon"></i><span>Oscuro</span>
                                 </button>
                             </div>
-                            <select id="inbox-agent-filter"
-                                onchange="cargarBandejaConversaciones()">
-                                <option value>Todos los agentes</option>
-                            </select>
-                            <div class="inbox-filter-row">
+                            <div class="inbox-tool-row">
+                                <button class="inbox-icon-btn" onclick="activarPushAuvro()"
+                                    id="btn-push-test" title="Activar notificaciones">
+                                    <i class="fas fa-bell"></i>
+                                </button>
+                                <button class="inbox-icon-btn" onclick="toggleSonidoNotificacion()"
+                                    id="btn-sound-toggle" title="Activar sonido">
+                                    <i class="fas fa-volume-high"></i>
+                                </button>
+                                <button class="inbox-icon-btn"
+                                    onclick="cargarBandejaConversaciones()" title="Actualizar">
+                                    <i class="fas fa-rotate"></i>
+                                </button>
+                            </div>
+                            <div class="inbox-filter-row-3">
+                                <select id="inbox-agent-filter"
+                                    onchange="cargarBandejaConversaciones()">
+                                    <option value>Todos los agentes</option>
+                                </select>
                                 <select id="inbox-status-filter"
                                     onchange="cargarBandejaConversaciones()">
                                     <option value>Todos los estados</option>
-                                    <option value="requiere_atencion">Requiere
-                                        atencion</option>
-                                    <option value="modo_humano">Modo
-                                        humano</option>
+                                    <option value="requiere_atencion">Atencion</option>
+                                    <option value="modo_humano">Humano</option>
                                     <option value="ia_activa">IA activa</option>
                                     <option value="cerrada">Cerradas</option>
                                 </select>
@@ -4265,14 +4271,14 @@ body{
                                     onchange="cargarBandejaConversaciones()">
                                     <option value>Todos los canales</option>
                                     <option value="whatsapp">WhatsApp</option>
-                                    <option value="web">Widget Web</option>
+                                    <option value="web">Widget</option>
                                     <option value="dashboard">Dashboard</option>
                                 </select>
                             </div>
                             <div class="inbox-search-wrap">
                                 <i class="fas fa-search"></i>
                                 <input type="text" id="inbox-search"
-                                    placeholder="Buscar por numero, agente o mensaje..."
+                                    placeholder="Buscar..."
                                     oninput="filtrarConversacionesLocal()">
                             </div>
                         </div>
@@ -4780,10 +4786,10 @@ body{
         const btn = document.getElementById('btn-sound-toggle');
         if (!btn) return;
         if (notificacionesSonidoHabilitadas) {
-            btn.innerHTML = '<i class="fas fa-volume-xmark" style="margin-right:.35rem"></i> Desactivar sonido';
+            btn.innerHTML = '<i class="fas fa-volume-xmark"></i>';
             btn.classList.add('green');
         } else {
-            btn.innerHTML = '<i class="fas fa-volume-high" style="margin-right:.35rem"></i> Activar sonido';
+            btn.innerHTML = '<i class="fas fa-volume-high"></i>';
             btn.classList.remove('green');
         }
     }
@@ -7201,10 +7207,10 @@ async function debugPush() {
         notificacionesSonidoHabilitadas = activo;
 
         if (activo) {
-            btn.innerHTML = '<i class="fas fa-volume-xmark" style="margin-right:.35rem"></i> Desactivar sonido';
+            btn.innerHTML = '<i class="fas fa-volume-xmark"></i>';
             btn.classList.add('green');
         } else {
-            btn.innerHTML = '<i class="fas fa-volume-high" style="margin-right:.35rem"></i> Activar sonido';
+            btn.innerHTML = '<i class="fas fa-volume-high"></i>';
             btn.classList.remove('green');
         }
     };
