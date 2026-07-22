@@ -300,8 +300,8 @@ async function ejecutarToolComposio(toolSlug, connectedAccountId, userId, args) 
     return data;
 }
 
-async function registrarConsumo({ agente, targetID, saldoActual, prompt, respuestaIA }) {
-    const tokensUsados = Math.ceil(((agente.prompt_sistema || "").length + (prompt || "").length + (respuestaIA || "").length) / 4) + 10;
+async function registrarConsumo({ agente, targetID, saldoActual, prompt, respuestaIA, apiTokens = null }) {
+    const tokensUsados = apiTokens || Math.ceil(((agente.prompt_sistema || "").length + (prompt || "").length + (respuestaIA || "").length) / 4) + 10;
 
     await supabase
         .from('perfiles')
@@ -1215,6 +1215,11 @@ INSTRUCCIONES:
         let respuestaIA = limpiarTextoIA(aiData.choices[0].message.content);
         console.log("Respuesta raw IA:", respuestaIA);
 
+        const apiTokensUsados = aiData.usage
+            ? (aiData.usage.prompt_tokens || 0) + (aiData.usage.completion_tokens || 0)
+            : null;
+        console.log("Tokens reales de API:", apiTokensUsados);
+
         const actionPayload = parseActionPayload(respuestaIA);
         console.log("Action payload parseado:", actionPayload ? actionPayload.action : 'null');
 
@@ -1387,7 +1392,8 @@ INSTRUCCIONES:
             targetID,
             saldoActual,
             prompt,
-            respuestaIA
+            respuestaIA,
+            apiTokens: apiTokensUsados
         });
 
         await guardarMensajeConversacion({
