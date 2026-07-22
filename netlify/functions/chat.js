@@ -1173,14 +1173,14 @@ INSTRUCCIONES:
             ? 'https://api.openai.com/v1/chat/completions'
             : 'https://api.deepseek.com/v1/chat/completions';
         const apiKey = useOpenAI
-            ? process.env.OPENAI_KEY
+            ? process.env.OPENIA_KEY
             : process.env.DEEPSEEK_API_KEY;
         const model = useOpenAI ? 'gpt-4o' : 'deepseek-v4-flash';
 
         if (!apiKey) {
             clearTimeout(timeout);
             throw new Error(useOpenAI
-                ? "OPENAI_KEY no configurada en el servidor"
+                ? "OPENIA_KEY no configurada en el servidor"
                 : "DEEPSEEK_API_KEY no configurada en el servidor");
         }
 
