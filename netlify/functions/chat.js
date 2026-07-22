@@ -1,5 +1,6 @@
 const { supabase } = require('./supabase-admin');
 const {
+    TOOL_DEFINITIONS,
     esConfirmacion,
     esCancelacion,
     construirToolsDescription,
@@ -300,8 +301,9 @@ async function ejecutarToolComposio(toolSlug, connectedAccountId, userId, args) 
     return data;
 }
 
-async function registrarConsumo({ agente, targetID, saldoActual, prompt, respuestaIA, apiTokens = null }) {
-    const tokensUsados = apiTokens || Math.ceil(((agente.prompt_sistema || "").length + (prompt || "").length + (respuestaIA || "").length) / 4) + 10;
+async function registrarConsumo({ agente, targetID, saldoActual, prompt, respuestaIA, apiTokens = null, premiumTokens = 0 }) {
+    const tokensBase = apiTokens || Math.ceil(((agente.prompt_sistema || "").length + (prompt || "").length + (respuestaIA || "").length) / 4) + 10;
+    const tokensUsados = tokensBase + premiumTokens;
 
     await supabase
         .from('perfiles')
@@ -1396,13 +1398,124 @@ INSTRUCCIONES:
             }
         }
 
+        const esToolShopify = actionPayload?.action?.startsWith('SHOPIFY_');
+        let premiumTokens = 0;
+
+        if (esToolShopify) {
+            if (!toolDisponible(toolsDisponibles, actionPayload.action)) {
+                respuestaIA = "Shopify no está habilitado para este agente o no hay conexión activa.";
+            } else {
+                const shopifyConn = obtenerConexion(userConnections, 'shopify');
+
+                if (!shopifyConn?.composio_entity_id) {
+                    respuestaIA = "La tienda Shopify no está conectada. Por favor, conecta tu tienda desde la configuración.";
+                } else {
+                    const toolDef = TOOL_DEFINITIONS[actionPayload.action];
+                    premiumTokens = toolDef?.premiumCost || 100000;
+
+                    let payloadShopify = {};
+                    if (actionPayload.action === 'SHOPIFY_SEARCH_PRODUCTS') {
+                        payloadShopify = {
+                            query: actionPayload.data?.query || '',
+                            first: Math.min(actionPayload.data?.first || 20, 50)
+                        };
+                    } else if (actionPayload.action === 'SHOPIFY_GET_PRODUCT') {
+                        payloadShopify = {
+                            productId: actionPayload.data?.productId || ''
+                        };
+                    } else if (actionPayload.action === 'SHOPIFY_LIST_PRODUCTS') {
+                        payloadShopify = {
+                            first: Math.min(actionPayload.data?.first || 20, 50),
+                            query: actionPayload.data?.query || '',
+                            sortKey: actionPayload.data?.sortKey || 'BEST_SELLING'
+                        };
+                    } else if (actionPayload.action === 'SHOPIFY_GET_PRODUCT_VARIANTS') {
+                        payloadShopify = {
+                            productId: actionPayload.data?.productId || '',
+                            first: Math.min(actionPayload.data?.first || 20, 50)
+                        };
+                    }
+
+                    console.log("Ejecutando Shopify:", actionPayload.action, JSON.stringify(payloadShopify));
+
+                    const shopifyResult = await ejecutarToolComposio(
+                        actionPayload.action,
+                        shopifyConn.composio_entity_id,
+                        agente.user_id,
+                        payloadShopify
+                    );
+
+                    console.log("Resultado Shopify:", JSON.stringify(shopifyResult));
+
+                    const data = shopifyResult?.data?.response_data || shopifyResult?.data || shopifyResult;
+
+                    if (actionPayload.action === 'SHOPIFY_SEARCH_PRODUCTS' || actionPayload.action === 'SHOPIFY_LIST_PRODUCTS') {
+                        const products = data?.products?.nodes || data?.products || data?.nodes || data || [];
+                        if (!products.length) {
+                            respuestaIA = "No encontré productos que coincidan con tu búsqueda.";
+                        } else {
+                            respuestaIA = `Encontré ${products.length} productos:\n\n` +
+                                products.slice(0, 20).map((p, i) => {
+                                    const price = p.variants?.nodes?.[0]?.price || p.variants?.[0]?.price || 'N/A';
+                                    const inventory = p.totalInventory ?? p.inventory_quantity ?? 'N/A';
+                                    return `${i + 1}. ${p.title}\n   Precio: $${price}\n   Stock: ${inventory} unidades`;
+                                }).join("\n\n");
+                        }
+                    } else if (actionPayload.action === 'SHOPIFY_GET_PRODUCT') {
+                        const product = data?.product || data;
+                        if (!product) {
+                            respuestaIA = "No encontré el producto solicitado.";
+                        } else {
+                            const variants = product.variants?.nodes || product.variants || [];
+                            respuestaIA = `📦 ${product.title}\n\n` +
+                                `Descripción: ${product.description?.slice(0, 200) || 'Sin descripción'}\n\n` +
+                                `Variantes:\n` +
+                                variants.slice(0, 10).map(v =>
+                                    `• ${v.title || 'Principal'} - $${v.price || 'N/A'} - Stock: ${v.inventoryQuantity ?? v.inventory_quantity ?? 'N/A'}`
+                                ).join("\n");
+                        }
+                    } else if (actionPayload.action === 'SHOPIFY_GET_PRODUCT_VARIANTS') {
+                        const variants = data?.product?.variants?.nodes || data?.variants?.nodes || data?.variants || data || [];
+                        if (!variants.length) {
+                            respuestaIA = "No encontré variantes para este producto.";
+                        } else {
+                            respuestaIA = `Variantes del producto:\n\n` +
+                                variants.slice(0, 20).map((v, i) =>
+                                    `${i + 1}. ${v.title || 'Principal'} - $${v.price || 'N/A'} - SKU: ${v.sku || 'N/A'} - Stock: ${v.inventoryQuantity ?? v.inventory_quantity ?? 'N/A'}`
+                                ).join("\n");
+                        }
+                    }
+
+                    await guardarMensajeConversacion({
+                        conversacionId: conversationIdFinal,
+                        agenteId: targetID,
+                        role: 'assistant',
+                        content: respuestaIA,
+                        metadata: { canal, action: actionPayload.action, origen: 'ia' }
+                    });
+                    await actualizarResumenConversacion({ conversacionId: conversationIdFinal, ultimoMensaje: respuestaIA, ultimoRole: 'assistant', requiereAtencion: false });
+                    return {
+                        statusCode: 200,
+                        headers,
+                        body: JSON.stringify({
+                            respuesta: respuestaIA,
+                            tokens_consumidos: premiumTokens,
+                            conversation_id: conversationIdFinal,
+                            premium: true
+                        })
+                    };
+                }
+            }
+        }
+
         const tokensUsados = await registrarConsumo({
             agente,
             targetID,
             saldoActual,
             prompt,
             respuestaIA,
-            apiTokens: apiTokensUsados
+            apiTokens: apiTokensUsados,
+            premiumTokens
         });
 
         await guardarMensajeConversacion({

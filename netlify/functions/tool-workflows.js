@@ -80,6 +80,43 @@ GMAIL_LIST_LABELS: {
     requiredFields: ['query'],
     optionalFields: ['folder', 'file_type'],
     confirmationRequired: false
+  },
+
+  SHOPIFY_SEARCH_PRODUCTS: {
+    toolkit: 'shopify',
+    label: 'Buscar productos en la tienda Shopify',
+    workflow: 'execute',
+    requiredFields: ['query'],
+    optionalFields: ['first', 'sortKey'],
+    confirmationRequired: false,
+    premiumCost: 100000
+  },
+  SHOPIFY_GET_PRODUCT: {
+    toolkit: 'shopify',
+    label: 'Obtener detalles de un producto específico',
+    workflow: 'execute',
+    requiredFields: ['productId'],
+    optionalFields: [],
+    confirmationRequired: false,
+    premiumCost: 100000
+  },
+  SHOPIFY_LIST_PRODUCTS: {
+    toolkit: 'shopify',
+    label: 'Listar productos de la tienda',
+    workflow: 'execute',
+    requiredFields: [],
+    optionalFields: ['first', 'query', 'sortKey'],
+    confirmationRequired: false,
+    premiumCost: 100000
+  },
+  SHOPIFY_GET_PRODUCT_VARIANTS: {
+    toolkit: 'shopify',
+    label: 'Obtener variantes de un producto',
+    workflow: 'execute',
+    requiredFields: ['productId'],
+    optionalFields: ['first'],
+    confirmationRequired: false,
+    premiumCost: 100000
   }
 };
 
@@ -715,6 +752,30 @@ Responde ÚNICAMENTE con este JSON (sin texto adicional, sin markdown):
 
 ### Para GOOGLEDRIVE_FIND_FILE:
 - "query": término de búsqueda
+
+### Para SHOPIFY_SEARCH_PRODUCTS:
+- Úsala cuando el usuario busque productos por nombre, categoría o descripción
+- "query": término de búsqueda (ej: "camisa", "zapatos deportivos")
+- "first": número máximo de resultados (default: 20, máximo: 50)
+- Ejemplo: { "action": "SHOPIFY_SEARCH_PRODUCTS", "data": { "query": "camisa", "first": 10 } }
+
+### Para SHOPIFY_GET_PRODUCT:
+- Úsala cuando el usuario quiera detalles completos de un producto específico
+- "productId": ID del producto (formato: "gid://shopify/Product/123456")
+- Ejemplo: { "action": "SHOPIFY_GET_PRODUCT", "data": { "productId": "gid://shopify/Product/123456" } }
+
+### Para SHOPIFY_LIST_PRODUCTS:
+- Úsala cuando el usuario quiera ver todos los productos o filtrar por categoría
+- "first": número máximo de productos (default: 20, máximo: 50)
+- "query": filtro opcional (ej: "product_type:Camisas")
+- "sortKey": ordenar por (TITLE, CREATED_AT, UPDATED_AT, BEST_SELLING)
+- Ejemplo: { "action": "SHOPIFY_LIST_PRODUCTS", "data": { "first": 20, "sortKey": "BEST_SELLING" } }
+
+### Para SHOPIFY_GET_PRODUCT_VARIANTS:
+- Úsala cuando el usuario quiera ver variantes (tallas, colores) de un producto
+- "productId": ID del producto
+- "first": máximo de variantes (default: 20)
+- Ejemplo: { "action": "SHOPIFY_GET_PRODUCT_VARIANTS", "data": { "productId": "gid://shopify/Product/123456" } }
 
 ## REGLA GENERAL
 - Si el usuario da TODOS los datos necesarios en un solo mensaje → genera el JSON directamente, NO hagas más preguntas
