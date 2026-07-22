@@ -1459,8 +1459,9 @@ INSTRUCCIONES:
 
                     // Si tiene credenciales directas, ejecutar via API de Shopify directamente
                     if (tieneCredencialesDirectas) {
-                        const shopifyStoreUrl = shopifyConn.shopify_store_url.replace(/^https?:\/\//, '');
+                        const shopifyStoreUrl = shopifyConn.shopify_store_url.replace(/^https?:\/\//, '').replace(/\/+$/, '');
                         const accessToken = shopifyConn.access_token;
+                        console.log("Shopify directo - store:", shopifyStoreUrl, "token length:", accessToken?.length);
 
                         // Construir query GraphQL segun la accion
                         let query = '';
@@ -1470,7 +1471,7 @@ INSTRUCCIONES:
                             query = `query SearchProducts($query: String!, $first: Int!) {
                                 products(first: $first, query: $query) {
                                     nodes {
-                                        id title descriptionHtml
+                                        id title
                                         variants(first: 10) {
                                             nodes { id title price inventoryQuantity sku }
                                         }
@@ -1495,7 +1496,7 @@ INSTRUCCIONES:
                         } else if (actionPayload.action === 'SHOPIFY_GET_PRODUCT') {
                             query = `query GetProduct($id: ID!) {
                                 product(id: $id) {
-                                    id title descriptionHtml
+                                    id title description
                                     variants(first: 25) {
                                         nodes { id title price inventoryQuantity sku }
                                     }
@@ -1545,7 +1546,7 @@ INSTRUCCIONES:
                         }
 
                         // Ejecutar query GraphQL
-                        const shopifyResponse = await fetch(`https://${shopifyStoreUrl}/admin/api/2024-01/graphql.json`, {
+                        const shopifyResponse = await fetch(`https://${shopifyStoreUrl}/admin/api/2024-10/graphql.json`, {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json',
@@ -1555,7 +1556,15 @@ INSTRUCCIONES:
                         });
 
                         const shopifyData = await shopifyResponse.json();
-                        shopifyResult = { data: shopifyData.data };
+                        console.log("Shopify API response status:", shopifyResponse.status);
+                        console.log("Shopify API response:", JSON.stringify(shopifyData).slice(0, 500));
+
+                        if (shopifyData.errors) {
+                            console.error("Shopify API errors:", JSON.stringify(shopifyData.errors));
+                            shopifyResult = { data: null, error: shopifyData.errors };
+                        } else {
+                            shopifyResult = { data: shopifyData.data };
+                        }
                     } else {
                         // Usar Composio para ejecutar la herramienta
                         shopifyResult = await ejecutarToolComposio(
@@ -1567,6 +1576,16 @@ INSTRUCCIONES:
                     }
 
                     console.log("Resultado Shopify:", JSON.stringify(shopifyResult));
+
+                    // Si hay error de la API de Shopify, mostrarlo
+                    if (shopifyResult?.error) {
+                        const errMsg = Array.isArray(shopifyResult.error)
+                            ? shopifyResult.error.map(e => e.message).join(', ')
+                            : typeof shopifyResult.error === 'string'
+                                ? shopifyResult.error
+                                : 'Error desconocido de Shopify';
+                        respuestaIA = `Error de Shopify: ${errMsg}`;
+                    } else {
 
                     const data = shopifyResult?.data?.response_data || shopifyResult?.data || shopifyResult;
 
@@ -1638,6 +1657,8 @@ INSTRUCCIONES:
                                 `${checkoutData}\n\n` +
                                 `Haz clic en el link para completar tu pago de forma segura en Shopify.`;
                         }
+                    } else {
+                        respuestaIA = "Error de Shopify: " + JSON.stringify(shopifyResult?.error || shopifyResult);
                     }
 
                     await guardarMensajeConversacion({
