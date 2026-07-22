@@ -1114,6 +1114,11 @@ REGLAS DE CONVERSACIÓN:
 - Si el usuario ya expresó una necesidad, continúa desde esa necesidad sin reiniciar la conversación.
 - Si hay historial conversacional, continúa con naturalidad y no vuelvas a presentarte.
 - Evita responder con "¿en qué necesitas apoyo hoy?" si el usuario ya dijo lo que necesita.
+
+CAPACIDADES:
+- Puedes recibir y analizar imágenes que el usuario envíe.
+- Cuando el usuario envíe una imagen, analízala en el contexto de lo que se está conversando.
+- Responde de forma útil y contextual, no solo describas la imagen.
 `;
 
         if (!esSaludoSimple) {
@@ -1140,9 +1145,13 @@ INSTRUCCIONES:
 
         const promptTruncado = truncarMensaje(prompt, 2000);
 
+        const imageInstruction = image_url
+            ? `\n\nEl usuario ha enviado una imagen. Analízala en el contexto de la conversación. Si el usuario pregunta algo sobre la imagen, respóndele directamente. Si la imagen es relevante para algo que se discutió antes, úsala. Si no hay contexto previo relacionado, describe lo que ves de forma útil y concisa. No digas "no puedo ver imágenes" — sí puedes verlas.`
+            : '';
+
         const userMessage = image_url
             ? { role: "user", content: [
-                { type: "text", text: promptTruncado },
+                { type: "text", text: promptTruncado + imageInstruction },
                 { type: "image_url", image_url: { url: image_url } }
             ]}
             : { role: "user", content: promptTruncado };
