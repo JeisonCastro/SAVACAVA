@@ -4172,43 +4172,21 @@ body{
                                 <div id="token-balance">—</div>
                             </div>
                         </div>
+                        <button class="btn-main btn-green" onclick="abrirCrearAgente()"
+                            style="padding:.55rem 1rem;font-size:.82rem;border-radius:12px">
+                            <i class="fas fa-plus" style="margin-right:.35rem"></i> Nuevo agente
+                        </button>
                     </div>
                 </div>
-                <div class="grid-2">
-                    <div class="card">
-                        <div class="card-header">
-                            <div class="card-icon"><i
-                                    class="fas fa-plus"></i></div>
-                            <span class="card-title">Crear nuevo agente</span>
-                        </div>
-                        <div class="field"><label>Nombre del
-                                agente</label><input type="text" id="bot-name"
-                                placeholder="Ej: Vendedor de Streaming"></div>
-                        <div class="field"><label>Instruccion maestra (System
-                                Prompt)</label><textarea id="bot-prompt"
-                                rows="5"
-                                placeholder="Eres un asistente que..."></textarea></div>
-                        <button class="btn-main" id="btn-crear-agente"
-                            onclick="crearAgente()"><i
-                                class="fas fa-floppy-disk"
-                                style="margin-right:.4rem"></i> Guardar
-                            agente</button>
-                        <div class="loading-dots" id="create-loading"><span
-                                class="loading-dot"></span><span
-                                class="loading-dot"></span><span
-                                class="loading-dot"></span></div>
-                        <div class="msg" id="create-msg"></div>
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-icon"><i
+                                class="fas fa-layer-group"></i></div>
+                        <span class="card-title">Tus agentes activos</span>
                     </div>
-                    <div class="card">
-                        <div class="card-header">
-                            <div class="card-icon"><i
-                                    class="fas fa-layer-group"></i></div>
-                            <span class="card-title">Tus agentes activos</span>
-                        </div>
-                        <div id="lista-agentes"><div class="empty-state"><i
-                                    class="fas fa-robot"></i>Aun no has creado
-                                ningun agente.</div></div>
-                    </div>
+                    <div id="lista-agentes"><div class="empty-state"><i
+                                class="fas fa-robot"></i>Aun no has creado
+                            ningun agente.</div></div>
                 </div>
             </div>
 
@@ -4690,6 +4668,32 @@ body{
                         onclick="guardarEdicion(this)">Guardar</button>
                     <button class="btn-main"
                         onclick="document.getElementById('edit-modal').style.display='none'"
+                        style="background:var(--red)">Cancelar</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- CREATE MODAL -->
+        <div id="create-modal"
+            style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:1001;align-items:center;justify-content:center;">
+            <div class="card" style="width:700px;max-width:90%;">
+                <h3 class="card-title" style="margin-bottom:1rem">Crear
+                    agente</h3>
+                <div class="field"><label>Nombre</label><input type="text"
+                        id="create-name" placeholder="Ej: Vendedor de Streaming"></div>
+                <div class="field"><label>Instrucciones</label><textarea
+                        id="create-prompt" rows="8" style="min-height:160px;resize:vertical;"
+                        placeholder="Eres un asistente que..."></textarea></div>
+                <div class="loading-dots" id="create-loading"><span
+                        class="loading-dot"></span><span
+                        class="loading-dot"></span><span
+                        class="loading-dot"></span></div>
+                <div class="msg" id="create-msg"></div>
+                <div style="display:flex;gap:10px;margin-top:1rem;">
+                    <button class="btn-main btn-green"
+                        onclick="guardarCreacion()">Crear</button>
+                    <button class="btn-main"
+                        onclick="cerrarCrearAgente()"
                         style="background:var(--red)">Cancelar</button>
                 </div>
             </div>
@@ -5227,12 +5231,23 @@ body{
     }
 
     // ── CREAR AGENTE ──
-    async function crearAgente() {
-        const name = document.getElementById('bot-name').value.trim();
-        const prompt = document.getElementById('bot-prompt').value.trim();
+    function abrirCrearAgente() {
+        document.getElementById('create-name').value = '';
+        document.getElementById('create-prompt').value = '';
+        document.getElementById('create-msg').className = 'msg';
+        document.getElementById('create-loading').style.display = 'none';
+        document.getElementById('create-modal').style.display = 'flex';
+        setTimeout(() => document.getElementById('create-name').focus(), 120);
+    }
+
+    function cerrarCrearAgente() {
+        document.getElementById('create-modal').style.display = 'none';
+    }
+
+    async function guardarCreacion() {
+        const name = document.getElementById('create-name').value.trim();
+        const prompt = document.getElementById('create-prompt').value.trim();
         if (!name || !prompt) return showMsg('create-msg', 'Por favor completa los campos', 'error');
-        const btn = document.getElementById('btn-crear-agente');
-        btn.disabled = true;
         document.getElementById('create-loading').style.display = 'block';
         document.getElementById('create-msg').className = 'msg';
         try {
@@ -5247,19 +5262,18 @@ body{
             if (res.status === 403 && data.codigo === 'LIMITE_PLAN_ALCANZADO') {
                 mostrarUpgradeModal(data);
                 document.getElementById('create-loading').style.display = 'none';
-                btn.disabled = false;
                 return;
             }
             if (!res.ok) { showMsg('create-msg', data.error || 'Error al crear el agente', 'error'); return; }
             showMsg('create-msg', `Agente "${name}" creado. Quedan ${data.agentes_restantes} espacio(s) en tu plan.`, 'success');
-            document.getElementById('bot-name').value = '';
-            document.getElementById('bot-prompt').value = '';
+            document.getElementById('create-name').value = '';
+            document.getElementById('create-prompt').value = '';
             cargarAgentes();
+            setTimeout(cerrarCrearAgente, 1500);
         } catch (err) {
             showMsg('create-msg', 'Error de conexion con el servidor', 'error');
         } finally {
             document.getElementById('create-loading').style.display = 'none';
-            btn.disabled = false;
         }
     }
 
