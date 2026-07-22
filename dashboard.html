@@ -5760,11 +5760,11 @@ body{
         msgEl.style.display = 'block';
 
         try {
-            // Verificar si ya existe una conexion para este agente
+            // Verificar si ya existe una conexion para este usuario
             const { data: existente } = await _supabase
                 .from('composio_connections')
                 .select('id')
-                .eq('agente_id', agenteId)
+                .eq('user_id', currentUser.id)
                 .eq('toolkit', 'shopify')
                 .maybeSingle();
 
@@ -5786,7 +5786,6 @@ body{
                     .from('composio_connections')
                     .insert({
                         user_id: currentUser.id,
-                        agente_id: agenteId,
                         toolkit: 'shopify',
                         shopify_store_url: storeUrl,
                         access_token: accessToken,
@@ -5824,7 +5823,7 @@ body{
         const { error } = await _supabase
             .from('composio_connections')
             .delete()
-            .eq('agente_id', agenteId)
+            .eq('user_id', currentUser.id)
             .eq('toolkit', 'shopify');
 
         if (error) { showToast('Error al desconectar: ' + error.message, 'error'); return; }
