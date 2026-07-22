@@ -117,6 +117,24 @@ GMAIL_LIST_LABELS: {
     optionalFields: ['first'],
     confirmationRequired: false,
     premiumCost: 100000
+  },
+  SHOPIFY_CREATE_DRAFT_ORDER: {
+    toolkit: 'shopify',
+    label: 'Crear borrador de orden para pago',
+    workflow: 'collect_confirm_execute',
+    requiredFields: ['lineItems', 'customerName', 'customerEmail'],
+    optionalFields: ['shippingAddress', 'note'],
+    confirmationRequired: true,
+    premiumCost: 150000
+  },
+  SHOPIFY_GET_CHECKOUT_URL: {
+    toolkit: 'shopify',
+    label: 'Obtener link de pago de una orden',
+    workflow: 'execute',
+    requiredFields: ['draftOrderId'],
+    optionalFields: [],
+    confirmationRequired: false,
+    premiumCost: 100000
   }
 };
 
@@ -776,6 +794,54 @@ Responde ÚNICAMENTE con este JSON (sin texto adicional, sin markdown):
 - "productId": ID del producto
 - "first": máximo de variantes (default: 20)
 - Ejemplo: { "action": "SHOPIFY_GET_PRODUCT_VARIANTS", "data": { "productId": "gid://shopify/Product/123456" } }
+
+### Para SHOPIFY_CREATE_DRAFT_ORDER:
+- Úsala cuando el usuario quiera comprar productos
+- REQUIERE confirmación del usuario antes de ejecutar
+- "lineItems": array de productos con variantId y quantity
+- "customerName": nombre del cliente
+- "customerEmail": correo del cliente
+- "shippingAddress": dirección de envío (opcional)
+- "note": nota adicional (opcional)
+- Ejemplo:
+{
+  "action": "SHOPIFY_CREATE_DRAFT_ORDER",
+  "data": {
+    "lineItems": [
+      { "variantId": "gid://shopify/ProductVariant/123456", "quantity": 2 },
+      { "variantId": "gid://shopify/ProductVariant/789012", "quantity": 1 }
+    ],
+    "customerName": "Juan Pérez",
+    "customerEmail": "juan@email.com",
+    "shippingAddress": {
+      "address1": "Calle 123",
+      "city": "Bogotá",
+      "province": "Cundinamarca",
+      "country": "CO",
+      "zip": "110111"
+    }
+  }
+}
+- Primero muestra el resumen de la orden al usuario
+- Espera confirmación ("sí", "confirmo", "comprar")
+- Luego ejecuta la herramienta
+
+### Para SHOPIFY_GET_CHECKOUT_URL:
+- Úsala DESPUÉS de crear un draft order para obtener el link de pago
+- "draftOrderId": ID del draft order creado
+- Ejemplo: { "action": "SHOPIFY_GET_CHECKOUT_URL", "data": { "draftOrderId": "gid://shopify/DraftOrder/123456" } }
+- El link devuelto es seguro y redirige al checkout de Shopify
+- El usuario puede pagar con tarjeta de crédito/débito, PSE, etc.
+
+## FLUJO DE VENTA (IMPORTANTE):
+Cuando el usuario quiera comprar:
+1. Primero busca los productos con SHOPIFY_SEARCH_PRODUCTS o SHOPIFY_GET_PRODUCT
+2. Muestra los productos disponibles con precios y variantes
+3. Pide los datos del cliente (nombre, email, dirección)
+4. Crea el draft order con SHOPIFY_CREATE_DRAFT_ORDER (espera confirmación)
+5. Después de crear, obtén el link con SHOPIFY_GET_CHECKOUT_URL
+6. Envía el link de pago al usuario
+7. El usuario paga en el checkout seguro de Shopify
 
 ## REGLA GENERAL
 - Si el usuario da TODOS los datos necesarios en un solo mensaje → genera el JSON directamente, NO hagas más preguntas

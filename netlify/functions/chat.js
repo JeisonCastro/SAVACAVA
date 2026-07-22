@@ -1434,6 +1434,18 @@ INSTRUCCIONES:
                             productId: actionPayload.data?.productId || '',
                             first: Math.min(actionPayload.data?.first || 20, 50)
                         };
+                    } else if (actionPayload.action === 'SHOPIFY_CREATE_DRAFT_ORDER') {
+                        payloadShopify = {
+                            lineItems: actionPayload.data?.lineItems || [],
+                            customerName: actionPayload.data?.customerName || '',
+                            customerEmail: actionPayload.data?.customerEmail || '',
+                            shippingAddress: actionPayload.data?.shippingAddress || null,
+                            note: actionPayload.data?.note || ''
+                        };
+                    } else if (actionPayload.action === 'SHOPIFY_GET_CHECKOUT_URL') {
+                        payloadShopify = {
+                            draftOrderId: actionPayload.data?.draftOrderId || ''
+                        };
                     }
 
                     console.log("Ejecutando Shopify:", actionPayload.action, JSON.stringify(payloadShopify));
@@ -1483,6 +1495,39 @@ INSTRUCCIONES:
                                 variants.slice(0, 20).map((v, i) =>
                                     `${i + 1}. ${v.title || 'Principal'} - $${v.price || 'N/A'} - SKU: ${v.sku || 'N/A'} - Stock: ${v.inventoryQuantity ?? v.inventory_quantity ?? 'N/A'}`
                                 ).join("\n");
+                        }
+                    } else if (actionPayload.action === 'SHOPIFY_CREATE_DRAFT_ORDER') {
+                        const draftOrder = data?.draftOrderCreate?.draftOrder || data?.draftOrder || data;
+                        if (!draftOrder?.id) {
+                            respuestaIA = "No pude crear el borrador de orden. Verifica los datos e intenta de nuevo.";
+                        } else {
+                            respuestaIA = `✅ Borrador de orden creado\n\n` +
+                                `ID: ${draftOrder.id}\n` +
+                                `Estado: ${draftOrder.status || 'DRAFT'}\n` +
+                                `Total: $${draftOrder.totalPrice || 'N/A'}\n\n` +
+                                `Ahora obtengo tu link de pago...`;
+                            await guardarMensajeConversacion({
+                                conversacionId: conversationIdFinal,
+                                agenteId: targetID,
+                                role: 'assistant',
+                                content: respuestaIA,
+                                metadata: { canal, action: actionPayload.action, origen: 'ia', draftOrderId: draftOrder.id }
+                            });
+                            await actualizarResumenConversacion({ conversacionId: conversationIdFinal, ultimoMensaje: respuestaIA, ultimoRole: 'assistant', requiereAtencion: false });
+                            return {
+                                statusCode: 200,
+                                headers: { ...headersCORS, 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ respuesta: respuestaIA, conversationId: conversationIdFinal, draftOrderId: draftOrder.id })
+                            };
+                        }
+                    } else if (actionPayload.action === 'SHOPIFY_GET_CHECKOUT_URL') {
+                        const checkoutData = data?.draftOrderFetch?.invoiceUrl || data?.invoiceUrl || data?.checkoutUrl || data;
+                        if (!checkoutData) {
+                            respuestaIA = "No pude obtener el link de pago. Verifica la orden e intenta de nuevo.";
+                        } else {
+                            respuestaIA = `💳 Link de pago listo\n\n` +
+                                `${checkoutData}\n\n` +
+                                `Haz clic en el link para completar tu pago de forma segura en Shopify.`;
                         }
                     }
 
