@@ -264,6 +264,80 @@ async function guardarMensajeMediaEntrante({ conversacion, agenteId, contenido, 
   return data?.id || null;
 }
 
+// Descarga/cachea CUALQUIER media (imagen, documento, audio, video, sticker)
+// desde Meta UNA sola vez y lo guarda en Supabase Storage.
+// Retorna { imageUrl, cached } o null si no se pudo obtener el media.
+async function obtenerOCrearCacheMedia({ agenteId, conversacion, contenido, mensajeGuardado, rawMessage, from, accessToken }) {
+  const { data: cacheMsg } = await supabase
+    .from('mensajes_conversacion')
+    .select('metadata')
+    .eq('conversacion_id', conversacion.id)
+    .contains('metadata', { media_id: contenido.media_id })
+    .limit(1)
+    .maybeSingle();
+
+  const cachedPath = cacheMsg?.metadata?.storage_path;
+  const cachedUrl = cacheMsg?.metadata?.public_url;
+
+  if (cachedUrl) {
+    console.log('[WhatsApp media] cache HIT (public_url):', contenido.media_id);
+    return { imageUrl: cachedUrl, cached: true };
+  }
+
+  if (cachedPath) {
+    console.log('[WhatsApp media] cache HIT (storage_path):', contenido.media_id);
+    const cached = await descargarDesdeStorage(cachedPath);
+    return {
+      imageUrl: `data:${cached.contentType};base64,${cached.buffer.toString('base64')}`,
+      cached: true
+    };
+  }
+
+  console.log('[WhatsApp media] cache MISS, descargando de Meta:', contenido.media_id);
+  const metaUrl = await getMetaMediaUrl(contenido.media_id, accessToken);
+  const downloaded = await downloadMetaMedia(metaUrl.url, accessToken);
+
+  const subida = await subirMedia({
+    agenteId,
+    messageId: mensajeGuardado,
+    mediaId: contenido.media_id,
+    buffer: downloaded.buffer,
+    contentType: downloaded.contentType,
+    filename: contenido.filename
+  });
+
+  if (!subida.ok) {
+    console.warn('[WhatsApp media] No se pudo cachear en storage:', subida.error);
+    return {
+      imageUrl: `data:${downloaded.contentType};base64,${downloaded.buffer.toString('base64')}`,
+      cached: false
+    };
+  }
+
+  console.log('[WhatsApp media] media cacheado en storage:', subida.storage_path);
+
+  await supabase
+    .from('mensajes_conversacion')
+    .update({
+      metadata: {
+        origen: 'cliente',
+        tipo: contenido.type,
+        media_id: contenido.media_id,
+        mime_type: contenido.mime_type,
+        filename: contenido.filename,
+        caption: contenido.caption,
+        whatsapp_message_id: rawMessage?.id || null,
+        from: from || null,
+        timestamp: rawMessage?.timestamp || null,
+        storage_path: subida.storage_path,
+        public_url: subida.public_url
+      }
+    })
+    .eq('id', mensajeGuardado);
+
+  return { imageUrl: subida.public_url, cached: false };
+}
+
 exports.handler = async (event) => {
   try {
     // 1. Verificación inicial de Meta
@@ -382,101 +456,54 @@ exports.handler = async (event) => {
         conversationId: conversacion.id
       });
 
-      // Si es imagen, descargar y enviar a la IA para análisis
-      if (contenido.type === 'image' && contenido.media_id && waConnection.access_token) {
+      // Cachear el media en Storage (todos los tipos) y analizar con IA solo imágenes.
+      if (contenido.media_id && waConnection.access_token) {
         try {
-          // Reutilizar caché: cada media se descarga de Meta una sola vez.
-          const { data: cacheMsg } = await supabase
-            .from('mensajes_conversacion')
-            .select('metadata')
-            .eq('conversacion_id', conversacion.id)
-            .contains('metadata', { media_id: contenido.media_id })
-            .limit(1)
-            .maybeSingle();
+          const cacheInfo = await obtenerOCrearCacheMedia({
+            agenteId,
+            conversacion,
+            contenido,
+            mensajeGuardado,
+            rawMessage: message,
+            from,
+            accessToken: waConnection.access_token
+          });
 
-          const cachedPath = cacheMsg?.metadata?.storage_path;
-          const cachedUrl = cacheMsg?.metadata?.public_url;
+          if (contenido.type === 'image' && cacheInfo?.imageUrl) {
+            const imagePrompt = contenido.caption || 'Describe esta imagen en detalle';
+            const chatEvent = {
+              httpMethod: 'POST',
+              headers: { 'Content-Type': 'application/json', 'origin': '' },
+              body: JSON.stringify({
+                prompt: imagePrompt,
+                agente_id: agenteId,
+                canal: 'whatsapp',
+                external_user_id: from,
+                image_url: cacheInfo.imageUrl
+              })
+            };
 
-          let imageUrl = null;
+            const chatResponse = await chatHandler(chatEvent);
+            const chatData = JSON.parse(chatResponse.body || '{}');
 
-          if (cachedUrl) {
-            imageUrl = cachedUrl;
-          } else if (cachedPath) {
-            const cached = await descargarDesdeStorage(cachedPath);
-            imageUrl = `data:${cached.contentType};base64,${cached.buffer.toString('base64')}`;
-          } else {
-            const metaUrl = await getMetaMediaUrl(contenido.media_id, waConnection.access_token);
-            const downloaded = await downloadMetaMedia(metaUrl.url, waConnection.access_token);
+            if (chatData.respuesta) {
+              await enviarWhatsapp({
+                to: from,
+                text: chatData.respuesta,
+                accessToken: waConnection.access_token,
+                phoneNumberId: waConnection.phone_number_id
+              });
 
-            const subida = await subirMedia({
-              agenteId,
-              messageId: mensajeGuardado,
-              mediaId: contenido.media_id,
-              buffer: downloaded.buffer,
-              contentType: downloaded.contentType,
-              filename: contenido.filename
-            });
-
-            if (subida.ok) {
-              imageUrl = subida.public_url;
-
-              await supabase
-                .from('mensajes_conversacion')
-                .update({
-                  metadata: {
-                    origen: 'cliente',
-                    tipo: contenido.type,
-                    media_id: contenido.media_id,
-                    mime_type: contenido.mime_type,
-                    filename: contenido.filename,
-                    caption: contenido.caption,
-                    whatsapp_message_id: message.id || null,
-                    from: from,
-                    timestamp: message.timestamp || null,
-                    storage_path: subida.storage_path,
-                    public_url: subida.public_url
-                  }
-                })
-                .eq('id', mensajeGuardado);
-            } else {
-              imageUrl = `data:${downloaded.contentType};base64,${downloaded.buffer.toString('base64')}`;
-              console.warn('[WhatsApp media] No se pudo cachear en storage:', subida.error);
+              await guardarMensajeSaliente({
+                conversacion,
+                agenteId,
+                text: chatData.respuesta,
+                origen: 'ia'
+              });
             }
           }
-
-          const imagePrompt = contenido.caption || 'Describe esta imagen en detalle';
-          const chatEvent = {
-            httpMethod: 'POST',
-            headers: { 'Content-Type': 'application/json', 'origin': '' },
-            body: JSON.stringify({
-              prompt: imagePrompt,
-              agente_id: agenteId,
-              canal: 'whatsapp',
-              external_user_id: from,
-              image_url: imageUrl
-            })
-          };
-
-          const chatResponse = await chatHandler(chatEvent);
-          const chatData = JSON.parse(chatResponse.body || '{}');
-
-          if (chatData.respuesta) {
-            await enviarWhatsapp({
-              to: from,
-              text: chatData.respuesta,
-              accessToken: waConnection.access_token,
-              phoneNumberId: waConnection.phone_number_id
-            });
-
-            await guardarMensajeSaliente({
-              conversacion,
-              agenteId,
-              text: chatData.respuesta,
-              origen: 'ia'
-            });
-          }
-        } catch (imgErr) {
-          console.error('Error procesando imagen con IA:', imgErr.message);
+        } catch (mediaErr) {
+          console.error('Error procesando media con IA:', mediaErr.message);
         }
       }
 

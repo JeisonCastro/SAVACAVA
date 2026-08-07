@@ -192,8 +192,10 @@ exports.handler = async (event) => {
     let downloaded = null;
 
     if (storagePath) {
+      console.log('get-whatsapp-media: cache HIT (storage_path) para media', mediaId);
       downloaded = await descargarDesdeStorage(storagePath);
     } else if (publicUrl) {
+      console.log('get-whatsapp-media: cache HIT (public_url) para media', mediaId);
       return jsonResponse(200, {
         ok: true,
         media_id: mediaId,
@@ -208,6 +210,7 @@ exports.handler = async (event) => {
         cached: true
       });
     } else {
+      console.log('get-whatsapp-media: cache MISS, descargando de Meta para media', mediaId);
       mediaMeta = await getMetaMediaUrl(mediaId, connection.access_token);
       downloaded = await downloadMetaMedia(mediaMeta.url, connection.access_token);
 

@@ -1,7 +1,8 @@
 const { supabase } = require('./supabase-admin');
 
 const BUCKET = 'whatsapp-media';
-const TAMANO_MAX = 25 * 1024 * 1024;
+const TAMANO_MAX = 50 * 1024 * 1024;
+const TAMANO_SUBIDA = 45 * 1024 * 1024;
 
 async function crearBucketSiNoExiste() {
   const { error } = await supabase.storage.createBucket(BUCKET, {
@@ -38,6 +39,10 @@ async function subirMedia({ agenteId, messageId, mediaId, buffer, contentType, f
     await crearBucketSiNoExiste();
   } catch (e) {
     return { ok: false, error: 'No se pudo asegurar el bucket: ' + e.message };
+  }
+
+  if (!buffer || buffer.length > TAMANO_SUBIDA) {
+    return { ok: false, error: `Media demasiado grande para cachear (${buffer ? buffer.length : 0} bytes)` };
   }
 
   const ext = extensionFromMime(contentType);

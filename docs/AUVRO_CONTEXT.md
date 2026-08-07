@@ -846,18 +846,17 @@ Con la app sin revisión/verificación comercial, los límites se agotan rápido
 
 ### Solución implementada
 1. Nuevo helper `netlify/functions/whatsapp-media-storage.js`:
-   - Crea bucket público `whatsapp-media` si no existe.
+   - Crea bucket público `whatsapp-media` si no existe (límite 50MB, se omiten archivos > 45MB).
    - `subirMedia(...)` sube el archivo a `whatsapp/{agente_id}/{message_id}-{media_id}.{ext}` y devuelve `storage_path` + `public_url`.
    - `descargarDesdeStorage(...)` lee el archivo desde el bucket.
-2. `whatsapp-webhook.js` (imagen entrante):
+2. `whatsapp-webhook.js` (media entrante):
    - `guardarMensajeMediaEntrante` ahora retorna el `id` del mensaje insertado.
-   - Antes de tocar Meta, busca si el `media_id` ya fue cacheado (`.contains('metadata', { media_id })`).
-   - Si no está cacheado: descarga de Meta UNA sola vez, sube a Storage y guarda `storage_path`/`public_url` en `metadata`.
-   - Envía a la IA la URL pública cacheada (OpenAI GPT-4o la consume directo). Si la subida falla, cae a data URL.
+   - Nuevo helper `obtenerOCrearCacheMedia`: cachea CUALQUIER media (imagen, documento, audio, video, sticker) — descarga de Meta UNA sola vez, sube a Storage y guarda `storage_path`/`public_url` en `metadata`. Con logs de cache hit/miss.
+   - Solo las imágenes se envían a la IA para análisis (usa la URL pública cacheada; fallback a data URL si la subida falla).
 3. `get-whatsapp-media.js` (dashboard):
    - Si el mensaje tiene `storage_path` → lee de Storage (sin Meta).
    - Si tiene `public_url` → responde directamente con la URL pública.
-   - Si no tiene caché → descarga de Meta y cachea en Storage (cache-on-read) para no volver a golpear a Meta.
+   - Si no tiene caché → descarga de Meta y cachea en Storage (cache-on-read) para no volver a golpear a Meta. Logs de hit/miss.
 
 ### Archivos modificados
 - `netlify/functions/whatsapp-media-storage.js` (NUEVO)
