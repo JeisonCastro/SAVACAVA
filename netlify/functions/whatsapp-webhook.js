@@ -1,4 +1,5 @@
 const { supabase } = require('./supabase-admin');
+const { subirMedia, descargarDesdeStorage } = require('./whatsapp-media-storage');
 const chatHandler = require('./chat.js').handler;
 
 const VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN || 'jeison_digital_verify_token';
@@ -222,7 +223,7 @@ async function obtenerOCrearConversacion({ agenteId, userId, canal, externalUser
 }
 
 async function guardarMensajeMediaEntrante({ conversacion, agenteId, contenido, rawMessage }) {
-  await supabase
+  const { data, error } = await supabase
     .from('mensajes_conversacion')
     .insert([{
       conversacion_id: conversacion.id,
@@ -241,7 +242,14 @@ async function guardarMensajeMediaEntrante({ conversacion, agenteId, contenido, 
         from: rawMessage.from || null,
         timestamp: rawMessage.timestamp || null
       }
-    }]);
+    }])
+    .select('id')
+    .single();
+
+  if (error) {
+    console.error('Error guardando media entrante:', error);
+    return null;
+  }
 
   await supabase
     .from('conversaciones')
@@ -252,6 +260,8 @@ async function guardarMensajeMediaEntrante({ conversacion, agenteId, contenido, 
       updated_at: new Date().toISOString()
     })
     .eq('id', conversacion.id);
+
+  return data?.id || null;
 }
 
 exports.handler = async (event) => {
@@ -357,7 +367,7 @@ exports.handler = async (event) => {
         externalUserId: from
       });
 
-      await guardarMensajeMediaEntrante({
+      const mensajeGuardado = await guardarMensajeMediaEntrante({
         conversacion,
         agenteId,
         contenido,
@@ -375,9 +385,64 @@ exports.handler = async (event) => {
       // Si es imagen, descargar y enviar a la IA para análisis
       if (contenido.type === 'image' && contenido.media_id && waConnection.access_token) {
         try {
-          const metaUrl = await getMetaMediaUrl(contenido.media_id, waConnection.access_token);
-          const downloaded = await downloadMetaMedia(metaUrl.url, waConnection.access_token);
-          const imageDataUrl = `data:${downloaded.contentType};base64,${downloaded.buffer.toString('base64')}`;
+          // Reutilizar caché: cada media se descarga de Meta una sola vez.
+          const { data: cacheMsg } = await supabase
+            .from('mensajes_conversacion')
+            .select('metadata')
+            .eq('conversacion_id', conversacion.id)
+            .contains('metadata', { media_id: contenido.media_id })
+            .limit(1)
+            .maybeSingle();
+
+          const cachedPath = cacheMsg?.metadata?.storage_path;
+          const cachedUrl = cacheMsg?.metadata?.public_url;
+
+          let imageUrl = null;
+
+          if (cachedUrl) {
+            imageUrl = cachedUrl;
+          } else if (cachedPath) {
+            const cached = await descargarDesdeStorage(cachedPath);
+            imageUrl = `data:${cached.contentType};base64,${cached.buffer.toString('base64')}`;
+          } else {
+            const metaUrl = await getMetaMediaUrl(contenido.media_id, waConnection.access_token);
+            const downloaded = await downloadMetaMedia(metaUrl.url, waConnection.access_token);
+
+            const subida = await subirMedia({
+              agenteId,
+              messageId: mensajeGuardado,
+              mediaId: contenido.media_id,
+              buffer: downloaded.buffer,
+              contentType: downloaded.contentType,
+              filename: contenido.filename
+            });
+
+            if (subida.ok) {
+              imageUrl = subida.public_url;
+
+              await supabase
+                .from('mensajes_conversacion')
+                .update({
+                  metadata: {
+                    origen: 'cliente',
+                    tipo: contenido.type,
+                    media_id: contenido.media_id,
+                    mime_type: contenido.mime_type,
+                    filename: contenido.filename,
+                    caption: contenido.caption,
+                    whatsapp_message_id: message.id || null,
+                    from: from,
+                    timestamp: message.timestamp || null,
+                    storage_path: subida.storage_path,
+                    public_url: subida.public_url
+                  }
+                })
+                .eq('id', mensajeGuardado);
+            } else {
+              imageUrl = `data:${downloaded.contentType};base64,${downloaded.buffer.toString('base64')}`;
+              console.warn('[WhatsApp media] No se pudo cachear en storage:', subida.error);
+            }
+          }
 
           const imagePrompt = contenido.caption || 'Describe esta imagen en detalle';
           const chatEvent = {
@@ -388,7 +453,7 @@ exports.handler = async (event) => {
               agente_id: agenteId,
               canal: 'whatsapp',
               external_user_id: from,
-              image_url: imageDataUrl
+              image_url: imageUrl
             })
           };
 

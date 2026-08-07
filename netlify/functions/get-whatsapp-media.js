@@ -1,4 +1,5 @@
 const { supabase } = require('./supabase-admin');
+const { subirMedia, descargarDesdeStorage } = require('./whatsapp-media-storage');
 
 const GRAPH_VERSION = process.env.WHATSAPP_GRAPH_VERSION || 'v19.0';
 
@@ -184,10 +185,55 @@ exports.handler = async (event) => {
     const connection = await getWhatsappConnection(conversation.agente_id, user.id);
 
     const meta = message.metadata || {};
-    const mediaMeta = await getMetaMediaUrl(mediaId, connection.access_token);
-    const downloaded = await downloadMetaMedia(mediaMeta.url, connection.access_token);
+    const storagePath = meta.storage_path;
+    const publicUrl = meta.public_url;
 
-    const mimeType = extractMimeFromMetadata(meta) || mediaMeta.mime_type || downloaded.contentType || 'application/octet-stream';
+    let mediaMeta = null;
+    let downloaded = null;
+
+    if (storagePath) {
+      downloaded = await descargarDesdeStorage(storagePath);
+    } else if (publicUrl) {
+      return jsonResponse(200, {
+        ok: true,
+        media_id: mediaId,
+        mime_type: extractMimeFromMetadata(meta) || null,
+        filename: sanitizeFilename(
+          (extractFilenameFromMetadata(meta, mediaId).includes('.')
+            ? extractFilenameFromMetadata(meta, mediaId)
+            : `${extractFilenameFromMetadata(meta, mediaId)}.${extensionFromMime(extractMimeFromMetadata(meta))}`)
+        ),
+        size: null,
+        data_url: publicUrl,
+        cached: true
+      });
+    } else {
+      mediaMeta = await getMetaMediaUrl(mediaId, connection.access_token);
+      downloaded = await downloadMetaMedia(mediaMeta.url, connection.access_token);
+
+      // Cache-on-read: guardar en storage para no volver a golpear a Meta.
+      const subida = await subirMedia({
+        agenteId: conversation.agente_id,
+        messageId: message.id,
+        mediaId,
+        buffer: downloaded.buffer,
+        contentType: downloaded.contentType,
+        filename: meta.filename || `whatsapp-media-${mediaId}`
+      });
+
+      if (subida.ok) {
+        await supabase
+          .from('mensajes_conversacion')
+          .update({
+            metadata: { ...meta, storage_path: subida.storage_path, public_url: subida.public_url }
+          })
+          .eq('id', message.id);
+      } else {
+        console.warn('get-whatsapp-media: no se pudo cachear en storage:', subida.error);
+      }
+    }
+
+    const mimeType = extractMimeFromMetadata(meta) || mediaMeta?.mime_type || downloaded.contentType || 'application/octet-stream';
     const baseName = extractFilenameFromMetadata(meta, mediaId);
     const filename = sanitizeFilename(baseName.includes('.') ? baseName : `${baseName}.${extensionFromMime(mimeType)}`);
 

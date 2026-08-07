@@ -320,6 +320,162 @@ Si no → valida contra agente.dominios_permitidos.
 
 Esto garantiza que los mensajes de WhatsApp nunca son bloqueados por permisos de dominio.
 
+### chat.js — Lógica Completa del Procesamiento
+
+`chat.js` es el cerebro del sistema: recibe TODO mensaje (widget web y WhatsApp de texto), valida seguridad, gestiona la conversación, decide si usa herramientas, llama al modelo de IA y registra el consumo.
+
+#### 1. Entrada y validación básica
+
+- Método HTTP: `POST` (con `OPTIONS` para CORS).
+- Campos del body:
+  - `prompt` (obligatorio) — texto del usuario.
+  - `agente_id` — ID del agente (si falta, usa `AGENTE_MAESTRO_ID`).
+  - `historial` — historial opcional enviado por el frontend (el backend lo ignora; carga desde BD).
+  - `conversation_id` — ID de conversación existente (UUID).
+  - `canal` — `web` o `whatsapp`.
+  - `external_user_id` — identificador del visitante (web) o número de teléfono (WhatsApp).
+  - `image_url` — URL de imagen si el usuario envió una.
+
+#### 2. Búsqueda del agente
+
+Se consulta `agentes_ia` por `id`. Si no existe → `404 "Agente no encontrado"`.
+
+#### 3. Validación de dominio (seguridad)
+
+Se evalúa el header `Origin`:
+
+- `esDashboard` → origin contiene `auvro.netlify.app` (panel administrativo).
+- `esWhatsapp` → `canal === "whatsapp"` (mensajes desde WhatsApp Cloud API).
+- `esLocal` → origin contiene `localhost` o `127.0.0.1` (desarrollo local).
+
+Si ninguno aplica (canal web externo):
+- Si el agente no tiene `dominios_permitidos` → `403 "no tiene dominios configurados"`.
+- Si el dominio del origin no está en `dominios_permitidos` → `403 "dominio no autorizado"`.
+
+Esto garantiza que un widget copiado a un dominio no autorizado es bloqueado en el backend.
+
+#### 4. Resolución de la conversación
+
+```
+externalUserIdFinal = external_user_id || conversation_id || `${canal}_${targetID}_anon`
+```
+
+`obtenerOCrearConversacion`:
+- Busca en `conversaciones` por `agente_id + canal`, filtrando por `id` (si se pasa un `conversation_id` UUID válido) o por `external_user_id`.
+- Usa `.limit(1)` ordenado por `updated_at DESC` para evitar el bug de duplicados (antes con `maybeSingle` fallaba si existían filas duplicadas y creaba una conversación nueva en cada mensaje).
+- Si no encuentra, crea una conversación nueva con `estado='ia_activa'`, `modo_humano=false`, `requiere_atencion=false`.
+
+#### 5. Guardar mensaje del usuario
+
+- Inserta en `mensajes_conversacion` con `role='user'`, metadata `{ canal, origen: 'cliente', image_url? }`.
+- Actualiza resumen en `conversaciones` (`ultimo_mensaje`, `ultimo_role='user'`).
+- `requiere_atencion` se marca `true` si `debeEscalarAHumano(prompt)` detecta palabras clave (humano, asesor, persona real, queja, reclamo, no entiendes, etc.).
+
+#### 6. Push notification automática
+
+`dispararPush` envía notificación al dueño del agente para TODOS los mensajes entrantes (web y WhatsApp), llamando internamente a la función `send-push`.
+
+#### 7. Verificación de modo humano
+
+Si la conversación está en `modo_humano === true` o `estado === 'modo_humano'`:
+- Marca `requiere_atencion=true` y retorna respuesta fija: "Un asesor humano continuará la conversación" con `skipped=true`. La IA NO participa.
+
+#### 8. Carga paralela de contexto
+
+`Promise.all` carga en paralelo:
+- Historial de los últimos 8 mensajes (`mensajes_conversacion`).
+- `token_balance` del usuario (`perfiles`).
+- Tools habilitadas del agente (`agente_tools` con `enabled=true`).
+- Conexiones de Composio del usuario (`composio_connections`).
+- Acción pendiente activa (`pending_tool_actions` con `status='pending'`, no expirada, más reciente).
+
+#### 9. Deduplicación del historial
+
+Se elimina el último mensaje del historial si coincide con el prompt actual (evita duplicados porque el mensaje del usuario ya se guardó en el paso 5).
+
+#### 10. Verificación de saldo
+
+Si `saldoActual < 100` → `402 "Saldo insuficiente"`.
+
+#### 11. Filtrado de herramientas disponibles
+
+`toolsDisponibles` = tools habilitadas del agente que además tienen su toolkit conectado en Composio.
+
+#### 12. Flujo de acciones pendientes (workflows)
+
+`classifyMessageRoute({ pendingAction, text })` decide la ruta:
+- Sin acción pendiente → `chat`.
+- Cancelación explícita → `workflow_confirm`.
+- Confirmación explícita ("sí", "ok", "dale", "adelante"...) → `workflow_confirm`.
+- Datos del workflow (fechas, correos, nombres...) → `workflow_collect`.
+
+`manejarPendingAction`:
+- **workflow_confirm + cancelación** → marca la acción `cancelled` y responde "cancelé la acción pendiente".
+- **workflow_confirm + confirmación** → ejecuta la acción:
+  - Calendar → `ejecutarCalendar` (crea evento vía Composio, agrega link de Meet).
+  - Gmail → `ejecutarGmail` (envía correo vía Composio).
+- **workflow_collect** → enriquece el payload con los datos del mensaje, calcula campos faltantes (`getMissingFields`) y pregunta por ellos (`buildMissingFieldsQuestion`), o pide confirmación final.
+
+#### 13. Construcción del prompt de sistema
+
+```
+systemFinal = prompt_sistema + toolsDescription + REGLAS DE CONVERSACIÓN + CAPACIDADES
+```
+
+- Si NO es un saludo simple → agrega instrucción de responder directamente sin saludo base.
+- Si hay acción pendiente → agrega contexto de la acción (tipo + datos actuales) para que el modelo complete/corrija.
+- `construirToolsDescription` (de `tool-workflows.js`) inyecta la lista de herramientas disponibles y las reglas de JSON para cada una, con la fecha actual y "mañana" en zona horaria Colombia.
+
+#### 14. Llamada al modelo IA
+
+- **Sin imagen** → DeepSeek, modelo `deepseek-v4-flash`.
+- **Con imagen** → OpenAI GPT-4o (`gpt-4o`), enviando la imagen como contenido multimodal (`image_url`).
+- El prompt se trunca a 2000 caracteres (`truncarMensaje`).
+- Mensajes: `system` + últimos 8 del historial (deduplicado) + mensaje del usuario.
+- `temperature: 0.2`, `max_tokens: 1024`, timeout dinámico (5–9s según longitud de input, con `AbortController`).
+
+#### 15. Parseo de la respuesta del modelo
+
+`limpiarTextoIA` quita fences de markdown. `parseActionPayload` intenta:
+1. `JSON.parse` directo.
+2. Quitar fences ` ```json ` y parsear.
+3. Extraer el primer `{...}` del texto y parsearlo.
+
+Si el modelo devolvió JSON de acción (ej: `{"action": "GMAIL_SEND_EMAIL", "data": {...}}`) → se procesa la herramienta. Si devolvió texto normal → se responde tal cual al usuario.
+
+#### 16. Ejecución de herramientas (acciones)
+
+- **GOOGLECALENDAR_CREATE_EVENT** (collect_confirm_execute): valida que la tool esté habilitada → cancela pending de otra acción si existe → construye payload (enriquece desde texto, resuelve fecha con `resolverFecha`, suma 45 min de duración con `sumarMinutos`) → `crearOActualizarPending` → pregunta campos faltantes o pide confirmación con el resumen del evento.
+- **GMAIL_FETCH_EMAILS** (execute): verifica conexión Gmail → ejecuta tool vía Composio → formatea lista de correos (remitente, asunto, resumen).
+- **GMAIL_SEND_EMAIL** (collect_confirm_execute): igual que Calendar (pending + confirmación).
+- **GOOGLEDRIVE_FIND_FILE** (collect_execute): si faltan campos → pending + pregunta; si están completos → ejecuta directo (`ejecutarDriveDirecto`) y devuelve resultados SIN confirmación.
+- **SHOPIFY_*** (premium, con costo extra en tokens): verifica conexión (credenciales directas `shopify_store_url` + `access_token`, o Composio) → ejecuta vía GraphQL Admin API o Composio → formatea respuesta. `SHOPIFY_CREATE_DRAFT_ORDER` y `SHOPIFY_GET_CHECKOUT_URL` pueden retornar temprano tras crear la orden.
+
+Patrones de workflow (definidos en `tool-workflows.js`):
+- `execute` — se ejecuta directo (Fetch Emails, Shopify queries).
+- `collect_execute` — recolecta datos y ejecuta sin confirmación (Drive).
+- `collect_confirm_execute` — recolecta, muestra resumen, espera confirmación y ejecuta (Calendar, Enviar Email, Draft Order).
+
+#### 17. Registro de consumo
+
+`registrarConsumo`:
+- Calcula tokens: si la API reportó `usage`, usa `prompt_tokens + completion_tokens`; si no, estima `(longitud prompt_sistema + prompt + respuesta) / 4 + 10`, más tokens premium si aplica (ej: Shopify).
+- Actualiza `perfiles.token_balance` (saldo − tokens usados).
+- Llama RPC `increment_agent_consumption(agent_id, tokens)`.
+- Inserta registro en `logs_consumo`.
+
+#### 18. Guardar respuesta y finalizar
+
+- Guarda mensaje `role='assistant'` con metadata `{ canal, origen: 'ia', action? }`.
+- Actualiza resumen de conversación (`ultimo_role='assistant'`, `requiere_atencion=false`).
+- Retorna `{ respuesta, tokens_consumidos, conversation_id }` con status 200.
+
+#### 19. Manejo de errores
+
+- `AbortError` → `500 "La IA tardó demasiado en responder"`.
+- Otros errores → `500` con el mensaje del error.
+- CORS: `Access-Control-Allow-Origin: *` en todas las respuestas.
+
 ### whatsapp-webhook.js
 
 Endpoint receptor de webhooks de Meta (WhatsApp Cloud API).
@@ -517,7 +673,8 @@ Deploy.
 - Configuración por cliente.
 
 #### Media WhatsApp
-- Resolver permisos de Graph API para lectura de medios recibidos (error: "Object with ID does not exist, cannot be loaded due to missing permissions"). Requiere permiso `whatsapp_business_messaging` en Meta Developer Dashboard.
+- ✅ Caché de medios implementada (7 Ago 2026): cada media se descarga de Meta 1 sola vez y se guarda en Supabase Storage (bucket `whatsapp-media`). El dashboard y el análisis con IA leen desde Storage. Ver changelog.
+- Pendiente: subir límites de tasa de la Graph API completando Business Verification + permiso `whatsapp_business_messaging` en Meta Developer Dashboard (necesario para la primera descarga y para apps sin revisión).
 
 ---
 
@@ -674,6 +831,43 @@ Multiusuario.
 ---
 
 # Changelog de Cambios Técnicos
+
+## 7 Ago 2026 — Fix: Caché de medios WhatsApp en Supabase Storage (rate limit #4 de Meta)
+
+### Problema
+La Graph API de Meta devolvía `Error: (#4) Application request limit reached` al descargar medios.
+Causa: cada imagen se descargaba de Meta varias veces sin caché:
+- `whatsapp-webhook.js` descargaba el media en cada llegada para enviarlo a la IA.
+- `get-whatsapp-media.js` descargaba el media en cada visualización del dashboard.
+- El `mediaCache` del navegador solo vivía en memoria.
+
+Con la app sin revisión/verificación comercial, los límites se agotan rápido y el flujo
+"imagen → IA → crear evento" fallaba porque la imagen nunca llegaba al modelo.
+
+### Solución implementada
+1. Nuevo helper `netlify/functions/whatsapp-media-storage.js`:
+   - Crea bucket público `whatsapp-media` si no existe.
+   - `subirMedia(...)` sube el archivo a `whatsapp/{agente_id}/{message_id}-{media_id}.{ext}` y devuelve `storage_path` + `public_url`.
+   - `descargarDesdeStorage(...)` lee el archivo desde el bucket.
+2. `whatsapp-webhook.js` (imagen entrante):
+   - `guardarMensajeMediaEntrante` ahora retorna el `id` del mensaje insertado.
+   - Antes de tocar Meta, busca si el `media_id` ya fue cacheado (`.contains('metadata', { media_id })`).
+   - Si no está cacheado: descarga de Meta UNA sola vez, sube a Storage y guarda `storage_path`/`public_url` en `metadata`.
+   - Envía a la IA la URL pública cacheada (OpenAI GPT-4o la consume directo). Si la subida falla, cae a data URL.
+3. `get-whatsapp-media.js` (dashboard):
+   - Si el mensaje tiene `storage_path` → lee de Storage (sin Meta).
+   - Si tiene `public_url` → responde directamente con la URL pública.
+   - Si no tiene caché → descarga de Meta y cachea en Storage (cache-on-read) para no volver a golpear a Meta.
+
+### Archivos modificados
+- `netlify/functions/whatsapp-media-storage.js` (NUEVO)
+- `netlify/functions/whatsapp-webhook.js`
+- `netlify/functions/get-whatsapp-media.js`
+
+### Notas
+- El bucket `whatsapp-media` es público (necesario para que OpenAI acceda a la URL en el análisis de imágenes).
+- Sigue pendiente completar Business Verification y permisos en Meta para subir los límites de tasa.
+- La imagen se descarga de Meta exactamente 1 vez por media; cualquier lectura posterior sale de Storage.
 
 ## 18 Jul 2026 — Fix crítico: 502 Bad Gateway en funciones WhatsApp
 
