@@ -18,6 +18,19 @@ const TOKEN_PLANES = {
     '1000000': { tokens: 1000000, montoCents: 3500000, concepto: 'Recarga 1M tokens' }
 };
 
+// ── Tarifas Wompi (Plan Avanzado): 2,65% + $700 + IVA por transaccion ──
+// Se trasladan al cliente: el monto cobrado deja al comercio el precio base neto.
+const FEE_RATE = 0.0265;
+const FEE_FIJO = 700;
+const FEE_IVA = 0.19;
+
+function calcularMontoBruto(baseCents) {
+    const ivaFactor = 1 + FEE_IVA;
+    const denom = 1 - FEE_RATE * ivaFactor;
+    const bruto = (baseCents + FEE_FIJO * ivaFactor) / denom;
+    return Math.ceil(Math.ceil(bruto) / 100) * 100;
+}
+
 exports.handler = async (event) => {
     if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers, body: '' };
     if (event.httpMethod !== 'POST') {
@@ -46,8 +59,8 @@ exports.handler = async (event) => {
         if (tipo === 'tokens') {
             const p = TOKEN_PLANES[String(producto)];
             if (!p) return { statusCode: 400, headers, body: JSON.stringify({ error: 'Paquete de tokens no válido.' }) };
-            montoCents = p.montoCents;
-            concepto = p.concepto;
+            montoCents = calcularMontoBruto(p.montoCents);
+            concepto = `${p.concepto} (incluye tarifa de procesamiento)`;
             tokens = p.tokens;
         } else if (tipo === 'plan') {
             const { data: plan } = await supabase
@@ -56,8 +69,8 @@ exports.handler = async (event) => {
                 .eq('id', producto)
                 .maybeSingle();
             if (!plan) return { statusCode: 400, headers, body: JSON.stringify({ error: 'Plan no válido.' }) };
-            montoCents = Math.round((plan.precio || 0) * 100);
-            concepto = `Suscripcion plan ${plan.nombre}`;
+            montoCents = calcularMontoBruto(Math.round((plan.precio || 0) * 100));
+            concepto = `Suscripcion plan ${plan.nombre} (incluye tarifa de procesamiento)`;
             planId = plan.id;
         } else {
             return { statusCode: 400, headers, body: JSON.stringify({ error: 'Tipo de pago no válido.' }) };
