@@ -8,8 +8,8 @@ function getByPath(obj, path) {
     return path.split('.').reduce((acc, k) => (acc == null ? acc : acc[k]), obj);
 }
 
-function verificarFirma(payload, headerChecksum) {
-    const secret = process.env.WOMPI_EVENTS_SECRET;
+function verificarFirma(payload, headerChecksum, secretOverride) {
+    const secret = secretOverride || process.env.WOMPI_EVENTS_SECRET;
     if (!secret) return false;
 
     const sig = payload.signature;
@@ -52,11 +52,6 @@ exports.handler = async (event) => {
 
         const headerChecksum = event.headers['x-event-checksum'] || '';
 
-        if (!verificarFirma(payload, headerChecksum)) {
-            console.warn('Webhook Wompi con firma inválida');
-            return { statusCode: 401, headers, body: JSON.stringify({ ok: false, error: 'Firma inválida' }) };
-        }
-
         if (payload.event !== 'transaction.updated') {
             return { statusCode: 200, headers, body: JSON.stringify({ ok: true, ignorado: true }) };
         }
@@ -66,10 +61,8 @@ exports.handler = async (event) => {
             return { statusCode: 200, headers, body: JSON.stringify({ ok: true, ignorado: true }) };
         }
 
-        if (transaction.status !== 'APPROVED') {
-            return { statusCode: 200, headers, body: JSON.stringify({ ok: true, ignorado: true, status: transaction.status }) };
-        }
-
+        // Buscar el intento de pago por su payment_link_id: necesario para saber
+        // con qué secret verificar (plataforma vs vendedor en ventas CRM).
         const { data: pago } = await supabase
             .from('pagos')
             .select('*')
@@ -79,6 +72,27 @@ exports.handler = async (event) => {
         if (!pago) {
             console.warn('Intento de pago no encontrado para link:', transaction.payment_link_id);
             return { statusCode: 200, headers, body: JSON.stringify({ ok: true, ignorado: 'sin_intento' }) };
+        }
+
+        // Para ventas CRM la firma usa el events secret DEL VENDEDOR.
+        let secret = process.env.WOMPI_EVENTS_SECRET;
+        if (pago.tipo === 'venta') {
+            const { data: config } = await supabase
+                .from('crm_config')
+                .select('wompi_events_secret')
+                .eq('user_id', pago.user_id)
+                .maybeSingle();
+            if (config?.wompi_events_secret) secret = config.wompi_events_secret;
+        }
+
+        const firmoConSecret = verificarFirma(payload, headerChecksum, secret);
+        if (!firmoConSecret) {
+            console.warn('Webhook Wompi con firma inválida');
+            return { statusCode: 401, headers, body: JSON.stringify({ ok: false, error: 'Firma inválida' }) };
+        }
+
+        if (transaction.status !== 'APPROVED') {
+            return { statusCode: 200, headers, body: JSON.stringify({ ok: true, ignorado: true, status: transaction.status }) };
         }
 
         if (pago.estado === 'aprobado') {
@@ -112,6 +126,14 @@ exports.handler = async (event) => {
                 })
                 .eq('id', pago.user_id);
             if (error) throw new Error('Error asignando plan: ' + error.message);
+        } else if (pago.tipo === 'venta') {
+            if (pago.lead_id) {
+                const { error: leadErr } = await supabase.rpc('cerrar_lead_venta', {
+                    p_lead_id: pago.lead_id,
+                    p_valor_cents: pago.monto_cents
+                });
+                if (leadErr) throw new Error('Error cerrando lead: ' + leadErr.message);
+            }
         }
 
         const { error: upError } = await supabase

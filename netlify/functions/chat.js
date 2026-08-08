@@ -12,6 +12,13 @@ const {
     enrichEmailPayloadFromText,
     enrichDrivePayloadFromText
 } = require('./tool-workflows');
+const {
+    obtenerConfigCRM,
+    construirTextoCatalogo,
+    obtenerOCrearLead,
+    crearPaymentLinkVenta,
+    extraerDatosLead
+} = require('./crm-helper');
 
 // ── HELPERS DE OPTIMIZACIÓN ─────────────────────────────────────────────────
 
@@ -1062,13 +1069,15 @@ exports.handler = async (event) => {
             perfilResult,
             agentToolsResult,
             userConnectionsResult,
-            pendingActionResult
+            pendingActionResult,
+            crmConfigResult
         ] = await Promise.all([
             cargarHistorialConversacion(conversationIdFinal, 8),
             supabase.from('perfiles').select('token_balance').eq('id', agente.user_id).single(),
             supabase.from('agente_tools').select('tool_key, toolkit, enabled').eq('agente_id', targetID).eq('enabled', true),
             supabase.from('composio_connections').select('toolkit, composio_entity_id, connected_at, shopify_store_url, access_token').eq('user_id', agente.user_id),
-            supabase.from('pending_tool_actions').select('*').eq('user_id', agente.user_id).eq('agente_id', targetID).eq('conversation_id', conversationIdFinal).eq('status', 'pending').gte('expires_at', new Date().toISOString()).order('created_at', { ascending: false }).limit(1).maybeSingle()
+            supabase.from('pending_tool_actions').select('*').eq('user_id', agente.user_id).eq('agente_id', targetID).eq('conversation_id', conversationIdFinal).eq('status', 'pending').gte('expires_at', new Date().toISOString()).order('created_at', { ascending: false }).limit(1).maybeSingle(),
+            agente.crm_activo ? obtenerConfigCRM(agente.user_id) : Promise.resolve(null)
         ]);
 
         const historialSinDuplicado = (historialDB || []).filter(
@@ -1107,6 +1116,10 @@ exports.handler = async (event) => {
         console.log("Tools disponibles:", toolsDisponibles.map(t => t.tool_key));
 
         const { data: pendingAction } = pendingActionResult;
+
+        const crmConfig = crmConfigResult || null;
+        const crmActivo = agente.crm_activo && crmConfig?.crm_activo === true;
+        const catalogoCRM = crmActivo && Array.isArray(crmConfig.catalogo) ? crmConfig.catalogo : [];
 
         console.log("Pending action:", pendingAction ? pendingAction.action : 'ninguno');
 
@@ -1173,6 +1186,46 @@ CAPACIDADES:
 INSTRUCCIÓN ADICIONAL:
 - El mensaje actual NO es un saludo simple. No uses el saludo base. Responde directamente a lo que el usuario pidió.
 `;
+        }
+
+        if (crmActivo) {
+            const camposTexto = (crmConfig.campos_captura && crmConfig.campos_captura.length)
+                ? crmConfig.campos_captura.join(', ')
+                : 'nombre, telefono, email, interes, preferencias';
+            systemFinal += `
+
+## CRM (obligatorio): CAPTURA DE DATOS DEL CLIENTE
+Eres el primer punto de contacto del negocio y DEBES capturar datos del cliente para el CRM.
+- Pide de forma natural (sin interrogatorio) estos campos: ${camposTexto}.
+- Al inicio de la conversación preséntate y pide el nombre. Luego, si aplica, el teléfono/correo.
+- Toma nota mental de intereses y preferencias y úsalos para recomendar.
+- Si el cliente muestra intención de compra, avanza el flujo hacia el cierre (precio, disponibilidad, forma de pago).
+- No inventes datos ni presiones; sé natural y breve.
+`;
+            if (catalogoCRM.length > 0) {
+                const textoCatalogo = construirTextoCatalogo(crmConfig);
+                const tienePago = crmConfig.wompi_private_key;
+                systemFinal += `
+CATÁLOGO DE PRODUCTOS DEL VENDEDOR:
+${textoCatalogo}
+
+FLUJO DE VENTA:
+1. Ofrece productos del catálogo con su precio exacto.
+2. Confirma el producto y la cantidad con el cliente.
+3. Pide confirmación clara de compra ("si", "comprar", "confirmo").
+4. Si el cliente confirma la compra${tienePago ? ', usa la herramienta CRM_GENERAR_PAGO con el "id" del producto para generar el link de pago y envíalo al cliente.' : ', indica que enviarás el link de pago por WhatsApp (el vendedor lo gestiona).'}
+5. Recuérdale al cliente completar el pago para confirmar su pedido.
+`;
+                if (tienePago) {
+                    systemFinal += `
+### Para CRM_GENERAR_PAGO:
+- Úsala SOLO cuando el cliente confirmó claramente que compra (no antes).
+- "productoId": el id exacto del producto del catálogo.
+- Ejemplo: { "action": "CRM_GENERAR_PAGO", "data": { "productoId": "1" } }
+- Después de generarla, envía el link de pago al cliente y pídele completarlo.
+`;
+                }
+            }
         }
 
         if (pendingAction) {
@@ -1307,6 +1360,56 @@ INSTRUCCIONES:
 
         const actionPayload = parseActionPayload(respuestaIA);
         console.log("Action payload parseado:", actionPayload ? actionPayload.action : 'null');
+
+        // ── CRM: GENERAR PAGO EN CHAT (venta del catálogo del vendedor) ──
+        if (actionPayload?.action === 'CRM_GENERAR_PAGO') {
+            const productoId = String(actionPayload.data?.productoId || actionPayload.data?.producto || '');
+            const producto = catalogoCRM.find(p => String(p.id) === productoId);
+            if (!crmActivo) {
+                respuestaIA = "El CRM de ventas no está habilitado para este agente.";
+            } else if (!producto) {
+                const ids = catalogoCRM.map(p => p.id).join(', ');
+                respuestaIA = `Producto no encontrado en el catálogo. Productos disponibles: ${ids || 'ninguno'}.`;
+            } else {
+                const leadId = await obtenerOCrearLead({
+                    agente,
+                    canal,
+                    externalUserId: externalUserIdFinal,
+                    conversacionId: conversationIdFinal
+                });
+                const resultado = await crearPaymentLinkVenta({
+                    config: crmConfig,
+                    agente,
+                    leadId,
+                    conversacionId: conversationIdFinal,
+                    producto,
+                    canal,
+                    externalUserId: externalUserIdFinal
+                });
+                if (resultado.ok && resultado.url) {
+                    respuestaIA = `✅ Listo ${leadId ? '' : ''}, aquí tienes tu link de pago seguro:\n\n${resultado.url}\n\nCompleta el pago para confirmar tu ${producto.nombre}. Cuando esté aprobado, tu pedido queda confirmado automáticamente. ¡Gracias por tu compra!`;
+                } else {
+                    respuestaIA = `Lo siento, no pude generar el link de pago en este momento. ${resultado.error || 'Intenta de nuevo más tarde.'} Puedes escribirnos por WhatsApp para coordinar.`;
+                }
+            }
+            await guardarMensajeConversacion({
+                conversacionId: conversationIdFinal,
+                agenteId: targetID,
+                role: 'assistant',
+                content: respuestaIA,
+                metadata: { canal, action: 'CRM_GENERAR_PAGO', origen: 'ia' }
+            });
+            await actualizarResumenConversacion({ conversacionId: conversationIdFinal, ultimoMensaje: respuestaIA, ultimoRole: 'assistant', requiereAtencion: false });
+            return {
+                statusCode: 200,
+                headers,
+                body: JSON.stringify({
+                    respuesta: respuestaIA,
+                    tokens_consumidos: apiTokensUsados,
+                    conversation_id: conversationIdFinal
+                })
+            };
+        }
 
         if (actionPayload?.action === 'GOOGLECALENDAR_CREATE_EVENT') {
             if (!toolDisponible(toolsDisponibles, 'GOOGLECALENDAR_CREATE_EVENT')) {
@@ -1779,6 +1882,21 @@ INSTRUCCIONES:
             ultimoRole: 'assistant',
             requiereAtencion: false
         });
+
+        // ── CRM: captura post-chat (extracción de datos del lead) ──
+        // No bloquea la respuesta; si falla, el chat sigue normal.
+        if (agente.crm_activo) {
+            try {
+                await extraerDatosLead({
+                    agente,
+                    canal,
+                    externalUserId: externalUserIdFinal,
+                    conversacionId: conversationIdFinal
+                });
+            } catch (crmErr) {
+                console.error('Error capturando lead:', crmErr.message);
+            }
+        }
 
         return {
             statusCode: 200,

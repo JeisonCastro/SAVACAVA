@@ -4144,6 +4144,10 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
                 <i class="fas fa-comments"></i>
                 <span>Chats</span>
             </button>
+            <button type="button" class="mobile-bottom-item" id="bottom-crm" onclick="mostrarVista('crm')">
+                <i class="fas fa-users-gear"></i>
+                <span>CRM</span>
+            </button>
             <button type="button" class="mobile-bottom-item" id="bottom-tokens" onclick="mostrarVista('tokens')">
                 <i class="fas fa-bolt"></i>
                 <span>Tokens</span>
@@ -4196,6 +4200,8 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
                     <a onclick="mostrarVista('integraciones')"
                         id="nav-integraciones"><i class="fas fa-plug"></i>
                         Integraciones</a>
+                    <a onclick="mostrarVista('crm')" id="nav-crm"><i
+                            class="fas fa-users-gear"></i> CRM</a>
                     <a onclick="mostrarVista('config')" id="nav-config"><i
                             class="fas fa-sliders"></i> Configuracion</a>
                     <a onclick="mostrarVista('admin')" id="nav-admin" style="display:none"><i
@@ -4225,6 +4231,42 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
 
             <!-- ALERTA DE SUSCRIPCION -->
             <div id="plan-alert" style="display:none"></div>
+
+            <!-- VISTA CRM -->
+            <div class="view" id="view-crm">
+                <div class="topbar">
+                    <div>
+                        <h2 class="page-title">CRM de ventas</h2>
+                        <p class="page-sub">Leads capturados por tus agentes de IA, sea cual sea la fuente</p>
+                    </div>
+                    <div class="topbar-right">
+                        <button class="btn-main" onclick="abrirConfigCRM()"
+                            style="padding:.55rem 1rem;font-size:.82rem;border-radius:12px">
+                            <i class="fas fa-gear" style="margin-right:.35rem"></i> Configurar
+                        </button>
+                        <button class="btn-main btn-green" onclick="abrirLeadModal()"
+                            style="padding:.55rem 1rem;font-size:.82rem;border-radius:12px">
+                            <i class="fas fa-plus" style="margin-right:.35rem"></i> Nuevo lead
+                        </button>
+                    </div>
+                </div>
+
+                <div id="crm-banner" style="display:none"></div>
+
+                <div id="crm-stats" style="display:flex;gap:.75rem;flex-wrap:wrap;margin-bottom:1rem;"></div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-icon"><i class="fas fa-chart-simple"></i></div>
+                        <span class="card-title" id="crm-pipeline-title">Pipeline de ventas</span>
+                    </div>
+                    <div id="crm-pipeline" style="display:flex;gap:.9rem;overflow-x:auto;padding:.25rem 0 1rem 0;">
+                        <div class="empty-state" style="width:100%"><i class="fas fa-inbox"></i>
+                            <p style="margin-top:.5rem">Cargando CRM...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
             <!-- VISTA AGENTES -->
             <div class="view active" id="view-agentes">
@@ -4826,6 +4868,22 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
                 <div class="field"><label>Instrucciones</label><textarea
                         id="create-prompt" rows="8" style="min-height:160px;resize:vertical;"
                         placeholder="Eres un asistente que..."></textarea></div>
+                <div id="create-crm-block" style="margin-top:.25rem;padding-top:.5rem;border-top:1px solid var(--border2)">
+                    <label style="display:flex;align-items:center;gap:.6rem;cursor:pointer;font-family:'Inter',sans-serif;font-weight:600;font-size:.85rem;">
+                        <input type="checkbox" id="create-crm-activo" onchange="toggleCreateCampos()">
+                        Agente para CRM (captura leads y ventas automáticamente)
+                    </label>
+                    <div id="create-crm-campos" style="display:none;margin-top:.6rem;">
+                        <label class="crm-campo" style="display:block;font-size:.78rem;color:var(--muted);margin-bottom:.35rem;">Campos a capturar:</label>
+                        <div style="display:flex;flex-wrap:wrap;gap:.5rem;font-size:.78rem;">
+                            <label style="display:flex;align-items:center;gap:.3rem;cursor:pointer"><input type="checkbox" class="crm-campo-box" value="nombre" checked> Nombre</label>
+                            <label style="display:flex;align-items:center;gap:.3rem;cursor:pointer"><input type="checkbox" class="crm-campo-box" value="telefono" checked> Teléfono</label>
+                            <label style="display:flex;align-items:center;gap:.3rem;cursor:pointer"><input type="checkbox" class="crm-campo-box" value="email" checked> Email</label>
+                            <label style="display:flex;align-items:center;gap:.3rem;cursor:pointer"><input type="checkbox" class="crm-campo-box" value="interes" checked> Interés</label>
+                            <label style="display:flex;align-items:center;gap:.3rem;cursor:pointer"><input type="checkbox" class="crm-campo-box" value="preferencias" checked> Preferencias</label>
+                        </div>
+                    </div>
+                </div>
                 <div class="loading-dots" id="create-loading"><span
                         class="loading-dot"></span><span
                         class="loading-dot"></span><span
@@ -4837,6 +4895,101 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
                     <button class="btn-main"
                         onclick="cerrarCrearAgente()"
                         style="background:var(--red)">Cancelar</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- CRM CONFIG MODAL -->
+        <div id="crm-config-modal"
+            style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:1001;align-items:center;justify-content:center;">
+            <div class="card" style="width:760px;max-width:94%;max-height:92vh;overflow-y:auto;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+                    <h3 class="card-title" style="margin-bottom:0;">Configuracion del CRM</h3>
+                    <button onclick="cerrarConfigCRM()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1rem;"><i class="fas fa-times"></i></button>
+                </div>
+
+                <label style="display:flex;align-items:center;gap:.6rem;cursor:pointer;font-family:'Inter',sans-serif;font-weight:700;font-size:.85rem;margin-bottom:1rem;">
+                    <input type="checkbox" id="cfg-crm-activo"> CRM activo (captura leads en todos tus canales)
+                </label>
+
+                <div class="field">
+                    <label>Campos a capturar</label>
+                    <div style="display:flex;flex-wrap:wrap;gap:.6rem;font-size:.8rem;">
+                        <label style="display:flex;align-items:center;gap:.3rem;cursor:pointer"><input type="checkbox" class="cfg-campo-box" value="nombre"> Nombre</label>
+                        <label style="display:flex;align-items:center;gap:.3rem;cursor:pointer"><input type="checkbox" class="cfg-campo-box" value="telefono"> Teléfono</label>
+                        <label style="display:flex;align-items:center;gap:.3rem;cursor:pointer"><input type="checkbox" class="cfg-campo-box" value="email"> Email</label>
+                        <label style="display:flex;align-items:center;gap:.3rem;cursor:pointer"><input type="checkbox" class="cfg-campo-box" value="interes"> Interés</label>
+                        <label style="display:flex;align-items:center;gap:.3rem;cursor:pointer"><input type="checkbox" class="cfg-campo-box" value="preferencias"> Preferencias</label>
+                    </div>
+                </div>
+
+                <h4 style="font-family:'Inter',sans-serif;font-size:.9rem;font-weight:700;margin:1.2rem 0 .5rem;">Pasarela de pago (Wompi) del vendedor</h4>
+                <p style="font-size:.74rem;color:var(--muted);margin-bottom:.8rem;">
+                    Conecta TU cuenta Wompi para que los agentes generen links de pago en el chat y cierren la venta.
+                    Deja en blanco para no cambiar la llave actual. Configura el webhook Wompi hacia
+                    <code style="background:var(--bg);padding:.1rem .35rem;border-radius:4px;font-size:.72rem;">https://auvro.netlify.app/.netlify/functions/pago-webhook</code>
+                    con tu events secret.
+                </p>
+                <div class="field"><label>Private key (prv_)</label><input type="password" id="cfg-wompi-private" placeholder="prv_..." autocomplete="off"></div>
+                <div class="field"><label>Events secret (prod_events_ o test_events_)</label><input type="password" id="cfg-wompi-secret" placeholder="events secret..." autocomplete="off"></div>
+                <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;font-size:.78rem;color:var(--muted);margin-top:.4rem;">
+                    <input type="checkbox" id="cfg-wompi-sandbox"> Usar entorno de pruebas (sandbox)
+                </label>
+
+                <h4 style="font-family:'Inter',sans-serif;font-size:.9rem;font-weight:700;margin:1.2rem 0 .5rem;">Catalogo de productos (venta en chat)</h4>
+                <div id="cfg-catalogo-list"></div>
+                <div style="display:flex;gap:.5rem;margin-top:.6rem;flex-wrap:wrap;">
+                    <input type="text" id="cfg-prod-nombre" placeholder="Nombre (ej: Zapatos casual)" style="flex:1;min-width:140px">
+                    <input type="number" id="cfg-prod-precio" placeholder="Precio COP (ej: 120000)" style="width:150px">
+                    <button class="btn-main" style="padding:.45rem .8rem;font-size:.78rem;" onclick="agregarProducto()"><i class="fas fa-plus" style="margin-right:.25rem"></i>Agregar</button>
+                </div>
+
+                <h4 style="font-family:'Inter',sans-serif;font-size:.9rem;font-weight:700;margin:1.2rem 0 .5rem;">Pipeline de ventas (estados)</h4>
+                <p style="font-size:.74rem;color:var(--muted);margin-bottom:.6rem;">Crea tus estados. Marca cuál es el estado de venta cerrada para que el pago aprobado la cierre automáticamente.</p>
+                <div id="cfg-estados-list"></div>
+                <div style="display:flex;gap:.5rem;margin-top:.6rem;flex-wrap:wrap;">
+                    <input type="text" id="cfg-estado-nombre" placeholder="Nombre del estado" style="flex:1;min-width:140px">
+                    <select id="cfg-estado-avance" style="width:130px">
+                        <option value="">Avance: —</option>
+                        <option value="contactado">contactado</option>
+                        <option value="calificado">calificado</option>
+                        <option value="negociacion">negociacion</option>
+                    </select>
+                    <button class="btn-main" style="padding:.45rem .8rem;font-size:.78rem;" onclick="agregarEstado()"><i class="fas fa-plus" style="margin-right:.25rem"></i>Agregar</button>
+                </div>
+
+                <div class="msg" id="crm-config-msg"></div>
+                <div style="display:flex;gap:10px;margin-top:1rem;">
+                    <button class="btn-main btn-green" onclick="guardarConfigCRM()">Guardar</button>
+                    <button class="btn-main" onclick="cerrarConfigCRM()" style="background:var(--red)">Cancelar</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- CRM LEAD MODAL -->
+        <div id="crm-lead-modal"
+            style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:1001;align-items:center;justify-content:center;">
+            <div class="card" style="width:560px;max-width:94%;max-height:92vh;overflow-y:auto;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+                    <h3 class="card-title" style="margin-bottom:0;">Lead</h3>
+                    <button onclick="cerrarLeadModal()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1rem;"><i class="fas fa-times"></i></button>
+                </div>
+                <input type="hidden" id="lead-id">
+                <div class="field"><label>Nombre</label><input type="text" id="lead-nombre"></div>
+                <div class="field"><label>Telefono</label><input type="text" id="lead-telefono"></div>
+                <div class="field"><label>Email</label><input type="text" id="lead-email"></div>
+                <div class="field"><label>Interes</label><input type="text" id="lead-interes"></div>
+                <div class="field"><label>Notas</label><textarea id="lead-notas" rows="3" style="min-height:70px;resize:vertical;"></textarea></div>
+                <div class="field">
+                    <label>Estado</label>
+                    <select id="lead-estado"></select>
+                </div>
+                <div id="lead-meta" style="font-size:.74rem;color:var(--muted);margin-bottom:.5rem;"></div>
+                <div class="msg" id="lead-msg"></div>
+                <div style="display:flex;gap:10px;margin-top:1rem;">
+                    <button class="btn-main btn-green" onclick="guardarLead()">Guardar</button>
+                    <button class="btn-main" onclick="cerrarLeadModal()" style="background:var(--red)">Cancelar</button>
+                    <button class="btn-main" onclick="eliminarLead()" style="background:none;color:var(--red);border:1px solid var(--red);margin-left:auto;">Eliminar</button>
                 </div>
             </div>
         </div>
@@ -5020,6 +5173,7 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
         if (vista === 'bandeja') inicializarBandeja();
         if (vista === 'config') cargarPerfil();
         if (vista === 'integraciones') cargarIntegraciones();
+        if (vista === 'crm') cargarCRM();
         if (vista === 'admin') cargarAdmin();
     }
 
@@ -5543,9 +5697,17 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
     }
 
     // ── CREAR AGENTE ──
+    function toggleCreateCampos() {
+        document.getElementById('create-crm-campos').style.display =
+            document.getElementById('create-crm-activo').checked ? 'block' : 'none';
+    }
+
     function abrirCrearAgente() {
         document.getElementById('create-name').value = '';
         document.getElementById('create-prompt').value = '';
+        document.getElementById('create-crm-activo').checked = false;
+        toggleCreateCampos();
+        document.querySelectorAll('.crm-campo-box').forEach(c => c.checked = true);
         document.getElementById('create-msg').className = 'msg';
         document.getElementById('create-loading').style.display = 'none';
         document.getElementById('create-modal').style.display = 'flex';
@@ -5568,7 +5730,12 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
             const res = await fetch('/.netlify/functions/crear-agente', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                body: JSON.stringify({ nombre_agente: name, prompt_sistema: prompt })
+                body: JSON.stringify({
+                    nombre_agente: name,
+                    prompt_sistema: prompt,
+                    crm_activo: document.getElementById('create-crm-activo').checked,
+                    crm_campos: Array.from(document.querySelectorAll('.crm-campo-box:checked')).map(c => c.value)
+                })
             });
             const data = await res.json();
             if (res.status === 403 && data.codigo === 'LIMITE_PLAN_ALCANZADO') {
@@ -5587,6 +5754,297 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
         } finally {
             document.getElementById('create-loading').style.display = 'none';
         }
+    }
+
+    // ── CRM (AGENTE-CENTRICO) ──
+    let crmData = { config: null, estados: [], leads: [], campos_disponibles: [] };
+    let crmCatalogo = [];
+    let crmLeadActual = null;
+
+    function fmtPesos(cents) {
+        const n = Number(cents) || 0;
+        return '$' + Math.round(n / 100).toLocaleString('es-CO');
+    }
+
+    async function llamarCRM(accion, data = {}) {
+        const { data: { session } } = await _supabase.auth.getSession();
+        const res = await fetch('/.netlify/functions/crm', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token || ''}` },
+            body: JSON.stringify({ accion, ...data })
+        });
+        return res.json();
+    }
+
+    async function cargarCRM() {
+        try {
+            const { data: { session } } = await _supabase.auth.getSession();
+            const res = await fetch('/.netlify/functions/crm', {
+                method: 'GET',
+                headers: { 'Authorization': `Bearer ${session?.access_token || ''}` }
+            });
+            const data = await res.json();
+            if (!res.ok) { showToast(data.error || 'Error cargando CRM', 'error'); return; }
+            crmData = data;
+            crmCatalogo = Array.isArray(data.config?.catalogo) ? data.config.catalogo : [];
+            renderCRM();
+        } catch (_) {
+            showToast('Error de conexion con el servidor', 'error');
+        }
+    }
+
+    function renderCRM() {
+        const config = crmData.config;
+        const banner = document.getElementById('crm-banner');
+        const leads = crmData.leads || [];
+        const estados = crmData.estados || [];
+
+        let bannerHtml = '';
+        if (!config) {
+            bannerHtml = `<div style="background:rgba(14,165,233,.1);border:1px solid rgba(14,165,233,.25);color:var(--text);padding:.9rem 1rem;border-radius:12px;margin-bottom:1rem;font-size:.82rem;display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap;">
+                <span><i class="fas fa-circle-info" style="margin-right:.4rem;color:var(--accent)"></i><strong>Activa tu CRM</strong> para que tus agentes capturen leads y ventas automáticamente (WhatsApp, widget web, chat).</span>
+                <button class="btn-main" onclick="abrirConfigCRM()" style="padding:.4rem .8rem;font-size:.76rem;white-space:nowrap;">Configurar</button>
+            </div>`;
+        } else if (!config.crm_activo) {
+            bannerHtml = `<div style="background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.3);color:var(--text);padding:.9rem 1rem;border-radius:12px;margin-bottom:1rem;font-size:.82rem;display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap;">
+                <span><i class="fas fa-triangle-exclamation" style="margin-right:.4rem;color:var(--yellow)"></i>El CRM está <strong>desactivado</strong>. Actívalo para capturar leads desde tus agentes.</span>
+                <button class="btn-main" onclick="abrirConfigCRM()" style="padding:.4rem .8rem;font-size:.76rem;white-space:nowrap;">Configurar</button>
+            </div>`;
+        } else if (!config.wompi_private_key) {
+            bannerHtml = `<div style="background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.3);color:var(--text);padding:.9rem 1rem;border-radius:12px;margin-bottom:1rem;font-size:.82rem;display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap;">
+                <span><i class="fas fa-triangle-exclamation" style="margin-right:.4rem;color:var(--yellow)"></i>Conecta tu <strong>pasarela Wompi</strong> para que los agentes cobren en el chat y cierren la venta automáticamente.</span>
+                <button class="btn-main" onclick="abrirConfigCRM()" style="padding:.4rem .8rem;font-size:.76rem;white-space:nowrap;">Conectar</button>
+            </div>`;
+        }
+        banner.style.display = bannerHtml ? '' : 'none';
+        banner.innerHTML = bannerHtml;
+
+        // Stats
+        const cerradas = leads.filter(l => l.estado?.es_cerrada);
+        const valor = cerradas.reduce((s, l) => s + (Number(l.valor_venta_cents) || 0), 0);
+        const stats = [
+            { label: 'Leads capturados', valor: leads.length, icon: 'fa-users', color: 'var(--accent)' },
+            { label: 'Ventas cerradas', valor: cerradas.length, icon: 'fa-circle-check', color: 'var(--green)' },
+            { label: 'Valor cerrado', valor: fmtPesos(valor), icon: 'fa-coins', color: 'var(--yellow)' }
+        ];
+        document.getElementById('crm-stats').innerHTML = stats.map(s => `
+            <div style="flex:1;min-width:150px;background:var(--surface);border:1px solid var(--border2);border-radius:14px;padding:1rem;display:flex;align-items:center;gap:.8rem;">
+                <div style="width:40px;height:40px;border-radius:10px;background:${s.color}1a;display:flex;align-items:center;justify-content:center;color:${s.color};"><i class="fas ${s.icon}"></i></div>
+                <div>
+                    <div style="font-family:'Inter',sans-serif;font-weight:800;font-size:1.1rem;">${s.valor}</div>
+                    <div style="font-size:.72rem;color:var(--muted);">${s.label}</div>
+                </div>
+            </div>`).join('');
+
+        document.getElementById('crm-pipeline-title').textContent = estados.length
+            ? 'Pipeline de ventas'
+            : 'Pipeline de ventas';
+
+        // Pipeline (columnas por estado)
+        const pipeline = document.getElementById('crm-pipeline');
+        if (!estados.length) {
+            pipeline.innerHTML = `<div class="empty-state" style="width:100%"><i class="fas fa-filter-circle-xmark"></i>
+                <p style="margin-top:.5rem">Aún no hay estados. Configura tu pipeline de ventas.</p></div>`;
+            return;
+        }
+        pipeline.innerHTML = estados.map(e => {
+            const colLeads = leads.filter(l => l.estado_id === e.id);
+            const terminal = e.es_cerrada || e.es_perdida;
+            return `
+            <div style="min-width:250px;flex:1;background:var(--bg2);border:1px solid var(--border2);border-radius:14px;padding:.8rem;display:flex;flex-direction:column;">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.7rem;padding:0 .2rem;">
+                    <div style="display:flex;align-items:center;gap:.45rem;">
+                        <span style="width:9px;height:9px;border-radius:50%;background:${e.color || '#0ea5e9'};display:inline-block;"></span>
+                        <span style="font-family:'Inter',sans-serif;font-weight:700;font-size:.8rem;">${e.nombre}</span>
+                    </div>
+                    <span style="background:var(--surface);border:1px solid var(--border2);border-radius:20px;padding:.1rem .5rem;font-size:.7rem;color:var(--muted);">${colLeads.length}</span>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:.5rem;min-height:60px;">
+                    ${colLeads.length === 0 ? `<div style="font-size:.72rem;color:var(--dim);text-align:center;padding:1rem 0;">Sin leads</div>` : colLeads.map(l => `
+                        <div onclick="abrirLeadModal('${l.id}')" style="cursor:pointer;background:var(--surface);border:1px solid var(--border2);border-left:3px solid ${e.color || '#0ea5e9'};border-radius:10px;padding:.6rem .7rem;">
+                            <div style="display:flex;justify-content:space-between;align-items:center;gap:.4rem;">
+                                <span style="font-family:'Inter',sans-serif;font-weight:700;font-size:.78rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${l.nombre || 'Sin nombre'}</span>
+                                <i class="fas fa-chevron-right" style="font-size:.6rem;color:var(--dim);"></i>
+                            </div>
+                            <div style="font-size:.7rem;color:var(--muted);margin-top:.2rem;">${l.telefono || l.email || '—'}</div>
+                            <div style="font-size:.68rem;color:var(--dim);margin-top:.15rem;">${l.interes ? '· ' + l.interes : ''} ${l.agente_nombre ? '· ' + l.agente_nombre : ''} ${l.origen === 'whatsapp' ? '· WhatsApp' : ''}</div>
+                            ${l.valor_venta_cents ? `<div style="font-size:.72rem;color:var(--green);font-weight:700;margin-top:.2rem;">${fmtPesos(l.valor_venta_cents)}</div>` : ''}
+                        </div>`).join('')}
+                </div>
+            </div>`;
+        }).join('');
+    }
+
+    // ── LEAD MODAL ──
+    function abrirLeadModal(id) {
+        const lead = id ? crmData.leads.find(l => l.id === id) : null;
+        crmLeadActual = lead || null;
+        document.getElementById('lead-id').value = lead?.id || '';
+        document.getElementById('lead-nombre').value = lead?.nombre || '';
+        document.getElementById('lead-telefono').value = lead?.telefono || '';
+        document.getElementById('lead-email').value = lead?.email || '';
+        document.getElementById('lead-interes').value = lead?.interes || '';
+        document.getElementById('lead-notas').value = lead?.notas || '';
+        const sel = document.getElementById('lead-estado');
+        const estados = crmData.estados || [];
+        sel.innerHTML = estados.map(e =>
+            `<option value="${e.id}" ${(lead?.estado_id === e.id || (!lead && e.es_inicial)) ? 'selected' : ''}>${e.nombre}</option>`
+        ).join('');
+        const prefs = lead?.preferencias && Object.keys(lead.preferencias).length
+            ? Object.entries(lead.preferencias).map(([k, v]) => `<div><strong>${k}:</strong> ${v}</div>`).join('')
+            : '<div style="color:var(--dim)">Sin preferencias capturadas</div>';
+        document.getElementById('lead-meta').innerHTML =
+            `<div style="margin-bottom:.4rem;">${lead?.agente_nombre ? '<strong>Agente:</strong> ' + lead.agente_nombre + ' &nbsp; ' : ''}${lead?.origen ? '<strong>Fuente:</strong> ' + lead.origen : ''}${lead?.created_at ? ' &nbsp; <strong>Creado:</strong> ' + new Date(lead.created_at).toLocaleDateString('es-CO') : ''}</div>` +
+            `<div style="margin-bottom:.2rem;font-weight:600;">Preferencias:</div>${prefs}`;
+        document.getElementById('lead-msg').className = 'msg';
+        document.getElementById('lead-msg').textContent = '';
+        document.getElementById('crm-lead-modal').style.display = 'flex';
+    }
+
+    function cerrarLeadModal() {
+        document.getElementById('crm-lead-modal').style.display = 'none';
+    }
+
+    async function guardarLead() {
+        const estadoId = document.getElementById('lead-estado').value;
+        const payload = {
+            accion: 'lead_guardar',
+            id: document.getElementById('lead-id').value || undefined,
+            nombre: document.getElementById('lead-nombre').value.trim(),
+            telefono: document.getElementById('lead-telefono').value.trim(),
+            email: document.getElementById('lead-email').value.trim(),
+            interes: document.getElementById('lead-interes').value.trim(),
+            notas: document.getElementById('lead-notas').value.trim(),
+            estado_id: estadoId || undefined
+        };
+        if (!payload.nombre && !payload.telefono && !payload.email) {
+            showMsg('lead-msg', 'Captura al menos un dato (nombre, teléfono o email)', 'error');
+            return;
+        }
+        const data = await llamarCRM('lead_guardar', payload);
+        if (!data.ok) { showMsg('lead-msg', data.error || 'Error guardando lead', 'error'); return; }
+        showMsg('lead-msg', 'Lead guardado', 'success');
+        cargarCRM();
+        setTimeout(cerrarLeadModal, 900);
+    }
+
+    async function eliminarLead() {
+        const id = document.getElementById('lead-id').value;
+        if (!id) return;
+        if (!confirm('¿Eliminar este lead del CRM?')) return;
+        const data = await llamarCRM('lead_eliminar', { id });
+        if (!data.ok) { showToast(data.error || 'Error', 'error'); return; }
+        showToast('Lead eliminado');
+        cerrarLeadModal();
+        cargarCRM();
+    }
+
+    // ── CONFIG MODAL ──
+    function abrirConfigCRM() {
+        const config = crmData.config || {};
+        document.getElementById('cfg-crm-activo').checked = config.crm_activo === true;
+        document.getElementById('cfg-wompi-private').value = '';
+        document.getElementById('cfg-wompi-secret').value = '';
+        document.getElementById('cfg-wompi-sandbox').checked = config.wompi_sandbox === true;
+        const campos = (config.campos_captura || crmData.campos_disponibles || ['nombre','telefono','email','interes','preferencias']);
+        document.querySelectorAll('.cfg-campo-box').forEach(c => c.checked = campos.includes(c.value));
+        renderConfigCatalogo();
+        renderConfigEstados();
+        document.getElementById('crm-config-msg').className = 'msg';
+        document.getElementById('crm-config-msg').textContent = '';
+        document.getElementById('crm-config-modal').style.display = 'flex';
+    }
+
+    function cerrarConfigCRM() {
+        document.getElementById('crm-config-modal').style.display = 'none';
+    }
+
+    function renderConfigCatalogo() {
+        document.getElementById('cfg-catalogo-list').innerHTML = crmCatalogo.length === 0
+            ? '<div style="font-size:.74rem;color:var(--dim);padding:.3rem 0;">Sin productos. Agrega tu catálogo para vender en el chat.</div>'
+            : crmCatalogo.map((p, i) => `
+                <div style="display:flex;align-items:center;gap:.5rem;background:var(--bg2);border:1px solid var(--border2);border-radius:10px;padding:.5rem .7rem;margin-bottom:.4rem;">
+                    <div style="flex:1;min-width:0;">
+                        <div style="font-size:.8rem;font-weight:700;">${p.nombre}</div>
+                        <div style="font-size:.72rem;color:var(--muted);">${fmtPesos(p.precio_cents)}</div>
+                    </div>
+                    <button onclick="eliminarProducto('${p.id}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:.9rem;"><i class="fas fa-trash"></i></button>
+                </div>`).join('');
+    }
+
+    function renderConfigEstados() {
+        const estados = crmData.estados || [];
+        document.getElementById('cfg-estados-list').innerHTML = estados.length === 0
+            ? '<div style="font-size:.74rem;color:var(--dim);padding:.3rem 0;">Sin estados. Agrega tu pipeline de ventas.</div>'
+            : estados.map(e => `
+                <div style="display:flex;align-items:center;gap:.5rem;background:var(--bg2);border:1px solid var(--border2);border-radius:10px;padding:.5rem .7rem;margin-bottom:.4rem;">
+                    <span style="width:9px;height:9px;border-radius:50%;background:${e.color || '#0ea5e9'};display:inline-block;"></span>
+                    <div style="flex:1;min-width:0;">
+                        <div style="font-size:.8rem;font-weight:700;">${e.nombre}
+                            ${e.es_inicial ? '<span class="badge badge-blue" style="margin-left:.3rem;">Inicial</span>' : ''}
+                            ${e.es_cerrada ? '<span class="badge badge-green" style="margin-left:.3rem;">Cierre</span>' : ''}
+                            ${e.es_perdida ? '<span class="badge" style="margin-left:.3rem;background:rgba(239,68,68,.15);color:var(--red);">Perdida</span>' : ''}
+                        </div>
+                        <div style="font-size:.7rem;color:var(--muted);">${e.avance_automatico ? 'Avance automático: ' + e.avance_automatico : 'Avance manual'}</div>
+                    </div>
+                    <button onclick="eliminarEstado('${e.id}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:.9rem;"><i class="fas fa-trash"></i></button>
+                </div>`).join('');
+    }
+
+    function agregarProducto() {
+        const nombre = document.getElementById('cfg-prod-nombre').value.trim();
+        const precio = Number(document.getElementById('cfg-prod-precio').value);
+        if (!nombre || !precio || precio <= 0) { showToast('Nombre y precio válidos son requeridos', 'error'); return; }
+        crmCatalogo.push({ id: 'p' + Date.now(), nombre, precio_cents: Math.round(precio * 100) });
+        document.getElementById('cfg-prod-nombre').value = '';
+        document.getElementById('cfg-prod-precio').value = '';
+        renderConfigCatalogo();
+    }
+
+    function eliminarProducto(id) {
+        crmCatalogo = crmCatalogo.filter(p => p.id !== id);
+        renderConfigCatalogo();
+    }
+
+    function agregarEstado() {
+        const nombre = document.getElementById('cfg-estado-nombre').value.trim();
+        const avance = document.getElementById('cfg-estado-avance').value;
+        if (!nombre) { showToast('El estado necesita un nombre', 'error'); return; }
+        llamarCRM('estado_crear', { nombre, orden: (crmData.estados || []).length + 1, avance_automatico: avance || null }).then(async d => {
+            if (!d.ok) { showToast(d.error || 'Error', 'error'); return; }
+            document.getElementById('cfg-estado-nombre').value = '';
+            document.getElementById('cfg-estado-avance').value = '';
+            await cargarCRM();
+            renderConfigEstados();
+        });
+    }
+
+    function eliminarEstado(id) {
+        if (!confirm('¿Eliminar este estado del pipeline?')) return;
+        llamarCRM('estado_eliminar', { id }).then(async d => {
+            if (!d.ok) { showToast(d.error || 'Error', 'error'); return; }
+            await cargarCRM();
+            renderConfigEstados();
+        });
+    }
+
+    async function guardarConfigCRM() {
+        const campos = Array.from(document.querySelectorAll('.cfg-campo-box:checked')).map(c => c.value);
+        const payload = {
+            accion: 'config',
+            crm_activo: document.getElementById('cfg-crm-activo').checked,
+            campos_captura: campos,
+            wompi_private_key: document.getElementById('cfg-wompi-private').value.trim(),
+            wompi_events_secret: document.getElementById('cfg-wompi-secret').value.trim(),
+            wompi_sandbox: document.getElementById('cfg-wompi-sandbox').checked,
+            catalogo: crmCatalogo
+        };
+        const data = await llamarCRM('config', payload);
+        if (!data.ok) { showMsg('crm-config-msg', data.error || 'Error guardando', 'error'); return; }
+        crmData.config = data.config;
+        showMsg('crm-config-msg', 'Configuracion guardada correctamente', 'success');
+        renderCRM();
+        setTimeout(cerrarConfigCRM, 900);
     }
 
     // ── MODAL DE UPGRADE ──

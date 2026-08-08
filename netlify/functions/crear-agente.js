@@ -22,7 +22,7 @@ exports.handler = async (event) => {
         const { data: { user }, error: authError } = await supabase.auth.getUser(token);
         if (authError || !user) return { statusCode: 401, headers, body: JSON.stringify({ error: 'Token inválido.' }) };
 
-        const { nombre_agente, prompt_sistema } = JSON.parse(event.body);
+        const { nombre_agente, prompt_sistema, crm_activo, crm_campos } = JSON.parse(event.body);
         if (!nombre_agente || !prompt_sistema) {
             return { statusCode: 400, headers, body: JSON.stringify({ error: 'Faltan campos requeridos.' }) };
         }
@@ -70,12 +70,22 @@ exports.handler = async (event) => {
             .insert([{
                 nombre_agente,
                 prompt_sistema,
-                user_id: user.id
+                user_id: user.id,
+                crm_activo: !!crm_activo,
+                crm_campos: Array.isArray(crm_campos) && crm_campos.length ? crm_campos : null
             }])
             .select()
             .single();
 
         if (insertError) throw new Error('Error al crear agente: ' + insertError.message);
+
+        // Si el agente es CRM, asegurar el pipeline de estados default del usuario
+        if (crm_activo) {
+            try {
+                const { sembrarEstadosDefault } = require('./crm-helper');
+                await sembrarEstadosDefault(user.id);
+            } catch (_) {}
+        }
 
         return {
             statusCode: 201,
