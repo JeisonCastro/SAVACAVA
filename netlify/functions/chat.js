@@ -1222,7 +1222,9 @@ FLUJO DE VENTA:
 ### Para CRM_GENERAR_PAGO:
 - Úsala SOLO cuando el cliente confirmó claramente que compra (no antes).
 - "productoId": el id exacto del producto del catálogo.
-- Ejemplo: { "action": "CRM_GENERAR_PAGO", "data": { "productoId": "1" } }
+- "monto" (OPCIONAL): el TOTAL final en pesos, entero, sin puntos ni comas (ej. 224750). Úsalo SOLO cuando el precio varíe por cantidad, pasajeros, descuentos o tarifas dinámicas; si no, el link usa el precio del catálogo.
+- Ejemplo precio fijo: { "action": "CRM_GENERAR_PAGO", "data": { "productoId": "1" } }
+- Ejemplo tarifa dinámica: { "action": "CRM_GENERAR_PAGO", "data": { "productoId": "1", "monto": 224750 } }
 - Después de generarla, envía el link de pago al cliente y pídele completarlo.
 `;
                 }
@@ -1364,8 +1366,22 @@ INSTRUCCIONES:
 
         // ── CRM: GENERAR PAGO EN CHAT (venta del catálogo del vendedor) ──
         if (actionPayload?.action === 'CRM_GENERAR_PAGO') {
-            const productoId = String(actionPayload.data?.productoId || actionPayload.data?.producto || '');
+            const accData = actionPayload.data || {};
+            const productoId = String(accData.productoId || accData.producto || '');
             const producto = catalogoCRM.find(p => String(p.id) === productoId);
+
+            // Monto personalizado (tarifas dinámicas): el agente puede enviar
+            // "monto_cents" (centavos) o "monto" (pesos enteros). Se normaliza
+            // quitando separadores de miles (ej. "224.750" -> 224750).
+            let montoCents = null;
+            if (accData.monto_cents != null) {
+                const n = Number(String(accData.monto_cents).replace(/[^\d]/g, ''));
+                if (n > 0) montoCents = n;
+            } else if (accData.monto != null) {
+                const n = Number(String(accData.monto).replace(/[^\d]/g, ''));
+                if (n > 0) montoCents = Math.round(n * 100);
+            }
+
             if (!crmActivo) {
                 respuestaIA = "El CRM de ventas no está habilitado para este agente.";
             } else if (!producto) {
@@ -1384,10 +1400,12 @@ INSTRUCCIONES:
                     conversacionId: conversationIdFinal,
                     producto,
                     canal,
-                    externalUserId: externalUserIdFinal
+                    externalUserId: externalUserIdFinal,
+                    montoCents
                 });
                 if (resultado.ok && resultado.url) {
-                    respuestaIA = `✅ Listo ${leadId ? '' : ''}, aquí tienes tu link de pago seguro:\n\n${resultado.url}\n\nCompleta el pago para confirmar tu ${producto.nombre}. Cuando esté aprobado, tu pedido queda confirmado automáticamente. ¡Gracias por tu compra!`;
+                    const montoPesos = resultado.monto_cents ? Math.round(resultado.monto_cents / 100).toLocaleString('es-CO') : '';
+                    respuestaIA = `✅ Listo ${leadId ? '' : ''}, aquí tienes tu link de pago seguro:\n\n${resultado.url}\n\nValor a pagar: $${montoPesos} COP\n\nCompleta el pago para confirmar tu ${producto.nombre}. Cuando esté aprobado, tu pedido queda confirmado automáticamente. ¡Gracias por tu compra!`;
                 } else {
                     respuestaIA = `Lo siento, no pude generar el link de pago en este momento. ${resultado.error || 'Intenta de nuevo más tarde.'} Puedes escribirnos por WhatsApp para coordinar.`;
                 }

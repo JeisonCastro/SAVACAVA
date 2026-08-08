@@ -269,7 +269,7 @@ async function avanzarEstadoAutomatico({ leadId, userId, estadoActualId, etapa }
 
 // ── PAGO EN CHAT (venta) ──
 // Crea el payment link de Wompi con la pasarela DEL VENDEDOR y registra el pago.
-async function crearPaymentLinkVenta({ config, agente, leadId, conversacionId, producto, canal, externalUserId }) {
+async function crearPaymentLinkVenta({ config, agente, leadId, conversacionId, producto, canal, externalUserId, montoCents }) {
     const SITE_URL = process.env.URL || 'https://auvro.netlify.app';
     const WOMPI_BASE = config.wompi_sandbox
         ? 'https://sandbox.wompi.co/v1'
@@ -279,8 +279,9 @@ async function crearPaymentLinkVenta({ config, agente, leadId, conversacionId, p
         return { ok: false, error: 'El vendedor no tiene configurada su pasarela de pago (Wompi) en CRM > Configuración.' };
     }
 
-    const montoCents = Number(producto.precio_cents);
-    if (!montoCents || montoCents <= 0) {
+    let monto = Number(montoCents);
+    if (!monto || monto <= 0) monto = Number(producto.precio_cents);
+    if (!monto || monto <= 0) {
         return { ok: false, error: 'El producto seleccionado no tiene un precio válido.' };
     }
 
@@ -298,7 +299,7 @@ async function crearPaymentLinkVenta({ config, agente, leadId, conversacionId, p
             single_use: true,
             collect_shipping: false,
             currency: 'COP',
-            amount_in_cents: montoCents,
+            amount_in_cents: monto,
             redirect_url: `${SITE_URL}/dashboard.html?crm=venta`
         })
     });
@@ -317,7 +318,7 @@ async function crearPaymentLinkVenta({ config, agente, leadId, conversacionId, p
             user_id: agente.user_id,
             tipo: 'venta',
             concepto,
-            monto_cents: montoCents,
+            monto_cents: monto,
             payment_link_id: paymentLinkId,
             lead_id: leadId,
             estado: 'pendiente'
@@ -341,7 +342,7 @@ async function crearPaymentLinkVenta({ config, agente, leadId, conversacionId, p
         url: `https://checkout.wompi.co/l/${paymentLinkId}`,
         payment_link_id: paymentLinkId,
         concepto,
-        monto_cents: montoCents,
+        monto_cents: monto,
         pago_id: pago?.id,
         lead: lead || null
     };
