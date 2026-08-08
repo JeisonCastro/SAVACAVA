@@ -1,51 +1,154 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Políticas de Privacidad</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Políticas de Privacidad | AUVRO</title>
+<meta name="color-scheme" content="dark light">
+<meta name="theme-color" content="#06090f" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#0ea5e9" media="(prefers-color-scheme: light)">
+<meta name="robots" content="noindex">
+<link rel="icon" href="/favicon.ico">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#06090f;--bg2:#0d1117;--surface:#161e2a;--border:#1e2d40;--border2:#253648;
+  --accent:#0ea5e9;--accent2:#38bdf8;--text:#e8f0f8;--muted:#7a98b8;--dim:#4a6580;
+}
+body.light-mode{
+  --bg:#eef4f8;--bg2:#ffffff;--surface:#ffffff;--border:#d9e6ef;--border2:#c4d6e4;
+  --accent:#0284c7;--accent2:#0ea5e9;--text:#0f172a;--muted:#475569;--dim:#7890a4;
+}
+html{scroll-behavior:smooth}
+body{
+  font-family:'DM Sans',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  background:var(--bg);color:var(--text);line-height:1.7;
+  -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;
+}
+::-webkit-scrollbar{width:6px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+
+/* HEADER */
+.site-header{
+  position:sticky;top:0;z-index:100;
+  display:flex;align-items:center;justify-content:space-between;gap:1rem;
+  padding:0 5vw;height:64px;
+  background:var(--bg2);backdrop-filter:blur(16px);
+  border-bottom:1px solid var(--border);
+}
+.brand{display:flex;align-items:center;gap:9px;font-family:'Syne',sans-serif;font-weight:800;font-size:1rem;letter-spacing:.04em;color:var(--text);text-decoration:none}
+.brand-dot{width:7px;height:7px;border-radius:50%;background:var(--accent)}
+.header-link{color:var(--muted);text-decoration:none;font-size:.85rem;font-weight:400;transition:color .2s;display:inline-flex;align-items:center;gap:.4rem}
+.header-link:hover{color:var(--text)}
+
+/* CONTENT */
+main{padding:56px 5vw 64px}
+.container{max-width:720px;margin:0 auto}
+h1{
+  font-family:'Syne',sans-serif;font-size:clamp(1.7rem,4vw,2.4rem);font-weight:800;
+  letter-spacing:-.02em;line-height:1.15;margin-bottom:1.25rem;
+}
+.lead{color:var(--muted);font-size:1rem;font-weight:300;line-height:1.8;margin-bottom:3rem}
+.policy-block{margin-bottom:2.5rem}
+.policy-block h3{
+  font-family:'Syne',sans-serif;font-size:1.05rem;font-weight:700;color:var(--text);
+  margin-bottom:.7rem;letter-spacing:-.01em;
+}
+.policy-block p,.policy-block li{color:var(--muted);font-size:.92rem;font-weight:300}
+.policy-block ul{margin:0.4rem 0 0 1.25rem;display:flex;flex-direction:column;gap:.35rem}
+.updated{
+  margin-top:3.5rem;padding-top:1.5rem;border-top:1px solid var(--border);
+  text-align:center;font-size:.82rem;color:var(--dim);
+}
+
+/* FOOTER */
+.site-footer{
+  border-top:1px solid var(--border);background:var(--bg2);
+  padding:1.6rem 5vw;display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;
+}
+.footer-brand{font-family:'Syne',sans-serif;font-weight:700;font-size:.9rem;color:var(--muted)}
+.footer-copy{font-size:.8rem;color:var(--dim)}
+
+@media(max-width:520px){
+  .site-header{padding:0 1.25rem}
+  main{padding:40px 1.25rem 48px}
+}
+</style>
 </head>
 <body>
 
-<div class="container py-5">
-    <h1 class="mb-4 text-center">Políticas de Privacidad</h1>
+<header class="site-header">
+  <a class="brand" href="login.html"><span class="brand-dot"></span>AUVRO</a>
+  <a class="header-link" href="login.html">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
+    Volver
+  </a>
+</header>
 
-    <p>En <strong>Jeison Digital</strong>, nos comprometemos a proteger la información personal de nuestros usuarios y clientes. Estas políticas explican cómo recopilamos, usamos y protegemos sus datos.</p>
+<main>
+  <div class="container">
+    <h1>Políticas de Privacidad</h1>
+    <p class="lead">En <strong style="color:var(--text);font-weight:500">Jeison Digital</strong>, nos comprometemos a proteger la información personal de nuestros usuarios y clientes. Estas políticas explican cómo recopilamos, usamos y protegemos sus datos.</p>
 
-    <h3>1. Información que recopilamos</h3>
-    <p>Podemos recopilar información como nombre, número de teléfono, correo electrónico y datos necesarios para brindar nuestros servicios tecnológicos, automatizaciones, plataformas digitales y soluciones personalizadas.</p>
+    <div class="policy-block">
+      <h3>1. Información que recopilamos</h3>
+      <p>Podemos recopilar información como nombre, número de teléfono, correo electrónico y datos necesarios para brindar nuestros servicios tecnológicos, automatizaciones, plataformas digitales y soluciones personalizadas.</p>
+    </div>
 
-    <h3>2. Uso de la información</h3>
-    <p>La información recopilada es utilizada para:</p>
-    <ul>
+    <div class="policy-block">
+      <h3>2. Uso de la información</h3>
+      <p>La información recopilada es utilizada para:</p>
+      <ul>
         <li>Brindar y mejorar nuestros servicios.</li>
         <li>Gestionar solicitudes, cotizaciones y soporte.</li>
         <li>Enviar información relevante sobre nuestros productos o servicios.</li>
-    </ul>
-
-    <h3>3. Protección de la información</h3>
-    <p>Implementamos medidas de seguridad técnicas y organizativas para proteger sus datos contra accesos no autorizados, pérdida o alteración.</p>
-
-    <h3>4. Compartir información</h3>
-    <p>No vendemos ni compartimos su información personal con terceros, excepto cuando sea necesario para la prestación del servicio o por requerimientos legales.</p>
-
-    <h3>5. Uso de cookies</h3>
-    <p>Podemos utilizar cookies para mejorar la experiencia del usuario en nuestro sitio web, analizando el comportamiento de navegación.</p>
-
-    <h3>6. Derechos del usuario</h3>
-    <p>Usted tiene derecho a acceder, actualizar o eliminar su información personal en cualquier momento, solicitándolo a través de nuestros canales de contacto.</p>
-
-    <h3>7. Cambios en las políticas</h3>
-    <p>Nos reservamos el derecho de actualizar estas políticas en cualquier momento. Los cambios serán publicados en esta misma página.</p>
-
-    <h3>8. Contacto</h3>
-    <p>Si tiene preguntas sobre estas políticas, puede contactarnos a través de nuestro WhatsApp o correo electrónico.</p>
-
-    <div class="text-center mt-5">
-        <p><strong>Última actualización:</strong> 2026</p>
+      </ul>
     </div>
-</div>
+
+    <div class="policy-block">
+      <h3>3. Protección de la información</h3>
+      <p>Implementamos medidas de seguridad técnicas y organizativas para proteger sus datos contra accesos no autorizados, pérdida o alteración.</p>
+    </div>
+
+    <div class="policy-block">
+      <h3>4. Compartir información</h3>
+      <p>No vendemos ni compartimos su información personal con terceros, excepto cuando sea necesario para la prestación del servicio o por requerimientos legales.</p>
+    </div>
+
+    <div class="policy-block">
+      <h3>5. Uso de cookies</h3>
+      <p>Podemos utilizar cookies para mejorar la experiencia del usuario en nuestro sitio web, analizando el comportamiento de navegación.</p>
+    </div>
+
+    <div class="policy-block">
+      <h3>6. Derechos del usuario</h3>
+      <p>Usted tiene derecho a acceder, actualizar o eliminar su información personal en cualquier momento, solicitándolo a través de nuestros canales de contacto.</p>
+    </div>
+
+    <div class="policy-block">
+      <h3>7. Cambios en las políticas</h3>
+      <p>Nos reservamos el derecho de actualizar estas políticas en cualquier momento. Los cambios serán publicados en esta misma página.</p>
+    </div>
+
+    <div class="policy-block">
+      <h3>8. Contacto</h3>
+      <p>Si tiene preguntas sobre estas políticas, puede contactarnos a través de nuestro WhatsApp o correo electrónico.</p>
+    </div>
+
+    <p class="updated">Última actualización: 2026</p>
+  </div>
+</main>
+
+<footer class="site-footer">
+  <span class="footer-brand">AUVRO</span>
+  <span class="footer-copy">© 2026 Jeison Digital — Soluciones Tecnológicas</span>
+</footer>
 
 </body>
 </html>
