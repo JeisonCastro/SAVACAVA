@@ -4448,13 +4448,13 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
                             <div class="plan-card featured selected"
                                 onclick="seleccionarPlan(this,500000,'20.000')"><div
                                     class="plan-badge-card">Popular</div><div
-                                    class="plan-name">Pro</div><div
+                                    class="plan-name">Estandar</div><div
                                     class="plan-tokens">500K
                                     <span>tokens</span></div><div
                                     class="plan-price">$ 20.000 COP</div></div>
                             <div class="plan-card"
                                 onclick="seleccionarPlan(this,1000000,'35.000')"><div
-                                    class="plan-name">Business</div><div
+                                    class="plan-name">Premium</div><div
                                     class="plan-tokens">1M
                                     <span>tokens</span></div><div
                                     class="plan-price">$ 35.000 COP</div></div>
@@ -4465,10 +4465,14 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
                                     style="font-size:1.3rem">A medida</div><div
                                     class="plan-price">Cotizar</div></div>
                         </div>
-                        <button class="btn-main btn-wa"
+                        <button class="btn-main" id="btn-recargar"
                             onclick="recargarTokens()"><i
-                                class="fab fa-whatsapp"></i> Recargar por
-                            WhatsApp</button>
+                                class="fas fa-credit-card"
+                                style="margin-right:.4rem"></i> Pagar con
+                            tarjeta / PSE / Nequi</button>
+                        <a href="javascript:void(0)" onclick="recargarWhatsApp()"
+                            style="display:block;text-align:center;font-size:.78rem;color:var(--muted);margin-top:.65rem">Prefieres
+                            coordinar por WhatsApp?</a>
                     </div>
                     <div class="card">
                         <div class="card-header"><div
@@ -4815,10 +4819,13 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
                 <div class="upgrade-msg" id="upgrade-msg">Has alcanzado el
                     limite de agentes de tu plan.</div>
                 <div class="upgrade-plans" id="upgrade-plans-grid"></div>
-                <button class="btn-main btn-wa" onclick="contactarUpgrade()"
+                <button class="btn-main" id="btn-upgrade" onclick="contactarUpgrade()"
                     style="margin-bottom:.75rem">
-                    <i class="fab fa-whatsapp"></i> Mejorar plan por WhatsApp
+                    <i class="fas fa-credit-card" style="margin-right:.4rem"></i> Pagar ahora
                 </button>
+                <a href="javascript:void(0)" onclick="contactarUpgradeWhatsApp()"
+                    style="display:block;text-align:center;font-size:.78rem;color:var(--muted);margin-bottom:.75rem">Prefieres
+                    coordinar por WhatsApp?</a>
                 <button
                     onclick="document.getElementById('upgrade-modal').style.display='none'"
                     style="background:none;border:none;color:var(--dim);font-size:.85rem;cursor:pointer;font-family:'DM Sans',sans-serif">
@@ -4839,6 +4846,7 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
     let agenteIntegracionesActual = null;
     let planSeleccionado = { tokens: 500000, precio: '20.000' };
     let upgradeWhatsappUrl = '';
+    let upgradePlanId = null;
     let todosLosPlanes = [];
     let currentConversationId = null;
     let currentChatHistory = [];
@@ -5261,6 +5269,10 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
         ]);
         verificarAdmin();
         cargarAgentes();
+        if (new URLSearchParams(window.location.search).has('pago')) {
+            showToast('Pago registrado. Tu saldo se actualizo.', 'success');
+            history.replaceState({}, '', window.location.pathname);
+        }
     }
 
     // ── BALANCE ──
@@ -5368,7 +5380,7 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
         const grid = document.getElementById('upgrade-plans-grid');
         const planesSuperiores = todosLosPlanes.filter(p => p.limite_agentes > planActual.limite_agentes);
         grid.innerHTML = planesSuperiores.map((p, i) => `
-            <div class="upgrade-plan-item ${i === 0 ? 'selected' : ''}" onclick="seleccionarPlanUpgrade(this, '${p.nombre}', ${p.limite_agentes}, ${p.precio})">
+            <div class="upgrade-plan-item ${i === 0 ? 'selected' : ''}" onclick="seleccionarPlanUpgrade(this, '${p.id}', '${p.nombre}', ${p.limite_agentes}, ${p.precio})">
                 <div class="upgrade-plan-name">${p.nombre}</div>
                 <div class="upgrade-plan-agents">${p.limite_agentes >= 999 ? 'Ilimitados' : p.limite_agentes + ' agentes'}</div>
                 <div class="upgrade-plan-price">$${p.precio.toLocaleString()} COP</div>
@@ -5376,19 +5388,43 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
         `).join('');
         if (planesSuperiores.length > 0) {
             const primer = planesSuperiores[0];
+            upgradePlanId = primer.id;
             upgradeWhatsappUrl = `https://wa.me/573115364647?text=${encodeURIComponent(`Hola Jeison, quiero mejorar al plan ${primer.nombre} (${primer.limite_agentes} agentes) por $${primer.precio.toLocaleString()} COP. Mi cuenta: ${currentUser.email}`)}`;
         }
         document.getElementById('upgrade-modal').style.display = 'flex';
     }
 
-    function seleccionarPlanUpgrade(el, nombre, limite, precio) {
+    function seleccionarPlanUpgrade(el, id, nombre, limite, precio) {
         document.querySelectorAll('.upgrade-plan-item').forEach(i => i.classList.remove('selected'));
         el.classList.add('selected');
+        upgradePlanId = id;
         const limiteText = limite >= 999 ? 'ilimitados' : limite;
         upgradeWhatsappUrl = `https://wa.me/573115364647?text=${encodeURIComponent(`Hola Jeison, quiero mejorar al plan ${nombre} (${limiteText} agentes) por $${precio.toLocaleString()} COP. Mi cuenta: ${currentUser.email}`)}`;
     }
 
-    function contactarUpgrade() {
+    async function contactarUpgrade() {
+        if (!upgradePlanId) return showToast('Selecciona un plan primero', 'error');
+        const btn = document.getElementById('btn-upgrade');
+        const orig = btn ? btn.innerHTML : '';
+        if (btn) { btn.disabled = true; btn.innerHTML = 'Generando pago...'; }
+        try {
+            const { data: { session } } = await _supabase.auth.getSession();
+            const res = await fetch('/.netlify/functions/crear-pago', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token || ''}` },
+                body: JSON.stringify({ tipo: 'plan', producto: upgradePlanId })
+            });
+            const data = await res.json();
+            if (!res.ok || !data.url) { showToast(data.error || 'No se pudo generar el pago', 'error'); return; }
+            window.location.href = data.url;
+        } catch (err) {
+            showToast('Error de conexion con el servidor', 'error');
+        } finally {
+            if (btn) { btn.disabled = false; btn.innerHTML = orig; }
+        }
+    }
+
+    function contactarUpgradeWhatsApp() {
         if (upgradeWhatsappUrl) window.open(upgradeWhatsappUrl, '_blank');
     }
 
@@ -6070,15 +6106,21 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
                 <td style="font-family:'Inter',sans-serif;font-weight:700;color:var(--text)">${p.nombre} ${p.nombre === planActual.nombre ? '<span class="badge badge-accent" style="margin-left:.4rem">Tu plan</span>' : ''}</td>
                 <td>${p.limite_agentes >= 999 ? 'Ilimitados' : p.limite_agentes}</td>
                 <td style="color:var(--green)">$${p.precio.toLocaleString()} COP/mes</td>
-                <td>${p.nombre === planActual.nombre ? '<span class="badge badge-green">Activo</span>' : `<button onclick="contactarPlan('${p.nombre}',${p.limite_agentes},${p.precio})" style="background:rgba(14,165,233,.1);color:var(--accent);border:1px solid rgba(14,165,233,.2);padding:4px 10px;border-radius:6px;font-size:.75rem;cursor:pointer;font-family:'DM Sans',sans-serif">Contratar</button>`}</td>
+                <td>${p.nombre === planActual.nombre ? '<span class="badge badge-green">Activo</span>' : `<button onclick="contactarPlan('${p.id}','${p.nombre}',${p.limite_agentes},${p.precio})" style="background:rgba(14,165,233,.1);color:var(--accent);border:1px solid rgba(14,165,233,.2);padding:4px 10px;border-radius:6px;font-size:.75rem;cursor:pointer;font-family:'DM Sans',sans-serif">Contratar</button>`}</td>
             </tr>
         `).join('');
     }
 
-    function contactarPlan(nombre, limite, precio) {
-        const limiteText = limite >= 999 ? 'ilimitados' : limite;
-        const url = `https://wa.me/573115364647?text=${encodeURIComponent(`Hola Jeison, quiero contratar el plan ${nombre} (${limiteText} agentes) por $${precio.toLocaleString()} COP/mes. Mi cuenta: ${currentUser.email}`)}`;
-        window.open(url, '_blank');
+    async function contactarPlan(id, nombre, limite, precio) {
+        const { data: { session } } = await _supabase.auth.getSession();
+        const res = await fetch('/.netlify/functions/crear-pago', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token || ''}` },
+            body: JSON.stringify({ tipo: 'plan', producto: id })
+        });
+        const data = await res.json();
+        if (!res.ok || !data.url) { showToast(data.error || 'No se pudo generar el pago', 'error'); return; }
+        window.location.href = data.url;
     }
 
     function seleccionarPlan(el, tokens, precio) {
@@ -6087,7 +6129,29 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
         planSeleccionado = { tokens, precio };
     }
 
-    function recargarTokens() {
+    async function recargarTokens() {
+        if (planSeleccionado.precio === 'personalizado') { recargarWhatsApp(); return; }
+        const btn = document.getElementById('btn-recargar');
+        const orig = btn ? btn.innerHTML : '';
+        if (btn) { btn.disabled = true; btn.innerHTML = 'Generando pago...'; }
+        try {
+            const { data: { session } } = await _supabase.auth.getSession();
+            const res = await fetch('/.netlify/functions/crear-pago', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token || ''}` },
+                body: JSON.stringify({ tipo: 'tokens', producto: planSeleccionado.tokens })
+            });
+            const data = await res.json();
+            if (!res.ok || !data.url) { showToast(data.error || 'No se pudo generar el pago', 'error'); return; }
+            window.location.href = data.url;
+        } catch (err) {
+            showToast('Error de conexion con el servidor', 'error');
+        } finally {
+            if (btn) { btn.disabled = false; btn.innerHTML = orig; }
+        }
+    }
+
+    function recargarWhatsApp() {
         const email = currentUser?.email || 'mi cuenta';
         const plan = planSeleccionado.precio === 'personalizado' ? 'un plan personalizado' : `${planSeleccionado.tokens.toLocaleString()} tokens por $${planSeleccionado.precio} COP`;
         const msg = encodeURIComponent(`Hola Jeison, quiero recargar tokens para mi cuenta [${email}]. Plan: ${plan}.`);
