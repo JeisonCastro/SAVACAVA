@@ -236,6 +236,8 @@
         [id$="-modal"]:not(#chat-modal){overflow-y:auto!important;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:1.25rem}
         [id$="-modal"]:not(#chat-modal)>*{margin:auto!important;max-height:none!important}
         .media-lightbox{overflow-y:auto!important;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+        /* Checkboxes compactos en el modal de configuracion CRM (movil los muestra muy grandes) */
+        #crm-config-modal input[type="checkbox"]{width:15px;height:15px;min-width:15px;min-height:15px;accent-color:var(--accent);cursor:pointer;flex-shrink:0}
         .upgrade-icon{width:56px;height:56px;border-radius:50%;background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.3);display:flex;align-items:center;justify-content:center;margin:0 auto 1.25rem;font-size:1.4rem;color:var(--yellow)}
         .upgrade-title{font-family:'Inter',sans-serif;font-size:1.2rem;font-weight:800;color:var(--text);margin-bottom:.6rem}
         .upgrade-msg{font-size:.9rem;color:var(--muted);line-height:1.65;margin-bottom:1.75rem;font-weight:300}

@@ -915,6 +915,14 @@ Multiusuario.
 
 # Changelog de Cambios Técnicos
 
+## 8 Ago 2026 — Fix UI: checkboxes compactos en "Campos a capturar" (configurar CRM, móvil)
+
+### Síntoma
+En móvil, los checkboxes de "Campos a capturar" del modal Configurar CRM se veían muy grandes.
+
+### Fix en `dashboard.html`
+- Regla `#crm-config-modal input[type="checkbox"]`: tamaño fijo `15x15px`, `accent-color: var(--accent)` y `flex-shrink:0` (también aplica a los checkboxes de notificaciones del mismo modal).
+
 ## 8 Ago 2026 — Fix UI: scroll y centrado de modales en móvil (dashboard)
 
 ### Síntoma
