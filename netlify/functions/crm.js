@@ -112,6 +112,12 @@ exports.handler = async (event) => {
             };
         }
 
+        // ── Sembrar pipeline default (al activar CRM en un agente existente) ──
+        if (accion === 'sembrar_estados') {
+            await sembrarEstadosDefault(user.id);
+            return { statusCode: 200, headers, body: JSON.stringify({ ok: true }) };
+        }
+
         // ── Estados del pipeline ──
         if (accion === 'estado_crear' || accion === 'estado_editar') {
             const { id, nombre, orden, es_inicial, es_cerrada, es_perdida, avance_automatico, color } = body;

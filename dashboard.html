@@ -4847,6 +4847,22 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
                 <div class="field"><label>Dominios (separados por
                         coma)</label><input type="text" id="edit-domains"
                         placeholder="ej: midominio.com, cliente.com"></div>
+                <div id="edit-crm-block" style="margin-top:.25rem;padding-top:.5rem;border-top:1px solid var(--border2)">
+                    <label style="display:flex;align-items:center;gap:.6rem;cursor:pointer;font-family:'Inter',sans-serif;font-weight:600;font-size:.85rem;">
+                        <input type="checkbox" id="edit-crm-activo" onchange="toggleEditCampos()">
+                        Agente para CRM (captura leads y ventas automáticamente)
+                    </label>
+                    <div id="edit-crm-campos" style="display:none;margin-top:.6rem;">
+                        <div style="font-size:.74rem;color:var(--muted);margin-bottom:.35rem;">Campos a capturar:</div>
+                        <div style="display:flex;flex-wrap:wrap;gap:.6rem;font-size:.8rem;">
+                            <label style="display:flex;align-items:center;gap:.3rem;cursor:pointer"><input type="checkbox" class="crm-campo-edit-box" value="nombre" checked> Nombre</label>
+                            <label style="display:flex;align-items:center;gap:.3rem;cursor:pointer"><input type="checkbox" class="crm-campo-edit-box" value="telefono" checked> Teléfono</label>
+                            <label style="display:flex;align-items:center;gap:.3rem;cursor:pointer"><input type="checkbox" class="crm-campo-edit-box" value="email" checked> Email</label>
+                            <label style="display:flex;align-items:center;gap:.3rem;cursor:pointer"><input type="checkbox" class="crm-campo-edit-box" value="interes" checked> Interés</label>
+                            <label style="display:flex;align-items:center;gap:.3rem;cursor:pointer"><input type="checkbox" class="crm-campo-edit-box" value="preferencias" checked> Preferencias</label>
+                        </div>
+                    </div>
+                </div>
                 <div style="display:flex;gap:10px;margin-top:1rem;">
                     <button class="btn-main btn-green"
                         onclick="guardarEdicion(this)">Guardar</button>
@@ -5702,6 +5718,11 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
             document.getElementById('create-crm-activo').checked ? 'block' : 'none';
     }
 
+    function toggleEditCampos() {
+        document.getElementById('edit-crm-campos').style.display =
+            document.getElementById('edit-crm-activo').checked ? 'block' : 'none';
+    }
+
     function abrirCrearAgente() {
         document.getElementById('create-name').value = '';
         document.getElementById('create-prompt').value = '';
@@ -6108,7 +6129,7 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
     async function cargarAgentes() {
         const { data } = await _supabase.from('agentes_ia').select('*').eq('user_id', currentUser.id);
         if (data) {
-            agentes = data.map(a => ({ id: a.id, name: a.nombre_agente, prompt: a.prompt_sistema, dominios: a.dominios_permitidos }));
+            agentes = data.map(a => ({ id: a.id, name: a.nombre_agente, prompt: a.prompt_sistema, dominios: a.dominios_permitidos, crm_activo: !!a.crm_activo, crm_campos: Array.isArray(a.crm_campos) ? a.crm_campos : ['nombre','telefono','email','interes','preferencias'] }));
             renderAgentes();
             actualizarIndicadorPlan(agentes.length);
             actualizarFiltroAgentesBandeja();
@@ -6155,6 +6176,9 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
         document.getElementById('edit-name').value = a.name;
         document.getElementById('edit-prompt').value = a.prompt;
         document.getElementById('edit-domains').value = Array.isArray(a.dominios) ? a.dominios.join(', ') : (a.dominios || '');
+        document.getElementById('edit-crm-activo').checked = !!a.crm_activo;
+        document.querySelectorAll('.crm-campo-edit-box').forEach(c => c.checked = a.crm_campos.includes(c.value));
+        toggleEditCampos();
         document.getElementById('edit-modal').style.display = 'flex';
     }
 
@@ -6684,13 +6708,20 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
         const orig = btn.innerText;
         btn.disabled = true; btn.innerText = 'Guardando...';
         const id = parseInt(document.getElementById('edit-id').value);
+        const crmActivo = document.getElementById('edit-crm-activo').checked;
+        const crmCampos = Array.from(document.querySelectorAll('.crm-campo-edit-box:checked')).map(c => c.value);
         const { error } = await _supabase.from('agentes_ia').update({
             nombre_agente: document.getElementById('edit-name').value,
             prompt_sistema: document.getElementById('edit-prompt').value,
-            dominios_permitidos: document.getElementById('edit-domains').value.split(',').map(d => d.trim()).filter(d => d.length > 0)
+            dominios_permitidos: document.getElementById('edit-domains').value.split(',').map(d => d.trim()).filter(d => d.length > 0),
+            crm_activo: crmActivo,
+            crm_campos: crmCampos.length ? crmCampos : null
         }).eq('id', id);
         btn.disabled = false; btn.innerText = orig;
         if (error) { showToast('Error: ' + error.message, 'error'); return; }
+        if (crmActivo) {
+            try { await llamarCRM('sembrar_estados', {}); } catch (_) {}
+        }
         document.getElementById('edit-modal').style.display = 'none';
         showToast('Agente actualizado');
         cargarAgentes();
