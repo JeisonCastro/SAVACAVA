@@ -17,13 +17,16 @@ const ESTADOS_DEFAULT = [
 
 const CAMPOS_BASE = ['nombre', 'telefono', 'email', 'interes', 'preferencias'];
 
-async function obtenerConfigCRM(userId) {
-    const { data } = await supabase
-        .from('crm_config')
-        .select('*')
-        .eq('user_id', userId)
-        .maybeSingle();
-    return data || null;
+async function obtenerConfigCRM(userId, agenteId) {
+    if (agenteId) {
+        const { data } = await supabase
+            .from('crm_config_agente')
+            .select('*')
+            .eq('agente_id', agenteId)
+            .maybeSingle();
+        if (data) return data;
+    }
+    return null;
 }
 
 async function sembrarEstadosDefault(userId) {
@@ -168,8 +171,8 @@ Reglas:
 
         if (!extraido || typeof extraido !== 'object') return;
 
-        const config = await obtenerConfigCRM(agente.user_id);
-        if (!config) return;
+        const config = await obtenerConfigCRM(agente.user_id, agente.id);
+        if (!config || config.crm_activo !== true) return;
 
         // Buscar lead existente para esta conversación / contacto
         const { data: leadExistente } = await supabase

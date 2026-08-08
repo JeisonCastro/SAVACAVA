@@ -74,15 +74,20 @@ exports.handler = async (event) => {
             return { statusCode: 200, headers, body: JSON.stringify({ ok: true, ignorado: 'sin_intento' }) };
         }
 
-        // Para ventas CRM la firma usa el events secret DEL VENDEDOR.
+        // Para ventas CRM la firma usa el events secret DEL AGENTE (pasarela del vendedor).
         let secret = process.env.WOMPI_EVENTS_SECRET;
         if (pago.tipo === 'venta') {
-            const { data: config } = await supabase
-                .from('crm_config')
-                .select('wompi_events_secret')
-                .eq('user_id', pago.user_id)
-                .maybeSingle();
-            if (config?.wompi_events_secret) secret = config.wompi_events_secret;
+            const { data: lead } = pago.lead_id
+                ? await supabase.from('crm_leads').select('agente_id').eq('id', pago.lead_id).maybeSingle()
+                : { data: null };
+            if (lead?.agente_id) {
+                const { data: config } = await supabase
+                    .from('crm_config_agente')
+                    .select('wompi_events_secret')
+                    .eq('agente_id', lead.agente_id)
+                    .maybeSingle();
+                if (config?.wompi_events_secret) secret = config.wompi_events_secret;
+            }
         }
 
         const firmoConSecret = verificarFirma(payload, headerChecksum, secret);

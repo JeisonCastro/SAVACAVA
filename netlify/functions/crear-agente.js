@@ -80,10 +80,18 @@ exports.handler = async (event) => {
         if (insertError) throw new Error('Error al crear agente: ' + insertError.message);
 
         // Si el agente es CRM, asegurar el pipeline de estados default del usuario
+        // y crear su configuracion CRM individual (Wompi + catalogo vacios).
         if (crm_activo) {
             try {
                 const { sembrarEstadosDefault } = require('./crm-helper');
                 await sembrarEstadosDefault(user.id);
+                await supabase.from('crm_config_agente').upsert({
+                    agente_id: nuevoAgente.id,
+                    user_id: user.id,
+                    crm_activo: true,
+                    campos_captura: Array.isArray(crm_campos) && crm_campos.length ? crm_campos : null,
+                    catalogo: []
+                });
             } catch (_) {}
         }
 

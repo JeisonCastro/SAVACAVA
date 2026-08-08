@@ -41,12 +41,23 @@ exports.handler = async (event) => {
 
         // ── GET: toda la data del panel ──
         if (event.httpMethod === 'GET') {
-            const config = await obtenerConfigCRM(user.id);
+            const { data: agentes } = await supabase
+                .from('agentes_ia')
+                .select('id, nombre_agente, crm_activo')
+                .eq('user_id', user.id)
+                .order('id', { ascending: true });
+
+            const { data: configRows } = await supabase
+                .from('crm_config_agente')
+                .select('*')
+                .eq('user_id', user.id);
+
             const { data: estados } = await supabase
                 .from('crm_estados')
                 .select('*')
                 .eq('user_id', user.id)
                 .order('orden', { ascending: true });
+
             const { data: leads } = await supabase
                 .from('crm_leads')
                 .select(`
@@ -58,11 +69,21 @@ exports.handler = async (event) => {
                 .order('updated_at', { ascending: false })
                 .limit(200);
 
+            const configs = (agentes || []).map(a => {
+                const cfg = (configRows || []).find(c => String(c.agente_id) === String(a.id));
+                return {
+                    agente_id: a.id,
+                    agente_nombre: a.nombre_agente,
+                    config: cfg ? sanitizarConfig(cfg) : null
+                };
+            });
+
             return {
                 statusCode: 200,
                 headers,
                 body: JSON.stringify({
-                    config: sanitizarConfig(config),
+                    agentes: (agentes || []).map(a => ({ id: a.id, nombre_agente: a.nombre_agente, crm_activo: a.crm_activo })),
+                    configs,
                     estados: estados || [],
                     leads: (leads || []).map(l => ({
                         ...l,
@@ -78,13 +99,24 @@ exports.handler = async (event) => {
 
         if (event.httpMethod !== 'POST') return { statusCode: 405, headers, body: 'Method Not Allowed' };
 
-        // ── Guardar configuración (nunca se devuelven las llaves) ──
+        // ── Guardar configuración por AGENTE (nunca se devuelven las llaves) ──
         if (accion === 'config') {
-            const { crm_activo, campos_captura, wompi_private_key, wompi_public_key, wompi_events_secret, wompi_sandbox, catalogo } = body;
+            const { agente_id, crm_activo, campos_captura, wompi_private_key, wompi_public_key, wompi_events_secret, wompi_sandbox, catalogo } = body;
 
-            const actual = await obtenerConfigCRM(user.id);
+            if (!agente_id) return { statusCode: 400, headers, body: JSON.stringify({ error: 'Falta el agente.' }) };
+
+            const { data: agente, error: errAgente } = await supabase
+                .from('agentes_ia')
+                .select('id')
+                .eq('id', agente_id)
+                .eq('user_id', user.id)
+                .maybeSingle();
+            if (errAgente || !agente) return { statusCode: 404, headers, body: JSON.stringify({ error: 'Agente no encontrado.' }) };
+
+            const actual = await obtenerConfigCRM(user.id, agente_id);
 
             const updates = {
+                user_id: user.id,
                 crm_activo: typeof crm_activo === 'boolean' ? crm_activo : (actual?.crm_activo ?? false),
                 campos_captura: Array.isArray(campos_captura) ? campos_captura : (actual?.campos_captura || CAMPOS_BASE),
                 wompi_sandbox: typeof wompi_sandbox === 'boolean' ? wompi_sandbox : (actual?.wompi_sandbox ?? false),
@@ -97,16 +129,19 @@ exports.handler = async (event) => {
             if (Array.isArray(catalogo)) updates.catalogo = catalogo;
 
             if (actual) {
-                const { error } = await supabase.from('crm_config').update(updates).eq('user_id', user.id);
+                const { error } = await supabase.from('crm_config_agente').update(updates).eq('agente_id', agente_id);
                 if (error) return { statusCode: 500, headers, body: JSON.stringify({ error: error.message }) };
             } else {
-                const { error } = await supabase.from('crm_config').insert({ user_id: user.id, ...updates });
+                const { error } = await supabase.from('crm_config_agente').insert({ agente_id, ...updates });
                 if (error) return { statusCode: 500, headers, body: JSON.stringify({ error: error.message }) };
             }
 
-            if (updates.crm_activo) await sembrarEstadosDefault(user.id);
+            if (updates.crm_activo) {
+                await sembrarEstadosDefault(user.id);
+                await supabase.from('agentes_ia').update({ crm_activo: true }).eq('id', agente_id);
+            }
 
-            const nueva = await obtenerConfigCRM(user.id);
+            const nueva = await obtenerConfigCRM(user.id, agente_id);
             return {
                 statusCode: 200,
                 headers,
@@ -190,11 +225,22 @@ exports.handler = async (event) => {
 
         // ── Crear/editar lead manualmente ──
         if (accion === 'lead_guardar') {
-            const { id, nombre, telefono, email, interes, notas, preferencias, estado_id } = body;
+            const { id, agente_id, nombre, telefono, email, interes, notas, preferencias, estado_id } = body;
             const estadoInicial = await require('./crm-helper').obtenerEstadoInicial(user.id);
+
+            if (!id && agente_id) {
+                const { data: agenteValido } = await supabase
+                    .from('agentes_ia')
+                    .select('id')
+                    .eq('id', agente_id)
+                    .eq('user_id', user.id)
+                    .maybeSingle();
+                if (!agenteValido) return { statusCode: 404, headers, body: JSON.stringify({ error: 'Agente no encontrado.' }) };
+            }
 
             const data = {
                 user_id: user.id,
+                agente_id: id ? undefined : (agente_id || null),
                 nombre: nombre || null,
                 telefono: telefono || null,
                 email: email || null,
@@ -208,6 +254,7 @@ exports.handler = async (event) => {
             if (id) {
                 const { data: existe } = await supabase.from('crm_leads').select('id').eq('id', id).eq('user_id', user.id).maybeSingle();
                 if (!existe) return { statusCode: 404, headers, body: JSON.stringify({ error: 'Lead no encontrado.' }) };
+                delete data.agente_id;
                 ({ error } = await supabase.from('crm_leads').update({ ...data, updated_at: new Date().toISOString() }).eq('id', id));
             } else {
                 ({ error } = await supabase.from('crm_leads').insert(data));

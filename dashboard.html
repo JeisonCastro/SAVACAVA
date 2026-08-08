@@ -4251,6 +4251,8 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
                     </div>
                 </div>
 
+                <div id="crm-agent-filter" style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;margin-bottom:1rem;"></div>
+
                 <div id="crm-banner" style="display:none"></div>
 
                 <div id="crm-stats" style="display:flex;gap:.75rem;flex-wrap:wrap;margin-bottom:1rem;"></div>
@@ -4919,7 +4921,7 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
             style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:1001;align-items:center;justify-content:center;">
             <div class="card" style="width:760px;max-width:94%;max-height:92vh;overflow-y:auto;">
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
-                    <h3 class="card-title" style="margin-bottom:0;">Configuracion del CRM</h3>
+                    <h3 class="card-title" id="cfg-title-agente" style="margin-bottom:0;">Configuracion del CRM</h3>
                     <button onclick="cerrarConfigCRM()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1rem;"><i class="fas fa-times"></i></button>
                 </div>
 
@@ -4938,9 +4940,10 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
                     </div>
                 </div>
 
-                <h4 style="font-family:'Inter',sans-serif;font-size:.9rem;font-weight:700;margin:1.2rem 0 .5rem;">Pasarela de pago (Wompi) del vendedor</h4>
+                <h4 style="font-family:'Inter',sans-serif;font-size:.9rem;font-weight:700;margin:1.2rem 0 .5rem;">Pasarela de pago (Wompi) de este agente</h4>
                 <p style="font-size:.74rem;color:var(--muted);margin-bottom:.8rem;">
-                    Conecta TU cuenta Wompi para que los agentes generen links de pago en el chat y cierren la venta.
+                    Conecta la cuenta Wompi de ESTE agente para que genere links de pago en el chat y cierre sus ventas.
+                    Cada agente tiene su propia pasarela y catálogo.
                     Deja en blanco para no cambiar la llave actual. Configura el webhook Wompi hacia
                     <code style="background:var(--bg);padding:.1rem .35rem;border-radius:4px;font-size:.72rem;">https://auvro.netlify.app/.netlify/functions/pago-webhook</code>
                     con tu events secret.
@@ -4952,7 +4955,7 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
                 </label>
                 <div id="cfg-wompi-status" style="margin-top:.5rem;font-size:.74rem;"></div>
 
-                <h4 style="font-family:'Inter',sans-serif;font-size:.9rem;font-weight:700;margin:1.2rem 0 .5rem;">Catalogo de productos (venta en chat)</h4>
+                <h4 style="font-family:'Inter',sans-serif;font-size:.9rem;font-weight:700;margin:1.2rem 0 .5rem;">Catalogo de productos de este agente (venta en chat)</h4>
                 <div id="cfg-catalogo-list"></div>
                 <div style="display:flex;gap:.5rem;margin-top:.6rem;flex-wrap:wrap;">
                     <input type="text" id="cfg-prod-nombre" placeholder="Nombre (ej: Zapatos casual)" style="flex:1;min-width:140px">
@@ -5781,6 +5784,7 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
     let crmData = { config: null, estados: [], leads: [], campos_disponibles: [] };
     let crmCatalogo = [];
     let crmLeadActual = null;
+    let crmAgenteSeleccionado = null;
 
     function fmtPesos(cents) {
         const n = Number(cents) || 0;
@@ -5807,33 +5811,70 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
             const data = await res.json();
             if (!res.ok) { showToast(data.error || 'Error cargando CRM', 'error'); return; }
             crmData = data;
-            crmCatalogo = Array.isArray(data.config?.catalogo) ? data.config.catalogo : [];
+            const agentes = data.agentes || [];
+            if (!agentes.length) {
+                crmData.config = null;
+                crmCatalogo = [];
+                renderCRM();
+                return;
+            }
+            const valido = agentes.some(a => String(a.id) === String(crmAgenteSeleccionado));
+            if (!valido) {
+                const primero = agentes.find(a => a.crm_activo) || agentes[0];
+                crmAgenteSeleccionado = primero.id;
+            }
+            aplicarConfigAgente();
             renderCRM();
         } catch (_) {
             showToast('Error de conexion con el servidor', 'error');
         }
     }
 
+    function aplicarConfigAgente() {
+        const entry = (crmData.configs || []).find(c => String(c.agente_id) === String(crmAgenteSeleccionado));
+        crmData.config = entry?.config || null;
+        crmCatalogo = Array.isArray(crmData.config?.catalogo) ? crmData.config.catalogo : [];
+    }
+
+    function cambiarAgenteCRM(id) {
+        crmAgenteSeleccionado = id;
+        aplicarConfigAgente();
+        renderCRM();
+    }
+
     function renderCRM() {
         const config = crmData.config;
         const banner = document.getElementById('crm-banner');
-        const leads = crmData.leads || [];
+        const agentes = crmData.agentes || [];
+        const leads = (crmData.leads || []).filter(l => !crmAgenteSeleccionado || String(l.agente_id) === String(crmAgenteSeleccionado));
         const estados = crmData.estados || [];
+
+        const agenteSel = agentes.find(a => String(a.id) === String(crmAgenteSeleccionado)) || null;
+        const filterBox = document.getElementById('crm-agent-filter');
+        if (filterBox) {
+            filterBox.innerHTML = `
+                <span style="font-size:.78rem;color:var(--muted);"><i class="fas fa-robot" style="margin-right:.35rem;"></i>Agente:</span>
+                <select id="crm-agente-select" onchange="cambiarAgenteCRM(this.value)" style="background:var(--surface);border:1px solid var(--border2);border-radius:10px;padding:.45rem .7rem;font-size:.8rem;color:var(--text);max-width:280px;">
+                    ${agentes.map(a => `<option value="${a.id}" ${String(a.id) === String(crmAgenteSeleccionado) ? 'selected' : ''}>${escapeHtml(a.nombre_agente)}${a.crm_activo ? ' · CRM' : ''}</option>`).join('')}
+                </select>
+                ${agenteSel && !agenteSel.crm_activo ? `<span style="font-size:.72rem;color:var(--yellow);"><i class="fas fa-triangle-exclamation" style="margin-right:.25rem;"></i>CRM desactivado en este agente</span>` : ''}
+            `;
+        }
 
         let bannerHtml = '';
         if (!config) {
             bannerHtml = `<div style="background:rgba(14,165,233,.1);border:1px solid rgba(14,165,233,.25);color:var(--text);padding:.9rem 1rem;border-radius:12px;margin-bottom:1rem;font-size:.82rem;display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap;">
-                <span><i class="fas fa-circle-info" style="margin-right:.4rem;color:var(--accent)"></i><strong>Activa tu CRM</strong> para que tus agentes capturen leads y ventas automáticamente (WhatsApp, widget web, chat).</span>
+                <span><i class="fas fa-circle-info" style="margin-right:.4rem;color:var(--accent)"></i><strong>${escapeHtml(agenteSel?.nombre_agente || 'Este agente')}</strong> no tiene CRM configurado. Actívalo para capturar leads y ventas (WhatsApp, widget web, chat).</span>
                 <button class="btn-main" onclick="abrirConfigCRM()" style="padding:.4rem .8rem;font-size:.76rem;white-space:nowrap;">Configurar</button>
             </div>`;
         } else if (!config.crm_activo) {
             bannerHtml = `<div style="background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.3);color:var(--text);padding:.9rem 1rem;border-radius:12px;margin-bottom:1rem;font-size:.82rem;display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap;">
-                <span><i class="fas fa-triangle-exclamation" style="margin-right:.4rem;color:var(--yellow)"></i>El CRM está <strong>desactivado</strong>. Actívalo para capturar leads desde tus agentes.</span>
+                <span><i class="fas fa-triangle-exclamation" style="margin-right:.4rem;color:var(--yellow)"></i>El CRM está <strong>desactivado</strong> para <strong>${escapeHtml(agenteSel?.nombre_agente || 'este agente')}</strong>. Actívalo para capturar leads desde este agente.</span>
                 <button class="btn-main" onclick="abrirConfigCRM()" style="padding:.4rem .8rem;font-size:.76rem;white-space:nowrap;">Configurar</button>
             </div>`;
         } else if (!config.wompi_private_key) {
             bannerHtml = `<div style="background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.3);color:var(--text);padding:.9rem 1rem;border-radius:12px;margin-bottom:1rem;font-size:.82rem;display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap;">
-                <span><i class="fas fa-triangle-exclamation" style="margin-right:.4rem;color:var(--yellow)"></i>Conecta tu <strong>pasarela Wompi</strong> para que los agentes cobren en el chat y cierren la venta automáticamente.</span>
+                <span><i class="fas fa-triangle-exclamation" style="margin-right:.4rem;color:var(--yellow)"></i>Conecta la <strong>pasarela Wompi de este agente</strong> para que cobre en el chat y cierre la venta automáticamente.</span>
                 <button class="btn-main" onclick="abrirConfigCRM()" style="padding:.4rem .8rem;font-size:.76rem;white-space:nowrap;">Conectar</button>
             </div>`;
         }
@@ -5931,6 +5972,7 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
         const payload = {
             accion: 'lead_guardar',
             id: document.getElementById('lead-id').value || undefined,
+            agente_id: crmAgenteSeleccionado || undefined,
             nombre: document.getElementById('lead-nombre').value.trim(),
             telefono: document.getElementById('lead-telefono').value.trim(),
             email: document.getElementById('lead-email').value.trim(),
@@ -5963,6 +6005,8 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
     // ── CONFIG MODAL ──
     function abrirConfigCRM() {
         const config = crmData.config || {};
+        const agenteSel = (crmData.agentes || []).find(a => String(a.id) === String(crmAgenteSeleccionado)) || null;
+        document.getElementById('cfg-title-agente').textContent = agenteSel ? `Configurar CRM: ${agenteSel.nombre_agente}` : 'Configurar CRM';
         document.getElementById('cfg-crm-activo').checked = config.crm_activo === true;
         document.getElementById('cfg-wompi-private').value = '';
         document.getElementById('cfg-wompi-secret').value = '';
@@ -6058,9 +6102,11 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
     }
 
     async function guardarConfigCRM() {
+        if (!crmAgenteSeleccionado) { showMsg('crm-config-msg', 'Selecciona un agente primero', 'error'); return; }
         const campos = Array.from(document.querySelectorAll('.cfg-campo-box:checked')).map(c => c.value);
         const payload = {
             accion: 'config',
+            agente_id: crmAgenteSeleccionado,
             crm_activo: document.getElementById('cfg-crm-activo').checked,
             campos_captura: campos,
             wompi_private_key: document.getElementById('cfg-wompi-private').value.trim(),
@@ -6070,7 +6116,11 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
         };
         const data = await llamarCRM('config', payload);
         if (!data.ok) { showMsg('crm-config-msg', data.error || 'Error guardando', 'error'); return; }
+        const entry = (crmData.configs || []).find(c => String(c.agente_id) === String(crmAgenteSeleccionado));
+        if (entry) entry.config = data.config;
         crmData.config = data.config;
+        const agenteLista = (crmData.agentes || []).find(a => String(a.id) === String(crmAgenteSeleccionado));
+        if (agenteLista) agenteLista.crm_activo = payload.crm_activo;
         showMsg('crm-config-msg', 'Configuracion guardada correctamente', 'success');
         renderCRM();
         setTimeout(cerrarConfigCRM, 900);
@@ -6728,7 +6778,14 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
         btn.disabled = false; btn.innerText = orig;
         if (error) { showToast('Error: ' + error.message, 'error'); return; }
         if (crmActivo) {
-            try { await llamarCRM('sembrar_estados', {}); } catch (_) {}
+            try {
+                await llamarCRM('sembrar_estados', {});
+                await llamarCRM('config', {
+                    agente_id: id,
+                    crm_activo: true,
+                    campos_captura: crmCampos.length ? crmCampos : ['nombre', 'telefono', 'email', 'interes', 'preferencias']
+                });
+            } catch (_) {}
         }
         document.getElementById('edit-modal').style.display = 'none';
         showToast('Agente actualizado');

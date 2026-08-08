@@ -1077,7 +1077,7 @@ exports.handler = async (event) => {
             supabase.from('agente_tools').select('tool_key, toolkit, enabled').eq('agente_id', targetID).eq('enabled', true),
             supabase.from('composio_connections').select('toolkit, composio_entity_id, connected_at, shopify_store_url, access_token').eq('user_id', agente.user_id),
             supabase.from('pending_tool_actions').select('*').eq('user_id', agente.user_id).eq('agente_id', targetID).eq('conversation_id', conversationIdFinal).eq('status', 'pending').gte('expires_at', new Date().toISOString()).order('created_at', { ascending: false }).limit(1).maybeSingle(),
-            agente.crm_activo ? obtenerConfigCRM(agente.user_id) : Promise.resolve(null)
+            agente.crm_activo ? obtenerConfigCRM(agente.user_id, agente.id) : Promise.resolve(null)
         ]);
 
         const historialSinDuplicado = (historialDB || []).filter(
