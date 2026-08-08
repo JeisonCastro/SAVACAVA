@@ -22,10 +22,10 @@ function truncarMensaje(texto, maxChars = 2000) {
     return `${inicio}\n\n[...mensaje truncado por longitud...]\n\n${fin}`;
 }
 
-function calcularTimeout(inputChars) {
+function calcularTimeout(inputChars, maxMs = 9000) {
     const base = 5000;
     const extra = Math.min(inputChars / 500, 4) * 1000;
-    return Math.min(base + extra, 9000);
+    return Math.min(base + extra, maxMs);
 }
 
 // ── PUSH NOTIFICATIONS ──────────────────────────────────────────────────────
@@ -1219,12 +1219,17 @@ INSTRUCCIONES:
         console.log("Turnos de historial enviados a DeepSeek:", historialDB.length);
         console.log("Conversation ID final:", conversationIdFinal);
         console.log("Caracteres input total:", inputChars);
-        console.log(image_url ? "Usando OpenAI GPT-4o (vision)..." : "Llamando a DeepSeek...");
+        const useOpenAI = !!image_url;
+        console.log(useOpenAI ? "Usando OpenAI GPT-4o (vision)..." : "Llamando a DeepSeek...");
 
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), calcularTimeout(inputChars));
+        const timeout = setTimeout(
+            () => controller.abort(),
+            // Los modelos de razonamiento de DeepSeek (deepseek-v4-flash) generan
+            // reasoning_content y pueden tardar más; les damos más margen.
+            calcularTimeout(inputChars, useOpenAI ? 9000 : 20000)
+        );
 
-        const useOpenAI = !!image_url;
         const apiEndpoint = useOpenAI
             ? 'https://api.openai.com/v1/chat/completions'
             : 'https://api.deepseek.com/v1/chat/completions';
@@ -1232,6 +1237,9 @@ INSTRUCCIONES:
             ? process.env.OPENIA_KEY
             : process.env.DEEPSEEK_API_KEY;
         const model = useOpenAI ? 'gpt-4o' : 'deepseek-v4-flash';
+        // En los modelos de razonamiento el presupuesto de salida se comparte entre
+        // el razonamiento y la respuesta; 1024 es insuficiente y devuelve content vacío.
+        const maxOutputTokens = useOpenAI ? 1024 : 8192;
 
         if (!apiKey) {
             clearTimeout(timeout);
@@ -1250,7 +1258,7 @@ INSTRUCCIONES:
                 model,
                 messages: mensajes,
                 temperature: 0.2,
-                max_tokens: 1024
+                max_tokens: maxOutputTokens
             }),
             signal: controller.signal
         });
@@ -1270,6 +1278,14 @@ INSTRUCCIONES:
 
         let respuestaIA = limpiarTextoIA(aiData.choices[0].message.content);
         console.log("Respuesta raw IA:", respuestaIA);
+
+        // DeepSeek (razonamiento) puede agotar el presupuesto de salida solo en
+        // reasoning_content y devolver content vacío con finish_reason="length".
+        // Evitamos guardar/responder un mensaje en blanco.
+        if ((!respuestaIA || !respuestaIA.trim()) && aiData.choices?.[0]?.finish_reason === 'length') {
+            console.warn("DeepSeek devolvió content vacío (finish_reason=length). Respuesta de respaldo activada.");
+            respuestaIA = "Lo siento, tu solicitud resultó demasiado extensa y no alcancé a completar la respuesta. Intenta dividirla en partes más cortas o reformularla.";
+        }
 
         const apiTokensUsados = aiData.usage
             ? (aiData.usage.prompt_tokens || 0) + (aiData.usage.completion_tokens || 0)

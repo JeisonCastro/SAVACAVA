@@ -832,6 +832,16 @@ Multiusuario.
 
 # Changelog de Cambios Técnicos
 
+## 8 Ago 2026 — Fix: respuestas vacías de DeepSeek por razonamiento truncado (finish_reason=length)
+
+### Síntoma
+En logs de Netlify, DeepSeek (`deepseek-v4-flash`, modelo de razonamiento) respondía `content: ""` con `finish_reason: "length"`: el presupuesto de salida (`max_tokens: 1024`) se repartía entre `reasoning_content` y la respuesta, y el razonamiento lo agotaba todo → `Action payload parseado: null` y el bot guardaba/respondía un mensaje en blanco.
+
+### Fix en `netlify/functions/chat.js`
+1. `max_tokens` ahora es `8192` para DeepSeek (razonamiento) y sigue `1024` para OpenAI GPT-4o (visión). Sin costo extra en chats cortos (solo se cobra lo generado).
+2. Timeout de DeepSeek elevado a máx. **20s** (`calcularTimeout` acepta `maxMs`); OpenAI sigue en 9s.
+3. Si `content` viene vacío y `finish_reason === 'length'`, se devuelve un mensaje de respaldo claro en vez de guardar un mensaje en blanco.
+
 ## 8 Ago 2026 — Refactor: chat de prueba integrado al botón "Probar" del dashboard (se elimina carpeta `chats/`)
 
 ### Cambio de enfoque
