@@ -2,6 +2,18 @@
 
 # Contexto del Proyecto AUVRO
 
+## Reglas de documentación (obligatorias)
+
+Este archivo es la **fuente de verdad** del proyecto. Todo agente/modelo que trabaje aquí debe:
+
+1. **Leer los ficheros reales** antes de documentar o modificar: nunca documentar de memoria, siempre contrastar con el código.
+2. **Documentar cada cambio funcional** en este mismo archivo y en el mismo commit/PR que el código. Un cambio sin documentar se considera incompleto.
+3. **Mantener la estructura existente**: Descripción, Arquitectura, Flujo, Base de Datos, Funciones, Integraciones, Estado (Completado/Pendiente/Blocked), Decisiones de diseño (ej. correo = Gmail vía Composio, no SMTP).
+4. **Actualizar el estado** (Completado / Pendiente / Blocked) al terminar, iniciar o bloquear cualquier tarea.
+5. **Registrar decisiones importantes y su porqué** para que un modelo nuevo entienda qué necesita el sistema y cómo funciona, sin adivinar.
+
+---
+
 ## Descripción General
 
 AUVRO es una plataforma SaaS para la creación, configuración y publicación de agentes de Inteligencia Artificial personalizados.
@@ -668,6 +680,7 @@ Presets recomendados por tipo de producto (sugerencia)
 
 Estado de implementación (2026-08-08)
 - DB: migración disponible en `supabase/migrations/20260808_notificaciones_crm.sql` (idempotente): añade `notify_on_intent`, `notify_on_payment`, `notify_on_state_change`, `notify_channels`, `notify_recipients`, `notify_cc_agent`, `notify_attach_receipt`, `notify_webhook_url` a `crm_config_agente`, y crea la tabla `notifications` para trazabilidad. Aplicar en Supabase antes de probar.
+- Nota RLS: al re-ejecutar la migración puede dar error `42710` por policies duplicadas (`crm_config_agente_update_own`, etc.) que genera Supabase Studio. La migración ya las elimina al inicio con `drop policy if exists`. Es seguro porque el backend lee/escribe con `SUPABASE_SERVICE_ROLE_KEY` (bypassa RLS).
 - Backend `crm.js` (`accion: 'config'`): persiste y devuelve los campos `notify_*`.
 - Backend defensivo: `pago-webhook.js` y `crm-helper.js` leen la config con `select('*')` y `registrarNotificacion()` escribe con try/catch, así no fallan si la migración aún no se aplica.
 - Hooks activos:
@@ -901,6 +914,19 @@ Multiusuario.
 ---
 
 # Changelog de Cambios Técnicos
+
+## 8 Ago 2026 — Fix UI: scroll y centrado de modales en móvil (dashboard)
+
+### Síntoma
+En el dashboard, las ventanas emergentes de **Integraciones del agente** y **Configurar CRM** (y el resto de modales centrados) no se podían scrollear en móvil: el contenido quedaba cortado arriba/abajo y solo se podía cerrar con la X superior.
+
+### Causa raíz
+Los modales usan `position:fixed;inset:0;align-items:center;justify-content:center` (flex centrado) y la tarjeta interna con `max-height:90vh;overflow-y:auto`. Con contenido más alto que la pantalla, el centrado flex recorta la parte superior/inferior del contenido y el overlay no scrollea.
+
+### Fix en `dashboard.html`
+- El overlay pasa a ser el contenedor scrollable: `overflow-y:auto`, `-webkit-overflow-scrolling:touch`, `overscroll-behavior:contain`, `padding:1.25rem`.
+- La tarjeta se centra con `margin:auto` (patrón que centra cuando hay espacio y permite scrollear hasta arriba cuando el contenido excede la pantalla).
+- Selector global `[id$="-modal"]:not(#chat-modal)` (cubre los 11 modales: admin, chat, edit, create, crm-config, producto, importar, cat-preview, crm-lead, integrations, upgrade). `#chat-modal` se excluye porque es un panel flotante, no un overlay centrado. También se cubre `.media-lightbox`.
 
 ## 8 Ago 2026 — Fix v3: desactivado el razonamiento de DeepSeek (pensamiento) para respuestas dentro del tiempo límite
 

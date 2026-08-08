@@ -230,6 +230,12 @@
         /* UPGRADE MODAL */
         .upgrade-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:1002;align-items:center;justify-content:center}
         .upgrade-card{background:var(--surface);border:1px solid var(--border2);border-radius:16px;padding:2rem;width:460px;max-width:92%;text-align:center}
+        /* MODALES: scroll interno correcto en movil y contenido sin cortar.
+           El overlay pasa a ser el contenedor scrollable y la tarjeta se centra
+           con margin:auto (evita el bug de flex centrado que recorta arriba/abajo). */
+        [id$="-modal"]:not(#chat-modal){overflow-y:auto!important;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:1.25rem}
+        [id$="-modal"]:not(#chat-modal)>*{margin:auto!important;max-height:none!important}
+        .media-lightbox{overflow-y:auto!important;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
         .upgrade-icon{width:56px;height:56px;border-radius:50%;background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.3);display:flex;align-items:center;justify-content:center;margin:0 auto 1.25rem;font-size:1.4rem;color:var(--yellow)}
         .upgrade-title{font-family:'Inter',sans-serif;font-size:1.2rem;font-weight:800;color:var(--text);margin-bottom:.6rem}
         .upgrade-msg{font-size:.9rem;color:var(--muted);line-height:1.65;margin-bottom:1.75rem;font-weight:300}
