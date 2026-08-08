@@ -1210,11 +1210,12 @@ CATÁLOGO DE PRODUCTOS DEL VENDEDOR:
 ${textoCatalogo}
 
 FLUJO DE VENTA:
-1. Ofrece productos del catálogo con su precio exacto.
+1. Ofrece SOLO productos del catálogo con su precio exacto. NO inventes precios ni productos.
 2. Confirma el producto y la cantidad con el cliente.
 3. Pide confirmación clara de compra ("si", "comprar", "confirmo").
-4. Si el cliente confirma la compra${tienePago ? ', usa la herramienta CRM_GENERAR_PAGO con el "id" del producto para generar el link de pago y envíalo al cliente.' : ', indica que enviarás el link de pago por WhatsApp (el vendedor lo gestiona).'}
+4. Si el cliente confirma la compra${tienePago ? ', usa la herramienta CRM_GENERAR_PAGO con el "id" EXACTO del producto del catálogo para generar el link de pago y envíalo al cliente.' : ', indica que enviarás el link de pago por WhatsApp (el vendedor lo gestiona).'}
 5. Recuérdale al cliente completar el pago para confirmar su pedido.
+6. IMPORTANTE: genera el link SOLO para el producto exacto del catálogo (su id). Si el cliente pide algo que NO está en el catálogo, NO uses otro producto ni inventes un id: responde que un asesor gestiona ese pedido.
 `;
                 if (tienePago) {
                     systemFinal += `
@@ -1368,8 +1369,7 @@ INSTRUCCIONES:
             if (!crmActivo) {
                 respuestaIA = "El CRM de ventas no está habilitado para este agente.";
             } else if (!producto) {
-                const ids = catalogoCRM.map(p => p.id).join(', ');
-                respuestaIA = `Producto no encontrado en el catálogo. Productos disponibles: ${ids || 'ninguno'}.`;
+                respuestaIA = "Ese producto no está disponible para pago en línea. Solo puedo generar links de los productos del catálogo. Un asesor puede gestionar tu pedido.";
             } else {
                 const leadId = await obtenerOCrearLead({
                     agente,
