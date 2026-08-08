@@ -4443,24 +4443,24 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
                             activarlo de inmediato.</p>
                         <div class="tokens-plan-grid">
                             <div class="plan-card"
-                                onclick="seleccionarPlan(this,100000,'5.000')"><div
+                                onclick="seleccionarPlan(this,100000,'6.100')"><div
                                     class="plan-name">Basico</div><div
                                     class="plan-tokens">100K
                                     <span>tokens</span></div><div
-                                    class="plan-price">$ 5.000 COP</div></div>
+                                    class="plan-price">$ 6.100 COP</div></div>
                             <div class="plan-card featured selected"
-                                onclick="seleccionarPlan(this,500000,'20.000')"><div
+                                onclick="seleccionarPlan(this,500000,'21.600')"><div
                                     class="plan-badge-card">Popular</div><div
                                     class="plan-name">Estandar</div><div
                                     class="plan-tokens">500K
                                     <span>tokens</span></div><div
-                                    class="plan-price">$ 20.000 COP</div></div>
+                                    class="plan-price">$ 21.600 COP</div></div>
                             <div class="plan-card"
-                                onclick="seleccionarPlan(this,1000000,'35.000')"><div
+                                onclick="seleccionarPlan(this,1000000,'37.000')"><div
                                     class="plan-name">Premium</div><div
                                     class="plan-tokens">1M
                                     <span>tokens</span></div><div
-                                    class="plan-price">$ 35.000 COP</div></div>
+                                    class="plan-price">$ 37.000 COP</div></div>
                             <div class="plan-card"
                                 onclick="seleccionarPlan(this,0,'personalizado')"><div
                                     class="plan-name">Custom</div><div
@@ -4476,7 +4476,7 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
                         <a href="javascript:void(0)" onclick="recargarWhatsApp()"
                             style="display:block;text-align:center;font-size:.78rem;color:var(--muted);margin-top:.65rem">Prefieres
                             coordinar por WhatsApp?</a>
-                        <div style="margin-top:.65rem;text-align:center;font-size:.72rem;color:var(--dim)">El precio final incluye la tarifa de procesamiento de Wompi (2,65% + $700 + IVA).</div>
+                        <div style="margin-top:.65rem;text-align:center;font-size:.72rem;color:var(--dim)">Precios mostrados: total a pagar. Incluye la tarifa de procesamiento de Wompi (2,65% + $700 + IVA).</div>
                     </div>
                     <div class="card">
                         <div class="card-header"><div
@@ -4880,7 +4880,7 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
                 <a href="javascript:void(0)" onclick="contactarUpgradeWhatsApp()"
                     style="display:block;text-align:center;font-size:.78rem;color:var(--muted);margin-bottom:.75rem">Prefieres
                     coordinar por WhatsApp?</a>
-                <div style="text-align:center;font-size:.72rem;color:var(--dim);margin-bottom:.75rem">El precio final incluye la tarifa de procesamiento de Wompi (2,65% + $700 + IVA).</div>
+                <div style="text-align:center;font-size:.72rem;color:var(--dim);margin-bottom:.75rem">Precios mostrados: total a pagar. Incluye la tarifa de procesamiento de Wompi (2,65% + $700 + IVA).</div>
                 <button
                     onclick="document.getElementById('upgrade-modal').style.display='none'"
                     style="background:none;border:none;color:var(--dim);font-size:.85rem;cursor:pointer;font-family:'DM Sans',sans-serif">
@@ -4899,10 +4899,17 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
     let currentSession = null;
     let planActual = { nombre: 'Free', limite_agentes: 1 };
     let agenteIntegracionesActual = null;
-    let planSeleccionado = { tokens: 500000, precio: '20.000' };
+    let planSeleccionado = { tokens: 500000, precio: '21.600' };
     let upgradeWhatsappUrl = '';
     let upgradePlanId = null;
     let todosLosPlanes = [];
+
+    // Precio final = base + tarifa de procesamiento de Wompi (2,65% + $700 + IVA).
+    // Debe coincidir exactamente con el calculo de crear-pago.js
+    function precioFinal(base) {
+        const bruto = (base + 700 * 1.19) / (1 - 0.0265 * 1.19);
+        return Math.ceil(Math.ceil(bruto) / 100) * 100;
+    }
     let currentConversationId = null;
     let currentChatHistory = [];
     let conversacionesBandeja = [];
@@ -5588,13 +5595,13 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
             <div class="upgrade-plan-item ${i === 0 ? 'selected' : ''}" onclick="seleccionarPlanUpgrade(this, '${p.id}', '${p.nombre}', ${p.limite_agentes}, ${p.precio})">
                 <div class="upgrade-plan-name">${p.nombre}</div>
                 <div class="upgrade-plan-agents">${p.limite_agentes >= 999 ? 'Ilimitados' : p.limite_agentes + ' agentes'}</div>
-                <div class="upgrade-plan-price">$${p.precio.toLocaleString()} COP</div>
+                <div class="upgrade-plan-price">$${precioFinal(p.precio).toLocaleString()} COP</div>
             </div>
         `).join('');
         if (planesSuperiores.length > 0) {
             const primer = planesSuperiores[0];
             upgradePlanId = primer.id;
-            upgradeWhatsappUrl = `https://wa.me/573115364647?text=${encodeURIComponent(`Hola Jeison, quiero mejorar al plan ${primer.nombre} (${primer.limite_agentes} agentes) por $${primer.precio.toLocaleString()} COP. Mi cuenta: ${currentUser.email}`)}`;
+            upgradeWhatsappUrl = `https://wa.me/573115364647?text=${encodeURIComponent(`Hola Jeison, quiero mejorar al plan ${primer.nombre} (${primer.limite_agentes} agentes) por $${precioFinal(primer.precio).toLocaleString()} COP. Mi cuenta: ${currentUser.email}`)}`;
         }
         document.getElementById('upgrade-modal').style.display = 'flex';
     }
@@ -5604,7 +5611,7 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
         el.classList.add('selected');
         upgradePlanId = id;
         const limiteText = limite >= 999 ? 'ilimitados' : limite;
-        upgradeWhatsappUrl = `https://wa.me/573115364647?text=${encodeURIComponent(`Hola Jeison, quiero mejorar al plan ${nombre} (${limiteText} agentes) por $${precio.toLocaleString()} COP. Mi cuenta: ${currentUser.email}`)}`;
+        upgradeWhatsappUrl = `https://wa.me/573115364647?text=${encodeURIComponent(`Hola Jeison, quiero mejorar al plan ${nombre} (${limiteText} agentes) por $${precioFinal(precio).toLocaleString()} COP. Mi cuenta: ${currentUser.email}`)}`;
     }
 
     async function contactarUpgrade() {
@@ -6310,7 +6317,7 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
             <tr>
                 <td style="font-family:'Inter',sans-serif;font-weight:700;color:var(--text)">${p.nombre} ${p.nombre === planActual.nombre ? '<span class="badge badge-accent" style="margin-left:.4rem">Tu plan</span>' : ''}</td>
                 <td>${p.limite_agentes >= 999 ? 'Ilimitados' : p.limite_agentes}</td>
-                <td style="color:var(--green)">$${p.precio.toLocaleString()} COP/mes</td>
+                <td style="color:var(--green)">$${precioFinal(p.precio).toLocaleString()} COP/mes</td>
                 <td>${p.nombre === planActual.nombre ? '<span class="badge badge-green">Activo</span>' : `<button onclick="contactarPlan('${p.id}','${p.nombre}',${p.limite_agentes},${p.precio})" style="background:rgba(14,165,233,.1);color:var(--accent);border:1px solid rgba(14,165,233,.2);padding:4px 10px;border-radius:6px;font-size:.75rem;cursor:pointer;font-family:'DM Sans',sans-serif">Contratar</button>`}</td>
             </tr>
         `).join('');
