@@ -612,6 +612,76 @@ Composio
 Uso:
 
 Conexión con herramientas externas.
+
+---
+
+## Notificaciones y envío de correos por agente (pre-pago / post-pago / estados de lead)
+
+Objetivo
+- Permitir que cada agente notifique al dueño del negocio (y/o destinatarios configurados) eventos comerciales importantes: generación de link de pago (intención), pago confirmado (venta), cambios de estado del lead (ej. `Ganado`), y reembolsos/errores de pago.
+
+Prioridad del remitente
+- Si el agente tiene conexión Gmail vía Composio, enviar con esa conexión (OAuth) — mantiene remitente propio y mejor deliverability.
+- Si no hay Gmail via Composio, usar SMTP configurado en `crm_config_agente` (opcional).
+- Como último recurso usar la cuenta de la plataforma (credenciales en Netlify ENV: p.ej. SMTP/SendGrid).
+
+Eventos que disparan notificaciones
+- Pre-pago: al crear un payment link (`crearPaymentLinkVenta`) → enviar plantilla *pre-pago* con resumen y link.
+- Post-pago: en webhook de pagos (`pago-webhook.js`) al confirmarse pago → enviar plantilla *post-pago* con recibo y marcar lead como `Ganado`.
+- Cambio de estado: cuando `crm_leads.estado_id` cambia a un estado de interés (configurable), notificar.
+- Opcional: notificar intención de compra desde el flujo de `pending actions` (workflow_confirm).
+
+Configuración por agente (crm_config_agente)
+- Campos sugeridos:
+  - `notify_on_intent` (bool), `notify_on_payment` (bool), `notify_on_state_change` (bool)
+  - `notify_channels`: ['email','whatsapp','push','webhook'] (multi)
+  - `notify_recipients`: array (emails/phones)
+  - `notify_cc_agent` (bool)
+  - `notify_attach_receipt` (bool)
+  - `notify_webhook_url` (optional)
+  - `smtp_*` opcionales (si se quiere SMTP propio) — almacenar con seguridad, preferir OAuth Composio cuando exista
+
+Canales de notificación
+- Email (Gmail vía Composio → SMTP agente → platform fallback)
+- WhatsApp: enviar notificación corta al vendedor si hay `whatsapp_connections` activo
+- Push: usar `dispararPush` si hay suscripción
+- Webhook: POST JSON al URL configurado, idempotente
+
+Trazabilidad y seguridad
+- Registrar cada notificación en tabla `emails_sent` / `notifications` con: agente_id, lead_id, conversation_id, event_type, channel, to, status, external_id, error, created_at.
+- Actualizar `mensajes_conversacion` con nota indicando notificación enviada (metadata { notification_type, id }).
+- Usar Netlify ENV para todos los secretos de fallback (SENDGRID_*, SMTP_*). No guardar contraseñas en Git.
+- Para Gmail usar Composio (OAuth tokens administrados por Composio). Si se almacenan credenciales SMTP en DB, guardarlas encriptadas y con acceso limitado.
+
+Plantillas
+- Mantener plantillas HTML + plain-text para:
+  - pre-pago (link): {{cliente.nombre}}, {{producto.nombre}}, {{fecha}}, {{detalle_pasajeros}}, {{total}}, {{link_pago}}, {{conversation_url}}
+  - post-pago (recibo): incluir payment_id, referencia, adjunto opcional PDF
+- Plantillas en repo: `netlify/functions/email-templates/`
+
+Idempotencia y errores
+- Webhooks (pagos) deben chequear `payment_id` procesado antes de notificar (evitar duplicados).
+- Reintentos exponenciales para envíos fallidos; registrar fallos y exponer en dashboard.
+
+Presets recomendados por tipo de producto (sugerencia)
+- Físico/Digital: `notify_on_payment = true`
+- Servicio/Suscripción: `notify_on_payment = true`; `notify_on_intent` = opt-in
+- Tour/Actividad: `notify_on_intent = true`; `notify_on_payment = true`; `notify_on_state_change = true`
+
+Migraciones y ficheros a tocar (plan de cambios)
+- DB: migración para `crm_config_agente` (añadir campos `notify_*` y `smtp_*`), y crear `emails_sent` / `notifications`.
+- Backend: nuevo helper `notifications.js` (sendEmail/sendWhatsApp/sendPush/sendWebhook), y hooks:
+  - `crm-helper.js` / `crearPaymentLinkVenta`: notificar pre-pago si corresponde.
+  - `pago-webhook.js`: notificar post-pago al aprobar transacción, actualizar estado lead.
+  - `chat.js`: opcional — notificar intención cuando se confirma workflow.
+- Frontend: dashboard UI para activar notificaciones por agente y ver historial de notificaciones.
+- Monitor & tests: unit + e2e y logs.
+
+Notas sobre variables seguras
+- Todas las claves/credenciales deben almacenarse en Netlify ENV. No incluir secretos en el repo.
+- Para Composio/Gmail usar OAuth tokens gestionados por Composio, no almacenar user/pass en texto.
+
+---
 WhatsApp
 
 Uso:
