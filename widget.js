@@ -16,18 +16,18 @@
   })();
 
   const DEFAULTS = {
-    primary: '#0ea5e9',
-    bgPanel: '#07111d',
+    primary: '#2563eb',
+    bgPanel: '#ffffff',
     bgHeader: '#0f172a',
-    bgInput: '#020617',
-    bgInputWrap: '#0f172a',
-    colorText: '#e5edf7',
-    colorTextSecondary: '#8fb8d9',
-    bubbleUserBg: '#0f766e',
-    bubbleBotBg: '#111827',
-    bubbleHumanBg: '#083f3a',
+    bgInput: '#f1f5f9',
+    bgInputWrap: '#ffffff',
+    colorText: '#0f172a',
+    colorTextSecondary: '#64748b',
+    bubbleUserBg: '#2563eb',
+    bubbleBotBg: '#f1f5f9',
+    bubbleHumanBg: '#ecfdf5',
     font: 'Inter, Arial, sans-serif',
-    borderRadius: '20px',
+    borderRadius: '14px',
     name: 'Asistente IA',
     greeting: 'Hola 👋 ¿En qué puedo ayudarte?',
     position: 'right',
@@ -125,9 +125,9 @@
       height:60px;
       border-radius:50%;
       border:1px solid color-mix(in srgb, var(--auvro-primary) 42%, transparent);
-      background:linear-gradient(135deg, var(--auvro-primary), color-mix(in srgb, var(--auvro-primary) 70%, #22d3ee));
+      background:var(--auvro-primary);
       color:white;
-      box-shadow:0 18px 50px color-mix(in srgb, var(--auvro-primary) 36%, transparent);
+      box-shadow:0 8px 24px color-mix(in srgb, var(--auvro-primary) 26%, transparent);
       cursor:pointer;
       font-size:25px;
       display:flex;
@@ -138,7 +138,7 @@
 
     .auvro-launcher:hover{
       transform:translateY(-2px) scale(1.03);
-      box-shadow:0 22px 60px color-mix(in srgb, var(--auvro-primary) 44%, transparent);
+      box-shadow:0 12px 32px color-mix(in srgb, var(--auvro-primary) 32%, transparent);
     }
 
     .auvro-panel{
@@ -148,9 +148,9 @@
       max-height:calc(100vh - 98px);
       border-radius:var(--auvro-border-radius);
       overflow:hidden;
-      box-shadow:0 28px 85px rgba(0,0,0,.46);
+      box-shadow:0 20px 60px rgba(15,23,42,.18);
       background:var(--auvro-bg-panel);
-      border:1px solid color-mix(in srgb, var(--auvro-primary) 22%, transparent);
+      border:1px solid color-mix(in srgb, var(--auvro-primary) 14%, transparent);
       display:none;
       flex-direction:column;
       backdrop-filter:blur(14px);
@@ -211,7 +211,7 @@
 
     .auvro-status{
       font-size:11px;
-      color:var(--auvro-color-text-secondary);
+      color:rgba(255,255,255,.78);
       margin-top:3px;
       display:flex;
       align-items:center;
@@ -247,10 +247,7 @@
     .auvro-messages{
       flex:1;
       padding:14px;
-      background:
-        radial-gradient(circle at 14px 14px, rgba(148,163,184,.08) 1.4px, transparent 1.4px),
-        linear-gradient(180deg, color-mix(in srgb, var(--auvro-bg-panel) 90%, black), var(--auvro-bg-panel));
-      background-size:28px 28px, auto;
+      background:var(--auvro-bg-panel);
       overflow-y:auto;
       overflow-x:hidden;
       display:flex;
@@ -289,7 +286,7 @@
       line-height:1.35;
       white-space:pre-wrap;
       overflow-wrap:anywhere;
-      box-shadow:0 2px 10px rgba(0,0,0,.17);
+      box-shadow:0 1px 3px rgba(16,24,40,.08);
       position:relative;
     }
 
@@ -297,7 +294,7 @@
       align-self:flex-end;
       background:var(--auvro-bubble-user-bg);
       border:1px solid color-mix(in srgb, var(--auvro-bubble-user-bg) 60%, white);
-      color:#ecfeff;
+      color:#ffffff;
       border-bottom-right-radius:4px;
     }
 
@@ -312,8 +309,8 @@
     .auvro-bubble.human{
       align-self:flex-start;
       background:var(--auvro-bubble-human-bg);
-      border:1px solid color-mix(in srgb, var(--auvro-bubble-human-bg) 65%, #22d3a5);
-      color:#eafff8;
+      border:1px solid color-mix(in srgb, var(--auvro-bubble-human-bg) 65%, #059669);
+      color:#0f172a;
       border-bottom-left-radius:4px;
     }
 
@@ -334,17 +331,17 @@
       display:block;
       font-size:10px;
       font-weight:700;
-      color:#93c5fd;
+      color:#64748b;
       opacity:.86;
       margin-bottom:3px;
     }
 
     .auvro-bubble.user .auvro-label{
-      color:#ccfbf1;
+      color:rgba(255,255,255,.9);
     }
 
     .auvro-bubble.human .auvro-label{
-      color:#86efac;
+      color:#059669;
     }
 
     .auvro-text{
@@ -372,7 +369,7 @@
       align-items:center;
       gap:5px;
       width:max-content;
-      box-shadow:0 2px 10px rgba(0,0,0,.17);
+      box-shadow:0 1px 3px rgba(16,24,40,.08);
     }
 
     .auvro-typing span{
@@ -403,10 +400,10 @@
 
     .auvro-input{
       flex:1;
-      border:1px solid rgba(148,163,184,.24);
+      border:1px solid #cbd5e1;
       background:var(--auvro-bg-input);
       color:var(--auvro-color-text);
-      border-radius:15px;
+      border-radius:10px;
       padding:11px 12px;
       min-height:42px;
       max-height:96px;
@@ -431,7 +428,7 @@
       height:43px;
       border-radius:50%;
       border:none;
-      background:linear-gradient(135deg, var(--auvro-primary), color-mix(in srgb, var(--auvro-primary) 70%, #22d3ee));
+      background:var(--auvro-primary);
       color:white;
       cursor:pointer;
       font-size:16px;
@@ -440,7 +437,7 @@
       justify-content:center;
       flex:0 0 auto;
       transition:all .16s ease;
-      box-shadow:0 10px 28px color-mix(in srgb, var(--auvro-primary) 25%, transparent);
+      box-shadow:0 6px 18px color-mix(in srgb, var(--auvro-primary) 22%, transparent);
     }
 
     .auvro-send:hover{
