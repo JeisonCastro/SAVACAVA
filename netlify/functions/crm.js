@@ -23,7 +23,9 @@ function sanitizarConfig(config) {
     return {
         ...config,
         wompi_private_key: undefined,
-        wompi_events_secret: undefined
+        wompi_events_secret: undefined,
+        wompi_privada_guardada: !!config.wompi_private_key,
+        wompi_secret_guardado: !!config.wompi_events_secret
     };
 }
 

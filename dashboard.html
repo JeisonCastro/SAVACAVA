@@ -4950,6 +4950,7 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
                 <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;font-size:.78rem;color:var(--muted);margin-top:.4rem;">
                     <input type="checkbox" id="cfg-wompi-sandbox"> Usar entorno de pruebas (sandbox)
                 </label>
+                <div id="cfg-wompi-status" style="margin-top:.5rem;font-size:.74rem;"></div>
 
                 <h4 style="font-family:'Inter',sans-serif;font-size:.9rem;font-weight:700;margin:1.2rem 0 .5rem;">Catalogo de productos (venta en chat)</h4>
                 <div id="cfg-catalogo-list"></div>
@@ -5966,6 +5967,14 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
         document.getElementById('cfg-wompi-private').value = '';
         document.getElementById('cfg-wompi-secret').value = '';
         document.getElementById('cfg-wompi-sandbox').checked = config.wompi_sandbox === true;
+        const statusEl = document.getElementById('cfg-wompi-status');
+        if (statusEl) {
+            const priv = config.wompi_privada_guardada;
+            const secret = config.wompi_secret_guardado;
+            statusEl.innerHTML = (priv || secret)
+                ? `<span style="color:var(--green);"><i class="fas fa-circle-check" style="margin-right:.3rem;"></i>Wompi conectado${priv ? ' · private key guardada' : ''}${secret ? ' · events secret guardado' : ''}</span>`
+                : `<span style="color:var(--muted);"><i class="fas fa-circle-info" style="margin-right:.3rem;"></i>Sin llaves Wompi configuradas todavia</span>`;
+        }
         const campos = (config.campos_captura || crmData.campos_disponibles || ['nombre','telefono','email','interes','preferencias']);
         document.querySelectorAll('.cfg-campo-box').forEach(c => c.checked = campos.includes(c.value));
         renderConfigCatalogo();
@@ -7121,8 +7130,8 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
             .from('mensajes_conversacion')
             .select('id, conversacion_id, role, content, metadata, created_at, origen')
             .eq('conversacion_id', id)
-            .order('created_at', { ascending: true })
-            .limit(300);
+            .order('created_at', { ascending: false })
+            .limit(1000);
 
         if (error) {
             console.error('Error cargando mensajes:', error);
@@ -7130,7 +7139,7 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
             return;
         }
 
-        mensajesConversacionActual = data || [];
+        mensajesConversacionActual = (data || []).slice().reverse();
         renderMensajesConversacion();
     }
 

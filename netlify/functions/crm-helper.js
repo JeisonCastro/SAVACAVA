@@ -48,7 +48,17 @@ async function obtenerEstadoInicial(userId) {
         .order('orden', { ascending: true })
         .limit(1)
         .maybeSingle();
-    return data?.id || null;
+    if (data?.id) return data.id;
+
+    // Fallback: si el pipeline personalizado no marcó estado inicial, usa el primero.
+    const { data: primer } = await supabase
+        .from('crm_estados')
+        .select('id')
+        .eq('user_id', userId)
+        .order('orden', { ascending: true })
+        .limit(1)
+        .maybeSingle();
+    return primer?.id || null;
 }
 
 async function obtenerEstadoCerrada(userId) {
@@ -121,13 +131,14 @@ async function deepseekJSON(systemPrompt, userText, maxTokens = 400) {
 // Toma los últimos mensajes de la conversación y extrae los datos del lead.
 async function extraerDatosLead({ agente, canal, externalUserId, conversacionId }) {
     try {
-        const { data: mensajes } = await supabase
+        const { data: mensajesRaw } = await supabase
             .from('mensajes_conversacion')
             .select('role, content, created_at')
             .eq('conversacion_id', conversacionId)
-            .order('created_at', { ascending: true })
+            .order('created_at', { ascending: false })
             .limit(14);
 
+        const mensajes = (mensajesRaw || []).slice().reverse();
         if (!mensajes || mensajes.length === 0) return;
 
         const transcripcion = mensajes
