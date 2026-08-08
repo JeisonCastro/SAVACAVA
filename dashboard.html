@@ -203,6 +203,7 @@
         .msg{font-size:.82rem;text-align:center;padding:.55rem .85rem;border-radius:7px;margin-top:.75rem;display:none}
         .msg.error{background:rgba(248,113,113,.1);color:var(--red);border:1px solid rgba(248,113,113,.2);display:block}
         .msg.success{background:rgba(34,211,165,.1);color:var(--green);border:1px solid rgba(34,211,165,.2);display:block}
+        .msg.info{background:rgba(56,189,248,.1);color:var(--accent);border:1px solid rgba(56,189,248,.25);display:block}
         .loading-dots{display:none;text-align:center;margin-top:.6rem}
         .loading-dot{display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--accent);margin:0 2px;animation:bounce .8s infinite}
         .loading-dot:nth-child(2){animation-delay:.15s}.loading-dot:nth-child(3){animation-delay:.3s}
@@ -4956,12 +4957,18 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
                 <div id="cfg-wompi-status" style="margin-top:.5rem;font-size:.74rem;"></div>
 
                 <h4 style="font-family:'Inter',sans-serif;font-size:.9rem;font-weight:700;margin:1.2rem 0 .5rem;">Catalogo de productos de este agente (venta en chat)</h4>
-                <div id="cfg-catalogo-list"></div>
-                <div style="display:flex;gap:.5rem;margin-top:.6rem;flex-wrap:wrap;">
-                    <input type="text" id="cfg-prod-nombre" placeholder="Nombre (ej: Zapatos casual)" style="flex:1;min-width:140px">
-                    <input type="number" id="cfg-prod-precio" placeholder="Precio COP (ej: 120000)" style="width:150px">
-                    <button class="btn-main" style="padding:.45rem .8rem;font-size:.78rem;" onclick="agregarProducto()"><i class="fas fa-plus" style="margin-right:.25rem"></i>Agregar</button>
+                <p style="font-size:.72rem;color:var(--muted);margin-bottom:.6rem;">
+                    Tipos: <b>Físico</b>, <b>Digital</b>, <b>Servicio</b>, <b>Suscripción</b> (con variantes como 1/3 meses) y
+                    <b>Tour</b> (tarifas por pasajero según edad, descuento por tamaño de grupo y extras). El total lo calcula
+                    el servidor en el chat: el agente solo recoge la composición del grupo.
+                </p>
+                <div style="display:flex;gap:.4rem;align-items:center;margin-bottom:.6rem;flex-wrap:wrap;">
+                    <button class="btn-main" style="padding:.45rem .8rem;font-size:.78rem;" onclick="abrirProductoModal()"><i class="fas fa-plus" style="margin-right:.25rem"></i>Nuevo producto</button>
+                    <button class="btn-main" style="padding:.45rem .8rem;font-size:.78rem;" onclick="abrirImportarModal()"><i class="fas fa-file-import" style="margin-right:.25rem"></i>Importar</button>
+                    <button class="btn-main" style="padding:.45rem .8rem;font-size:.78rem;" onclick="abrirVistaPrevia()"><i class="fas fa-eye" style="margin-right:.25rem"></i>Vista previa</button>
+                    <input type="text" id="cfg-prod-filtro" placeholder="Buscar por nombre o categoria..." style="flex:1;min-width:130px;padding:.45rem .6rem;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text);font-size:.76rem;" oninput="renderConfigCatalogo()">
                 </div>
+                <div id="cfg-catalogo-list"></div>
 
                 <h4 style="font-family:'Inter',sans-serif;font-size:.9rem;font-weight:700;margin:1.2rem 0 .5rem;">Pipeline de ventas (estados)</h4>
                 <p style="font-size:.74rem;color:var(--muted);margin-bottom:.6rem;">Crea tus estados. Marca cuál es el estado de venta cerrada para que el pago aprobado la cierre automáticamente.</p>
@@ -4982,6 +4989,82 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
                     <button class="btn-main btn-green" onclick="guardarConfigCRM()">Guardar</button>
                     <button class="btn-main" onclick="cerrarConfigCRM()" style="background:var(--red)">Cancelar</button>
                 </div>
+            </div>
+        </div>
+
+        <!-- PRODUCTO MODAL (catálogo enriquecido) -->
+        <div id="producto-modal"
+            style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:1001;align-items:center;justify-content:center;">
+            <div class="card" style="width:680px;max-width:94%;max-height:92vh;overflow-y:auto;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+                    <h3 class="card-title" id="producto-modal-title" style="margin-bottom:0;">Nuevo producto</h3>
+                    <button onclick="cerrarProductoModal()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1rem;"><i class="fas fa-times"></i></button>
+                </div>
+                <div style="display:flex;gap:.6rem;flex-wrap:wrap;">
+                    <div class="field" style="flex:1;min-width:150px;"><label>Nombre</label><input type="text" id="prod-nombre" placeholder="Ej: Playa Blanca Barú (bus + almuerzo)"></div>
+                    <div class="field" style="width:170px;"><label>Tipo</label>
+                        <select id="prod-tipo" onchange="renderCamposTipo()">
+                            <option value="fisico">Físico</option>
+                            <option value="digital">Digital</option>
+                            <option value="servicio">Servicio</option>
+                            <option value="suscripcion">Suscripción</option>
+                            <option value="tour">Tour / Actividad</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="field"><label>Categoría</label><input type="text" id="prod-categoria" placeholder="Ej: Tours y actividades" list="prod-categorias-datalist"><datalist id="prod-categorias-datalist"></datalist></div>
+                <div class="field"><label>Precio base (COP)</label><input type="number" id="prod-precio" placeholder="Ej: 89900"></div>
+                <div class="field"><label>Descripción</label><input type="text" id="prod-descripcion" placeholder="Incluye, salida, duración..."></div>
+                <div class="field"><label>Atributos (clave: valor, separados por comas)</label><textarea id="prod-atributos" rows="2" style="min-height:44px;resize:vertical;" placeholder="duracion: 8 horas, modalidad: Virtual"></textarea></div>
+                <div class="field"><label>Imagen</label>
+                    <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;">
+                        <input type="text" id="prod-imagen" placeholder="Pega una URL o sube un archivo" style="flex:1;min-width:150px" oninput="previewProdImagen()">
+                        <input type="file" id="prod-imagen-file" accept="image/*" style="display:none" onchange="subirImagenProducto(this)">
+                        <button type="button" class="btn-main" style="padding:.4rem .6rem;font-size:.72rem;" onclick="document.getElementById('prod-imagen-file').click()"><i class="fas fa-upload" style="margin-right:.25rem"></i>Subir</button>
+                        <img id="prod-imagen-preview" src="" alt="Preview" style="width:40px;height:40px;border-radius:8px;object-fit:cover;border:1px solid var(--border2);display:none;">
+                    </div>
+                    <div class="msg" id="prod-imagen-msg"></div>
+                </div>
+                <div id="prod-campos-extra"></div>
+                <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;font-size:.78rem;color:var(--muted);margin-top:.6rem;">
+                    <input type="checkbox" id="prod-disponible" checked> Disponible para venta en el chat
+                </label>
+                <div class="msg" id="prod-msg"></div>
+                <div style="display:flex;gap:10px;margin-top:1rem;">
+                    <button class="btn-main btn-green" onclick="guardarProducto()">Guardar</button>
+                    <button class="btn-main" onclick="cerrarProductoModal()" style="background:var(--red)">Cancelar</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- IMPORTAR CATALOGO MODAL -->
+        <div id="importar-modal"
+            style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:1001;align-items:center;justify-content:center;">
+            <div class="card" style="width:560px;max-width:94%;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.8rem;">
+                    <h3 class="card-title" style="margin-bottom:0;">Importar catálogo</h3>
+                    <button onclick="cerrarImportarModal()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1rem;"><i class="fas fa-times"></i></button>
+                </div>
+                <p style="font-size:.74rem;color:var(--muted);margin-bottom:.6rem;">Pega una línea por producto con el formato <b>nombre | precio COP | categoría (opcional) | url imagen (opcional)</b>. Se importan como tipo Físico.</p>
+                <textarea id="importar-texto" rows="8" style="width:100%;min-height:150px;resize:vertical;" placeholder="Zapatos casual | 120000 | Ropa | https://ejemplo.com/zapatos.jpg&#10;Camisa blanca | 85000 | Ropa&#10;Netflix 1 mes | 18000 | Streaming"></textarea>
+                <div class="msg" id="importar-msg"></div>
+                <div style="display:flex;gap:10px;margin-top:1rem;">
+                    <button class="btn-main btn-green" onclick="guardarImportar()">Importar</button>
+                    <button class="btn-main" onclick="cerrarImportarModal()" style="background:var(--red)">Cancelar</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- VISTA PREVIA CATALOGO MODAL -->
+        <div id="cat-preview-modal"
+            style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:1001;align-items:center;justify-content:center;">
+            <div class="card" style="width:720px;max-width:94%;max-height:92vh;overflow-y:auto;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.6rem;">
+                    <h3 class="card-title" style="margin-bottom:0;">Vista previa del catálogo (como lo ve el cliente)</h3>
+                    <button onclick="cerrarVistaPrevia()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1rem;"><i class="fas fa-times"></i></button>
+                </div>
+                <p style="font-size:.74rem;color:var(--muted);margin-bottom:.8rem;">El cliente abre el catálogo desde el botón de bolsa del chat y al tocar una tarjeta pide el producto.</p>
+                <div id="cat-preview-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px;"></div>
             </div>
         </div>
 
@@ -6032,17 +6115,365 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
         document.getElementById('crm-config-modal').style.display = 'none';
     }
 
+    // ── CATÁLOGO ENRIQUECIDO (editor) ──
+    const TIPOS_PRODUCTO_LABEL = { fisico: 'Físico', digital: 'Digital', servicio: 'Servicio', suscripcion: 'Suscripción', tour: 'Tour / Actividad' };
+    let crmProductoEditandoId = null;
+    let crmProductoBorrador = { variantes: [], categorias_pasajero: [], escalas_cantidad: [], extras: [], requiere_adulto: false, min_participantes: 2, max_participantes: 30 };
+
     function renderConfigCatalogo() {
-        document.getElementById('cfg-catalogo-list').innerHTML = crmCatalogo.length === 0
-            ? '<div style="font-size:.74rem;color:var(--dim);padding:.3rem 0;">Sin productos. Agrega tu catálogo para vender en el chat.</div>'
-            : crmCatalogo.map((p, i) => `
+        const list = document.getElementById('cfg-catalogo-list');
+        if (crmCatalogo.length === 0) {
+            list.innerHTML = '<div style="font-size:.74rem;color:var(--dim);padding:.3rem 0;">Sin productos. Usa "Nuevo producto" para un catálogo enriquecido (variantes, tarifas por pasajero, extras) o "Importar" para cargar varios de una vez.</div>';
+            return;
+        }
+        const filtro = (document.getElementById('cfg-prod-filtro')?.value || '').trim().toLowerCase();
+        const productos = crmCatalogo.filter(p =>
+            !filtro
+            || (p.nombre || '').toLowerCase().includes(filtro)
+            || (p.categoria || '').toLowerCase().includes(filtro)
+        );
+        if (productos.length === 0) {
+            list.innerHTML = '<div style="font-size:.74rem;color:var(--dim);padding:.3rem 0;">Sin resultados para el filtro.</div>';
+            return;
+        }
+        list.innerHTML = productos.map(p => {
+            const tipo = TIPOS_PRODUCTO_LABEL[p.tipo] || 'Físico';
+            const resumen = resumenProducto(p);
+            return `
                 <div style="display:flex;align-items:center;gap:.5rem;background:var(--bg2);border:1px solid var(--border2);border-radius:10px;padding:.5rem .7rem;margin-bottom:.4rem;">
+                    ${p.url_imagen ? `<img src="${p.url_imagen}" alt="" onerror="this.style.display='none'" style="width:36px;height:36px;border-radius:8px;object-fit:cover;border:1px solid var(--border2);flex:0 0 auto;">` : ''}
                     <div style="flex:1;min-width:0;">
-                        <div style="font-size:.8rem;font-weight:700;">${p.nombre}</div>
-                        <div style="font-size:.72rem;color:var(--muted);">${fmtPesos(p.precio_cents)}</div>
+                        <div style="font-size:.8rem;font-weight:700;">${p.nombre} <span style="font-weight:400;font-size:.68rem;color:var(--muted);">${tipo}${p.categoria ? ' · ' + p.categoria : ''}</span></div>
+                        <div style="font-size:.72rem;color:var(--muted);">${fmtPesos(p.precio_cents)}${resumen}</div>
                     </div>
-                    <button onclick="eliminarProducto('${p.id}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:.9rem;"><i class="fas fa-trash"></i></button>
-                </div>`).join('');
+                    <button onclick="abrirProductoModal('${p.id}')" title="Editar" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.85rem;"><i class="fas fa-edit"></i></button>
+                    <button onclick="duplicarProducto('${p.id}')" title="Duplicar" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.85rem;"><i class="fas fa-copy"></i></button>
+                    <button onclick="eliminarProducto('${p.id}')" title="Eliminar" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:.9rem;"><i class="fas fa-trash"></i></button>
+                </div>`;
+        }).join('');
+    }
+
+    function resumenProducto(p) {
+        const partes = [];
+        if (p.variantes && p.variantes.length) partes.push('Variantes: ' + p.variantes.map(v => v.nombre).join(', '));
+        if (p.tipo === 'tour' && p.categorias_pasajero && p.categorias_pasajero.length) {
+            partes.push('Tarifas: ' + p.categorias_pasajero.filter(b => b.permitido !== false).map(b => `${b.nombre} ${fmtPesos(b.precio_cents)}`).join(', '));
+            if (p.escalas_cantidad && p.escalas_cantidad.length) partes.push('Descuento por grupo');
+            if (p.extras && p.extras.length) partes.push(p.extras.length + ' extra(s)');
+        }
+        if (p.disponible === false) partes.push('No disponible');
+        return partes.length ? ' · ' + partes.join(' · ') : '';
+    }
+
+    function abrirVistaPrevia() {
+        document.getElementById('cat-preview-modal').style.display = 'flex';
+        renderVistaPrevia();
+    }
+
+    function cerrarVistaPrevia() {
+        document.getElementById('cat-preview-modal').style.display = 'none';
+    }
+
+    function resumenCardVista(p) {
+        if (p.tipo === 'tour' && p.categorias_pasajero && p.categorias_pasajero.filter(b => b.permitido !== false).length) {
+            const precios = p.categorias_pasajero.filter(b => b.permitido !== false).map(b => Number(b.precio_cents) || 0);
+            return 'Desde ' + fmtPesos(Math.min(...precios)) + ' / persona';
+        }
+        if (p.variantes && p.variantes.length) {
+            return p.variantes.slice(0, 2).map(v => `${v.nombre} ${fmtPesos(v.precio_cents)}`).join(' · ');
+        }
+        return fmtPesos(p.precio_cents);
+    }
+
+    function renderVistaPrevia() {
+        const grid = document.getElementById('cat-preview-grid');
+        const lista = crmCatalogo.filter(p => p.disponible !== false);
+        if (!lista.length) {
+            grid.innerHTML = '<div style="font-size:.78rem;color:var(--dim);padding:.6rem 0;">Sin productos disponibles para venta.</div>';
+            return;
+        }
+        grid.innerHTML = lista.map(p => `
+            <div style="background:var(--bg2);border:1px solid var(--border2);border-radius:14px;padding:10px;display:flex;flex-direction:column;gap:5px;">
+                ${p.url_imagen ? `<img src="${p.url_imagen}" alt="" onerror="this.style.display='none'" style="width:100%;height:74px;object-fit:cover;border-radius:10px;background:var(--bg);">` : '<div style="width:100%;height:74px;border-radius:10px;background:var(--bg);display:flex;align-items:center;justify-content:center;color:var(--dim);"><i class="fas fa-image"></i></div>'}
+                <div style="font-size:.8rem;font-weight:700;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${p.nombre}</div>
+                <div style="font-size:.66rem;color:var(--dim);text-transform:capitalize;">${p.categoria || p.tipo || ''}</div>
+                <div style="font-size:.74rem;color:var(--accent);font-weight:700;">${resumenCardVista(p)}</div>
+                <div style="font-size:.7rem;font-weight:700;color:var(--accent);">Pedir &rarr;</div>
+            </div>`).join('');
+    }
+
+    function abrirProductoModal(id) {
+        crmProductoEditandoId = id || null;
+        const p = id ? crmCatalogo.find(x => String(x.id) === String(id)) : null;
+        document.getElementById('producto-modal-title').textContent = p ? 'Editar producto' : 'Nuevo producto';
+        document.getElementById('prod-nombre').value = p?.nombre || '';
+        document.getElementById('prod-tipo').value = p?.tipo || 'fisico';
+        document.getElementById('prod-categoria').value = p?.categoria || '';
+        document.getElementById('prod-precio').value = p?.precio_cents != null ? Math.round(p.precio_cents / 100) : '';
+        document.getElementById('prod-descripcion').value = p?.descripcion || '';
+        document.getElementById('prod-disponible').checked = p ? p.disponible !== false : true;
+        const cats = [...new Set(crmCatalogo.map(x => x.categoria).filter(Boolean))];
+        document.getElementById('prod-categorias-datalist').innerHTML = cats.map(c => `<option value="${c}">`).join('');
+        // Borrador: si se edita, copia los arreglos del producto; si es nuevo, reinicia.
+        crmProductoBorrador = p
+            ? {
+                variantes: (p.variantes || []).map(v => ({ ...v })),
+                categorias_pasajero: (p.categorias_pasajero || []).map(c => ({ ...c })),
+                escalas_cantidad: (p.escalas_cantidad || []).map(e => ({ ...e })),
+                extras: (p.extras || []).map(e => ({ ...e })),
+                requiere_adulto: !!p.requiere_adulto,
+                min_participantes: Number(p.min_participantes) || 2,
+                max_participantes: Number(p.max_participantes) || 30
+            }
+            : { variantes: [], categorias_pasajero: [], escalas_cantidad: [], extras: [], requiere_adulto: false, min_participantes: 2, max_participantes: 30 };
+        const attrs = p?.atributos || {};
+        document.getElementById('prod-atributos').value = Object.entries(attrs).map(([k, v]) => `${k}: ${v}`).join(', ');
+        document.getElementById('prod-imagen').value = p?.url_imagen || '';
+        previewProdImagen();
+        renderCamposTipo();
+        document.getElementById('prod-msg').className = 'msg';
+        document.getElementById('prod-msg').textContent = '';
+        document.getElementById('prod-imagen-msg').className = 'msg';
+        document.getElementById('prod-imagen-msg').textContent = '';
+        document.getElementById('producto-modal').style.display = 'flex';
+    }
+
+    function cerrarProductoModal() {
+        document.getElementById('producto-modal').style.display = 'none';
+        crmProductoEditandoId = null;
+    }
+
+    function previewProdImagen() {
+        const url = document.getElementById('prod-imagen').value.trim();
+        const img = document.getElementById('prod-imagen-preview');
+        if (url) {
+            img.src = url;
+            img.style.display = 'inline-block';
+            img.onerror = () => { img.style.display = 'none'; };
+        } else {
+            img.style.display = 'none';
+            img.src = '';
+        }
+    }
+
+    async function subirImagenProducto(input) {
+        const file = input.files && input.files[0];
+        if (!file) { input.value = ''; return; }
+        if (!file.type.startsWith('image/')) { showMsg('prod-imagen-msg', 'Solo se permiten imágenes', 'error'); input.value = ''; return; }
+        if (file.size > 5 * 1024 * 1024) { showMsg('prod-imagen-msg', 'La imagen supera 5 MB', 'error'); input.value = ''; return; }
+        showMsg('prod-imagen-msg', 'Subiendo imagen...', 'info');
+        let dataUrl;
+        try {
+            dataUrl = await new Promise((res, rej) => {
+                const r = new FileReader();
+                r.onload = () => res(r.result);
+                r.onerror = () => rej(new Error('No se pudo leer el archivo'));
+                r.readAsDataURL(file);
+            });
+        } catch (err) {
+            showMsg('prod-imagen-msg', err.message, 'error');
+            input.value = '';
+            return;
+        }
+        try {
+            const { data: { session } } = await _supabase.auth.getSession();
+            const res = await fetch('/.netlify/functions/subir-imagen-producto', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (session?.access_token || '') },
+                body: JSON.stringify({ agente_id: crmAgenteSeleccionado, data_url: dataUrl, filename: file.name })
+            });
+            const d = await res.json();
+            if (!res.ok || !d.ok) { showMsg('prod-imagen-msg', d.error || 'Error subiendo la imagen', 'error'); return; }
+            document.getElementById('prod-imagen').value = d.url;
+            previewProdImagen();
+            document.getElementById('prod-imagen-msg').className = 'msg';
+            document.getElementById('prod-imagen-msg').textContent = '';
+            showToast('Imagen subida');
+        } catch (err) {
+            showMsg('prod-imagen-msg', 'Error de conexión', 'error');
+        } finally {
+            input.value = '';
+        }
+    }
+
+    function renderCamposTipo() {
+        const d = crmProductoBorrador;
+        const tipo = document.getElementById('prod-tipo').value;
+        let html = '';
+
+        // Variantes (opcional, todos los tipos)
+        html += `<div style="margin-top:.7rem;border-top:1px solid var(--border2);padding-top:.6rem;">
+            <div style="font-size:.8rem;font-weight:700;margin-bottom:.35rem;">Variantes (opcional — ej. 1 mes / 3 meses, talla, color)</div>
+            <div id="prod-variantes-list">${d.variantes.map((v, i) => `
+                <div style="display:flex;gap:.4rem;margin-bottom:.35rem;align-items:center;">
+                    <input type="text" value="${v.nombre}" oninput="crmProductoBorrador.variantes[${i}].nombre=this.value" placeholder="Nombre variante" style="flex:1;min-width:100px">
+                    <input type="number" value="${Math.round((v.precio_cents || 0) / 100)}" oninput="crmProductoBorrador.variantes[${i}].precio_cents=Math.round(Number(this.value||0)*100)" placeholder="Precio COP" style="width:120px">
+                    <button onclick="quitarFila('variantes',${i})" style="background:none;border:none;color:var(--red);cursor:pointer;"><i class="fas fa-times"></i></button>
+                </div>`).join('') || '<div style="font-size:.72rem;color:var(--dim);">Sin variantes.</div>'}
+            <button class="btn-main" style="padding:.3rem .6rem;font-size:.72rem;" onclick="agregarFila('variantes')"><i class="fas fa-plus"></i> Variante</button>
+        </div>`;
+
+        if (tipo === 'tour') {
+            html += `
+            <div style="margin-top:.7rem;border-top:1px solid var(--border2);padding-top:.6rem;">
+                <div style="font-size:.8rem;font-weight:700;margin-bottom:.35rem;">Tarifas por pasajero (Viator / GetYourGuide)</div>
+                <div style="font-size:.7rem;color:var(--muted);margin-bottom:.4rem;">Cada categoría es una persona por rango de edad. El total se calcula automáticamente en el chat según la composición del grupo.</div>
+                <div id="prod-bands-list">${d.categorias_pasajero.map((c, i) => `
+                    <div style="display:flex;gap:.4rem;margin-bottom:.35rem;align-items:center;flex-wrap:wrap;">
+                        <input type="text" value="${c.nombre}" oninput="crmProductoBorrador.categorias_pasajero[${i}].nombre=this.value" placeholder="Nombre (Adulto, Niño...)" style="flex:1;min-width:110px">
+                        <input type="number" value="${c.edad_min}" oninput="crmProductoBorrador.categorias_pasajero[${i}].edad_min=Number(this.value||0)" placeholder="Edad min" style="width:68px">
+                        <input type="number" value="${c.edad_max}" oninput="crmProductoBorrador.categorias_pasajero[${i}].edad_max=Number(this.value||0)" placeholder="Edad max" style="width:68px">
+                        <input type="number" value="${Math.round((c.precio_cents || 0) / 100)}" oninput="crmProductoBorrador.categorias_pasajero[${i}].precio_cents=Math.round(Number(this.value||0)*100)" placeholder="Precio COP" style="width:105px">
+                        <label style="display:flex;align-items:center;gap:.2rem;font-size:.7rem;color:var(--muted);"><input type="checkbox" ${c.permitido !== false ? 'checked' : ''} onchange="crmProductoBorrador.categorias_pasajero[${i}].permitido=this.checked"> Permitido</label>
+                        <button onclick="quitarFila('categorias_pasajero',${i})" style="background:none;border:none;color:var(--red);cursor:pointer;"><i class="fas fa-times"></i></button>
+                    </div>`).join('') || '<div style="font-size:.72rem;color:var(--dim);">Sin categorías. Agrega al menos una (ej. Adulto 12-99).</div>'}
+                <button class="btn-main" style="padding:.3rem .6rem;font-size:.72rem;" onclick="agregarFila('categorias_pasajero')"><i class="fas fa-plus"></i> Categoría</button>
+            </div>
+
+            <div style="margin-top:.7rem;border-top:1px solid var(--border2);padding-top:.6rem;">
+                <div style="font-size:.8rem;font-weight:700;margin-bottom:.35rem;">Descuento por tamaño de grupo (opcional)</div>
+                <div id="prod-escalas-list">${d.escalas_cantidad.map((e, i) => `
+                    <div style="display:flex;gap:.4rem;margin-bottom:.35rem;align-items:center;">
+                        <input type="number" value="${e.desde}" oninput="crmProductoBorrador.escalas_cantidad[${i}].desde=Number(this.value||0)" placeholder="Desde" style="width:75px">
+                        <input type="number" value="${e.hasta ?? ''}" oninput="crmProductoBorrador.escalas_cantidad[${i}].hasta=this.value?Number(this.value):null" placeholder="Hasta (vacío=∞)" style="width:110px">
+                        <input type="number" value="${e.descuento_pct}" oninput="crmProductoBorrador.escalas_cantidad[${i}].descuento_pct=Number(this.value||0)" placeholder="% descuento" style="width:90px">
+                        <button onclick="quitarFila('escalas_cantidad',${i})" style="background:none;border:none;color:var(--red);cursor:pointer;"><i class="fas fa-times"></i></button>
+                    </div>`).join('') || '<div style="font-size:.72rem;color:var(--dim);">Sin descuentos por grupo.</div>'}
+                <button class="btn-main" style="padding:.3rem .6rem;font-size:.72rem;" onclick="agregarFila('escalas_cantidad')"><i class="fas fa-plus"></i> Escala</button>
+            </div>
+
+            <div style="margin-top:.7rem;border-top:1px solid var(--border2);padding-top:.6rem;">
+                <div style="font-size:.8rem;font-weight:700;margin-bottom:.35rem;">Extras opcionales (add-ons)</div>
+                <div id="prod-extras-list">${d.extras.map((e, i) => `
+                    <div style="display:flex;gap:.4rem;margin-bottom:.35rem;align-items:center;">
+                        <input type="text" value="${e.nombre}" oninput="crmProductoBorrador.extras[${i}].nombre=this.value" placeholder="Extra (seguro, transporte...)" style="flex:1;min-width:110px">
+                        <input type="number" value="${Math.round((e.precio_cents || 0) / 100)}" oninput="crmProductoBorrador.extras[${i}].precio_cents=Math.round(Number(this.value||0)*100)" placeholder="Precio COP" style="width:110px">
+                        <button onclick="quitarFila('extras',${i})" style="background:none;border:none;color:var(--red);cursor:pointer;"><i class="fas fa-times"></i></button>
+                    </div>`).join('') || '<div style="font-size:.72rem;color:var(--dim);">Sin extras.</div>'}
+                <button class="btn-main" style="padding:.3rem .6rem;font-size:.72rem;" onclick="agregarFila('extras')"><i class="fas fa-plus"></i> Extra</button>
+            </div>
+
+            <div style="margin-top:.7rem;border-top:1px solid var(--border2);padding-top:.6rem;display:flex;gap:.8rem;flex-wrap:wrap;align-items:center;">
+                <label style="display:flex;align-items:center;gap:.3rem;font-size:.76rem;color:var(--muted);"><input type="checkbox" ${d.requiere_adulto ? 'checked' : ''} onchange="crmProductoBorrador.requiere_adulto=this.checked"> Requiere ≥1 adulto</label>
+                <label style="font-size:.76rem;color:var(--muted);">Mín. <input type="number" value="${d.min_participantes}" oninput="crmProductoBorrador.min_participantes=Number(this.value||0)" style="width:60px"></label>
+                <label style="font-size:.76rem;color:var(--muted);">Máx. <input type="number" value="${d.max_participantes || ''}" oninput="crmProductoBorrador.max_participantes=this.value?Number(this.value):0" style="width:60px"></label>
+            </div>`;
+        }
+        document.getElementById('prod-campos-extra').innerHTML = html;
+    }
+
+    function agregarFila(tipo) {
+        const d = crmProductoBorrador;
+        if (tipo === 'variantes') d.variantes.push({ id: 'v' + Date.now(), nombre: '', precio_cents: 0 });
+        if (tipo === 'categorias_pasajero') d.categorias_pasajero.push({ id: 'b' + Date.now(), nombre: '', edad_min: 0, edad_max: 99, precio_cents: 0, permitido: true });
+        if (tipo === 'escalas_cantidad') d.escalas_cantidad.push({ desde: 1, hasta: null, descuento_pct: 0 });
+        if (tipo === 'extras') d.extras.push({ id: 'e' + Date.now(), nombre: '', precio_cents: 0 });
+        renderCamposTipo();
+    }
+
+    function quitarFila(tipo, i) {
+        const d = crmProductoBorrador;
+        if (Array.isArray(d[tipo])) d[tipo].splice(i, 1);
+        renderCamposTipo();
+    }
+
+    function guardarProducto() {
+        const d = crmProductoBorrador;
+        const nombre = document.getElementById('prod-nombre').value.trim();
+        const precioPesos = Number(document.getElementById('prod-precio').value);
+        if (!nombre || !precioPesos || precioPesos <= 0) { showMsg('prod-msg', 'Nombre y precio base válidos son requeridos', 'error'); return; }
+        const tipo = document.getElementById('prod-tipo').value;
+        if (tipo === 'tour' && d.categorias_pasajero.filter(c => c.permitido !== false && c.nombre).length === 0) {
+            showMsg('prod-msg', 'Un tour necesita al menos una tarifa por pasajero', 'error');
+            return;
+        }
+        const atributos = {};
+        (document.getElementById('prod-atributos').value || '').split(',').map(s => s.trim()).filter(Boolean).forEach(par => {
+            const idx = par.indexOf(':');
+            if (idx > -1) atributos[par.slice(0, idx).trim()] = par.slice(idx + 1).trim();
+        });
+        const variantes = d.variantes.filter(v => v.nombre).map(v => ({ id: v.id || ('v' + Date.now()), nombre: v.nombre, precio_cents: Math.round(Number(v.precio_cents) || 0) }));
+        const categorias_pasajero = d.categorias_pasajero.filter(c => c.nombre).map(c => ({ id: c.id || ('b' + Date.now()), nombre: c.nombre, edad_min: Number(c.edad_min) || 0, edad_max: Number(c.edad_max) || 99, precio_cents: Math.round(Number(c.precio_cents) || 0), permitido: c.permitido !== false }));
+        const escalas_cantidad = d.escalas_cantidad.map(e => ({ desde: Number(e.desde) || 1, hasta: e.hasta ? Number(e.hasta) : null, descuento_pct: Number(e.descuento_pct) || 0 })).filter(e => e.descuento_pct > 0);
+        const extras = d.extras.filter(e => e.nombre).map(e => ({ id: e.id || ('e' + Date.now()), nombre: e.nombre, precio_cents: Math.round(Number(e.precio_cents) || 0) }));
+
+        const producto = {
+            id: crmProductoEditandoId || ('p' + Date.now()),
+            nombre,
+            tipo,
+            categoria: document.getElementById('prod-categoria').value.trim(),
+            descripcion: document.getElementById('prod-descripcion').value.trim(),
+            precio_cents: Math.round(precioPesos * 100),
+            url_imagen: document.getElementById('prod-imagen').value.trim() || undefined,
+            disponible: document.getElementById('prod-disponible').checked,
+            atributos,
+            variantes,
+            categorias_pasajero,
+            escalas_cantidad,
+            extras,
+            requiere_adulto: !!d.requiere_adulto,
+            min_participantes: Number(d.min_participantes) || 1,
+            max_participantes: Number(d.max_participantes) || 0
+        };
+        ['variantes', 'categorias_pasajero', 'escalas_cantidad', 'extras'].forEach(k => { if (producto[k].length === 0) delete producto[k]; });
+        if (Object.keys(producto.atributos).length === 0) delete producto.atributos;
+
+        if (crmProductoEditandoId) {
+            const i = crmCatalogo.findIndex(x => String(x.id) === String(crmProductoEditandoId));
+            if (i > -1) crmCatalogo[i] = producto;
+        } else {
+            crmCatalogo.push(producto);
+        }
+        cerrarProductoModal();
+        renderConfigCatalogo();
+        showToast('Producto guardado');
+    }
+
+    function duplicarProducto(id) {
+        const p = crmCatalogo.find(x => String(x.id) === String(id));
+        if (!p) return;
+        const copia = JSON.parse(JSON.stringify(p));
+        copia.id = 'p' + Date.now();
+        copia.nombre = (p.nombre || 'Producto') + ' (copia)';
+        crmCatalogo.push(copia);
+        renderConfigCatalogo();
+        showToast('Producto duplicado');
+    }
+
+    function eliminarProducto(id) {
+        if (!confirm('¿Eliminar este producto del catálogo?')) return;
+        crmCatalogo = crmCatalogo.filter(p => p.id !== id);
+        renderConfigCatalogo();
+    }
+
+    function abrirImportarModal() {
+        document.getElementById('importar-texto').value = '';
+        document.getElementById('importar-msg').className = 'msg';
+        document.getElementById('importar-msg').textContent = '';
+        document.getElementById('importar-modal').style.display = 'flex';
+    }
+
+    function cerrarImportarModal() {
+        document.getElementById('importar-modal').style.display = 'none';
+    }
+
+    function guardarImportar() {
+        const texto = document.getElementById('importar-texto').value.trim();
+        if (!texto) { showMsg('importar-msg', 'Pega las líneas para importar', 'error'); return; }
+        let cont = 0;
+        texto.split('\n').forEach(linea => {
+            const partes = linea.split('|').map(s => s.trim());
+            if (partes.length < 2) return;
+            const nombre = partes[0];
+            const precio = Number(String(partes[1]).replace(/[^\d]/g, ''));
+            if (!nombre || !precio || precio <= 0) return;
+            crmCatalogo.push({ id: 'p' + Date.now() + Math.floor(Math.random() * 1000), nombre, precio_cents: Math.round(precio * 100), tipo: 'fisico', categoria: partes[2] || '', url_imagen: partes[3] || undefined, disponible: true });
+            cont++;
+        });
+        if (!cont) { showMsg('importar-msg', 'Ninguna línea válida (formato: nombre | precio COP | categoría)', 'error'); return; }
+        renderConfigCatalogo();
+        cerrarImportarModal();
+        showToast(cont + ' producto(s) importado(s)');
     }
 
     function renderConfigEstados() {
@@ -6062,21 +6493,6 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
                     </div>
                     <button onclick="eliminarEstado('${e.id}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:.9rem;"><i class="fas fa-trash"></i></button>
                 </div>`).join('');
-    }
-
-    function agregarProducto() {
-        const nombre = document.getElementById('cfg-prod-nombre').value.trim();
-        const precio = Number(document.getElementById('cfg-prod-precio').value);
-        if (!nombre || !precio || precio <= 0) { showToast('Nombre y precio válidos son requeridos', 'error'); return; }
-        crmCatalogo.push({ id: 'p' + Date.now(), nombre, precio_cents: Math.round(precio * 100) });
-        document.getElementById('cfg-prod-nombre').value = '';
-        document.getElementById('cfg-prod-precio').value = '';
-        renderConfigCatalogo();
-    }
-
-    function eliminarProducto(id) {
-        crmCatalogo = crmCatalogo.filter(p => p.id !== id);
-        renderConfigCatalogo();
     }
 
     function agregarEstado() {

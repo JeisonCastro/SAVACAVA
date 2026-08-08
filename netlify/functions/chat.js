@@ -15,6 +15,8 @@ const {
 const {
     obtenerConfigCRM,
     construirTextoCatalogo,
+    productosParaCliente,
+    calcularPrecioProducto,
     obtenerOCrearLead,
     crearPaymentLinkVenta,
     extraerDatosLead
@@ -1155,7 +1157,8 @@ exports.handler = async (event) => {
                 body: JSON.stringify({
                     respuesta: resultadoPending.respuesta,
                     tokens_consumidos: resultadoPending.tokens_consumidos,
-                    conversation_id: conversationIdFinal
+                    conversation_id: conversationIdFinal,
+                    productos: crmActivo && catalogoCRM.length > 0 ? productosParaCliente(catalogoCRM) : []
                 })
             };
         }
@@ -1211,7 +1214,7 @@ ${textoCatalogo}
 
 FLUJO DE VENTA:
 1. Ofrece SOLO productos del catálogo con su precio exacto. NO inventes precios ni productos.
-2. Confirma el producto y la cantidad con el cliente.
+2. Confirma con el cliente el producto, la cantidad y, si aplica, la composición del grupo (cuántos adultos, niños y bebés) y los extras.
 3. Pide confirmación clara de compra ("si", "comprar", "confirmo").
 4. Si el cliente confirma la compra${tienePago ? ', usa la herramienta CRM_GENERAR_PAGO con el "id" EXACTO del producto del catálogo para generar el link de pago y envíalo al cliente.' : ', indica que enviarás el link de pago por WhatsApp (el vendedor lo gestiona).'}
 5. Recuérdale al cliente completar el pago para confirmar su pedido.
@@ -1222,10 +1225,21 @@ FLUJO DE VENTA:
 ### Para CRM_GENERAR_PAGO:
 - Úsala SOLO cuando el cliente confirmó claramente que compra (no antes).
 - "productoId": el id exacto del producto del catálogo.
-- "monto" (OPCIONAL): el TOTAL final en pesos, entero, sin puntos ni comas (ej. 224750). Úsalo SOLO cuando el precio varíe por cantidad, pasajeros, descuentos o tarifas dinámicas; si no, el link usa el precio del catálogo.
+- El total lo calcula el servidor: si el producto tiene tarifas por pasajero, variantes, descuento por cantidad o extras, envía esos datos y NO inventes el monto:
+  - "pasajeros": [{ "categoriaId": "<id de la tarifa>", "cantidad": N }, ...] (para tours/servicios por pasajero).
+  - "extras": [{ "id": "<id del extra>", "cantidad": N }, ...] (opcional).
+  - "cantidad": N (unidades, para productos simples).
+  - "varianteId": "<id de la variante>" (opcional).
+- "monto" (OPCIONAL y SOLO excepcional): total en pesos, entero, sin puntos ni comas. Úsalo únicamente si el servidor no puede calcular el precio (ej. descuento negociado manualmente).
 - Ejemplo precio fijo: { "action": "CRM_GENERAR_PAGO", "data": { "productoId": "1" } }
-- Ejemplo tarifa dinámica: { "action": "CRM_GENERAR_PAGO", "data": { "productoId": "1", "monto": 224750 } }
+- Ejemplo tour: { "action": "CRM_GENERAR_PAGO", "data": { "productoId": "p404", "pasajeros": [{ "categoriaId": "b3", "cantidad": 2 }, { "categoriaId": "b2", "cantidad": 1 }], "extras": [{ "id": "e1", "cantidad": 3 }] } }
 - Después de generarla, envía el link de pago al cliente y pídele completarlo.
+
+### Para CRM_CALCULAR_PRECIO (mostrar desglose ANTES de cobrar):
+- Úsala cuando el cliente pregunta "cuánto sería" o antes de pedir confirmación, sobre todo en tours/servicios por pasajero.
+- Envía "productoId" y los mismos campos de pasajeros/extras/cantidad/varianteId que en CRM_GENERAR_PAGO. El servidor valida y devuelve el desglose y el total.
+- Cuando confirmen la compra, vuelve a enviar esos mismos datos en CRM_GENERAR_PAGO para que el servidor cobre exactamente ese total.
+- Ejemplo: { "action": "CRM_CALCULAR_PRECIO", "data": { "productoId": "p404", "pasajeros": [{ "categoriaId": "b3", "cantidad": 2 }, { "categoriaId": "b2", "cantidad": 1 }] } }
 `;
                 }
             }
@@ -1364,50 +1378,128 @@ INSTRUCCIONES:
         const actionPayload = parseActionPayload(respuestaIA);
         console.log("Action payload parseado:", actionPayload ? actionPayload.action : 'null');
 
+        // ── CRM: CALCULAR PRECIO (desglose previo al cobro) ──
+        // El servidor valida la composición del grupo (adultos/niños/bebés) y
+        // calcula el total. La IA solo transporta los datos, no hace aritmética.
+        if (actionPayload?.action === 'CRM_CALCULAR_PRECIO') {
+            const accData = actionPayload.data || {};
+            const productoId = String(accData.productoId || accData.producto || '');
+            const producto = catalogoCRM.find(p => String(p.id) === productoId);
+
+            if (!crmActivo) {
+                respuestaIA = "El CRM de ventas no está habilitado para este agente.";
+            } else if (!producto) {
+                respuestaIA = "Ese producto no está en el catálogo. Solo puedo calcular precios de los productos del vendedor.";
+            } else {
+                const calc = calcularPrecioProducto({
+                    producto,
+                    pasajeros: Array.isArray(accData.pasajeros) ? accData.pasajeros : [],
+                    extras: Array.isArray(accData.extras) ? accData.extras : [],
+                    cantidad: Number(accData.cantidad) || 1,
+                    varianteId: accData.varianteId || null
+                });
+                if (!calc.valido) {
+                    respuestaIA = "Aún no puedo calcular el total:\n" + calc.errores.map(e => `• ${e}`).join('\n') + "\n\nDime la composición exacta del grupo para recalcular.";
+                } else {
+                    const lineas = calc.desglose.map(d =>
+                        `• ${d.nombre}${d.cantidad > 1 ? ` × ${d.cantidad}` : ''}: $${Math.round(d.subtotal_cents / 100).toLocaleString('es-CO')} COP`
+                    );
+                    respuestaIA = `📋 Desglose:\n${lineas.join('\n')}\n\n**Total: $${Math.round(calc.total_cents / 100).toLocaleString('es-CO')} COP**\n\n¿Confirmas la compra para generar tu link de pago?`;
+                }
+            }
+            await guardarMensajeConversacion({
+                conversacionId: conversationIdFinal,
+                agenteId: targetID,
+                role: 'assistant',
+                content: respuestaIA,
+                metadata: { canal, action: 'CRM_CALCULAR_PRECIO', origen: 'ia' }
+            });
+            await actualizarResumenConversacion({ conversacionId: conversationIdFinal, ultimoMensaje: respuestaIA, ultimoRole: 'assistant', requiereAtencion: false });
+            return {
+                statusCode: 200,
+                headers,
+                body: JSON.stringify({
+                    respuesta: respuestaIA,
+                    tokens_consumidos: apiTokensUsados,
+                    conversation_id: conversationIdFinal
+                })
+            };
+        }
+
         // ── CRM: GENERAR PAGO EN CHAT (venta del catálogo del vendedor) ──
         if (actionPayload?.action === 'CRM_GENERAR_PAGO') {
             const accData = actionPayload.data || {};
             const productoId = String(accData.productoId || accData.producto || '');
             const producto = catalogoCRM.find(p => String(p.id) === productoId);
 
-            // Monto personalizado (tarifas dinámicas): el agente puede enviar
-            // "monto_cents" (centavos) o "monto" (pesos enteros). Se normaliza
-            // quitando separadores de miles (ej. "224.750" -> 224750).
             let montoCents = null;
-            if (accData.monto_cents != null) {
-                const n = Number(String(accData.monto_cents).replace(/[^\d]/g, ''));
-                if (n > 0) montoCents = n;
-            } else if (accData.monto != null) {
-                const n = Number(String(accData.monto).replace(/[^\d]/g, ''));
-                if (n > 0) montoCents = Math.round(n * 100);
-            }
 
             if (!crmActivo) {
                 respuestaIA = "El CRM de ventas no está habilitado para este agente.";
             } else if (!producto) {
                 respuestaIA = "Ese producto no está disponible para pago en línea. Solo puedo generar links de los productos del catálogo. Un asesor puede gestionar tu pedido.";
             } else {
-                const leadId = await obtenerOCrearLead({
-                    agente,
-                    canal,
-                    externalUserId: externalUserIdFinal,
-                    conversacionId: conversationIdFinal
-                });
-                const resultado = await crearPaymentLinkVenta({
-                    config: crmConfig,
-                    agente,
-                    leadId,
-                    conversacionId: conversationIdFinal,
-                    producto,
-                    canal,
-                    externalUserId: externalUserIdFinal,
-                    montoCents
-                });
-                if (resultado.ok && resultado.url) {
-                    const montoPesos = resultado.monto_cents ? Math.round(resultado.monto_cents / 100).toLocaleString('es-CO') : '';
-                    respuestaIA = `✅ Listo ${leadId ? '' : ''}, aquí tienes tu link de pago seguro:\n\n${resultado.url}\n\nValor a pagar: $${montoPesos} COP\n\nCompleta el pago para confirmar tu ${producto.nombre}. Cuando esté aprobado, tu pedido queda confirmado automáticamente. ¡Gracias por tu compra!`;
+                // Cálculo server-side: cuando hay composición de grupo (tour),
+                // variantes, extras o cantidad, el servidor calcula el total.
+                const usaCalculo = (producto.tipo === 'tour'
+                        && Array.isArray(producto.categorias_pasajero)
+                        && producto.categorias_pasajero.length > 0)
+                    || Array.isArray(accData.pasajeros)
+                    || Array.isArray(accData.extras)
+                    || accData.cantidad != null
+                    || accData.varianteId != null;
+
+                if (usaCalculo) {
+                    const calc = calcularPrecioProducto({
+                        producto,
+                        pasajeros: Array.isArray(accData.pasajeros) ? accData.pasajeros : [],
+                        extras: Array.isArray(accData.extras) ? accData.extras : [],
+                        cantidad: Number(accData.cantidad) || 1,
+                        varianteId: accData.varianteId || null
+                    });
+                    if (!calc.valido) {
+                        respuestaIA = "No puedo generar el pago todavía:\n" + calc.errores.map(e => `• ${e}`).join('\n') + "\n\nConfirma la composición del grupo para continuar.";
+                    } else {
+                        montoCents = calc.total_cents;
+                    }
                 } else {
-                    respuestaIA = `Lo siento, no pude generar el link de pago en este momento. ${resultado.error || 'Intenta de nuevo más tarde.'} Puedes escribirnos por WhatsApp para coordinar.`;
+                    // Monto explícito (excepcional, ej. descuento negociado): el
+                    // agente puede enviar "monto_cents" (centavos) o "monto"
+                    // (pesos enteros). Se normaliza quitando separadores de miles.
+                    if (accData.monto_cents != null) {
+                        const n = Number(String(accData.monto_cents).replace(/[^\d]/g, ''));
+                        if (n > 0) montoCents = n;
+                    } else if (accData.monto != null) {
+                        const n = Number(String(accData.monto).replace(/[^\d]/g, ''));
+                        if (n > 0) montoCents = Math.round(n * 100);
+                    }
+                }
+
+                if (montoCents !== null || !usaCalculo) {
+                    // montoCents null en producto simple => crearPaymentLinkVenta
+                    // usa el precio del catálogo (comportamiento original).
+                    const leadId = await obtenerOCrearLead({
+                        agente,
+                        canal,
+                        externalUserId: externalUserIdFinal,
+                        conversacionId: conversationIdFinal
+                    });
+                    const resultado = await crearPaymentLinkVenta({
+                        config: crmConfig,
+                        agente,
+                        leadId,
+                        conversacionId: conversationIdFinal,
+                        producto,
+                        canal,
+                        externalUserId: externalUserIdFinal,
+                        montoCents
+                    });
+                    if (resultado.ok && resultado.url) {
+                        const montoPesos = resultado.monto_cents ? Math.round(resultado.monto_cents / 100).toLocaleString('es-CO') : '';
+                        respuestaIA = `✅ Listo ${leadId ? '' : ''}, aquí tienes tu link de pago seguro:\n\n${resultado.url}\n\nValor a pagar: $${montoPesos} COP\n\nCompleta el pago para confirmar tu ${producto.nombre}. Cuando esté aprobado, tu pedido queda confirmado automáticamente. ¡Gracias por tu compra!`;
+                    } else {
+                        respuestaIA = `Lo siento, no pude generar el link de pago en este momento. ${resultado.error || 'Intenta de nuevo más tarde.'} Puedes escribirnos por WhatsApp para coordinar.`;
+                    }
                 }
             }
             await guardarMensajeConversacion({
@@ -1922,7 +2014,8 @@ INSTRUCCIONES:
             body: JSON.stringify({
                 respuesta: respuestaIA,
                 tokens_consumidos: tokensUsados,
-                conversation_id: conversationIdFinal
+                conversation_id: conversationIdFinal,
+                productos: crmActivo && catalogoCRM.length > 0 ? productosParaCliente(catalogoCRM) : []
             })
         };
 

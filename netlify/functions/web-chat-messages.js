@@ -1,4 +1,5 @@
 const { supabase } = require('./supabase-admin');
+const { obtenerConfigCRM, productosParaCliente } = require('./crm-helper');
 
 function jsonResponse(statusCode, body) {
   return {
@@ -48,6 +49,17 @@ exports.handler = async (event) => {
       }
     }
 
+    // Catálogo del agente para renderizar tarjetas de producto en el chat.
+    let productos = [];
+    try {
+      const config = await obtenerConfigCRM(null, agenteId);
+      if (config?.crm_activo === true && Array.isArray(config.catalogo)) {
+        productos = productosParaCliente(config.catalogo);
+      }
+    } catch (catalogErr) {
+      console.error('web-chat-messages catalog error:', catalogErr.message);
+    }
+
     // Query a prueba de duplicados: si existen varias conversaciones para el
     // mismo agente+canal+external_user_id, tomamos la más reciente (mismo fix de chat.js).
     const { data: convs, error: convError } = await supabase
@@ -72,7 +84,8 @@ exports.handler = async (event) => {
       return jsonResponse(200, {
         ok: true,
         conversation: null,
-        messages: []
+        messages: [],
+        productos
       });
     }
 
@@ -92,7 +105,8 @@ exports.handler = async (event) => {
     return jsonResponse(200, {
       ok: true,
       conversation,
-      messages: messages || []
+      messages: messages || [],
+      productos
     });
 
   } catch (error) {

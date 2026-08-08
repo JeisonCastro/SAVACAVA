@@ -49,6 +49,31 @@ async function enviarWhatsapp({ to, text, accessToken, phoneNumberId }) {
   return data;
 }
 
+async function enviarWhatsappImagen({ to, link, caption, accessToken, phoneNumberId }) {
+  const res = await fetch(
+    `https://graph.facebook.com/${GRAPH_VERSION}/${phoneNumberId}/messages`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        messaging_product: 'whatsapp',
+        to,
+        type: 'image',
+        image: {
+          link,
+          caption: (caption || '').slice(0, 100)
+        }
+      })
+    }
+  );
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) console.error('Error enviando imagen WhatsApp:', data);
+  return data;
+}
+
 async function guardarMensajeSaliente({ conversacion, agenteId, text, origen = 'ia' }) {
   await supabase.from('mensajes_conversacion').insert({
     conversacion_id: conversacion.id,
@@ -609,6 +634,25 @@ exports.handler = async (event) => {
 
     if (!sendRes.ok) {
       console.error('Error enviando WhatsApp:', sendData);
+    }
+
+    // Enviar imagen del producto si la IA lo está ofreciendo en la respuesta.
+    try {
+      const productos = Array.isArray(chatData.productos) ? chatData.productos : [];
+      if (productos.length && waConnection?.access_token && waConnection?.phone_number_id) {
+        const match = productos.find(p => p.url_imagen && respuesta.toLowerCase().includes(String(p.nombre).toLowerCase()));
+        if (match) {
+          await enviarWhatsappImagen({
+            to: from,
+            link: match.url_imagen,
+            caption: match.nombre,
+            accessToken: waConnection.access_token,
+            phoneNumberId: waConnection.phone_number_id
+          });
+        }
+      }
+    } catch (imgErr) {
+      console.error('Error enviando imagen de producto:', imgErr.message);
     }
 
     return {

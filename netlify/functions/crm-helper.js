@@ -17,6 +17,45 @@ const ESTADOS_DEFAULT = [
 
 const CAMPOS_BASE = ['nombre', 'telefono', 'email', 'interes', 'preferencias'];
 
+// Tipos de catálogo soportados (inspirados en WooCommerce/Magento y el modelo
+// de tours de GetYourGuide/Viator).
+const TIPOS_PRODUCTO = {
+    fisico:        { etiqueta: 'Físico',        descripcion: 'Producto físico con envío' },
+    digital:       { etiqueta: 'Digital',       descripcion: 'Descarga, cuenta o licencia de entrega inmediata' },
+    servicio:      { etiqueta: 'Servicio',      descripcion: 'Consultoría, agendamiento, atención' },
+    suscripcion:   { etiqueta: 'Suscripción',   descripcion: 'Planes por duración (1 mes, 3 meses...)' },
+    tour:          { etiqueta: 'Tour / Actividad', descripcion: 'Precios por pasajero, edad y tamaño de grupo' }
+};
+
+function formatearPesos(cents) {
+    return '$' + Math.round((Number(cents) || 0) / 100).toLocaleString('es-CO');
+}
+
+// Normaliza un producto del catálogo: rellena los campos nuevos y deja intactos
+// los productos viejos ({id, nombre, precio_cents}) para total compatibilidad.
+function normalizarProducto(p) {
+    if (!p) return null;
+    return {
+        id: p.id,
+        nombre: p.nombre || 'Producto',
+        tipo: TIPOS_PRODUCTO[p.tipo] ? p.tipo : 'fisico',
+        categoria: p.categoria || '',
+        descripcion: p.descripcion || '',
+        precio_cents: Number(p.precio_cents) || 0,
+        disponible: p.disponible !== false,
+        url_imagen: p.url_imagen || null,
+        variantes: Array.isArray(p.variantes) ? p.variantes : [],
+        categorias_pasajero: Array.isArray(p.categorias_pasajero) ? p.categorias_pasajero : [],
+        escalas_cantidad: Array.isArray(p.escalas_cantidad) ? p.escalas_cantidad : [],
+        extras: Array.isArray(p.extras) ? p.extras : [],
+        requiere_adulto: !!p.requiere_adulto,
+        min_participantes: Number(p.min_participantes) || 1,
+        max_participantes: Number(p.max_participantes) || 0,
+        pricing_basis: p.pricing_basis || 'por_persona',
+        atributos: p.atributos || {}
+    };
+}
+
 async function obtenerConfigCRM(userId, agenteId) {
     if (agenteId) {
         const { data } = await supabase
@@ -76,13 +115,88 @@ async function obtenerEstadoCerrada(userId) {
     return data?.id || null;
 }
 
-// Texto del catálogo para inyectar en el prompt del agente
+// Texto del catálogo para inyectar en el prompt del agente.
+// Agrupa por categoría y renderiza según el tipo (tarifas por pasajero,
+// variantes, escalas por cantidad, extras y atributos).
 function construirTextoCatalogo(config) {
     const catalogo = config?.catalogo || [];
     if (!catalogo.length) return '';
-    return catalogo
-        .map(p => `- ${p.nombre}: $${Math.round((p.precio_cents || 0) / 100).toLocaleString('es-CO')} COP (id: ${p.id})`)
-        .join('\n');
+
+    const agrupado = {};
+    for (const raw of catalogo) {
+        const p = normalizarProducto(raw);
+        if (p.disponible === false) continue;
+        const cat = p.categoria || 'General';
+        if (!agrupado[cat]) agrupado[cat] = [];
+        agrupado[cat].push(p);
+    }
+
+    const lineas = [];
+    for (const cat of Object.keys(agrupado)) {
+        lineas.push(`--- ${cat.toUpperCase()} ---`);
+        for (const p of agrupado[cat]) {
+            const base = p.descripcion
+                ? `- ${p.nombre} (${p.descripcion}): ${formatearPesos(p.precio_cents)} COP (id: ${p.id})`
+                : `- ${p.nombre}: ${formatearPesos(p.precio_cents)} COP (id: ${p.id})`;
+            lineas.push(base);
+
+            if (p.tipo === 'tour' && p.categorias_pasajero.length) {
+                const bands = p.categorias_pasajero
+                    .filter(b => b.permitido !== false)
+                    .map(b => `${b.nombre} (${b.edad_min}-${b.edad_max} años, ${formatearPesos(b.precio_cents)} COP)`)
+                    .join('; ');
+                lineas.push(`  Tarifas por pasajero: ${bands}.`);
+                if (p.escalas_cantidad.length) {
+                    const escalas = p.escalas_cantidad
+                        .map(e => `${e.desde}${e.hasta ? '-' + e.hasta : '+'} pasajeros${Number(e.descuento_pct) ? ' (-' + e.descuento_pct + '%)' : ''}`)
+                        .join('; ');
+                    lineas.push(`  Descuentos por tamaño de grupo: ${escalas}.`);
+                }
+                lineas.push(`  Mínimo ${p.min_participantes || 1} / Máximo ${p.max_participantes ? p.max_participantes : 'sin límite'} participantes.`);
+                if (p.requiere_adulto) lineas.push('  Requiere al menos 1 adulto en el grupo.');
+            }
+            if (p.variantes.length) {
+                const vars = p.variantes.map(v => `${v.nombre}: ${formatearPesos(v.precio_cents)} COP (id: ${v.id})`).join(' | ');
+                lineas.push(`  Variantes: ${vars}`);
+            }
+            if (p.extras.length) {
+                const extras = p.extras.map(e => `${e.nombre}: ${formatearPesos(e.precio_cents)} COP (id: ${e.id})`).join(' | ');
+                lineas.push(`  Extras opcionales: ${extras}`);
+            }
+            if (p.atributos && Object.keys(p.atributos).length) {
+                const attrs = Object.entries(p.atributos).map(([k, v]) => `${k}: ${v}`).join(' · ');
+                lineas.push(`  ${attrs}`);
+            }
+        }
+    }
+    return lineas.join('\n');
+}
+
+// Catálogo sanitizado para enviar a los clientes (chat web / WhatsApp).
+// Solo campos útiles para mostrar tarjetas de producto; sin datos internos.
+function productosParaCliente(catalogo) {
+    const lista = Array.isArray(catalogo) ? catalogo : [];
+    return lista
+        .map(p => normalizarProducto(p))
+        .filter(p => p && p.disponible !== false)
+        .map(p => ({
+            id: p.id,
+            nombre: p.nombre,
+            tipo: p.tipo,
+            categoria: p.categoria,
+            descripcion: p.descripcion,
+            precio_cents: p.precio_cents,
+            url_imagen: p.url_imagen || null,
+            variantes: (p.variantes || []).map(v => ({ nombre: v.nombre, precio_cents: Number(v.precio_cents) || 0 })),
+            categorias_pasajero: (p.categorias_pasajero || [])
+                .filter(b => b.permitido !== false)
+                .map(b => ({ nombre: b.nombre, edad_min: b.edad_min, edad_max: b.edad_max, precio_cents: Number(b.precio_cents) || 0 })),
+            escalas_cantidad: (p.escalas_cantidad || []).map(e => ({ desde: e.desde, hasta: e.hasta, descuento_pct: e.descuento_pct })),
+            extras: (p.extras || []).map(e => ({ nombre: e.nombre, precio_cents: Number(e.precio_cents) || 0 })),
+            requiere_adulto: !!p.requiere_adulto,
+            min_participantes: p.min_participantes,
+            max_participantes: p.max_participantes
+        }));
 }
 
 // Llama a DeepSeek pidiendo SOLO JSON (extracción / clasificación)
@@ -267,6 +381,120 @@ async function avanzarEstadoAutomatico({ leadId, userId, estadoActualId, etapa }
     }
 }
 
+// ── CÁLCULO DE PRECIOS (catálogo enriquecido) ──
+// Valida y calcula el total de un producto. Para tours/servicios por pasajero
+// aplica el modelo de GetYourGuide/Viator: asignación por rango de edad,
+// validación de pax mix (adulto requerido, min/max participantes) y descuento
+// por escala de cantidad. Los extras (add-ons) se suman al final.
+// Devuelve { valido, errores, total_cents, total_pesos, desglose }.
+function calcularPrecioProducto({ producto, pasajeros = [], extras = [], cantidad = 1, varianteId = null }) {
+    const prod = normalizarProducto(producto);
+    const errores = [];
+    const desglose = [];
+    let total = 0;
+
+    // Variantes: si se elige una, su precio reemplaza el precio base.
+    let precioUnitario = prod.precio_cents;
+    if (varianteId && prod.variantes.length) {
+        const v = prod.variantes.find(x => String(x.id) === String(varianteId));
+        if (v) precioUnitario = Number(v.precio_cents) || precioUnitario;
+    }
+
+    if (prod.tipo === 'tour' && prod.categorias_pasajero.length) {
+        // Precio por pasajero (edad)
+        let totalPasajeros = 0;
+        let hayAdulto = false;
+        for (const pj of pasajeros || []) {
+            const qty = Math.floor(Number(pj.cantidad)) || 0;
+            if (qty <= 0) continue;
+            const cat = prod.categorias_pasajero.find(c => String(c.id) === String(pj.categoriaId));
+            if (!cat) {
+                errores.push(`La categoría de pasajero "${pj.categoriaId}" no existe en este tour.`);
+                continue;
+            }
+            if (cat.permitido === false) {
+                errores.push(`La categoría "${cat.nombre}" no está permitida para este tour.`);
+                continue;
+            }
+            totalPasajeros += qty;
+            if (/adulto|senior|mayor/i.test(cat.nombre)) hayAdulto = true;
+            const unit = Number(cat.precio_cents) || 0;
+            const subtotal = unit * qty;
+            total += subtotal;
+            desglose.push({ nombre: cat.nombre, cantidad: qty, precio_unit_cents: unit, subtotal_cents: subtotal });
+        }
+
+        if (!totalPasajeros) {
+            errores.push('Indica la cantidad de pasajeros por categoría (ej. 2 adultos, 1 niño).');
+        } else {
+            if (prod.requiere_adulto && !hayAdulto) {
+                errores.push('Este tour requiere al menos 1 adulto en el grupo.');
+            }
+            if (prod.min_participantes > 1 && totalPasajeros < prod.min_participantes) {
+                errores.push(`El tour requiere mínimo ${prod.min_participantes} participantes (el grupo tiene ${totalPasajeros}).`);
+            }
+            if (prod.max_participantes && totalPasajeros > prod.max_participantes) {
+                errores.push(`El tour admite máximo ${prod.max_participantes} participantes (el grupo tiene ${totalPasajeros}).`);
+            }
+        }
+
+        // Descuento por escala de cantidad (precio según tamaño del grupo)
+        if (prod.escalas_cantidad.length && totalPasajeros > 0) {
+            const escala = prod.escalas_cantidad
+                .filter(e => totalPasajeros >= (Number(e.desde) || 0) && (!e.hasta || totalPasajeros <= Number(e.hasta)))
+                .sort((a, b) => (Number(b.descuento_pct) || 0) - (Number(a.descuento_pct) || 0))[0];
+            if (escala && Number(escala.descuento_pct) > 0) {
+                const desc = Math.round(total * (Number(escala.descuento_pct) / 100));
+                total -= desc;
+                desglose.push({
+                    nombre: `Descuento por grupo (-${escala.descuento_pct}% · ${escala.desde}${escala.hasta ? '-' + escala.hasta : '+'} pasajeros)`,
+                    cantidad: 1,
+                    precio_unit_cents: -desc,
+                    subtotal_cents: -desc
+                });
+            }
+        }
+    } else {
+        // Producto simple / con variantes: precio unitario × cantidad
+        const qty = Math.max(1, Math.floor(Number(cantidad)) || 1);
+        const subtotal = precioUnitario * qty;
+        total = subtotal;
+        desglose.push({
+            nombre: prod.nombre + (varianteId ? ' (variante)' : ''),
+            cantidad: qty,
+            precio_unit_cents: precioUnitario,
+            subtotal_cents: subtotal
+        });
+    }
+
+    // Extras / add-ons
+    for (const ex of extras || []) {
+        const qty = Math.max(1, Math.floor(Number(ex.cantidad)) || 1);
+        const extra = (prod.extras || []).find(e => String(e.id) === String(ex.id));
+        if (!extra) {
+            errores.push(`El extra "${ex.id}" no existe para este producto.`);
+            continue;
+        }
+        const sub = (Number(extra.precio_cents) || 0) * qty;
+        total += sub;
+        desglose.push({
+            nombre: extra.nombre,
+            cantidad: qty,
+            precio_unit_cents: Number(extra.precio_cents) || 0,
+            subtotal_cents: sub
+        });
+    }
+
+    const totalCents = Math.max(0, Math.round(total));
+    return {
+        valido: errores.length === 0,
+        errores,
+        total_cents: totalCents,
+        total_pesos: Math.round(totalCents / 100),
+        desglose
+    };
+}
+
 // ── PAGO EN CHAT (venta) ──
 // Crea el payment link de Wompi con la pasarela DEL VENDEDOR y registra el pago.
 async function crearPaymentLinkVenta({ config, agente, leadId, conversacionId, producto, canal, externalUserId, montoCents }) {
@@ -383,11 +611,15 @@ async function obtenerOCrearLead({ agente, canal, externalUserId, conversacionId
 module.exports = {
     CAMPOS_BASE,
     ESTADOS_DEFAULT,
+    TIPOS_PRODUCTO,
     obtenerConfigCRM,
     sembrarEstadosDefault,
     obtenerEstadoInicial,
     obtenerEstadoCerrada,
+    normalizarProducto,
+    calcularPrecioProducto,
     construirTextoCatalogo,
+    productosParaCliente,
     deepseekJSON,
     extraerDatosLead,
     avanzarEstadoAutomatico,
