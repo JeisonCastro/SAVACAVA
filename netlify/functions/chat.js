@@ -1238,9 +1238,9 @@ INSTRUCCIONES:
             ? process.env.OPENIA_KEY
             : process.env.DEEPSEEK_API_KEY;
         const model = useOpenAI ? 'gpt-4o' : 'deepseek-v4-flash';
-        // En los modelos de razonamiento el presupuesto de salida se comparte entre el
-        // razonamiento y la respuesta: 1024 deja content vacío; 8192 hace la generación
-        // tan larga que supera el límite de la función. 4096 es el punto medio.
+        // Con reasoning desactivado (thinking.disabled), 1024 sería suficiente para la
+        // mayoría de respuestas; 4096 deja margen para respuestas largas sin costo extra
+        // (solo se cobra lo generado).
         const maxOutputTokens = useOpenAI ? 1024 : 4096;
 
         if (!apiKey) {
@@ -1260,7 +1260,11 @@ INSTRUCCIONES:
                 model,
                 messages: mensajes,
                 temperature: 0.2,
-                max_tokens: maxOutputTokens
+                max_tokens: maxOutputTokens,
+                // deepseek-v4-flash razona por defecto y puede tardar >25s en tareas
+                // complejas, superando el límite de ejecución de Netlify. Sin
+                // razonamiento responde en ~5s y cubre casos como agendar clases.
+                ...(useOpenAI ? {} : { thinking: { type: 'disabled' } })
             }),
             signal: controller.signal
         });

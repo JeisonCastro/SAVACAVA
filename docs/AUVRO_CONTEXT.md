@@ -832,6 +832,24 @@ Multiusuario.
 
 # Changelog de Cambios Técnicos
 
+## 8 Ago 2026 — Fix v3: desactivado el razonamiento de DeepSeek (pensamiento) para respuestas dentro del tiempo límite
+
+### Contexto
+Aun con `max_tokens` y timeout ajustados, las tareas complejas (ej. agendar varias clases en Google Calendar) excedían los 25s porque `deepseek-v4-flash` razona por defecto (`reasoning_content` puede superar 3000 tokens) y Netlify mata las funciones síncronas a los 30s. Resultado real: el cliente de WhatsApp recibía "La IA tardó demasiado".
+
+### Pruebas directas contra la API (misma tarea compleja)
+- Por defecto (razona): **13.9s** total, 3902 tokens de razonamiento.
+- `thinking: { type: 'disabled' }`: **4.5s**, 0 tokens de razonamiento, respuesta completa.
+- `thinking: { type: 'enabled', budget_tokens: 1024 }`: 10.8s y el modelo NO respeta el tope (razonó 3240 tokens).
+
+### Fix en `netlify/functions/chat.js`
+- Se envía `thinking: { type: 'disabled' }` en el body del request a DeepSeek (solo en la rama DeepSeek; OpenAI vision sigue igual).
+- Se mantiene `max_tokens: 4096` (solo como margen de respuesta; sin razonamiento no hay riesgo de vacío).
+- Tradeoff asumido: el agente ya no "piensa" en voz alta; se compensa con respuestas ~5s siempre dentro del límite.
+
+### Opción futura (no implementada)
+Procesamiento asíncrono con background function (hasta 15 min) si algún día se necesita razonamiento profundo en WhatsApp.
+
 ## 8 Ago 2026 — Fix v2: timeout en la lectura del cuerpo de DeepSeek (evita muerte silenciosa a los 30s)
 
 ### Síntoma
