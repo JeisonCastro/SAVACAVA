@@ -20,15 +20,18 @@ const TOKEN_PLANES = {
 
 // ── Tarifas Wompi (Plan Avanzado): 2,65% + $700 + IVA por transaccion ──
 // Se trasladan al cliente: el monto cobrado deja al comercio el precio base neto.
+// Recibe el precio base en CENTAVOS y devuelve el monto bruto en CENTAVOS.
 const FEE_RATE = 0.0265;
-const FEE_FIJO = 700;
+const FEE_FIJO = 700; // pesos
 const FEE_IVA = 0.19;
 
 function calcularMontoBruto(baseCents) {
+    const basePesos = baseCents / 100;
     const ivaFactor = 1 + FEE_IVA;
     const denom = 1 - FEE_RATE * ivaFactor;
-    const bruto = (baseCents + FEE_FIJO * ivaFactor) / denom;
-    return Math.ceil(Math.ceil(bruto) / 100) * 100;
+    const brutoPesos = (basePesos + FEE_FIJO * ivaFactor) / denom;
+    const brutoRedondeado = Math.ceil(Math.ceil(brutoPesos) / 100) * 100;
+    return brutoRedondeado * 100;
 }
 
 exports.handler = async (event) => {
