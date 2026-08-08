@@ -4379,7 +4379,6 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
                                     <option value>Todos los canales</option>
                                     <option value="whatsapp">WhatsApp</option>
                                     <option value="web">Widget</option>
-                                    <option value="dashboard">Dashboard</option>
                                 </select>
                             </div>
                             <div class="inbox-search-wrap">
@@ -7032,8 +7031,9 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
             .from('conversaciones')
             .select('id, agente_id, user_id, canal, external_user_id, titulo, modo_humano, estado, ultimo_mensaje, ultimo_role, requiere_atencion, intervenida_por, intervenida_en, created_at, updated_at')
             .eq('user_id', currentUser.id)
+            .neq('canal', 'dashboard')
             .order('updated_at', { ascending: false })
-            .limit(100);
+            .limit(200);
 
         if (agentFilter) query = query.eq('agente_id', parseInt(agentFilter));
         if (channelFilter) query = query.eq('canal', channelFilter);
@@ -8484,6 +8484,7 @@ async function debugPush() {
                     console.log('Realtime conversaciones v11:', payload.eventType, c);
 
                     if (payload.new) {
+                        if (payload.new.canal === 'dashboard') return;
                         const idx = (conversacionesBandeja || []).findIndex(x => x.id === payload.new.id);
                         if (idx >= 0) conversacionesBandeja[idx] = { ...conversacionesBandeja[idx], ...payload.new };
                         else conversacionesBandeja.unshift(payload.new);
