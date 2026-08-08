@@ -4223,6 +4223,9 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
         <!-- MAIN -->
         <div class="main-content">
 
+            <!-- ALERTA DE SUSCRIPCION -->
+            <div id="plan-alert" style="display:none"></div>
+
             <!-- VISTA AGENTES -->
             <div class="view active" id="view-agentes">
                 <div class="topbar">
@@ -4672,6 +4675,56 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
                     </div>
                 </div>
 
+                <!-- TAB: Suscripciones -->
+                <div class="card" style="margin-bottom:1.5rem">
+                    <div class="card-header">
+                        <div class="card-icon"><i class="fas fa-calendar-check"></i></div>
+                        <span class="card-title">Suscripciones</span>
+                    </div>
+                    <div class="table-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Usuario</th>
+                                    <th>Plan</th>
+                                    <th>Estado</th>
+                                    <th>Vence</th>
+                                    <th>Dias</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="admin-susc-body">
+                                <tr><td colspan="6" style="text-align:center;color:var(--dim);padding:2rem">Cargando...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- TAB: Pagos -->
+                <div class="card" style="margin-bottom:1.5rem">
+                    <div class="card-header">
+                        <div class="card-icon"><i class="fas fa-credit-card"></i></div>
+                        <span class="card-title">Pagos recientes</span>
+                    </div>
+                    <div class="table-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Usuario</th>
+                                    <th>Concepto</th>
+                                    <th>Monto</th>
+                                    <th>Estado</th>
+                                    <th>Fecha</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="admin-pagos-body">
+                                <tr><td colspan="6" style="text-align:center;color:var(--dim);padding:2rem">Cargando...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
                 <!-- TAB: Planes -->
                 <div class="card">
                     <div class="card-header">
@@ -5004,7 +5057,7 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
                 return;
             }
 
-            const { perfiles, planes, totalAgentes, totalTokens, agentes, logs } = data;
+            const { perfiles, planes, pagos, totalAgentes, totalTokens, agentes, logs } = data;
 
             document.getElementById('admin-stats').innerHTML = `
                 <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:1rem">
@@ -5047,6 +5100,53 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
                                 <i class="fas fa-crown" style="margin-right:.2rem"></i>Plan
                             </button>
                         </td>
+                    </tr>`;
+                }).join('');
+            }
+
+            const suscBody = document.getElementById('admin-susc-body');
+            const suscripciones = (perfiles || []).filter(p => p.plan_id && p.plan_vencimiento);
+            if (!suscripciones.length) {
+                suscBody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--dim);padding:1.5rem">Sin suscripciones activas</td></tr>';
+            } else {
+                suscBody.innerHTML = suscripciones.map(p => {
+                    const nom = `${p.nombre || ''} ${p.apellido || ''}`;
+                    const planN = p.planes ? p.planes.nombre : 'Desconocido';
+                    const badge = estadoBadge(p.estado_plan);
+                    const vence = p.plan_vencimiento ? new Date(p.plan_vencimiento).toLocaleDateString() : '—';
+                    const dias = p.estado_plan === 'activo' && p.dias_restantes ? p.dias_restantes : (p.dias_restantes ?? '—');
+                    const puedeRenovar = p.estado_plan !== 'activo' || (p.dias_restantes !== null && p.dias_restantes < 30);
+                    return `<tr>
+                        <td style="font-weight:600">${nom || p.id}</td>
+                        <td>${planN}</td>
+                        <td>${badge}</td>
+                        <td style="color:var(--muted);font-size:.82rem">${vence}</td>
+                        <td style="text-align:center">${dias}</td>
+                        <td>
+                            ${puedeRenovar ? `<button class="btn-small" onclick="renovarPlanAdmin('${p.id}')" style="font-size:.75rem;padding:4px 8px"><i class="fas fa-rotate-right" style="margin-right:.2rem"></i>Renovar</button>` : ''}
+                            ${p.estado_plan !== 'sin_plan' ? `<button class="btn-small danger" onclick="desactivarPlanAdmin('${p.id}')" style="font-size:.75rem;padding:4px 8px;margin-left:.3rem"><i class="fas fa-ban" style="margin-right:.2rem"></i>Desactivar</button>` : ''}
+                        </td>
+                    </tr>`;
+                }).join('');
+            }
+
+            const pagosBody = document.getElementById('admin-pagos-body');
+            if (!(pagos || []).length) {
+                pagosBody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--dim);padding:1.5rem">Sin pagos registrados</td></tr>';
+            } else {
+                pagosBody.innerHTML = pagos.map(pg => {
+                    const user = perfiles.find(x => x.id === pg.user_id);
+                    const nom = user ? `${user.nombre || ''} ${user.apellido || ''}` : pg.user_id;
+                    const badge = pg.estado === 'aprobado' ? '<span class="badge badge-green">Aprobado</span>'
+                        : pg.estado === 'pendiente' ? '<span class="badge" style="background:rgba(234,179,8,.15);color:var(--yellow);border:1px solid rgba(234,179,8,.4)">Pendiente</span>'
+                        : `<span class="badge" style="background:rgba(239,68,68,.12);color:var(--red);border:1px solid rgba(239,68,68,.4)">${pg.estado || '—'}</span>`;
+                    return `<tr>
+                        <td style="font-weight:600">${nom || pg.user_id}</td>
+                        <td style="font-size:.82rem">${pg.concepto || (pg.tipo || '')}</td>
+                        <td style="font-weight:600;color:var(--green)">$${(pg.monto_cents != null ? pg.monto_cents / 100 : 0).toLocaleString('es-CO', { minimumFractionDigits: 0 })}</td>
+                        <td>${badge}</td>
+                        <td style="color:var(--muted);font-size:.82rem">${pg.created_at ? new Date(pg.created_at).toLocaleDateString() : '—'}</td>
+                        <td>${pg.estado === 'pendiente' ? `<button class="btn-small" onclick="aprobarPagoAdmin('${pg.id}')" style="font-size:.75rem;padding:4px 8px"><i class="fas fa-check" style="margin-right:.2rem"></i>Aprobar</button>` : '—'}</td>
                     </tr>`;
                 }).join('');
             }
@@ -5138,6 +5238,56 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
         if (!data.ok) return showToast('Error: ' + (data.error || 'Desconocido'), 'error');
         showToast('Plan actualizado');
         cerrarAdminModal();
+        cargarAdmin();
+    }
+
+    function estadoBadge(estado) {
+        const map = {
+            'activo': '<span class="badge badge-green">Activo</span>',
+            'por_vencer': '<span class="badge" style="background:rgba(234,179,8,.15);color:var(--yellow);border:1px solid rgba(234,179,8,.4)">Por vencer</span>',
+            'vencido': '<span class="badge" style="background:rgba(239,68,68,.14);color:var(--red);border:1px solid rgba(239,68,68,.45)">Vencido</span>',
+            'desactivado': '<span class="badge" style="background:rgba(148,163,184,.15);color:var(--muted);border:1px solid rgba(148,163,184,.4)">Desactivado</span>',
+            'sin_plan': '<span class="badge" style="background:rgba(148,163,184,.12);color:var(--dim);border:1px solid rgba(148,163,184,.3)">Sin plan</span>'
+        };
+        return map[estado] || map['sin_plan'];
+    }
+
+    async function renovarPlanAdmin(userId) {
+        if (!confirm('Renovar el plan de este usuario por 30 dias?')) return;
+        const res = await fetch('/.netlify/functions/admin-data', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${currentSession?.access_token || ''}` },
+            body: JSON.stringify({ action: 'renovar_plan', user_id: userId })
+        });
+        const data = await res.json();
+        if (!data.ok) return showToast('Error: ' + (data.error || 'Desconocido'), 'error');
+        showToast('Plan renovado 30 dias');
+        cargarAdmin();
+    }
+
+    async function desactivarPlanAdmin(userId) {
+        if (!confirm('Desactivar el plan de este usuario (vuelve a Free)?')) return;
+        const res = await fetch('/.netlify/functions/admin-data', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${currentSession?.access_token || ''}` },
+            body: JSON.stringify({ action: 'desactivar_plan', user_id: userId })
+        });
+        const data = await res.json();
+        if (!data.ok) return showToast('Error: ' + (data.error || 'Desconocido'), 'error');
+        showToast('Plan desactivado');
+        cargarAdmin();
+    }
+
+    async function aprobarPagoAdmin(pagoId) {
+        if (!confirm('Aprobar este pago manualmente y acreditar tokens/plan?')) return;
+        const res = await fetch('/.netlify/functions/admin-data', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${currentSession?.access_token || ''}` },
+            body: JSON.stringify({ action: 'aprobar_pago', pago_id: pagoId })
+        });
+        const data = await res.json();
+        if (!data.ok) return showToast('Error: ' + (data.error || 'Desconocido'), 'error');
+        showToast('Pago aprobado y acreditado');
         cargarAdmin();
     }
 
@@ -5273,6 +5423,59 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
             showToast('Pago registrado. Tu saldo se actualizo.', 'success');
             history.replaceState({}, '', window.location.pathname);
         }
+        verificarPlanEstado();
+    }
+
+    // ── ESTADO DEL PLAN (ciclo de suscripcion) ──
+    let miPlanEstado = null;
+
+    async function verificarPlanEstado() {
+        try {
+            const res = await fetch('/.netlify/functions/plan-estado', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${currentSession?.access_token || ''}` }
+            });
+            const data = await res.json();
+            if (!res.ok || !data.ok) return;
+            miPlanEstado = data;
+            renderPlanAlert(data);
+            if (data.estado === 'desactivado') cargarPlanUsuario(currentUser.id);
+        } catch (_) {}
+    }
+
+    function renderPlanAlert(data) {
+        const el = document.getElementById('plan-alert');
+        if (!el) return;
+        const estiloBase = 'padding:.9rem 1rem;border-radius:12px;margin:0 1.5rem 1rem;display:flex;flex-wrap:wrap;gap:.75rem;align-items:center;justify-content:space-between;font-size:.9rem;';
+        const nombre = data.plan_nombre || 'tu plan';
+        let html = '';
+        if (data.estado === 'por_vencer') {
+            el.style.cssText = estiloBase + 'background:rgba(234,179,8,.12);border:1px solid rgba(234,179,8,.35);color:var(--text);';
+            html = `<span><strong style="color:var(--yellow)">Tu plan ${nombre} vence en ${data.dias} dia${data.dias === 1 ? '' : 's'}.</strong> Renueva para no perder tus agentes.</span>
+                    <button onclick="renovarPlanActual()" style="background:var(--yellow);color:#111;border:none;padding:6px 14px;border-radius:8px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif">Pagar ahora</button>`;
+        } else if (data.estado === 'vencido') {
+            el.style.cssText = estiloBase + 'background:rgba(239,68,68,.14);border:1px solid rgba(239,68,68,.45);color:var(--text);';
+            html = `<span><strong style="color:var(--red)">Tu plan ${nombre} vencio.</strong> Tienes 5 dias de gracia. Paga antes del ${new Date(data.vencimiento).toLocaleDateString()} + 5 dias para mantenerlo.</span>
+                    <button onclick="renovarPlanActual()" style="background:var(--red);color:#fff;border:none;padding:6px 14px;border-radius:8px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif">Pagar ahora</button>`;
+        } else if (data.estado === 'desactivado') {
+            el.style.cssText = estiloBase + 'background:rgba(239,68,68,.2);border:1px solid var(--red);color:var(--text);';
+            html = `<span><strong style="color:var(--red)">Tu plan fue desactivado por falta de pago.</strong> Contrata de nuevo para recuperar tus agentes.</span>
+                    <button onclick="renovarPlanActual()" style="background:var(--red);color:#fff;border:none;padding:6px 14px;border-radius:8px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif">Contratar de nuevo</button>`;
+        } else {
+            el.style.display = 'none';
+            return;
+        }
+        el.style.display = 'flex';
+        el.innerHTML = html;
+    }
+
+    async function renovarPlanActual() {
+        if (!miPlanEstado?.plan_id) { mostrarVista('tokens'); return; }
+        if (miPlanEstado.estado === 'desactivado') {
+            mostrarVista('tokens');
+            return;
+        }
+        await contactarPlan(miPlanEstado.plan_id, miPlanEstado.plan_nombre || '', 0, 0);
     }
 
     // ── BALANCE ──

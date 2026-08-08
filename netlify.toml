@@ -5,6 +5,10 @@
   node_bundler = "esbuild"
   external_node_modules = ["@supabase/supabase-js"]
 
+# ── Cron diario: ciclo de suscripciones (desactivar planes vencidos) ─────────
+[functions."verificar-suscripciones"]
+  schedule = "@daily"
+
 # ── Headers de seguridad ──────────────────────────────────────────────────────
 [[headers]]
   for = "/*"

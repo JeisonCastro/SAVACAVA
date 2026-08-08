@@ -1,5 +1,6 @@
 const crypto = require('crypto');
 const { supabase } = require('./supabase-admin');
+const { fechaVencimiento } = require('./suscripciones');
 
 const headers = { "Content-Type": "application/json" };
 
@@ -104,7 +105,11 @@ exports.handler = async (event) => {
         } else if (pago.tipo === 'plan') {
             const { error } = await supabase
                 .from('perfiles')
-                .update({ plan_id: pago.plan_id })
+                .update({
+                    plan_id: pago.plan_id,
+                    plan_inicio: new Date().toISOString(),
+                    plan_vencimiento: fechaVencimiento()
+                })
                 .eq('id', pago.user_id);
             if (error) throw new Error('Error asignando plan: ' + error.message);
         }
