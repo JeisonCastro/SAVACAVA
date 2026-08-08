@@ -1,27 +1,85 @@
-const nodemailer = require('nodemailer');
-// Use global fetch where available
 const { supabase } = require('./supabase-admin');
 
-async function sendEmail({ to, subject, text, html, agentConfig = null }) {
-  // Prefer platform SMTP configured via ENV. Agent-level SMTP may be added later.
-  const host = process.env.SMTP_HOST;
-  const port = Number(process.env.SMTP_PORT || 587);
-  const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASS;
-  const from = process.env.SMTP_FROM || user;
+function normalizarListaCorreos(valor) {
+  if (Array.isArray(valor)) return valor.filter(v => typeof v === 'string' && v.trim());
+  if (typeof valor === 'string' && valor.trim()) {
+    return valor.split(',').map(v => v.trim()).filter(Boolean);
+  }
+  return [];
+}
 
-  if (!host || !user || !pass) {
-    console.warn('SMTP not configured in env. Skipping email send to', to);
-    return { ok: false, error: 'smtp_not_configured' };
+async function ejecutarToolComposio(toolSlug, connectedAccountId, userId, args) {
+  if (!process.env.COMPOSIO_API_KEY) {
+    return { ok: false, error: 'composio_api_key_not_configured' };
   }
 
-  const transporter = nodemailer.createTransport({ host, port, secure: port === 465, auth: { user, pass } });
+  const res = await fetch(`https://backend.composio.dev/api/v3.1/tools/execute/${toolSlug}`, {
+    method: 'POST',
+    headers: {
+      'x-api-key': process.env.COMPOSIO_API_KEY,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      connected_account_id: connectedAccountId,
+      user_id: userId,
+      arguments: args
+    })
+  });
 
+  const raw = await res.text();
+  let data;
   try {
-    const info = await transporter.sendMail({ from, to, subject, text, html });
-    return { ok: true, info };
+    data = JSON.parse(raw);
+  } catch (_) {
+    return { ok: false, error: `Respuesta inválida de Composio: ${raw}` };
+  }
+
+  if (!res.ok || data?.successful === false) {
+    const error = data?.error?.message || data?.error || data?.message || 'Error ejecutando Gmail en Composio';
+    return { ok: false, error, data };
+  }
+
+  return { ok: true, data };
+}
+
+async function sendEmail({ to, subject, text, html, cc, bcc, agente = null, userId = null }) {
+  try {
+    const ownerUserId = userId || agente?.user_id;
+    if (!ownerUserId) {
+      return { ok: false, error: 'missing_user_id' };
+    }
+
+    const { data: gmailConn, error } = await supabase
+      .from('composio_connections')
+      .select('toolkit, composio_entity_id')
+      .eq('user_id', ownerUserId)
+      .eq('toolkit', 'gmail')
+      .limit(1)
+      .maybeSingle();
+
+    if (error) {
+      return { ok: false, error: error.message };
+    }
+
+    if (!gmailConn?.composio_entity_id) {
+      console.warn('Gmail not connected for user', ownerUserId);
+      return { ok: false, error: 'gmail_not_connected' };
+    }
+
+    return await ejecutarToolComposio(
+      'GMAIL_SEND_EMAIL',
+      gmailConn.composio_entity_id,
+      ownerUserId,
+      {
+        to,
+        subject,
+        body: html || text || '',
+        cc: normalizarListaCorreos(cc),
+        bcc: normalizarListaCorreos(bcc)
+      }
+    );
   } catch (err) {
-    console.error('Error sending email:', err.message);
+    console.error('Error sending email via Gmail Composio:', err.message);
     return { ok: false, error: err.message };
   }
 }

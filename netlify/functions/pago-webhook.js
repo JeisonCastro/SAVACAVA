@@ -154,7 +154,7 @@ exports.handler = async (event) => {
         try {
             if (pago.tipo === 'venta') {
                 // traer lead con info adicional
-                const { data: lead } = await supabase.from('crm_leads').select('id, nombre, email, telefono, conversacion_id, agente_id, external_user_id').eq('id', pago.lead_id).maybeSingle();
+                const { data: lead } = await supabase.from('crm_leads').select('id, user_id, nombre, email, telefono, conversacion_id, agente_id, external_user_id').eq('id', pago.lead_id).maybeSingle();
                 if (lead) {
                     const { sendEmail, sendWhatsAppText } = require('./notifications');
                     // Notificar por email a destinatarios del agente si está configurado
@@ -164,7 +164,7 @@ exports.handler = async (event) => {
                     const subject = `Pago recibido: ${pago.concepto} - ${Math.round(pago.monto_cents/100).toLocaleString('es-CO')} COP`;
                     const text = `Pago confirmado. Referencia: ${transaction.id}\nMonto: ${Math.round(transaction.amount_in_cents/100).toLocaleString('es-CO')} COP\nCliente: ${lead.nombre || ''}`;
                     for (const to of recipients.filter(Boolean)) {
-                        sendEmail({ to, subject, text }).catch(err => console.error('post-pago email err:', err));
+                        sendEmail({ userId: lead.user_id, to, subject, text }).catch(err => console.error('post-pago email err:', err));
                     }
 
                     // Insertar mensaje en la conversación (assistant)

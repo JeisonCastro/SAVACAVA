@@ -642,7 +642,7 @@ async function crearPaymentLinkVenta({ config, agente, leadId, conversacionId, p
         const cfg = config || (await obtenerConfigCRM(agente.user_id, agente.id));
         if (cfg?.notify_on_intent) {
             const { sendEmail } = require('./notifications');
-            const recipients = (cfg.notify_recipients && cfg.notify_recipients.length) ? cfg.notify_recipients : [];
+            const recipients = (cfg.notify_recipients && cfg.notify_recipients.length) ? cfg.notify_recipients.slice() : [];
             // incluir email del lead si existiera
             if (lead && lead.email) recipients.push(lead.email);
             const subject = `Link de pago: ${concepto}`;
@@ -650,7 +650,7 @@ async function crearPaymentLinkVenta({ config, agente, leadId, conversacionId, p
             const text = `Hola ${lead?.nombre || ''}\n\nSe ha generado un link de pago para ${concepto}: ${url}\n\nMonto: ${Math.round(monto/100).toLocaleString('es-CO')} COP`;
             for (const to of recipients) {
                 if (!to) continue;
-                sendEmail({ to, subject, text }).catch(err => console.error('pre-pago email err:', err));
+                sendEmail({ agente, to, subject, text }).catch(err => console.error('pre-pago email err:', err));
             }
         }
     } catch (e) {

@@ -620,10 +620,10 @@ Conexión con herramientas externas.
 Objetivo
 - Permitir que cada agente notifique al dueño del negocio (y/o destinatarios configurados) eventos comerciales importantes: generación de link de pago (intención), pago confirmado (venta), cambios de estado del lead (ej. `Ganado`), y reembolsos/errores de pago.
 
-Prioridad del remitente
-- Si el agente tiene conexión Gmail vía Composio, enviar con esa conexión (OAuth) — mantiene remitente propio y mejor deliverability.
-- Si no hay Gmail via Composio, usar SMTP configurado en `crm_config_agente` (opcional).
-- Como último recurso usar la cuenta de la plataforma (credenciales en Netlify ENV: p.ej. SMTP/SendGrid).
+Canal de envío de correos
+- Si el agente tiene conexión Gmail vía Composio, las notificaciones comerciales se envían con la tool `GMAIL_SEND_EMAIL` usando esa conexión OAuth.
+- No se requiere SMTP por agente ni variables SMTP de plataforma para este flujo.
+- Si Gmail no está conectado para el dueño del agente, el backend debe omitir el correo con error explícito `gmail_not_connected` y registrar el fallo cuando exista tabla de notificaciones.
 
 Eventos que disparan notificaciones
 - Pre-pago: al crear un payment link (`crearPaymentLinkVenta`) → enviar plantilla *pre-pago* con resumen y link.
@@ -639,10 +639,9 @@ Configuración por agente (crm_config_agente)
   - `notify_cc_agent` (bool)
   - `notify_attach_receipt` (bool)
   - `notify_webhook_url` (optional)
-  - `smtp_*` opcionales (si se quiere SMTP propio) — almacenar con seguridad, preferir OAuth Composio cuando exista
 
 Canales de notificación
-- Email (Gmail vía Composio → SMTP agente → platform fallback)
+- Email (Gmail vía Composio / tool `GMAIL_SEND_EMAIL`)
 - WhatsApp: enviar notificación corta al vendedor si hay `whatsapp_connections` activo
 - Push: usar `dispararPush` si hay suscripción
 - Webhook: POST JSON al URL configurado, idempotente
@@ -650,8 +649,7 @@ Canales de notificación
 Trazabilidad y seguridad
 - Registrar cada notificación en tabla `emails_sent` / `notifications` con: agente_id, lead_id, conversation_id, event_type, channel, to, status, external_id, error, created_at.
 - Actualizar `mensajes_conversacion` con nota indicando notificación enviada (metadata { notification_type, id }).
-- Usar Netlify ENV para todos los secretos de fallback (SENDGRID_*, SMTP_*). No guardar contraseñas en Git.
-- Para Gmail usar Composio (OAuth tokens administrados por Composio). Si se almacenan credenciales SMTP en DB, guardarlas encriptadas y con acceso limitado.
+- Para Gmail usar Composio (OAuth tokens administrados por Composio). No guardar contraseñas ni credenciales SMTP en Git ni en DB para este flujo.
 
 Plantillas
 - Mantener plantillas HTML + plain-text para:
@@ -669,7 +667,7 @@ Presets recomendados por tipo de producto (sugerencia)
 - Tour/Actividad: `notify_on_intent = true`; `notify_on_payment = true`; `notify_on_state_change = true`
 
 Migraciones y ficheros a tocar (plan de cambios)
-- DB: migración para `crm_config_agente` (añadir campos `notify_*` y `smtp_*`), y crear `emails_sent` / `notifications`.
+- DB: migración para `crm_config_agente` (añadir campos `notify_*`), y crear `emails_sent` / `notifications`.
 - Backend: nuevo helper `notifications.js` (sendEmail/sendWhatsApp/sendPush/sendWebhook), y hooks:
   - `crm-helper.js` / `crearPaymentLinkVenta`: notificar pre-pago si corresponde.
   - `pago-webhook.js`: notificar post-pago al aprobar transacción, actualizar estado lead.
