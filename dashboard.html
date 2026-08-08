@@ -5904,13 +5904,8 @@ body{
     let agenteSeleccionadoId = null;
 
     function abrirChat(id, nombre) {
-        agenteSeleccionadoId = id;
-        currentConversationId = crypto.randomUUID();
-        currentChatHistory = [];
-        document.getElementById('chat-agent-name').innerText = "Probando: " + nombre;
-        document.getElementById('chat-messages').innerHTML = '';
-        document.getElementById('chat-modal').style.display = 'flex';
-        agregarMensaje("Sistema", "Conectado al agente. Listo para recibir instrucciones.", "bot");
+        const url = '/chat.html?agente=' + encodeURIComponent(id) + '&nombre=' + encodeURIComponent(nombre);
+        window.location.href = url;
     }
 
     async function enviarMensaje() {

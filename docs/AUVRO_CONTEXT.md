@@ -832,6 +832,26 @@ Multiusuario.
 
 # Changelog de Cambios Técnicos
 
+## 8 Ago 2026 — Refactor: chat de prueba integrado al botón "Probar" del dashboard (se elimina carpeta `chats/`)
+
+### Cambio de enfoque
+En vez de una carpeta/chat separado (`chats/index.html`), el botón "Probar" de cada agente en el dashboard ahora **redirige a un chat a pantalla completa** (`chat.html` en la raíz) con las funciones del widget: adjuntar imágenes, historial por usuario y estética AUVRO.
+
+### Implementación
+1. **Eliminada** la carpeta `chats/` (enfoque anterior de chat con login propio).
+2. **NUEVO `chat.html`** (raíz):
+   - Acceso vía `chat.html?agente=ID&nombre=NOMBRE` desde el dashboard.
+   - Requiere sesión Supabase (redirige a `login.html?redirect=/chat.html...` si no hay sesión).
+   - Envía con header `Authorization: Bearer` + `canal='dashboard'` + `external_user_id = user.id`.
+   - **Adjuntar imagen** (📎, máx. 10 MB) → se envía como `image_url` (data URL) y se muestra en el historial.
+   - Carga historial persistente por (agente + dashboard + user.id), botón "Nueva conversación", "Salir", fecha/hora, typing indicator, enlaces/bullets.
+3. **`web-chat-messages.js`**: ahora acepta `canal` en el body (default `'web'`, retrocompatible con el widget) para poder leer historial del canal `dashboard`.
+4. **`dashboard.html`**: `abrirChat(id, nombre)` ahora hace `window.location.href = '/chat.html?agente=...&nombre=...'` (antes abría un modal básico sin adjuntar imagen ni historial). El código del modal queda sin uso pero intacto.
+
+### Notas
+- El canal `dashboard` mantiene separadas las conversaciones de prueba de las del widget web (canal `web`).
+- La validación de sesión en `chat.js` (401/403) sigue retrocompatible: sin Authorization el widget anónimo funciona igual.
+
 ## 8 Ago 2026 — Chat web autenticado + Widget mejorado (viabilidad completa)
 
 ### Chat web con login (`chats/index.html`)

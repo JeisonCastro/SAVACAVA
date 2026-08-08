@@ -26,6 +26,7 @@ exports.handler = async (event) => {
     const body = JSON.parse(event.body || '{}');
     const agenteId = body.agente_id;
     const externalUserId = body.external_user_id;
+    const canal = body.canal || 'web';
 
     if (!agenteId || !externalUserId) {
       return jsonResponse(400, {
@@ -53,7 +54,7 @@ exports.handler = async (event) => {
       .from('conversaciones')
       .select('*')
       .eq('agente_id', agenteId)
-      .eq('canal', 'web')
+      .eq('canal', canal)
       .eq('external_user_id', externalUserId)
       .order('updated_at', { ascending: false, nullsFirst: false })
       .order('created_at', { ascending: false, nullsFirst: false })
