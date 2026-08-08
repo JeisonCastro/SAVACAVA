@@ -412,6 +412,38 @@ function calcularPrecioProducto({ producto, pasajeros = [], extras = [], cantida
         }
     }
 
+    // Si el agente envía edades individuales (ej. [{edad:35},{edad:8},...]) o
+    // una lista de números, inferimos las cantidades por categoría usando
+    // los rangos edad_min/edad_max configurados en el producto.
+    if (Array.isArray(pasajeros) && pasajeros.length) {
+        const everyIsAgeLike = pasajeros.every(p => typeof p === 'number' || (p && (p.hasOwnProperty('edad') || p.hasOwnProperty('age'))));
+        if (everyIsAgeLike) {
+            const inferred = {};
+            for (const item of pasajeros) {
+                let age = null;
+                let qty = 1;
+                if (typeof item === 'number') age = Number(item);
+                else {
+                    age = Number(item.edad ?? item.age ?? NaN);
+                    qty = Math.max(1, Math.floor(Number(item.cantidad) || 1));
+                }
+                if (!Number.isFinite(age) || age < 0) {
+                    errores.push(`Edad inválida: ${String(item)}`);
+                    continue;
+                }
+                // buscar categoría por rango de edad y permitida
+                const cat = (prod.categorias_pasajero || []).find(c => (c.permitido !== false) && Number(c.edad_min) <= age && age <= Number(c.edad_max));
+                if (!cat) {
+                    errores.push(`No encontré una categoría para edad ${age}. Revisa las tarifas por pasajero configuradas.`);
+                    continue;
+                }
+                inferred[cat.id] = (inferred[cat.id] || 0) + qty;
+            }
+            // Reconstruir 'pasajeros' en la forma esperada: [{categoriaId, cantidad}, ...]
+            pasajeros = Object.keys(inferred).map(id => ({ categoriaId: id, cantidad: inferred[id] }));
+        }
+    }
+
     // Variantes: si se elige una, su precio reemplaza el precio base.
     let precioUnitario = prod.precio_cents;
     if (varianteId && prod.variantes.length) {
