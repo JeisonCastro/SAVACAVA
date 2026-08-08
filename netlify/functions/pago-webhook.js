@@ -150,6 +150,42 @@ exports.handler = async (event) => {
             })
             .eq('id', pago.id);
         if (upError) throw new Error('Error actualizando pago: ' + upError.message);
+        // Si es venta CRM, notificar y actualizar conversación
+        try {
+            if (pago.tipo === 'venta') {
+                // traer lead con info adicional
+                const { data: lead } = await supabase.from('crm_leads').select('id, nombre, email, telefono, conversacion_id, agente_id, external_user_id').eq('id', pago.lead_id).maybeSingle();
+                if (lead) {
+                    const { sendEmail, sendWhatsAppText } = require('./notifications');
+                    // Notificar por email a destinatarios del agente si está configurado
+                    const { data: cfg } = await supabase.from('crm_config_agente').select('notify_on_payment, notify_recipients').eq('agente_id', lead.agente_id).maybeSingle();
+                    const recipients = (cfg?.notify_recipients && cfg.notify_recipients.length) ? cfg.notify_recipients.slice() : [];
+                    if (lead.email) recipients.push(lead.email);
+                    const subject = `Pago recibido: ${pago.concepto} - ${Math.round(pago.monto_cents/100).toLocaleString('es-CO')} COP`;
+                    const text = `Pago confirmado. Referencia: ${transaction.id}\nMonto: ${Math.round(transaction.amount_in_cents/100).toLocaleString('es-CO')} COP\nCliente: ${lead.nombre || ''}`;
+                    for (const to of recipients.filter(Boolean)) {
+                        sendEmail({ to, subject, text }).catch(err => console.error('post-pago email err:', err));
+                    }
+
+                    // Insertar mensaje en la conversación (assistant)
+                    try {
+                        if (lead.conversacion_id) {
+                            await supabase.from('mensajes_conversacion').insert({ conversacion_id: lead.conversacion_id, agente_id: lead.agente_id, role: 'assistant', content: `Pago recibido ✅\nReferencia: ${transaction.id}\nMonto: ${Math.round(transaction.amount_in_cents/100).toLocaleString('es-CO')} COP`, origen: 'sistema', metadata: { pago_id: pago.id, transaction_id: transaction.id } });
+                        }
+                    } catch (mErr) { console.error('Error insertando msg conv:', mErr.message); }
+
+                    // Enviar WhatsApp de confirmación al cliente si hay número
+                    try {
+                        const phone = lead.external_user_id || lead.telefono;
+                        if (phone) {
+                            await sendWhatsAppText({ agentId: lead.agente_id, toPhone: phone, text: `Pago recibido ✅\nReferencia: ${transaction.id}\nTotal: $${Math.round(transaction.amount_in_cents/100).toLocaleString('es-CO')} COP\nGracias por tu compra.` });
+                        }
+                    } catch (waErr) { console.error('Error sending wa post-pago:', waErr.message); }
+                }
+            }
+        } catch (notifErr) {
+            console.error('Error notifying post-pago:', notifErr.message);
+        }
 
         return { statusCode: 200, headers, body: JSON.stringify({ ok: true, acreditado: true }) };
     } catch (err) {

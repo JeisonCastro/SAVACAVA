@@ -633,9 +633,29 @@ async function crearPaymentLinkVenta({ config, agente, leadId, conversacionId, p
 
     const { data: lead } = await supabase
         .from('crm_leads')
-        .select('nombre, external_user_id')
+        .select('nombre, external_user_id, email, telefono')
         .eq('id', leadId)
         .maybeSingle();
+
+    // Enviar notificación pre-pago si el agente lo tiene habilitado
+    try {
+        const cfg = config || (await obtenerConfigCRM(agente.user_id, agente.id));
+        if (cfg?.notify_on_intent) {
+            const { sendEmail } = require('./notifications');
+            const recipients = (cfg.notify_recipients && cfg.notify_recipients.length) ? cfg.notify_recipients : [];
+            // incluir email del lead si existiera
+            if (lead && lead.email) recipients.push(lead.email);
+            const subject = `Link de pago: ${concepto}`;
+            const url = `https://checkout.wompi.co/l/${paymentLinkId}`;
+            const text = `Hola ${lead?.nombre || ''}\n\nSe ha generado un link de pago para ${concepto}: ${url}\n\nMonto: ${Math.round(monto/100).toLocaleString('es-CO')} COP`;
+            for (const to of recipients) {
+                if (!to) continue;
+                sendEmail({ to, subject, text }).catch(err => console.error('pre-pago email err:', err));
+            }
+        }
+    } catch (e) {
+        console.error('Error notifying pre-pago:', e.message);
+    }
 
     return {
         ok: true,
