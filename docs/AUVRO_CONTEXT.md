@@ -832,6 +832,20 @@ Multiusuario.
 
 # Changelog de Cambios Técnicos
 
+## 8 Ago 2026 — Fix v2: timeout en la lectura del cuerpo de DeepSeek (evita muerte silenciosa a los 30s)
+
+### Síntoma
+Tras subir `max_tokens` a 8192, una solicitud con razonamiento largo moría en silencio:
+`DeepSeek respondió con status: 200` ... `Duration: 30000 ms` (sin `Respuesta raw IA`).
+
+### Causa raíz
+DeepSeek envía los headers al instante (status 200) pero el **cuerpo** llega de forma progresiva mientras genera tokens de razonamiento. El `clearTimeout` se ejecutaba justo después de `fetch()` (solo con los headers), así que `await aiResponse.json()` quedaba **sin timeout** y el límite de ejecución de Netlify (30s) mataba la función antes de responder — el cliente de WhatsApp nunca recibía nada.
+
+### Fix en `netlify/functions/chat.js`
+1. `clearTimeout` movido a `finally` **después** de `await aiResponse.json()`: el abort sigue activo durante la lectura del cuerpo.
+2. Timeout de DeepSeek: fijo **25s** (bajo el límite de 30s de Netlify) → si se pasa, el catch devuelve `{error: "La IA tardó demasiado..."}` y el webhook de WhatsApp lo envía al cliente (whatsapp-webhook.js:584).
+3. `max_tokens` de DeepSeek bajado de 8192 → **4096** (punto medio: 1024 deja `content` vacío; 8192 supera el límite de tiempo).
+
 ## 8 Ago 2026 — Fix: respuestas vacías de DeepSeek por razonamiento truncado (finish_reason=length)
 
 ### Síntoma

@@ -22,10 +22,10 @@ function truncarMensaje(texto, maxChars = 2000) {
     return `${inicio}\n\n[...mensaje truncado por longitud...]\n\n${fin}`;
 }
 
-function calcularTimeout(inputChars, maxMs = 9000) {
+function calcularTimeout(inputChars) {
     const base = 5000;
     const extra = Math.min(inputChars / 500, 4) * 1000;
-    return Math.min(base + extra, maxMs);
+    return Math.min(base + extra, 9000);
 }
 
 // ── PUSH NOTIFICATIONS ──────────────────────────────────────────────────────
@@ -1223,11 +1223,12 @@ INSTRUCCIONES:
         console.log(useOpenAI ? "Usando OpenAI GPT-4o (vision)..." : "Llamando a DeepSeek...");
 
         const controller = new AbortController();
+        // Los modelos de razonamiento de DeepSeek generan reasoning_content de forma
+        // progresiva y pueden tardar decenas de segundos; les damos margen amplio pero
+        // menor al límite de ejecución de Netlify (30s) para responder un error elegante.
         const timeout = setTimeout(
             () => controller.abort(),
-            // Los modelos de razonamiento de DeepSeek (deepseek-v4-flash) generan
-            // reasoning_content y pueden tardar más; les damos más margen.
-            calcularTimeout(inputChars, useOpenAI ? 9000 : 20000)
+            useOpenAI ? calcularTimeout(inputChars) : 25000
         );
 
         const apiEndpoint = useOpenAI
@@ -1237,9 +1238,10 @@ INSTRUCCIONES:
             ? process.env.OPENIA_KEY
             : process.env.DEEPSEEK_API_KEY;
         const model = useOpenAI ? 'gpt-4o' : 'deepseek-v4-flash';
-        // En los modelos de razonamiento el presupuesto de salida se comparte entre
-        // el razonamiento y la respuesta; 1024 es insuficiente y devuelve content vacío.
-        const maxOutputTokens = useOpenAI ? 1024 : 8192;
+        // En los modelos de razonamiento el presupuesto de salida se comparte entre el
+        // razonamiento y la respuesta: 1024 deja content vacío; 8192 hace la generación
+        // tan larga que supera el límite de la función. 4096 es el punto medio.
+        const maxOutputTokens = useOpenAI ? 1024 : 4096;
 
         if (!apiKey) {
             clearTimeout(timeout);
@@ -1263,12 +1265,19 @@ INSTRUCCIONES:
             signal: controller.signal
         });
 
-        clearTimeout(timeout);
-
         const provider = useOpenAI ? 'OpenAI' : 'DeepSeek';
         console.log(`${provider} respondió con status:`, aiResponse.status);
 
-        const aiData = await aiResponse.json();
+        // El cuerpo llega de forma progresiva (tokens de razonamiento) y puede tardar
+        // mucho. El timeout DEBE seguir activo durante la lectura del cuerpo: si se
+        // limpia aquí, una generación lenta mata la función por el límite de Netlify
+        // en silencio (Duration: 30000 ms) sin responder nada al usuario.
+        let aiData;
+        try {
+            aiData = await aiResponse.json();
+        } finally {
+            clearTimeout(timeout);
+        }
         console.log(`Respuesta JSON ${provider}:`, JSON.stringify(aiData));
 
         if (!aiResponse.ok || !aiData?.choices) {
