@@ -393,6 +393,25 @@ function calcularPrecioProducto({ producto, pasajeros = [], extras = [], cantida
     const desglose = [];
     let total = 0;
 
+    // Normalizador de texto para mapear nombres de categoría a ids cuando el
+    // payload del agente venga con nombres (ej. "adulto", "niño") en vez
+    // del id interno (ej. "b123"). Esto hace la validación más tolerante.
+    const normalize = (s) => String(s || '')
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/\p{Diacritic}/gu, '')
+        .replace(/[^a-z0-9]/g, '');
+
+    const nameMap = {};
+    for (const c of prod.categorias_pasajero || []) {
+        try {
+            nameMap[normalize(c.nombre)] = c;
+        } catch (e) {
+            // Fallback por si normalize falla en algún entorno
+            nameMap[String(c.nombre || '').toLowerCase()] = c;
+        }
+    }
+
     // Variantes: si se elige una, su precio reemplaza el precio base.
     let precioUnitario = prod.precio_cents;
     if (varianteId && prod.variantes.length) {
@@ -407,7 +426,28 @@ function calcularPrecioProducto({ producto, pasajeros = [], extras = [], cantida
         for (const pj of pasajeros || []) {
             const qty = Math.floor(Number(pj.cantidad)) || 0;
             if (qty <= 0) continue;
-            const cat = prod.categorias_pasajero.find(c => String(c.id) === String(pj.categoriaId));
+            // Buscar por id (esperado). Si no hay match, intentar mapear por nombre
+            // normalizado (ej. "adulto", "nino"). También intentamos manejar
+            // plurales ("adultos"). Si encontramos por nombre, sustituimos
+            // pj.categoriaId por el id real para el resto del flujo.
+            let cat = prod.categorias_pasajero.find(c => String(c.id) === String(pj.categoriaId));
+            if (!cat) {
+                const cand = nameMap[normalize(pj.categoriaId)];
+                if (cand) {
+                    cat = cand;
+                    pj.categoriaId = cat.id;
+                } else {
+                    // intentar singular (ej. adultos -> adulto)
+                    const pjNorm = normalize(pj.categoriaId || '');
+                    if (pjNorm && pjNorm.endsWith('s')) {
+                        const cand2 = nameMap[pjNorm.slice(0, -1)];
+                        if (cand2) {
+                            cat = cand2;
+                            pj.categoriaId = cat.id;
+                        }
+                    }
+                }
+            }
             if (!cat) {
                 errores.push(`La categoría de pasajero "${pj.categoriaId}" no existe en este tour.`);
                 continue;
