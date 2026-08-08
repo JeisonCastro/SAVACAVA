@@ -848,10 +848,29 @@ async function guardarMensajeConversacion({ conversacionId, agenteId, role, cont
     }
 }
 
+// Verifica el token de sesion de Supabase enviado en el header Authorization.
+// Devuelve null si NO se envio token (comportamiento widget/anónimo).
+// Lanza error con status 401 si el token es inválido o expiró.
+async function verificarSesionUsuario(event) {
+    const auth = event.headers.authorization || event.headers.Authorization || "";
+    if (!auth) return null;
+
+    const token = String(auth).replace(/^Bearer\s+/i, "").trim();
+    if (!token) return null;
+
+    const { data, error } = await supabase.auth.getUser(token);
+    if (error || !data?.user) {
+        const err = new Error("Sesión inválida o expirada. Inicia sesión de nuevo.");
+        err.status = 401;
+        throw err;
+    }
+    return data.user;
+}
+
 exports.handler = async (event) => {
     const headers = {
         "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Headers": "Content-Type",
+        "Access-Control-Allow-Headers": "Content-Type, Authorization",
         "Access-Control-Allow-Methods": "POST, OPTIONS"
     };
 
@@ -875,6 +894,7 @@ exports.handler = async (event) => {
             image_url = null
         } = body;
         const targetID = agente_id || process.env.AGENTE_MAESTRO_ID;
+        const usuarioSesion = await verificarSesionUsuario(event);
 
         if (!prompt || !String(prompt).trim()) {
             return {
@@ -950,16 +970,41 @@ exports.handler = async (event) => {
 
 
         const externalUserIdFinal =
+            usuarioSesion?.id ||
             external_user_id ||
             conversation_id ||
             `${canal}_${targetID}_anon`;
+
+        let conversationIdSanitizado =
+            conversation_id && /^[0-9a-f-]{36}$/i.test(conversation_id) ? conversation_id : null;
+
+        // Si hay sesion autenticada, validamos que la conversacion sea del usuario.
+        if (usuarioSesion && conversationIdSanitizado) {
+            const { data: convVerif } = await supabase
+                .from('conversaciones')
+                .select('id, external_user_id, agente_id')
+                .eq('id', conversationIdSanitizado)
+                .maybeSingle();
+
+            if (convVerif) {
+                if (convVerif.external_user_id !== usuarioSesion.id || String(convVerif.agente_id) !== String(targetID)) {
+                    return {
+                        statusCode: 403,
+                        headers,
+                        body: JSON.stringify({ error: "No tienes acceso a esta conversación." })
+                    };
+                }
+            } else {
+                conversationIdSanitizado = null;
+            }
+        }
 
         const conversacion = await obtenerOCrearConversacion({
             agente,
             targetID,
             canal,
             externalUserId: externalUserIdFinal,
-            conversationId: conversation_id && /^[0-9a-f-]{36}$/i.test(conversation_id) ? conversation_id : null
+            conversationId: conversationIdSanitizado
         });
 
         const conversationIdFinal = conversacion.id;
@@ -1728,7 +1773,7 @@ INSTRUCCIONES:
         }
 
         return {
-            statusCode: 500,
+            statusCode: err.status || 500,
             headers,
             body: JSON.stringify({ error: mensaje })
         };

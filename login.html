@@ -313,7 +313,11 @@ async function entrar() {
   const { error } = await _supabase.auth.signInWithPassword({ email, password });
   setLoading(false);
   if (error) showMsg('Error: ' + error.message, 'error');
-  else window.location.href = 'dashboard.html';
+  else {
+    const params = new URLSearchParams(window.location.search);
+    const destino = params.get('redirect') || 'dashboard.html';
+    window.location.href = /^[a-z0-9.\/_-]+$/i.test(destino) ? destino : 'dashboard.html';
+  }
 }
 
 document.addEventListener('keydown', e => { if (e.key === 'Enter') entrar(); });

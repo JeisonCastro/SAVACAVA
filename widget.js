@@ -27,7 +27,11 @@
     bubbleBotBg: '#111827',
     bubbleHumanBg: '#083f3a',
     font: 'Inter, Arial, sans-serif',
-    borderRadius: '20px'
+    borderRadius: '20px',
+    name: 'Asistente IA',
+    greeting: 'Hola 👋 ¿En qué puedo ayudarte?',
+    position: 'right',
+    autoOpen: 0
   };
 
   function loadConfig() {
@@ -45,6 +49,16 @@
           config = { ...config, ...parsed };
         }
       }
+    } catch (_) {}
+    try {
+      const nombre = script?.getAttribute('data-name');
+      if (nombre) config.name = nombre;
+      const saludo = script?.getAttribute('data-greeting');
+      if (saludo) config.greeting = saludo;
+      const pos = script?.getAttribute('data-position');
+      if (pos) config.position = pos;
+      const auto = script?.getAttribute('data-autopen');
+      if (auto !== null && auto !== undefined && auto !== '') config.autoOpen = parseInt(auto, 10) || 0;
     } catch (_) {}
     return { ...DEFAULTS, ...config };
   }
@@ -87,6 +101,7 @@
   let sending = false;
   let pollTimer = null;
   let lastSignature = '';
+  let lastErrorKey = '';
   let localMessages = [];
   let isOpen = localStorage.getItem(openKey) === '1';
 
@@ -543,7 +558,7 @@
         <div class="auvro-header-left">
           <div class="auvro-avatar">🤖</div>
           <div style="min-width:0">
-            <div class="auvro-title">Asistente IA</div>
+            <div class="auvro-title">${themeConfig.name}</div>
             <div class="auvro-status"><span class="auvro-status-dot"></span><span class="auvro-status-text">En línea</span></div>
           </div>
         </div>
@@ -645,6 +660,8 @@
     if (value) {
       iniciarPolling();
       setTimeout(() => input.focus(), 120);
+    } else {
+      detenerPolling();
     }
   }
 
@@ -654,6 +671,17 @@
     statusDot.style.boxShadow = human
       ? '0 0 0 3px rgba(34,211,165,.12)'
       : '0 0 0 3px rgba(56,189,248,.12)';
+  }
+
+  function agregarBurbuja(tipo, texto) {
+    const div = document.createElement('div');
+    div.className = `auvro-bubble ${tipo}`;
+    const text = document.createElement('span');
+    text.className = 'auvro-text';
+    text.textContent = texto;
+    div.appendChild(text);
+    messagesEl.appendChild(div);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
   }
 
   function autoResizeInput() {
@@ -699,7 +727,7 @@
     if (!messages.length) {
       const w = document.createElement('div');
       w.className = 'auvro-bubble system';
-      w.textContent = 'Hola 👋 ¿En qué puedo ayudarte?';
+      w.textContent = themeConfig.greeting;
       messagesEl.appendChild(w);
       messagesEl.scrollTop = messagesEl.scrollHeight;
       return;
@@ -766,9 +794,16 @@
       const data = await res.json().catch(() => ({}));
 
       if (!res.ok || data.error) {
-        console.warn('[AUVRO Widget] web-chat-messages:', data.error || res.status);
+        const msg = data.error || (data.respuesta || `Error del servidor (${res.status})`);
+        if (msg !== lastErrorKey) {
+          lastErrorKey = msg;
+          agregarBurbuja('system', msg);
+        }
+        setStatus('Sin conexión');
         return;
       }
+
+      lastErrorKey = '';
 
       const serverMessages = (data.messages || []).map(normalizarServerMessage);
       const signature = serverMessages.map(m => m.id).join('|');
@@ -791,6 +826,13 @@
     if (pollTimer) return;
     cargarMensajes();
     pollTimer = setInterval(cargarMensajes, 2500);
+  }
+
+  function detenerPolling() {
+    if (pollTimer) {
+      clearInterval(pollTimer);
+      pollTimer = null;
+    }
   }
 
   async function enviar() {
@@ -853,7 +895,7 @@
         return;
       }
 
-      if (data.respuesta) {
+      if (res.ok && data.respuesta) {
         localMessages.push({
           id: 'bot_' + Date.now(),
           role: 'bot',
@@ -863,6 +905,19 @@
         });
         render(localMessages);
         await cargarMensajes();
+        return;
+      }
+
+      // Errores HTTP: 400/403/404/500 de chat.js vienen con { respuesta } o { error }.
+      if (!res.ok) {
+        const mensaje = data.respuesta || data.error || `Error del servidor (${res.status})`;
+        localMessages.push({
+          id: 'error_' + Date.now(),
+          role: 'system',
+          text: String(mensaje),
+          time: new Date().toISOString()
+        });
+        render(localMessages);
         return;
       }
 
@@ -917,6 +972,17 @@
 
   launcher.style.display = isOpen ? 'none' : 'flex';
   if (isOpen) iniciarPolling();
+
+  if (themeConfig.position === 'left') {
+    root.style.right = 'auto';
+    root.style.left = '22px';
+  }
+
+  if (themeConfig.autoOpen > 0) {
+    setTimeout(() => {
+      if (!isOpen) setOpen(true);
+    }, themeConfig.autoOpen);
+  }
 
   render(localMessages);
 })();

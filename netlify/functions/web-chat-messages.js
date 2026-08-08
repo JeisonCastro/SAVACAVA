@@ -6,7 +6,7 @@ function jsonResponse(statusCode, body) {
     headers: {
       'Content-Type': 'application/json',
       'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Headers': 'Content-Type',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
       'Access-Control-Allow-Methods': 'POST, OPTIONS'
     },
     body: JSON.stringify(body)
@@ -33,13 +33,33 @@ exports.handler = async (event) => {
       });
     }
 
-    const { data: conversation, error: convError } = await supabase
+    const auth = event.headers.authorization || event.headers.Authorization || "";
+    if (auth) {
+      const token = String(auth).replace(/^Bearer\s+/i, "").trim();
+      const { data: userData, error: authError } = await supabase.auth.getUser(token);
+
+      if (authError || !userData?.user) {
+        return jsonResponse(401, { error: 'Sesión inválida o expirada. Inicia sesión de nuevo.' });
+      }
+
+      if (externalUserId !== userData.user.id) {
+        return jsonResponse(403, { error: 'No tienes acceso a esta conversación.' });
+      }
+    }
+
+    // Query a prueba de duplicados: si existen varias conversaciones para el
+    // mismo agente+canal+external_user_id, tomamos la más reciente (mismo fix de chat.js).
+    const { data: convs, error: convError } = await supabase
       .from('conversaciones')
       .select('*')
       .eq('agente_id', agenteId)
       .eq('canal', 'web')
       .eq('external_user_id', externalUserId)
-      .maybeSingle();
+      .order('updated_at', { ascending: false, nullsFirst: false })
+      .order('created_at', { ascending: false, nullsFirst: false })
+      .limit(1);
+
+    const conversation = Array.isArray(convs) ? convs[0] : null;
 
     if (convError) {
       return jsonResponse(500, {

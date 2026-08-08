@@ -832,6 +832,44 @@ Multiusuario.
 
 # Changelog de Cambios Técnicos
 
+## 8 Ago 2026 — Chat web autenticado + Widget mejorado (viabilidad completa)
+
+### Chat web con login (`chats/index.html`)
+- Nueva carpeta `chats/` con UI tipo ChatGPT (dark theme AUVRO, PWA-ready).
+- Reutiliza el MISMO Supabase Auth de la plataforma: sin sesión → redirige a `login.html?redirect=/chats/`.
+- `external_user_id` = `user.id` autenticado (nunca el del cliente). Soporta `?agente=ID` (default agente maestro `1`).
+- Carga historial vía `web-chat-messages` y envía vía `chat` con header `Authorization: Bearer <token>`.
+- Botón "Nueva conversación" (resetea `conversation_id`), "Salir", saludo de bienvenida.
+
+### Seguridad de acceso (backend)
+- `login.html`: ahora soporta `?redirect=` (solo rutas relativas, evita open-redirect). Antes siempre iba a `dashboard.html`.
+- `chat.js`:
+  - Nuevo helper `verificarSesionUsuario(event)`: si llega `Authorization: Bearer` lo valida con `supabase.auth.getUser`. Token inválido/expirado → 401.
+  - Con sesión: fuerza `external_user_id = user.id` y valida que la conversación pertenezca al usuario (`external_user_id` + `agente_id`), si no → 403.
+  - Sin header Authorization (widget anónimo) → comportamiento anterior intacto.
+  - Catch ahora respeta `err.status` (401/403/500). CORS incluye `Authorization`.
+- `web-chat-messages.js`:
+  - Con Authorization: valida sesión y solo permite leer la conversación del propio usuario (401/403).
+  - Query a prueba de duplicados: `order by updated_at desc, limit(1)` en vez de `maybeSingle()` (mismo fix que `chat.js`).
+
+### Widget web (`widget.js`) — correcciones de viabilidad
+- Polling: se detiene al cerrar el panel y se reanuda al abrirlo (antes corría cada 2.5s para siempre).
+- Errores visibles: 403 (dominio no autorizado), 404 (agente no encontrado) y 500 ahora se muestran como burbuja de sistema en vez de fallar en silencio. En envío, los errores HTTP se separan de las respuestas normales del bot.
+- Config nueva: `data-name` (título), `data-greeting` (saludo inicial), `data-position` (`left`/`right`), `data-autopen` (ms para abrir solo). También vía `window.AUVRO_CONFIG`.
+- `web-chat-messages` ya no falla con conversaciones duplicadas para el mismo visitante.
+
+### Archivos modificados
+- `chats/index.html` (NUEVO)
+- `login.html`
+- `netlify/functions/chat.js`
+- `netlify/functions/web-chat-messages.js`
+- `widget.js`
+
+### Notas
+- `OPENIA_KEY` verificada en Netlify (configurada). `AGENTE_MAESTRO_ID=1`.
+- El token de pago lo sigue descontando el dueño del agente (modelo actual); la recarga de tokens por usuario final queda como fase 2 (pasarela de pago).
+- Para el widget en una web propia hay que añadir el dominio en `dominios_permitidos` del agente.
+
 ## 7 Ago 2026 — Fix: Caché de medios WhatsApp en Supabase Storage (rate limit #4 de Meta)
 
 ### Problema
