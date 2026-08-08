@@ -338,7 +338,7 @@ async function crearPaymentLinkVenta({ config, agente, leadId, conversacionId, p
 
     return {
         ok: true,
-        url: wompi.data.url || wompi.data.payment_link_url,
+        url: `https://checkout.wompi.co/l/${paymentLinkId}`,
         payment_link_id: paymentLinkId,
         concepto,
         monto_cents: montoCents,
