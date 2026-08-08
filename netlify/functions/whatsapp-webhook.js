@@ -74,17 +74,6 @@ async function enviarWhatsappImagen({ to, link, caption, accessToken, phoneNumbe
   return data;
 }
 
-async function guardarMensajeSaliente({ conversacion, agenteId, text, origen = 'ia' }) {
-  await supabase.from('mensajes_conversacion').insert({
-    conversacion_id: conversacion.id,
-    agente_id: agenteId,
-    role: 'assistant',
-    content: text,
-    origen,
-    metadata: { canal: 'whatsapp' }
-  });
-}
-
 // ── PUSH NOTIFICATIONS ──────────────────────────────────────────────────────
 async function dispararPush({ userId, title, body, conversationId }) {
   try {
@@ -504,7 +493,8 @@ exports.handler = async (event) => {
                 agente_id: agenteId,
                 canal: 'whatsapp',
                 external_user_id: from,
-                image_url: cacheInfo.imageUrl
+                image_url: cacheInfo.imageUrl,
+                skip_user_save: true
               })
             };
 
@@ -518,13 +508,8 @@ exports.handler = async (event) => {
                 accessToken: waConnection.access_token,
                 phoneNumberId: waConnection.phone_number_id
               });
-
-              await guardarMensajeSaliente({
-                conversacion,
-                agenteId,
-                text: chatData.respuesta,
-                origen: 'ia'
-              });
+              // chat.js ya guardó la respuesta del asistente en mensajes_conversacion.
+              // NO volver a insertarla aquí (antes causaba mensajes duplicados en la bandeja).
             }
           }
         } catch (mediaErr) {

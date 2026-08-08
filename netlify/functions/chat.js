@@ -900,7 +900,8 @@ exports.handler = async (event) => {
             conversation_id = null,
             canal = "web",
             external_user_id = null,
-            image_url = null
+            image_url = null,
+            skip_user_save = false
         } = body;
         const targetID = agente_id || process.env.AGENTE_MAESTRO_ID;
         const usuarioSesion = await verificarSesionUsuario(event);
@@ -1018,32 +1019,37 @@ exports.handler = async (event) => {
 
         const conversationIdFinal = conversacion.id;
 
-        await guardarMensajeConversacion({
-            conversacionId: conversationIdFinal,
-            agenteId: targetID,
-            role: 'user',
-            content: prompt,
-            metadata: { canal, origen: 'cliente', ...(image_url ? { image_url } : {}) }
-        });
+        // En el flujo de media por WhatsApp, el mensaje del usuario ya fue guardado
+        // por whatsapp-webhook.js (con su metadata de adjunto). Con skip_user_save=true
+        // evitamos guardarlo dos veces y no re-disparamos el push.
+        if (!skip_user_save) {
+            await guardarMensajeConversacion({
+                conversacionId: conversationIdFinal,
+                agenteId: targetID,
+                role: 'user',
+                content: prompt,
+                metadata: { canal, origen: 'cliente', ...(image_url ? { image_url } : {}) }
+            });
 
-        await actualizarResumenConversacion({
-            conversacionId: conversationIdFinal,
-            ultimoMensaje: prompt,
-            ultimoRole: 'user',
-            requiereAtencion: debeEscalarAHumano(prompt) ? true : null
-        });
+            await actualizarResumenConversacion({
+                conversacionId: conversationIdFinal,
+                ultimoMensaje: prompt,
+                ultimoRole: 'user',
+                requiereAtencion: debeEscalarAHumano(prompt) ? true : null
+            });
 
-        // 🔔 Push automático para TODO mensaje entrante del cliente (Web y WhatsApp texto).
-        // Se dispara aquí porque chat.js es el punto común para widget web y mensajes WhatsApp de texto.
-        await dispararPush({
-            userId: agente.user_id,
-            title: canal === 'whatsapp'
-                ? `💬 WhatsApp ${externalUserIdFinal ? '+' + externalUserIdFinal : ''}`.trim()
-                : `💬 Nuevo mensaje web`,
-            body: prompt,
-            conversationId: conversationIdFinal,
-            canal
-        });
+            // 🔔 Push automático para TODO mensaje entrante del cliente (Web y WhatsApp texto).
+            // Se dispara aquí porque chat.js es el punto común para widget web y mensajes WhatsApp de texto.
+            await dispararPush({
+                userId: agente.user_id,
+                title: canal === 'whatsapp'
+                    ? `💬 WhatsApp ${externalUserIdFinal ? '+' + externalUserIdFinal : ''}`.trim()
+                    : `💬 Nuevo mensaje web`,
+                body: prompt,
+                conversationId: conversationIdFinal,
+                canal
+            });
+        }
 
         if (conversacion.modo_humano === true || conversacion.estado === 'modo_humano') {
             await actualizarResumenConversacion({

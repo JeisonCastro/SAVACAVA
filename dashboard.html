@@ -169,6 +169,10 @@
         .field input:focus,.field textarea:focus{border-color:var(--accent)}
         .field input::placeholder,.field textarea::placeholder{color:var(--dim)}
         .field input:disabled{opacity:.5;cursor:not-allowed}
+        /* Selects alineados al diseño (tipografia Inter + estilos de los inputs) */
+        select{width:100%;padding:10px 34px 10px 13px;background:var(--bg2);border:1px solid var(--border2);border-radius:8px;color:var(--text);font-family:'Inter',system-ui,sans-serif;font-size:.88rem;outline:none;cursor:pointer;transition:border-color .2s;appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%237a98b8' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center}
+        select:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(14,165,233,.12)}
+        select:disabled{opacity:.5;cursor:not-allowed}
         .field-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
         @media(max-width:600px){.field-row{grid-template-columns:1fr}}
         .btn-main{width:100%;padding:11px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-weight:500;font-size:.9rem;cursor:pointer;transition:all .2s;margin-top:.25rem}
@@ -279,10 +283,10 @@
         .inbox-tool-row{display:flex;gap:.35rem;padding:0 .85rem .55rem;border-bottom:1px solid var(--border)}
         .inbox-icon-btn{width:30px;height:30px;border-radius:8px;border:1px solid var(--border2);background:var(--surface);color:var(--muted);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:.75rem;transition:all .2s;padding:0}
         .inbox-icon-btn:hover{border-color:var(--accent);color:var(--accent);transform:translateY(-1px)}
-        .inbox-filters select{width:100%;padding:8px 28px 8px 10px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:.78rem;outline:none;cursor:pointer;transition:border-color .2s;appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%237a98b8' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center}
+        .inbox-filters select{width:100%;padding:8px 28px 8px 10px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Inter',system-ui,sans-serif;font-size:.78rem;outline:none;cursor:pointer;transition:border-color .2s;appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%237a98b8' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center}
         .inbox-filters select:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(14,165,233,.12)}
         .inbox-filters select:hover{border-color:var(--border2)}
-        .inbox-filters input{width:100%;padding:8px 11px 8px 32px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:.78rem;outline:none;transition:border-color .2s}
+        .inbox-filters input{width:100%;padding:8px 11px 8px 32px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Inter',system-ui,sans-serif;font-size:.78rem;outline:none;transition:border-color .2s}
         .inbox-filters input:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(14,165,233,.12)}
         .inbox-search-wrap{position:relative}
         .inbox-search-wrap i{position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:.78rem;color:var(--dim)}
@@ -5209,6 +5213,7 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
     let realtimeBandejaIniciada = false;
     let realtimeMensajesConversacionId = null;
     let recargaBandejaTimer = null;
+    let ultimoDiaRenderizadoBandeja = '';
     let mediaCache = new Map();
     let adjuntosManual = [];
 
@@ -7858,6 +7863,65 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
     }
 
 
+    function crearChipFechaBandeja(m) {
+        try {
+            const dia = new Date(m.created_at).toLocaleDateString('es-CO', { year:'numeric', month:'long', day:'numeric' });
+            if (dia !== ultimoDiaRenderizadoBandeja) {
+                ultimoDiaRenderizadoBandeja = dia;
+                const chip = document.createElement('div');
+                chip.className = 'inbox-date-chip';
+                chip.textContent = dia;
+                return chip;
+            }
+        } catch (_) {}
+        return null;
+    }
+
+    function crearFilaMensajeBandeja(m) {
+        const origen = m.origen || m.metadata?.origen || (m.role === 'user' ? 'cliente' : 'ia');
+        const cls = m.role === 'user' ? 'user' : (origen === 'humano' ? 'humano' : (m.role === 'system' ? 'system' : 'assistant'));
+        const autor = m.role === 'user' ? 'Cliente' : (origen === 'humano' ? 'Tu' : (m.role === 'system' ? 'Sistema' : 'IA'));
+        const icono = m.role === 'user' ? 'fa-user' : (origen === 'humano' ? 'fa-headset' : (m.role === 'system' ? 'fa-circle-info' : 'fa-robot'));
+        const media = obtenerMediaInfoMensaje(m);
+        const tieneMedia = !!media;
+
+        const row = document.createElement('div');
+        row.className = `msg-row ${cls}${tieneMedia ? ' media-row' : ''}`;
+
+        const bubble = document.createElement('div');
+        bubble.className = `inbox-msg ${cls}${tieneMedia ? ' media-msg' : ''}`;
+
+        const strong = document.createElement('strong');
+        strong.innerHTML = `<i class="fas ${icono}"></i> ${escapeHtml(autor)}`;
+        bubble.appendChild(strong);
+
+        const contenidoOriginal = String(m.content || '').trim();
+        const esTextoRedundanteMedia = tieneMedia && /^(📷\s*)?Imagen recibida$|^(🎧\s*)?Audio recibido$|^(🎥\s*)?Video recibido$|^(📎\s*)?Documento recibido/i.test(contenidoOriginal);
+
+        if (contenidoOriginal && !esTextoRedundanteMedia) {
+            const span = document.createElement('span');
+            span.className = 'msg-text';
+            span.textContent = contenidoOriginal;
+            bubble.appendChild(span);
+        }
+
+        if (tieneMedia) {
+            const temp = document.createElement('div');
+            temp.innerHTML = renderMediaPlaceholder(m);
+            Array.from(temp.childNodes).forEach(node => bubble.appendChild(node));
+        }
+
+        const meta = document.createElement('div');
+        meta.className = 'msg-meta';
+        meta.textContent = typeof formatoHoraMensaje === 'function'
+            ? formatoHoraMensaje(m.created_at)
+            : formatoFechaCorta(m.created_at);
+        bubble.appendChild(meta);
+
+        row.appendChild(bubble);
+        return row;
+    }
+
     function renderMensajesConversacion() {
         const box = document.getElementById('conversation-messages');
 
@@ -7867,66 +7931,25 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
         }
 
         box.innerHTML = '';
-        let ultimoDia = '';
+        ultimoDiaRenderizadoBandeja = '';
 
         mensajesConversacionActual.forEach(m => {
-            const origen = m.origen || m.metadata?.origen || (m.role === 'user' ? 'cliente' : 'ia');
-            const cls = m.role === 'user' ? 'user' : (origen === 'humano' ? 'humano' : (m.role === 'system' ? 'system' : 'assistant'));
-            const autor = m.role === 'user' ? 'Cliente' : (origen === 'humano' ? 'Tu' : (m.role === 'system' ? 'Sistema' : 'IA'));
-            const icono = m.role === 'user' ? 'fa-user' : (origen === 'humano' ? 'fa-headset' : (m.role === 'system' ? 'fa-circle-info' : 'fa-robot'));
-            const media = obtenerMediaInfoMensaje(m);
-            const tieneMedia = !!media;
-
-            try {
-                const dia = new Date(m.created_at).toLocaleDateString('es-CO', { year:'numeric', month:'long', day:'numeric' });
-                if (dia !== ultimoDia) {
-                    ultimoDia = dia;
-                    const chip = document.createElement('div');
-                    chip.className = 'inbox-date-chip';
-                    chip.textContent = dia;
-                    box.appendChild(chip);
-                }
-            } catch (_) {}
-
-            const row = document.createElement('div');
-            row.className = `msg-row ${cls}${tieneMedia ? ' media-row' : ''}`;
-
-            const bubble = document.createElement('div');
-            bubble.className = `inbox-msg ${cls}${tieneMedia ? ' media-msg' : ''}`;
-
-            const strong = document.createElement('strong');
-            strong.innerHTML = `<i class="fas ${icono}"></i> ${escapeHtml(autor)}`;
-            bubble.appendChild(strong);
-
-            const contenidoOriginal = String(m.content || '').trim();
-            const esTextoRedundanteMedia = tieneMedia && /^(📷\s*)?Imagen recibida$|^(🎧\s*)?Audio recibido$|^(🎥\s*)?Video recibido$|^(📎\s*)?Documento recibido/i.test(contenidoOriginal);
-
-            if (contenidoOriginal && !esTextoRedundanteMedia) {
-                const span = document.createElement('span');
-                span.className = 'msg-text';
-                span.textContent = contenidoOriginal;
-                bubble.appendChild(span);
-            }
-
-            if (tieneMedia) {
-                const temp = document.createElement('div');
-                temp.innerHTML = renderMediaPlaceholder(m);
-                Array.from(temp.childNodes).forEach(node => bubble.appendChild(node));
-            }
-
-            const meta = document.createElement('div');
-            meta.className = 'msg-meta';
-            meta.textContent = typeof formatoHoraMensaje === 'function'
-                ? formatoHoraMensaje(m.created_at)
-                : formatoFechaCorta(m.created_at);
-            bubble.appendChild(meta);
-
-            row.appendChild(bubble);
-            box.appendChild(row);
+            const chip = crearChipFechaBandeja(m);
+            if (chip) box.appendChild(chip);
+            box.appendChild(crearFilaMensajeBandeja(m));
         });
 
         scrollChatAlFinal(false);
         setTimeout(cargarMediasPendientes, 80);
+    }
+
+    function appendMensajeRealtime(msg) {
+        const box = document.getElementById('conversation-messages');
+        const chip = crearChipFechaBandeja(msg);
+        if (chip) box.appendChild(chip);
+        box.appendChild(crearFilaMensajeBandeja(msg));
+        scrollChatAlFinal(false);
+        if (obtenerMediaInfoMensaje(msg)) setTimeout(cargarMediasPendientes, 80);
     }
 
     async function actualizarEstadoConversacion(patch, mensajeExito) {
@@ -8162,6 +8185,15 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
         }, 350);
     }
 
+    // Re-render de la lista conservando la posición de scroll (evita el "salto" al llegar un mensaje).
+    function renderConversacionesBandejaConScroll(items) {
+        const list = document.getElementById('conversation-list');
+        if (!list) { renderConversacionesBandeja(items); return; }
+        const st = list.scrollTop;
+        renderConversacionesBandeja(items);
+        list.scrollTop = st;
+    }
+
     function iniciarRealtimeBandeja() {
         if (!currentUser || realtimeBandejaIniciada) return;
 
@@ -8181,11 +8213,55 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
                     filter: `user_id=eq.${currentUser.id}`
                 },
                 payload => {
-                    console.log('Realtime conversaciones:', payload.eventType, payload.new || payload.old);
-                    if (payload.new && payload.new.requiere_atencion === true && payload.new.ultimo_role === 'user') {
-                        reproducirSonidoNotificacion();
+                    const ev = payload.eventType || '';
+                    const c = payload.new || payload.old;
+
+                    if (ev === 'DELETE') {
+                        conversacionesBandeja = (conversacionesBandeja || []).filter(x => x.id !== c?.id);
+                        renderConversacionesBandejaConScroll(conversacionesBandeja);
+                        return;
                     }
-                    debounceRecargaBandeja();
+                    if (!payload.new || payload.new.canal === 'dashboard') return;
+
+                    // Si hay filtros de servidor activos, recargar completo para respetar el filtro.
+                    const tieneFiltroServidor = !!(
+                        document.getElementById('inbox-agent-filter')?.value ||
+                        document.getElementById('inbox-status-filter')?.value ||
+                        document.getElementById('inbox-channel-filter')?.value
+                    );
+                    if (tieneFiltroServidor) {
+                        debounceRecargaBandeja();
+                        return;
+                    }
+
+                    // Actualización en sitio: sin refetch ni recarga completa de la lista.
+                    const idx = (conversacionesBandeja || []).findIndex(x => x.id === payload.new.id);
+                    if (idx >= 0) conversacionesBandeja[idx] = { ...conversacionesBandeja[idx], ...payload.new };
+                    else conversacionesBandeja.unshift(payload.new);
+
+                    conversacionesBandeja.sort((a, b) =>
+                        new Date(b.updated_at || b.created_at) - new Date(a.updated_at || a.created_at)
+                    );
+
+                    const esEntrante = payload.new.ultimo_role === 'user';
+                    const estaAbierta = conversacionSeleccionada?.id === payload.new.id;
+                    if (esEntrante && !estaAbierta) reproducirSonidoNotificacion();
+
+                    if (conversacionSeleccionada?.id === payload.new.id) {
+                        const updated = conversacionesBandeja.find(x => x.id === payload.new.id);
+                        if (updated) {
+                            conversacionSeleccionada = updated;
+                            window.conversacionSeleccionada = updated;
+                            renderHeaderConversacion(updated);
+                        }
+                    }
+
+                    const termBusqueda = (document.getElementById('inbox-search')?.value || '').trim();
+                    if (termBusqueda) {
+                        filtrarConversacionesLocal();
+                    } else {
+                        renderConversacionesBandejaConScroll(conversacionesBandeja);
+                    }
                 }
             )
             .subscribe(status => {
@@ -8255,7 +8331,8 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
         const yaExiste = mensajesConversacionActual.some(m => m.id === msg.id);
         if (!yaExiste) {
             mensajesConversacionActual.push(msg);
-            renderMensajesConversacion();
+            // Append del mensaje nuevo en el DOM (sin re-render de toda la conversación)
+            appendMensajeRealtime(msg);
             notificarMensajeEntrante(msg);
         }
     }

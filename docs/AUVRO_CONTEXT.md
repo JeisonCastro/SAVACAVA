@@ -915,6 +915,28 @@ Multiusuario.
 
 # Changelog de Cambios Técnicos
 
+## 8 Ago 2026 — Fix + optimización bandeja (mensajes duplicados, selects y realtime)
+
+### 1) Mensajes duplicados en el flujo de IMAGEN (WhatsApp + IA vision)
+- **Causa:** en `whatsapp-webhook.js`, tras analizar una imagen con la IA (OpenAI vision), se guardaba la respuesta del asistente DOS veces: `chat.js` ya la guarda al terminar `chatHandler`, y el webhook la volvía a insertar con `guardarMensajeSaliente`. Además el mensaje de usuario se guardaba 2 veces (media + texto). El cliente recibía 1 mensaje, pero la bandeja mostraba duplicados.
+- **Fix:**
+  - `whatsapp-webhook.js`: eliminada `guardarMensajeSaliente` y su llamada; el body de `chatHandler` ahora envía `skip_user_save: true`.
+  - `chat.js`: con `skip_user_save` no inserta el mensaje de usuario ni re-dispara el push (el webhook ya guardó el media y notificó). La respuesta del asistente se sigue guardando una sola vez en `chat.js`.
+- Resultado por imagen: 1 mensaje de usuario (media) + 1 del asistente. Sin duplicados nuevos (los duplicados históricos en DB permanecen).
+
+### 2) Selects de la bandeja con la tipografía del diseño
+- La página usa **Inter** (bloque de theming final). Los filtros de la bandeja usaban `DM Sans`.
+- Fix: `.inbox-filters select` y `.inbox-filters input` pasan a `Inter`. Se añadió un `select` global (Inter + estilo de inputs + flecha SVG) para que todos los selects del dashboard sean consistentes.
+
+### 3) Realtime: sin recarga completa ni pérdida de scroll
+- **Antes:** cada evento en `conversaciones` re-renderizaba toda la lista y además disparaba un refetch completo (`debounceRecargaBandeja` → `cargarBandejaConversaciones` con spinner).
+- **Ahora (handler base de `iniciarRealtimeBandeja`):**
+  - Actualización **en sitio** de la conversación afectada (re-sort por `updated_at`).
+  - `renderConversacionesBandejaConScroll` conserva el scroll.
+  - Sin refetch de red; si hay filtros de servidor activos, sí se recarga para respetar el filtro.
+  - Respeta la búsqueda local si hay término activo.
+- Mensajes: `agregarMensajeRealtime` hace **append** de un solo mensaje (`appendMensajeRealtime`) en vez de re-renderizar toda la conversación. Se extrajeron `crearChipFechaBandeja`/`crearFilaMensajeBandeja` reutilizados por `renderMensajesConversacion`.
+
 ## 8 Ago 2026 — Fix UI: checkboxes compactos en "Campos a capturar" (configurar CRM, móvil)
 
 ### Síntoma
