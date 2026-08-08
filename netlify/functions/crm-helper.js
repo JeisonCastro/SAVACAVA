@@ -650,7 +650,14 @@ async function crearPaymentLinkVenta({ config, agente, leadId, conversacionId, p
             const text = `Hola ${lead?.nombre || ''}\n\nSe ha generado un link de pago para ${concepto}: ${url}\n\nMonto: ${Math.round(monto/100).toLocaleString('es-CO')} COP`;
             for (const to of recipients) {
                 if (!to) continue;
-                sendEmail({ agente, to, subject, text }).catch(err => console.error('pre-pago email err:', err));
+                sendEmail({
+                    agente,
+                    agenteId: agente.id,
+                    leadId,
+                    conversationId: conversacionId || null,
+                    eventType: 'pre_pago',
+                    to, subject, text
+                }).catch(err => console.error('pre-pago email err:', err));
             }
         }
     } catch (e) {

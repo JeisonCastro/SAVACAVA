@@ -158,13 +158,13 @@ exports.handler = async (event) => {
                 if (lead) {
                     const { sendEmail, sendWhatsAppText } = require('./notifications');
                     // Notificar por email a destinatarios del agente si está configurado
-                    const { data: cfg } = await supabase.from('crm_config_agente').select('notify_on_payment, notify_recipients').eq('agente_id', lead.agente_id).maybeSingle();
-                    const recipients = (cfg?.notify_recipients && cfg.notify_recipients.length) ? cfg.notify_recipients.slice() : [];
+                    const { data: cfg } = await supabase.from('crm_config_agente').select('*').eq('agente_id', lead.agente_id).maybeSingle();
+                    const recipients = (cfg?.notify_on_payment && Array.isArray(cfg.notify_recipients) && cfg.notify_recipients.length) ? cfg.notify_recipients.slice() : [];
                     if (lead.email) recipients.push(lead.email);
                     const subject = `Pago recibido: ${pago.concepto} - ${Math.round(pago.monto_cents/100).toLocaleString('es-CO')} COP`;
                     const text = `Pago confirmado. Referencia: ${transaction.id}\nMonto: ${Math.round(transaction.amount_in_cents/100).toLocaleString('es-CO')} COP\nCliente: ${lead.nombre || ''}`;
                     for (const to of recipients.filter(Boolean)) {
-                        sendEmail({ userId: lead.user_id, to, subject, text }).catch(err => console.error('post-pago email err:', err));
+                        sendEmail({ userId: lead.user_id, agenteId: lead.agente_id, leadId: lead.id, conversationId: lead.conversacion_id, eventType: 'post_pago', to, subject, text }).catch(err => console.error('post-pago email err:', err));
                     }
 
                     // Insertar mensaje en la conversación (assistant)

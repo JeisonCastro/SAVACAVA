@@ -666,14 +666,16 @@ Presets recomendados por tipo de producto (sugerencia)
 - Servicio/Suscripción: `notify_on_payment = true`; `notify_on_intent` = opt-in
 - Tour/Actividad: `notify_on_intent = true`; `notify_on_payment = true`; `notify_on_state_change = true`
 
-Migraciones y ficheros a tocar (plan de cambios)
-- DB: migración para `crm_config_agente` (añadir campos `notify_*`), y crear `emails_sent` / `notifications`.
-- Backend: nuevo helper `notifications.js` (sendEmail/sendWhatsApp/sendPush/sendWebhook), y hooks:
-  - `crm-helper.js` / `crearPaymentLinkVenta`: notificar pre-pago si corresponde.
-  - `pago-webhook.js`: notificar post-pago al aprobar transacción, actualizar estado lead.
-  - `chat.js`: opcional — notificar intención cuando se confirma workflow.
-- Frontend: dashboard UI para activar notificaciones por agente y ver historial de notificaciones.
-- Monitor & tests: unit + e2e y logs.
+Estado de implementación (2026-08-08)
+- DB: migración disponible en `supabase/migrations/20260808_notificaciones_crm.sql` (idempotente): añade `notify_on_intent`, `notify_on_payment`, `notify_on_state_change`, `notify_channels`, `notify_recipients`, `notify_cc_agent`, `notify_attach_receipt`, `notify_webhook_url` a `crm_config_agente`, y crea la tabla `notifications` para trazabilidad. Aplicar en Supabase antes de probar.
+- Backend `crm.js` (`accion: 'config'`): persiste y devuelve los campos `notify_*`.
+- Backend defensivo: `pago-webhook.js` y `crm-helper.js` leen la config con `select('*')` y `registrarNotificacion()` escribe con try/catch, así no fallan si la migración aún no se aplica.
+- Hooks activos:
+  - `crm-helper.js` / `crearPaymentLinkVenta`: notifica pre-pago si `notify_on_intent`.
+  - `pago-webhook.js`: notifica post-pago si `notify_on_payment`.
+  - `crm.js` / `lead_estado`: notifica cambio de estado si `notify_on_state_change`.
+- Frontend `dashboard.html`: sección "Notificaciones comerciales" en el modal de configuración CRM (3 checkboxes + destinatarios + webhook URL).
+- Pendiente: historial de notificaciones en el dashboard (tabla `notifications`), tests E2E.
 
 Notas sobre variables seguras
 - Todas las claves/credenciales deben almacenarse en Netlify ENV. No incluir secretos en el repo.

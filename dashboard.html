@@ -4956,6 +4956,30 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
                 </label>
                 <div id="cfg-wompi-status" style="margin-top:.5rem;font-size:.74rem;"></div>
 
+                <h4 style="font-family:'Inter',sans-serif;font-size:.9rem;font-weight:700;margin:1.2rem 0 .5rem;">Notificaciones comerciales</h4>
+                <p style="font-size:.72rem;color:var(--muted);margin-bottom:.6rem;">
+                    Recibe avisos por correo (Gmail conectado en Integraciones de este agente) cuando tu agente genere un
+                    link de pago, cuando se apruebe un pago o cuando cambies el estado de un lead. En cada envío se usa
+                    la cuenta Gmail conectada vía Composio.
+                </p>
+                <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;font-size:.8rem;margin-bottom:.35rem;">
+                    <input type="checkbox" id="cfg-notify-intent"> Notificar al generar link de pago (pre-pago)
+                </label>
+                <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;font-size:.8rem;margin-bottom:.35rem;">
+                    <input type="checkbox" id="cfg-notify-payment"> Notificar al aprobarse el pago (post-pago)
+                </label>
+                <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;font-size:.8rem;margin-bottom:.6rem;">
+                    <input type="checkbox" id="cfg-notify-state"> Notificar cambio de estado del lead
+                </label>
+                <div class="field">
+                    <label>Destinatarios (correos separados por coma)</label>
+                    <input type="text" id="cfg-notify-recipients" placeholder="tucorreo@gmail.com, soporte@..." autocomplete="off">
+                </div>
+                <div class="field">
+                    <label>Webhook URL (opcional)</label>
+                    <input type="text" id="cfg-notify-webhook" placeholder="https://..." autocomplete="off">
+                </div>
+
                 <h4 style="font-family:'Inter',sans-serif;font-size:.9rem;font-weight:700;margin:1.2rem 0 .5rem;">Catalogo de productos de este agente (venta en chat)</h4>
                 <p style="font-size:.72rem;color:var(--muted);margin-bottom:.6rem;">
                     Tipos: <b>Físico</b>, <b>Digital</b>, <b>Servicio</b>, <b>Suscripción</b> (con variantes como 1/3 meses) y
@@ -6094,6 +6118,11 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
         document.getElementById('cfg-wompi-private').value = '';
         document.getElementById('cfg-wompi-secret').value = '';
         document.getElementById('cfg-wompi-sandbox').checked = config.wompi_sandbox === true;
+        document.getElementById('cfg-notify-intent').checked = config.notify_on_intent === true;
+        document.getElementById('cfg-notify-payment').checked = config.notify_on_payment === true;
+        document.getElementById('cfg-notify-state').checked = config.notify_on_state_change === true;
+        document.getElementById('cfg-notify-recipients').value = Array.isArray(config.notify_recipients) ? config.notify_recipients.join(', ') : '';
+        document.getElementById('cfg-notify-webhook').value = config.notify_webhook_url || '';
         const statusEl = document.getElementById('cfg-wompi-status');
         if (statusEl) {
             const priv = config.wompi_privada_guardada;
@@ -6536,6 +6565,10 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
     async function guardarConfigCRM() {
         if (!crmAgenteSeleccionado) { showMsg('crm-config-msg', 'Selecciona un agente primero', 'error'); return; }
         const campos = Array.from(document.querySelectorAll('.cfg-campo-box:checked')).map(c => c.value);
+        const notifyRecipients = (document.getElementById('cfg-notify-recipients').value || '')
+            .split(',')
+            .map(s => s.trim())
+            .filter(Boolean);
         const payload = {
             accion: 'config',
             agente_id: crmAgenteSeleccionado,
@@ -6544,7 +6577,12 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
             wompi_private_key: document.getElementById('cfg-wompi-private').value.trim(),
             wompi_events_secret: document.getElementById('cfg-wompi-secret').value.trim(),
             wompi_sandbox: document.getElementById('cfg-wompi-sandbox').checked,
-            catalogo: crmCatalogo
+            catalogo: crmCatalogo,
+            notify_on_intent: document.getElementById('cfg-notify-intent').checked,
+            notify_on_payment: document.getElementById('cfg-notify-payment').checked,
+            notify_on_state_change: document.getElementById('cfg-notify-state').checked,
+            notify_recipients: notifyRecipients,
+            notify_webhook_url: document.getElementById('cfg-notify-webhook').value.trim()
         };
         const data = await llamarCRM('config', payload);
         if (!data.ok) { showMsg('crm-config-msg', data.error || 'Error guardando', 'error'); return; }

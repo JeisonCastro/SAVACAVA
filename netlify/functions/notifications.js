@@ -42,7 +42,28 @@ async function ejecutarToolComposio(toolSlug, connectedAccountId, userId, args) 
   return { ok: true, data };
 }
 
-async function sendEmail({ to, subject, text, html, cc, bcc, agente = null, userId = null }) {
+async function registrarNotificacion({ userId, agenteId, leadId, conversationId, eventType, channel, recipient, subject, status, externalId, error }) {
+  try {
+    await supabase.from('notifications').insert({
+      user_id: userId,
+      agente_id: agenteId,
+      lead_id: leadId,
+      conversation_id: conversationId,
+      event_type: eventType,
+      channel: channel || 'email',
+      recipient,
+      subject,
+      status: status || 'pending',
+      external_id: externalId,
+      error: error ? String(error).slice(0, 2000) : null,
+      created_at: new Date().toISOString()
+    });
+  } catch (err) {
+    console.warn('No se pudo registrar en notifications (¿migración aplicada?):', err.message);
+  }
+}
+
+async function sendEmail({ to, subject, text, html, cc, bcc, agente = null, userId = null, agenteId = null, leadId = null, conversationId = null, eventType = 'email' }) {
   try {
     const ownerUserId = userId || agente?.user_id;
     if (!ownerUserId) {
@@ -63,10 +84,15 @@ async function sendEmail({ to, subject, text, html, cc, bcc, agente = null, user
 
     if (!gmailConn?.composio_entity_id) {
       console.warn('Gmail not connected for user', ownerUserId);
+      await registrarNotificacion({
+        userId: ownerUserId, agenteId, leadId, conversationId,
+        eventType, channel: 'email', recipient: to, subject,
+        status: 'failed', error: 'gmail_not_connected'
+      });
       return { ok: false, error: 'gmail_not_connected' };
     }
 
-    return await ejecutarToolComposio(
+    const resultado = await ejecutarToolComposio(
       'GMAIL_SEND_EMAIL',
       gmailConn.composio_entity_id,
       ownerUserId,
@@ -78,6 +104,16 @@ async function sendEmail({ to, subject, text, html, cc, bcc, agente = null, user
         bcc: normalizarListaCorreos(bcc)
       }
     );
+
+    await registrarNotificacion({
+      userId: ownerUserId, agenteId, leadId, conversationId,
+      eventType, channel: 'email', recipient: to, subject,
+      status: resultado.ok ? 'sent' : 'failed',
+      externalId: resultado.ok ? (resultado.data?.id || resultado.data?.response_data?.id || null) : null,
+      error: resultado.ok ? null : (typeof resultado.error === 'string' ? resultado.error : JSON.stringify(resultado.error))
+    });
+
+    return resultado;
   } catch (err) {
     console.error('Error sending email via Gmail Composio:', err.message);
     return { ok: false, error: err.message };
@@ -113,4 +149,4 @@ async function sendWhatsAppText({ agentId, toPhone, text }) {
   }
 }
 
-module.exports = { sendEmail, sendWhatsAppText };
+module.exports = { sendEmail, sendWhatsAppText, registrarNotificacion };

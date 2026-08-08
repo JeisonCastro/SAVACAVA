@@ -101,7 +101,7 @@ exports.handler = async (event) => {
 
         // ── Guardar configuración por AGENTE (nunca se devuelven las llaves) ──
         if (accion === 'config') {
-            const { agente_id, crm_activo, campos_captura, wompi_private_key, wompi_public_key, wompi_events_secret, wompi_sandbox, catalogo } = body;
+            const { agente_id, crm_activo, campos_captura, wompi_private_key, wompi_public_key, wompi_events_secret, wompi_sandbox, catalogo, notify_on_intent, notify_on_payment, notify_on_state_change, notify_channels, notify_recipients, notify_cc_agent, notify_attach_receipt, notify_webhook_url } = body;
 
             if (!agente_id) return { statusCode: 400, headers, body: JSON.stringify({ error: 'Falta el agente.' }) };
 
@@ -120,6 +120,13 @@ exports.handler = async (event) => {
                 crm_activo: typeof crm_activo === 'boolean' ? crm_activo : (actual?.crm_activo ?? false),
                 campos_captura: Array.isArray(campos_captura) ? campos_captura : (actual?.campos_captura || CAMPOS_BASE),
                 wompi_sandbox: typeof wompi_sandbox === 'boolean' ? wompi_sandbox : (actual?.wompi_sandbox ?? false),
+                notify_on_intent: typeof notify_on_intent === 'boolean' ? notify_on_intent : (actual?.notify_on_intent ?? false),
+                notify_on_payment: typeof notify_on_payment === 'boolean' ? notify_on_payment : (actual?.notify_on_payment ?? false),
+                notify_on_state_change: typeof notify_on_state_change === 'boolean' ? notify_on_state_change : (actual?.notify_on_state_change ?? false),
+                notify_channels: Array.isArray(notify_channels) ? notify_channels : (actual?.notify_channels || ['email']),
+                notify_recipients: Array.isArray(notify_recipients) ? notify_recipients : (actual?.notify_recipients || []),
+                notify_cc_agent: typeof notify_cc_agent === 'boolean' ? notify_cc_agent : (actual?.notify_cc_agent ?? true),
+                notify_attach_receipt: typeof notify_attach_receipt === 'boolean' ? notify_attach_receipt : (actual?.notify_attach_receipt ?? false),
                 updated_at: new Date().toISOString()
             };
 
@@ -127,6 +134,7 @@ exports.handler = async (event) => {
             if (wompi_public_key && String(wompi_public_key).length > 5) updates.wompi_public_key = String(wompi_public_key);
             if (wompi_events_secret && String(wompi_events_secret).length > 5) updates.wompi_events_secret = String(wompi_events_secret);
             if (Array.isArray(catalogo)) updates.catalogo = catalogo;
+            if (typeof notify_webhook_url === 'string') updates.notify_webhook_url = notify_webhook_url.trim() || null;
 
             if (actual) {
                 const { error } = await supabase.from('crm_config_agente').update(updates).eq('agente_id', agente_id);
@@ -207,9 +215,9 @@ exports.handler = async (event) => {
         if (accion === 'lead_estado') {
             const { lead_id, estado_id } = body;
             if (!lead_id || !estado_id) return { statusCode: 400, headers, body: JSON.stringify({ error: 'Faltan datos.' }) };
-            const { data: existe } = await supabase.from('crm_leads').select('id').eq('id', lead_id).eq('user_id', user.id).maybeSingle();
+            const { data: existe } = await supabase.from('crm_leads').select('id, nombre, agente_id, conversacion_id, estado_id').eq('id', lead_id).eq('user_id', user.id).maybeSingle();
             if (!existe) return { statusCode: 404, headers, body: JSON.stringify({ error: 'Lead no encontrado.' }) };
-            const { data: estado } = await supabase.from('crm_estados').select('id, es_cerrada, es_perdida').eq('id', estado_id).eq('user_id', user.id).maybeSingle();
+            const { data: estado } = await supabase.from('crm_estados').select('id, nombre, es_cerrada, es_perdida').eq('id', estado_id).eq('user_id', user.id).maybeSingle();
             if (!estado) return { statusCode: 404, headers, body: JSON.stringify({ error: 'Estado no válido.' }) };
             const { error } = await supabase
                 .from('crm_leads')
@@ -220,6 +228,32 @@ exports.handler = async (event) => {
                 })
                 .eq('id', lead_id);
             if (error) return { statusCode: 500, headers, body: JSON.stringify({ error: error.message }) };
+
+            // Notificación opcional por cambio de estado (configurable por agente)
+            if (existe.estado_id != null && String(existe.estado_id) !== String(estado_id)) {
+                try {
+                    const { obtenerConfigCRM } = require('./crm-helper');
+                    const cfg = await obtenerConfigCRM(user.id, existe.agente_id);
+                    if (cfg?.notify_on_state_change && Array.isArray(cfg.notify_recipients) && cfg.notify_recipients.length) {
+                        const { sendEmail } = require('./notifications');
+                        const leadNombre = existe.nombre || 'Lead sin nombre';
+                        const subject = `Cambio de estado: ${leadNombre}`;
+                        const text = `El lead "${leadNombre}" cambió de estado.\n\nNuevo estado: ${estado.nombre || estado_id}\n\nRevísalo en tu panel de CRM.`;
+                        for (const to of cfg.notify_recipients.filter(Boolean)) {
+                            sendEmail({
+                                userId: user.id,
+                                agenteId: existe.agente_id,
+                                leadId: lead_id,
+                                conversationId: existe.conversacion_id,
+                                eventType: 'lead_state_change',
+                                to, subject, text
+                            }).catch(err => console.error('estado-change email err:', err));
+                        }
+                    }
+                } catch (notifErr) {
+                    console.error('Error notificando cambio de estado:', notifErr.message);
+                }
+            }
             return { statusCode: 200, headers, body: JSON.stringify({ ok: true }) };
         }
 
