@@ -4443,26 +4443,26 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
                             activarlo de inmediato.</p>
                         <div class="tokens-plan-grid">
                             <div class="plan-card"
-                                onclick="seleccionarPlan(this,100000,'6.100')"><div
+                                onclick="seleccionarPlan(this,100000,'6.100',610000)"><div
                                     class="plan-name">Basico</div><div
                                     class="plan-tokens">100K
                                     <span>tokens</span></div><div
                                     class="plan-price">$ 6.100 COP</div></div>
                             <div class="plan-card featured selected"
-                                onclick="seleccionarPlan(this,500000,'21.600')"><div
+                                onclick="seleccionarPlan(this,500000,'21.600',2160000)"><div
                                     class="plan-badge-card">Popular</div><div
                                     class="plan-name">Estandar</div><div
                                     class="plan-tokens">500K
                                     <span>tokens</span></div><div
                                     class="plan-price">$ 21.600 COP</div></div>
                             <div class="plan-card"
-                                onclick="seleccionarPlan(this,1000000,'37.000')"><div
+                                onclick="seleccionarPlan(this,1000000,'37.000',3700000)"><div
                                     class="plan-name">Premium</div><div
                                     class="plan-tokens">1M
                                     <span>tokens</span></div><div
                                     class="plan-price">$ 37.000 COP</div></div>
                             <div class="plan-card"
-                                onclick="seleccionarPlan(this,0,'personalizado')"><div
+                                onclick="seleccionarPlan(this,0,'personalizado',0)"><div
                                     class="plan-name">Custom</div><div
                                     class="plan-tokens"
                                     style="font-size:1.3rem">A medida</div><div
@@ -4902,6 +4902,7 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
     let planSeleccionado = { tokens: 500000, precio: '21.600' };
     let upgradeWhatsappUrl = '';
     let upgradePlanId = null;
+    let upgradePrecio = null;
     let todosLosPlanes = [];
 
     // Precio final = base + tarifa de procesamiento de Wompi (2,65% + $700 + IVA).
@@ -5484,7 +5485,10 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
             mostrarVista('tokens');
             return;
         }
-        await contactarPlan(miPlanEstado.plan_id, miPlanEstado.plan_nombre || '', 0, 0);
+        if (todosLosPlanes.length === 0) await cargarTodosLosPlanes();
+        const plan = todosLosPlanes.find(p => p.id === miPlanEstado.plan_id);
+        const precio = plan?.precio || 0;
+        await contactarPlan(miPlanEstado.plan_id, miPlanEstado.plan_nombre || plan?.nombre || '', 0, precio);
     }
 
     // ── BALANCE ──
@@ -5601,6 +5605,7 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
         if (planesSuperiores.length > 0) {
             const primer = planesSuperiores[0];
             upgradePlanId = primer.id;
+            upgradePrecio = primer.precio;
             upgradeWhatsappUrl = `https://wa.me/573115364647?text=${encodeURIComponent(`Hola Jeison, quiero mejorar al plan ${primer.nombre} (${primer.limite_agentes} agentes) por $${precioFinal(primer.precio).toLocaleString()} COP. Mi cuenta: ${currentUser.email}`)}`;
         }
         document.getElementById('upgrade-modal').style.display = 'flex';
@@ -5610,6 +5615,7 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
         document.querySelectorAll('.upgrade-plan-item').forEach(i => i.classList.remove('selected'));
         el.classList.add('selected');
         upgradePlanId = id;
+        upgradePrecio = precio;
         const limiteText = limite >= 999 ? 'ilimitados' : limite;
         upgradeWhatsappUrl = `https://wa.me/573115364647?text=${encodeURIComponent(`Hola Jeison, quiero mejorar al plan ${nombre} (${limiteText} agentes) por $${precioFinal(precio).toLocaleString()} COP. Mi cuenta: ${currentUser.email}`)}`;
     }
@@ -5624,7 +5630,7 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
             const res = await fetch('/.netlify/functions/crear-pago', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token || ''}` },
-                body: JSON.stringify({ tipo: 'plan', producto: upgradePlanId })
+                body: JSON.stringify({ tipo: 'plan', producto: upgradePlanId, montoCents: precioFinal(upgradePrecio || 0) * 100 })
             });
             const data = await res.json();
             if (!res.ok || !data.url) { showToast(data.error || 'No se pudo generar el pago', 'error'); return; }
@@ -6328,17 +6334,17 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
         const res = await fetch('/.netlify/functions/crear-pago', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token || ''}` },
-            body: JSON.stringify({ tipo: 'plan', producto: id })
+            body: JSON.stringify({ tipo: 'plan', producto: id, montoCents: precioFinal(precio) * 100 })
         });
         const data = await res.json();
         if (!res.ok || !data.url) { showToast(data.error || 'No se pudo generar el pago', 'error'); return; }
         window.location.href = data.url;
     }
 
-    function seleccionarPlan(el, tokens, precio) {
+    function seleccionarPlan(el, tokens, precio, totalCents) {
         document.querySelectorAll('.plan-card').forEach(c => c.classList.remove('selected'));
         el.classList.add('selected');
-        planSeleccionado = { tokens, precio };
+        planSeleccionado = { tokens, precio, totalCents: totalCents || 0 };
     }
 
     async function recargarTokens() {
@@ -6351,7 +6357,7 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
             const res = await fetch('/.netlify/functions/crear-pago', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token || ''}` },
-                body: JSON.stringify({ tipo: 'tokens', producto: planSeleccionado.tokens })
+                body: JSON.stringify({ tipo: 'tokens', producto: planSeleccionado.tokens, montoCents: planSeleccionado.totalCents })
             });
             const data = await res.json();
             if (!res.ok || !data.url) { showToast(data.error || 'No se pudo generar el pago', 'error'); return; }

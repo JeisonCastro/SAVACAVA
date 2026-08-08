@@ -12,26 +12,23 @@ const WOMPI_BASE = process.env.WOMPI_SANDBOX === 'true'
     : 'https://production.wompi.co/v1';
 const SITE_URL = process.env.URL || 'https://auvro.netlify.app';
 
+// El valor que muestra el front es el que se cobra en Wompi, sin recalcular.
+// Montos fijos (en centavos) = total exacto que muestra el dashboard.
 const TOKEN_PLANES = {
-    '100000':  { tokens: 100000,  montoCents: 500000,  concepto: 'Recarga 100K tokens' },
-    '500000':  { tokens: 500000,  montoCents: 2000000, concepto: 'Recarga 500K tokens' },
-    '1000000': { tokens: 1000000, montoCents: 3500000, concepto: 'Recarga 1M tokens' }
+    '100000':  { tokens: 100000,  montoCents: 610000,  concepto: 'Recarga 100K tokens' },
+    '500000':  { tokens: 500000,  montoCents: 2160000, concepto: 'Recarga 500K tokens' },
+    '1000000': { tokens: 1000000, montoCents: 3700000, concepto: 'Recarga 1M tokens' }
 };
 
-// ── Tarifas Wompi (Plan Avanzado): 2,65% + $700 + IVA por transaccion ──
-// Se trasladan al cliente: el monto cobrado deja al comercio el precio base neto.
-// Recibe el precio base en CENTAVOS y devuelve el monto bruto en CENTAVOS.
 const FEE_RATE = 0.0265;
 const FEE_FIJO = 700; // pesos
 const FEE_IVA = 0.19;
 
-function calcularMontoBruto(baseCents) {
-    const basePesos = baseCents / 100;
+// Total (pesos) que se muestra en el front para planes, idéntico a precioFinal() del dashboard.
+function precioTotalPesos(precioBasePesos) {
     const ivaFactor = 1 + FEE_IVA;
     const denom = 1 - FEE_RATE * ivaFactor;
-    const brutoPesos = (basePesos + FEE_FIJO * ivaFactor) / denom;
-    const brutoRedondeado = Math.ceil(Math.ceil(brutoPesos) / 100) * 100;
-    return brutoRedondeado * 100;
+    return Math.ceil(Math.ceil((precioBasePesos + FEE_FIJO * ivaFactor) / denom) / 100) * 100;
 }
 
 exports.handler = async (event) => {
@@ -52,7 +49,9 @@ exports.handler = async (event) => {
         const { data: { user }, error: authError } = await supabase.auth.getUser(token);
         if (authError || !user) return { statusCode: 401, headers, body: JSON.stringify({ error: 'Token inválido.' }) };
 
-        const { tipo, producto } = JSON.parse(event.body || '{}');
+        const body = JSON.parse(event.body || '{}');
+        const { tipo, producto } = body;
+        const montoSolicitado = Number(body.montoCents);
 
         let montoCents = null;
         let concepto = '';
@@ -62,8 +61,11 @@ exports.handler = async (event) => {
         if (tipo === 'tokens') {
             const p = TOKEN_PLANES[String(producto)];
             if (!p) return { statusCode: 400, headers, body: JSON.stringify({ error: 'Paquete de tokens no válido.' }) };
-            montoCents = calcularMontoBruto(p.montoCents);
-            concepto = `${p.concepto} (incluye tarifa de procesamiento)`;
+            if (montoSolicitado !== p.montoCents) {
+                return { statusCode: 400, headers, body: JSON.stringify({ error: 'El monto no coincide con el total del paquete.' }) };
+            }
+            montoCents = p.montoCents;
+            concepto = p.concepto;
             tokens = p.tokens;
         } else if (tipo === 'plan') {
             const { data: plan } = await supabase
@@ -72,8 +74,12 @@ exports.handler = async (event) => {
                 .eq('id', producto)
                 .maybeSingle();
             if (!plan) return { statusCode: 400, headers, body: JSON.stringify({ error: 'Plan no válido.' }) };
-            montoCents = calcularMontoBruto(Math.round((plan.precio || 0) * 100));
-            concepto = `Suscripcion plan ${plan.nombre} (incluye tarifa de procesamiento)`;
+            const esperado = precioTotalPesos(plan.precio || 0) * 100;
+            if (montoSolicitado !== esperado) {
+                return { statusCode: 400, headers, body: JSON.stringify({ error: 'El monto no coincide con el total del plan.' }) };
+            }
+            montoCents = esperado;
+            concepto = `Suscripcion plan ${plan.nombre}`;
             planId = plan.id;
         } else {
             return { statusCode: 400, headers, body: JSON.stringify({ error: 'Tipo de pago no válido.' }) };
