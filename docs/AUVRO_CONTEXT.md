@@ -632,7 +632,7 @@ Acciones: `list` (proyectos + plantillas), `get`, `refresh_status` (consulta dep
 - Secretos: `GITHUB_TOKEN` (scopes repo+user), `NETLIFY_AUTH_TOKEN` y opcional `GITHUB_OWNER` — SOLO en variables de entorno de Netlify, nunca en el repo/JS/HTML/Supabase.
 - Dominio: se registra vía API de Netlify pero el DNS lo configura el cliente manualmente. `dominio_estado` (pendiente/verificado) y `ssl_estado` se muestran en el panel.
 - El `delete` es no destructivo (avisa al admin que repo/site de GitHub/Netlify se conservan).
-- Migración: `supabase/migrations/20260813_web_factory.sql` (tabla `web_projects`). Aplicar en Supabase antes de probar.
+- Migración: `supabase/migrations/20260813_web_factory.sql` (tabla `web_projects`) y `20260814_web_factory_personalizacion.sql` (columnas `logo`, `slogan`, `whatsapp`). Aplicar en Supabase antes de probar.
 
 Integraciones Actuales
 Supabase
