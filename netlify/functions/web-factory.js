@@ -119,6 +119,46 @@ function inyectarWidgetIndex(html, snippet) {
     return html.replace(/<\/body>/i, snippet + '\n</body>');
 }
 
+// ── Seguridad por dominio del agente ──
+// chat.js valida que el Origin del sitio embebido esté en agente.dominios_permitidos.
+// Aquí garantizamos que los sitios generados queden autorizados automáticamente.
+function hostnameDeUrl(url) {
+    if (!url) return '';
+    try { return new URL(url).hostname.toLowerCase(); } catch (e) { return ''; }
+}
+
+function hostnamesParaSitio(netlifyUrl, dominio) {
+    const lista = new Set();
+    const net = hostnameDeUrl(netlifyUrl);
+    if (net) lista.add(net);
+    if (dominio) {
+        const d = String(dominio).toLowerCase().trim()
+            .replace(/^https?:\/\//, '').replace(/\/+$/, '').replace(/^www\./, '');
+        if (d) { lista.add(d); lista.add('www.' + d); }
+    }
+    return [...lista];
+}
+
+async function garantizarDominiosAgente(agenteId, hostnames) {
+    const nuevos = (Array.isArray(hostnames) ? hostnames : [])
+        .map(h => String(h).toLowerCase().trim()
+            .replace(/^https?:\/\//, '').replace(/\/+$/, ''))
+        .filter(h => h && h.includes('.') && !h.startsWith('.'));
+    if (!agenteId || nuevos.length === 0) return;
+    const { data: agente } = await supabase
+        .from('agentes_ia')
+        .select('id, dominios_permitidos')
+        .eq('id', Number(agenteId))
+        .maybeSingle();
+    if (!agente) return;
+    const actuales = Array.isArray(agente.dominios_permitidos) ? agente.dominios_permitidos : [];
+    const faltantes = nuevos.filter(h => !actuales.includes(h));
+    if (faltantes.length === 0) return;
+    await supabase.from('agentes_ia')
+        .update({ dominios_permitidos: [...actuales, ...faltantes] })
+        .eq('id', agente.id);
+}
+
 // ── Helpers GitHub ──
 async function detalleErrorGitHub(res) {
     let detalle = '';
@@ -260,19 +300,25 @@ async function crearSitioNetlify(owner, slug, branch = 'main', repoId = null) {
         repoBody.installation_id = Number(process.env.NETLIFY_GITHUB_INSTALLATION_ID);
     }
     if (repoId) repoBody.repo_id = Number(repoId);
-    const intento = async (conNombre) => {
+    const intento = async (nombre) => {
         return await fetch('https://api.netlify.com/api/v1/sites', {
             method: 'POST',
             headers: netlifyHeaders(),
-            body: JSON.stringify(conNombre ? { name: slug, repo: repoBody } : { repo: repoBody })
+            body: JSON.stringify(nombre ? { name: nombre, repo: repoBody } : { repo: repoBody })
         });
     };
 
-    let res = await intento(true);
-    if (res.status === 422) {
-        // el subdominio slug.netlify.app ya está tomado: Netlify genera uno aleatorio
-        res = await intento(false);
+    // El subdominio siempre debe estar relacionado con el slug.
+    // Se intenta slug, slug-1, slug-2... y solo como último recurso Netlify genera uno aleatorio.
+    const nombres = [slug];
+    for (let i = 1; i <= 20; i++) nombres.push(`${slug}-${i}`);
+
+    let res = null;
+    for (const nombre of nombres) {
+        res = await intento(nombre);
+        if (res.status !== 422) break;
     }
+    if (res.status === 422) res = await intento(null);
     if (!res.ok) {
         const e = await res.json().catch(() => ({}));
         throw new Error('Netlify: ' + (e.message || res.statusText));
@@ -491,7 +537,14 @@ async function pipelineCrear(body, adminId) {
     }
 
     const { data: filaFinal } = await supabase.from('web_projects').select('*').eq('id', id).single();
-    if (filaFinal) await refrescarYGuardar(filaFinal);
+    if (filaFinal) {
+        // Autoriza el/los dominio(s) del sitio en el agente (seguridad por dominio de chat.js)
+        if (agenteRow) {
+            await garantizarDominiosAgente(agenteRow.id, hostnamesParaSitio(filaFinal.netlify_url, filaFinal.dominio))
+                .catch(err => console.error('web-factory: no se pudieron autorizar dominios del agente:', err.message));
+        }
+        await refrescarYGuardar(filaFinal);
+    }
     return { ok: true, id };
 }
 
@@ -533,6 +586,20 @@ exports.handler = async (event) => {
                 .select('*')
                 .order('created_at', { ascending: false });
             if (error) return { statusCode: 500, body: JSON.stringify({ error: error.message }) };
+
+            // Reconciliación: si un sitio tiene agente, garantiza que su dominio
+            // esté autorizado (idempotente, repara sitios creados antes de este cambio).
+            if (proyectos && Array.isArray(proyectos)) {
+                await Promise.all(proyectos
+                    .filter(p => p.agente_id)
+                    .map(async (p) => {
+                        try {
+                            await garantizarDominiosAgente(p.agente_id, hostnamesParaSitio(p.netlify_url, p.dominio));
+                        } catch (e) {
+                            console.error('web-factory: reconciliar dominios falló:', e.message);
+                        }
+                    }));
+            }
 
             let plantillas = [];
             let plantillas_error = null;
@@ -617,6 +684,8 @@ module.exports.helpers = {
     sanearUrlLogo,
     crearSnippetAgente,
     inyectarWidgetIndex,
+    hostnameDeUrl,
+    hostnamesParaSitio,
     mapearEstadoDominio,
     mapearEstadoDeploy,
     estadoGeneral
