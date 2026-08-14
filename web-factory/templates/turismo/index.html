@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{EMPRESA}}</title>
+    <meta name="description" content="{{DESCRIPCION}}">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header class="site-header">
+        <div class="container header-inner">
+            <a href="#" class="brand">
+                <img class="brand-logo" src="{{LOGO}}" alt="{{EMPRESA}}">
+                <span>{{EMPRESA}}</span>
+            </a>
+            <nav class="site-nav">
+                <a href="#destinos">Destinos</a>
+                <a href="#experiencias">Experiencias</a>
+                <a href="#paquetes">Paquetes</a>
+                <a class="btn btn-wa js-wa" data-num="{{WHATSAPP}}" href="https://wa.me/{{WHATSAPP}}" target="_blank" rel="noopener">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+                    <span>Reservar</span>
+                </a>
+            </nav>
+        </div>
+    </header>
+
+    <section class="hero">
+        <div class="container">
+            <img class="hero-logo" src="{{LOGO}}" alt="{{EMPRESA}}">
+            <h1>{{EMPRESA}}</h1>
+            <p class="hero-slogan js-empty">{{SLOGAN}}</p>
+            <p class="hero-sub">{{DESCRIPCION}}</p>
+            <div class="hero-actions">
+                <a href="#destinos" class="btn btn-primary">Ver destinos</a>
+                <a href="#paquetes" class="btn btn-ghost">Nuestros paquetes</a>
+            </div>
+        </div>
+    </section>
+
+    <section id="destinos" class="section">
+        <div class="container">
+            <h2 class="section-title">Destinos destacados</h2>
+            <p class="section-sub">Lugares que nuestros viajeros aman</p>
+            <div class="grid">
+                <div class="card">
+                    <span class="card-tag">Playas</span>
+                    <h3>Sol y arena</h3>
+                    <p>Costas de aguas cristalinas, arena blanca y atardeceres inolvidables. Perfectas para descansar.</p>
+                </div>
+                <div class="card">
+                    <span class="card-tag">Naturaleza</span>
+                    <h3>Montaña y aventura</h3>
+                    <p>Senderismo, paisajes verdes y aire puro para reconectar con la naturaleza y desconectar de la rutina.</p>
+                </div>
+                <div class="card">
+                    <span class="card-tag">Ciudad</span>
+                    <h3>Turismo urbano</h3>
+                    <p>Historia, gastronomía y cultura en las ciudades más vibrantes. Planes para todos los gustos.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="experiencias" class="section section-dark">
+        <div class="container">
+            <h2 class="section-title">Experiencias y tours</h2>
+            <p class="section-sub">Actividades que transforman un viaje en un recuerdo</p>
+            <div class="menu-grid">
+                <div class="menu-item">
+                    <div>
+                        <h3>Tour guiado por la ciudad</h3>
+                        <p>Recorridos con guías locales que cuentan la historia y los secretos de cada rincón.</p>
+                    </div>
+                    <span class="menu-price">Desde $35</span>
+                </div>
+                <div class="menu-item">
+                    <div>
+                        <h3>Aventura al aire libre</h3>
+                        <p>Deportes de aventura, caminatas y actividades para subir la adrenalina.</p>
+                    </div>
+                    <span class="menu-price">Desde $50</span>
+                </div>
+                <div class="menu-item">
+                    <div>
+                        <h3>Experiencia gastronómica</h3>
+                        <p>Rutas de sabor: mercados, cocina local y restaurantes imperdibles.</p>
+                    </div>
+                    <span class="menu-price">Desde $40</span>
+                </div>
+                <div class="menu-item">
+                    <div>
+                        <h3>Escapada de fin de semana</h3>
+                        <p>Planes armados con transporte, hospedaje y actividades incluidas.</p>
+                    </div>
+                    <span class="menu-price">Desde $120</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="paquetes" class="section">
+        <div class="container">
+            <h2 class="section-title">Paquetes de viaje</h2>
+            <p class="section-sub">Todo incluido, sin sorpresas</p>
+            <div class="grid">
+                <div class="card">
+                    <span class="card-tag">Económico</span>
+                    <h3>Escapada</h3>
+                    <p>2 días / 1 noche con transporte y hospedaje básico. Ideal para un plan corto.</p>
+                    <div class="price-row"><strong>$85</strong><span>por persona</span></div>
+                </div>
+                <div class="card featured">
+                    <span class="card-tag">Más vendido</span>
+                    <h3>Explorador</h3>
+                    <p>3 días / 2 noches con tours guiados, desayunos y actividades principales.</p>
+                    <div class="price-row"><strong>$150</strong><span>por persona</span></div>
+                </div>
+                <div class="card">
+                    <span class="card-tag">Premium</span>
+                    <h3>Premium</h3>
+                    <p>5 días con hospedaje superior, experiencias exclusivas y asistencia en todo el viaje.</p>
+                    <div class="price-row"><strong>$320</strong><span>por persona</span></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="contacto" class="section section-dark">
+        <div class="container">
+            <div class="reserva-box">
+                <h2>¿Listo para tu próxima aventura?</h2>
+                <p>Escríbenos y armamos el viaje ideal para ti, tu familia o tu empresa.</p>
+                <a class="btn btn-wa js-wa" data-num="{{WHATSAPP}}" href="https://wa.me/{{WHATSAPP}}" target="_blank" rel="noopener">
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+                    <span>Reservar por WhatsApp</span>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <footer class="site-footer">
+        <div class="container">
+            <p>&copy; <span id="year"></span> {{EMPRESA}}. Todos los derechos reservados.</p>
+        </div>
+    </footer>
+
+    <script>
+        (function () {
+            var y = document.getElementById('year'); if (y) y.textContent = new Date().getFullYear();
+            document.querySelectorAll('.brand-logo, .hero-logo').forEach(function (el) {
+                if (!(el.getAttribute('src') || '').trim()) el.remove();
+            });
+            document.querySelectorAll('.js-wa').forEach(function (el) {
+                if (!(el.getAttribute('data-num') || '').trim()) el.style.display = 'none';
+            });
+            document.querySelectorAll('.js-empty').forEach(function (el) {
+                if (!el.textContent.trim()) el.style.display = 'none';
+            });
+        })();
+    </script>
+</body>
+</html>

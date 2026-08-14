@@ -44,6 +44,11 @@
       "slug": "salud",
       "nombre": "Salud / Clínica médica",
       "descripcion": "Especialidades, equipo médico y agenda tu cita. Estilo clínico (teal). Tokens: {{EMPRESA}}, {{DESCRIPCION}}, {{SLOGAN}}, {{LOGO}}, {{WHATSAPP}}."
+    },
+    {
+      "slug": "turismo",
+      "nombre": "Turismo / Agencia de viajes",
+      "descripcion": "Destinos, experiencias, tours y paquetes con reserva por WhatsApp. Estilo fresco (turquesa + arena). Tokens: {{EMPRESA}}, {{DESCRIPCION}}, {{SLOGAN}}, {{LOGO}}, {{WHATSAPP}}."
     }
   ]
 }
