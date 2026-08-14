@@ -216,8 +216,12 @@ function netlifyHeaders() {
     return { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
 }
 
-async function crearSitioNetlify(owner, slug, branch = 'main') {
+async function crearSitioNetlify(owner, slug, branch = 'main', repoId = null) {
     const repoBody = { provider: 'github', repo: `${owner}/${slug}`, branch, private: true, cmd: '', dir: '' };
+    if (process.env.NETLIFY_GITHUB_INSTALLATION_ID) {
+        repoBody.installation_id = Number(process.env.NETLIFY_GITHUB_INSTALLATION_ID);
+    }
+    if (repoId) repoBody.repo_id = Number(repoId);
     const intento = async (conNombre) => {
         return await fetch('https://api.netlify.com/api/v1/sites', {
             method: 'POST',
@@ -375,18 +379,19 @@ async function pipelineCrear(body, adminId) {
     }
     const id = fila.id;
 
-    // 2) Repo privado en GitHub + commit inicial (rama main)
+    // 2) Repo privado en GitHub + commit inicial (rama default)
+    let datosRepo = null;
     try {
         const owner = await obtenerOwnerGitHub();
         const archivos = leerArchivosPlantilla(plantillaElegida.slug)
             .map(f => ({ ...f, content: reemplazarTokens(f.content, valores) }));
-        const { repo, owner: ownerReal, branch } = await crearRepoGitHub(owner, slug, descripcion || plantillaElegida.nombre, archivos);
+        datosRepo = await crearRepoGitHub(owner, slug, descripcion || plantillaElegida.nombre, archivos);
         await actualizarProyecto(id, {
-            github_owner: ownerReal,
+            github_owner: datosRepo.owner,
             github_repo: slug,
-            default_branch: branch || 'main',
-            github_url: repo.html_url,
-            clone_url: repo.clone_url || `https://github.com/${ownerReal}/${slug}.git`,
+            default_branch: datosRepo.branch || 'main',
+            github_url: datosRepo.repo.html_url,
+            clone_url: datosRepo.repo.clone_url || `https://github.com/${datosRepo.owner}/${slug}.git`,
             estado: 'configurando'
         });
     } catch (err) {
@@ -396,8 +401,12 @@ async function pipelineCrear(body, adminId) {
 
     // 3) Site en Netlify enlazado al repo + deploy inicial
     try {
-        const { data: row } = await supabase.from('web_projects').select('*').eq('id', id).single();
-        const sitio = await crearSitioNetlify(row.github_owner, slug, row.default_branch || 'main');
+        const sitio = await crearSitioNetlify(
+            datosRepo.owner,
+            slug,
+            datosRepo.branch || 'main',
+            datosRepo.repo && datosRepo.repo.id
+        );
         await actualizarProyecto(id, { netlify_site_id: sitio.site_id, netlify_url: sitio.url, estado: 'deploying' });
         await dispararBuild(sitio.site_id);
     } catch (err) {
@@ -472,6 +481,7 @@ exports.handler = async (event) => {
                 env: {
                     github: !!process.env.GITHUB_TOKEN,
                     netlify: !!process.env.NETLIFY_AUTH_TOKEN,
+                    github_installation: !!process.env.NETLIFY_GITHUB_INSTALLATION_ID,
                     owner: process.env.GITHUB_OWNER || null
                 }
             }) };

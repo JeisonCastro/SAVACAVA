@@ -5789,6 +5789,7 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
                 const faltan = [];
                 if (!_wfEnv.github) faltan.push('GITHUB_TOKEN');
                 if (!_wfEnv.netlify) faltan.push('NETLIFY_AUTH_TOKEN');
+                if (_wfEnv.github && _wfEnv.netlify && !_wfEnv.github_installation) faltan.push('NETLIFY_GITHUB_INSTALLATION_ID');
                 wfEnvAlert.style.display = faltan.length ? 'flex' : 'none';
                 if (faltan.length) wfEnvAlert.querySelector('#wf-env-alert-msg').textContent =
                     'Faltan variables de entorno: ' + faltan.join(', ') + '. Agrega los tokens en Netlify → Site configuration → Environment variables.';
