@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{EMPRESA}}</title>
+    <meta name="description" content="{{DESCRIPCION}}">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header class="site-header">
+        <div class="container header-inner">
+            <a href="#" class="brand">{{EMPRESA}}</a>
+            <nav class="site-nav">
+                <a href="#servicios">Servicios</a>
+                <a href="#contacto" class="btn">Contacto</a>
+            </nav>
+        </div>
+    </header>
+
+    <section class="hero">
+        <div class="container">
+            <h1>{{EMPRESA}}</h1>
+            <p class="hero-sub">{{DESCRIPCION}}</p>
+            <div class="hero-actions">
+                <a href="#contacto" class="btn btn-primary">Empezar ahora</a>
+                <a href="#servicios" class="btn btn-ghost">Conoce más</a>
+            </div>
+        </div>
+    </section>
+
+    <section id="servicios" class="section">
+        <div class="container">
+            <h2 class="section-title">Nuestros servicios</h2>
+            <div class="grid">
+                <div class="card">
+                    <h3>Calidad</h3>
+                    <p>Trabajamos con altos estándares en cada entrega para superar tus expectativas.</p>
+                </div>
+                <div class="card">
+                    <h3>Confianza</h3>
+                    <p>Comunicación clara y resultados medibles en cada etapa del proceso.</p>
+                </div>
+                <div class="card">
+                    <h3>Compromiso</h3>
+                    <p>Estamos a tu lado antes, durante y después de cada proyecto.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="contacto" class="section section-dark">
+        <div class="container">
+            <h2 class="section-title">Hablemos</h2>
+            <p class="section-sub">Contáctanos y recibe atención personalizada.</p>
+            <a href="mailto:hola@example.com" class="btn btn-primary">hola@example.com</a>
+        </div>
+    </section>
+
+    <footer class="site-footer">
+        <div class="container">
+            <p>&copy; <span id="year"></span> {{EMPRESA}}. Todos los derechos reservados.</p>
+        </div>
+    </footer>
+
+    <script>
+        document.getElementById('year').textContent = new Date().getFullYear();
+    </script>
+</body>
+</html>

@@ -606,6 +606,34 @@ Responsabilidades:
 - Clasificar rutas de mensajes (chat, workflow_collect, workflow_confirm).
 - Enriquecer payloads con datos extraídos del texto del usuario.
 - Generar preguntas para campos faltantes.
+
+### web-factory.js (Web Factory — generar sitios web para clientes)
+
+Solo admins (mismo patrón de validación que `admin-data.js`: Bearer token del usuario + `perfiles.is_admin`).
+
+Flujo de creación (`action: create`):
+
+```
+AUVRO Admin (vista Web Factory)
+  → insertar en web_projects (estado=creando)
+  → GET /api.github.com/user (owner, o GITHUB_OWNER)
+  → POST /user/repos (repo privado)
+  → Git Data API: blobs + tree + commit + refs/heads/main (archivos de la plantilla, con tokens reemplazados)
+  → POST api.netlify.com/api/v1/sites con repo={github, branch main} (crea site y lo enlaza)
+  → POST /sites/{id}/builds (deploy inicial)
+  → POST /sites/{id}/domains (dominio opcional)
+  → estado según deploy: publicado / dominio_pendiente / deploying / error
+```
+
+Acciones: `list` (proyectos + plantillas), `get`, `refresh_status` (consulta deploys/dominios/SSL en Netlify y actualiza), `create` (pipeline), `delete` (solo borra el registro de AUVRO; NO borra repo/site).
+
+- El `create` corre como **background function** de Netlify (el dashboard envía el header `X-NF-Background: true`, respuesta 202 inmediata, ejecución hasta 15 min). El dashboard hace polling de `list`/`refresh_status` cada 8s mientras haya estados en curso.
+- Plantillas en `web-factory/templates/<slug>/` (archivos reales), incluidas en el bundle vía `included_files` en `netlify.toml`. El `manifest.json` lista las disponibles. Tokens de plantilla: `{{EMPRESA}}`, `{{DESCRIPCION}}`.
+- Secretos: `GITHUB_TOKEN` (scopes repo+user), `NETLIFY_AUTH_TOKEN` y opcional `GITHUB_OWNER` — SOLO en variables de entorno de Netlify, nunca en el repo/JS/HTML/Supabase.
+- Dominio: se registra vía API de Netlify pero el DNS lo configura el cliente manualmente. `dominio_estado` (pendiente/verificado) y `ssl_estado` se muestran en el panel.
+- El `delete` es no destructivo (avisa al admin que repo/site de GitHub/Netlify se conservan).
+- Migración: `supabase/migrations/20260813_web_factory.sql` (tabla `web_projects`). Aplicar en Supabase antes de probar.
+
 Integraciones Actuales
 Supabase
 
@@ -728,6 +756,7 @@ Deploy.
 ✅ Workflows de herramientas (Calendar, Gmail, Drive).
 ✅ Cliente Supabase centralizado con polyfill WebSocket (Node.js 20 compat).
 ✅ Todas las funciones serverless migradas a helper compartido `supabase-admin.js`.
+✅ Web Factory Fase 1 (13 Ago 2026): generar sitios web estáticos para clientes desde el panel Admin — repo privado en GitHub + site en Netlify + dominio opcional + deploy + estado en tiempo real.
 
 ### Pendientes del Proyecto
 
@@ -885,6 +914,31 @@ updated_at      timestamptz
 UNIQUE(user_id, endpoint)
 ```
 
+## Tabla: web_projects (Web Factory)
+```
+id              uuid PK (gen_random_uuid)
+cliente         text
+nombre          text
+slug            text UNIQUE (nombre del repo / subdominio)
+plantilla       text (default 'landing')
+descripcion     text
+dominio         text
+estado          text (creando | configurando | deploying | dominio_pendiente | publicado | error)
+estado_deploy   text (building | ready | error)
+dominio_estado  text (pendiente | verificado)
+ssl_estado      text (pendiente | activo)
+github_owner    text
+github_repo     text
+github_url      text
+netlify_site_id text
+netlify_url     text
+clone_url       text
+error           text
+created_by      uuid
+created_at      timestamptz
+updated_at      timestamptz
+```
+
 ## RPC Function
 ```
 increment_agent_consumption(agent_id int, tokens int)
@@ -914,6 +968,20 @@ Multiusuario.
 ---
 
 # Changelog de Cambios Técnicos
+
+## 13 Ago 2026 — Web Factory Fase 1 (crear sitios web para clientes)
+
+- **Backend `netlify/functions/web-factory.js` (NUEVO)**:
+  - Solo admins (patrón de `admin-data.js`). Acciones: `list`, `get`, `refresh_status`, `create`, `delete`.
+  - `create` corre como background function de Netlify (`X-NF-Background: true`, hasta 15 min); el dashboard hace polling hasta el estado final.
+  - Pipeline: insert en `web_projects` → repo privado en GitHub (Git Data API, rama `main`) → site en Netlify enlazado al repo → build inicial → dominio opcional → estados `creando/configurando/deploying/dominio_pendiente/publicado/error`.
+  - Secretos solo en env vars: `GITHUB_TOKEN`, `NETLIFY_AUTH_TOKEN`, `GITHUB_OWNER` (opcional).
+  - Errores reales de API se guardan en `web_projects.error` y se muestran en el panel.
+- **Plantillas `web-factory/templates/` (NUEVO)**: `landing` (estática, sin build, con `{{EMPRESA}}`/`{{DESCRIPCION}}`) + `manifest.json`. Incluidas en el bundle vía `included_files` en `netlify.toml`.
+- **Migración `supabase/migrations/20260813_web_factory.sql` (NUEVO)**: tabla `web_projects` (idempotente, sin RLS — el backend usa service role).
+- **`dashboard.html`**: vista `view-webfactory` + `nav-webfactory` (solo admin, junto a `nav-admin`), stats, tabla de proyectos con badges de estado, modal crear sitio (Cliente/Nombre/Slug autogen/Plantilla/Dominio opcional), botones ver sitio/GitHub/copiar clone/actualizar estado/eliminar registro (no destructivo), y polling cada 8s mientras haya proyectos en curso. Se registró la vista en `mostrarVista()` y `verificarSesion()` (hash `#webfactory`).
+- **Verificación**: `node --check` de la función y del JS del dashboard, `manifest.json` válido, y 52 pruebas unitarias de la lógica (plantillas, tokens, slugs, dominios, mapeo de estados) — todas pasan.
+- **Pendiente (prueba E2E con credenciales reales)**: aplicar la migración en Supabase, configurar `GITHUB_TOKEN` + `NETLIFY_AUTH_TOKEN` en Netlify, y crear un proyecto de prueba para confirmar repo GitHub + site Netlify + deploy + URL + dominio end-to-end.
 
 ## 13 Ago 2026 — PWA/móvil: fixes de estructura y mejoras
 

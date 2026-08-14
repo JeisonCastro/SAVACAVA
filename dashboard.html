@@ -4219,6 +4219,8 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
                             class="fas fa-sliders"></i> Configuracion</a>
                     <a onclick="mostrarVista('admin')" id="nav-admin" style="display:none"><i
                             class="fas fa-gauge-high"></i> Admin</a>
+                    <a onclick="mostrarVista('webfactory')" id="nav-webfactory" style="display:none"><i
+                            class="fas fa-globe"></i> Web Factory</a>
                 </nav>
             </div>
             <div class="sidebar-bottom">
@@ -4819,6 +4821,60 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
                     </div>
                 </div>
             </div>
+
+            <div class="view" id="view-webfactory">
+                <div class="topbar">
+                    <div>
+                        <h2 class="page-title">Web Factory</h2>
+                        <p class="page-sub">Genera sitios web para tus clientes: GitHub + Netlify en segundos</p>
+                    </div>
+                    <div class="topbar-right">
+                        <button class="btn-main" onclick="abrirModalCrearWeb()">
+                            <i class="fas fa-plus" style="margin-right:.3rem"></i> Crear sitio
+                        </button>
+                    </div>
+                </div>
+
+                <!-- STATS -->
+                <div class="stats-row" id="wf-stats" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem;margin-bottom:1.5rem"></div>
+
+                <!-- TAB: Proyectos -->
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-icon"><i class="fas fa-globe"></i></div>
+                        <span class="card-title">Proyectos Web</span>
+                    </div>
+                    <div class="table-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Cliente</th>
+                                    <th>Proyecto</th>
+                                    <th>Plantilla</th>
+                                    <th>Estado</th>
+                                    <th>URL</th>
+                                    <th>Dominio</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="wf-body">
+                                <tr><td colspan="7" style="text-align:center;color:var(--dim);padding:2rem">Cargando...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- MODAL: Crear sitio web -->
+                <div id="wf-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;align-items:center;justify-content:center">
+                    <div style="background:var(--surface);border:1px solid var(--border2);border-radius:14px;padding:1.5rem;width:90%;max-width:460px;box-shadow:var(--shadow-soft)">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+                            <h3 style="font-family:'Inter',sans-serif;font-weight:700;font-size:1rem" id="wf-modal-title">Nuevo sitio web</h3>
+                            <button onclick="cerrarWfModal()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1.1rem"><i class="fas fa-times"></i></button>
+                        </div>
+                        <div id="wf-modal-body"></div>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- CHAT MODAL -->
@@ -5314,6 +5370,7 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
         if (vista === 'integraciones') cargarIntegraciones();
         if (vista === 'crm') cargarCRM();
         if (vista === 'admin') cargarAdmin();
+        if (vista === 'webfactory') cargarWebFactory();
     }
 
     // ── PANEL ADMIN ──
@@ -5334,9 +5391,11 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
             const data = await res.json();
             _isAdmin = !!data.isAdmin;
             document.getElementById('nav-admin').style.display = _isAdmin ? '' : 'none';
+            document.getElementById('nav-webfactory').style.display = _isAdmin ? '' : 'none';
         } catch (_) {
             _isAdmin = false;
             document.getElementById('nav-admin').style.display = 'none';
+            document.getElementById('nav-webfactory').style.display = 'none';
         }
     }
 
@@ -5674,6 +5733,226 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
         document.getElementById('admin-modal').style.display = 'none';
     }
 
+    // ── WEB FACTORY ──
+    let _wfPlantillas = [];
+    let _wfSlugAuto = true;
+
+    function cerrarWfModal() {
+        document.getElementById('wf-modal').style.display = 'none';
+    }
+
+    function wfEscapeHtml(str) {
+        return String(str ?? '').replace(/[&<>"']/g, c => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+        })[c]);
+    }
+
+    function wfEstadoBadge(estado) {
+        switch (estado) {
+            case 'publicado': return { cls: 'badge-green', label: 'Publicado' };
+            case 'creando': return { cls: 'badge-accent', label: 'Creando' };
+            case 'configurando': return { cls: 'badge-accent', label: 'Configurando' };
+            case 'deploying': return { cls: 'badge-yellow', label: 'Desplegando' };
+            case 'dominio_pendiente': return { cls: 'badge-yellow', label: 'Dominio pendiente' };
+            case 'error': return { cls: '', label: 'Error' };
+            default: return { cls: 'badge', label: estado || '—' };
+        }
+    }
+
+    async function cargarWebFactory() {
+        if (!esAdmin()) { mostrarVista('agentes'); return; }
+        const activa = document.getElementById('view-webfactory').classList.contains('active');
+        if (!activa) return;
+
+        try {
+            const res = await fetch('/.netlify/functions/web-factory', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${currentSession?.access_token || ''}`
+                },
+                body: JSON.stringify({ action: 'list' })
+            });
+            const data = await res.json();
+            if (!data.ok) throw new Error(data.error || 'Error cargando proyectos');
+
+            _wfPlantillas = data.plantillas || [];
+
+            const proyectos = data.proyectos || [];
+            const enCurso = proyectos.filter(p => ['creando', 'configurando', 'deploying'].includes(p.estado));
+
+            document.getElementById('wf-stats').innerHTML = `
+                <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:1rem">
+                    <div style="font-size:.75rem;color:var(--dim);margin-bottom:.3rem">Sitios</div>
+                    <div style="font-size:1.6rem;font-weight:800;font-family:'Inter',sans-serif;color:var(--accent)">${proyectos.length}</div>
+                </div>
+                <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:1rem">
+                    <div style="font-size:.75rem;color:var(--dim);margin-bottom:.3rem">Publicados</div>
+                    <div style="font-size:1.6rem;font-weight:800;font-family:'Inter',sans-serif;color:var(--green)">${proyectos.filter(p => p.estado === 'publicado').length}</div>
+                </div>
+                <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:1rem">
+                    <div style="font-size:.75rem;color:var(--dim);margin-bottom:.3rem">En proceso</div>
+                    <div style="font-size:1.6rem;font-weight:800;font-family:'Inter',sans-serif;color:var(--yellow)">${enCurso.length}</div>
+                </div>
+                <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:1rem">
+                    <div style="font-size:.75rem;color:var(--dim);margin-bottom:.3rem">Errores</div>
+                    <div style="font-size:1.6rem;font-weight:800;font-family:'Inter',sans-serif;color:var(--red)">${proyectos.filter(p => p.estado === 'error').length}</div>
+                </div>
+            `;
+
+            const body = document.getElementById('wf-body');
+            if (!proyectos.length) {
+                body.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--dim);padding:2rem">No hay proyectos web todavia. Crea el primero.</td></tr>';
+            } else {
+                body.innerHTML = proyectos.map(p => {
+                    const b = wfEstadoBadge(p.estado);
+                    const badgeError = b.cls === ''
+                        ? ' style="background:rgba(248,113,113,.1);color:var(--red);border:1px solid rgba(248,113,113,.22)"'
+                        : '';
+                    const estadoDeploy = p.estado_deploy === 'error'
+                        ? '<div style="font-size:.65rem;color:var(--red);margin-top:.15rem">deploy error</div>'
+                        : (p.estado_deploy === 'building' ? '<div style="font-size:.65rem;color:var(--dim);margin-top:.15rem">build en curso</div>' : '');
+                    const errorInfo = p.error
+                        ? `<div title="${wfEscapeHtml(p.error)}" style="font-size:.65rem;color:var(--red);margin-top:.15rem;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:help">${wfEscapeHtml(p.error)}</div>`
+                        : '';
+                    const dominioBadge = p.dominio
+                        ? `<span class="badge ${p.dominio_estado === 'verificado' ? 'badge-green' : 'badge-yellow'}">${p.dominio_estado === 'verificado' ? 'verificado' : 'pendiente'}</span>`
+                        : '—';
+                    return `<tr>
+                        <td style="font-weight:600">${wfEscapeHtml(p.cliente)}</td>
+                        <td>
+                            <div style="font-weight:600">${wfEscapeHtml(p.nombre)}</div>
+                            <div style="color:var(--dim);font-size:.75rem">${wfEscapeHtml(p.slug)}</div>
+                        </td>
+                        <td><span class="badge badge-accent">${wfEscapeHtml(p.plantilla || 'landing')}</span></td>
+                        <td><span class="badge ${b.cls}"${badgeError}>${b.label}</span>${estadoDeploy}${errorInfo}</td>
+                        <td>${p.netlify_url ? `<a href="${wfEscapeHtml(p.netlify_url)}" target="_blank" rel="noopener" style="color:var(--accent)">ver sitio</a>` : '—'}</td>
+                        <td>
+                            ${p.dominio ? `<div style="font-size:.82rem">${wfEscapeHtml(p.dominio)}</div>${dominioBadge}` : '—'}
+                        </td>
+                        <td style="white-space:nowrap">
+                            ${p.netlify_url ? `<button class="btn-small" onclick="window.open('${wfEscapeHtml(p.netlify_url)}','_blank')" style="font-size:.72rem;padding:4px 8px"><i class="fas fa-external-link"></i></button>` : ''}
+                            ${p.github_url ? `<button class="btn-small" onclick="window.open('${wfEscapeHtml(p.github_url)}','_blank')" style="font-size:.72rem;padding:4px 8px"><i class="fab fa-github"></i></button>` : ''}
+                            ${p.clone_url ? `<button class="btn-small" onclick="copiarClone('${wfEscapeHtml(p.clone_url)}', '${wfEscapeHtml(p.slug)}')" style="font-size:.72rem;padding:4px 8px" title="Copiar comando clone"><i class="fas fa-copy"></i></button>` : ''}
+                            <button class="btn-small" onclick="actualizarEstadoWeb('${p.id}')" style="font-size:.72rem;padding:4px 8px" title="Actualizar estado"><i class="fas fa-rotate"></i></button>
+                            <button class="btn-small danger" onclick="eliminarProyectoWeb('${p.id}', '${wfEscapeHtml(p.nombre)}')" style="font-size:.72rem;padding:4px 8px" title="Eliminar registro"><i class="fas fa-trash"></i></button>
+                        </td>
+                    </tr>`;
+                }).join('');
+            }
+
+            if (enCurso.length) {
+                setTimeout(() => { if (document.getElementById('view-webfactory').classList.contains('active')) cargarWebFactory(); }, 8000);
+            }
+        } catch (err) {
+            document.getElementById('wf-body').innerHTML =
+                '<tr><td colspan="7" style="text-align:center;color:var(--red);padding:1.5rem">' + wfEscapeHtml(err.message || 'Error') + '</td></tr>';
+        }
+    }
+
+    function abrirModalCrearWeb() {
+        const opciones = (_wfPlantillas.length ? _wfPlantillas : [{ slug: 'landing', nombre: 'Landing Empresarial', descripcion: '' }])
+            .map((t, i) => `<option value="${wfEscapeHtml(t.slug)}"${i === 0 ? ' selected' : ''}>${wfEscapeHtml(t.nombre)}</option>`)
+            .join('');
+        document.getElementById('wf-modal-title').textContent = 'Nuevo sitio web';
+        document.getElementById('wf-modal-body').innerHTML = `
+            <div class="field"><label>Cliente</label><input type="text" id="wf-cliente" placeholder="Ej: Restaurante El Buen Sabor" style="width:100%;padding:8px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text)"></div>
+            <div class="field" style="margin-top:.8rem"><label>Nombre del sitio</label><input type="text" id="wf-nombre" oninput="wfAutogenSlug()" placeholder="Ej: Restaurante El Buen Sabor" style="width:100%;padding:8px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text)"></div>
+            <div class="field" style="margin-top:.8rem"><label>Slug (subdominio/repo)</label><input type="text" id="wf-slug" oninput="_wfSlugAuto=false" placeholder="Ej: el-buen-sabor" style="width:100%;padding:8px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text)"></div>
+            <div class="field" style="margin-top:.8rem"><label>Plantilla</label><select id="wf-plantilla" style="width:100%;padding:8px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text)">${opciones}</select></div>
+            <div class="field" style="margin-top:.8rem"><label>Dominio (opcional)</label><input type="text" id="wf-dominio" placeholder="Ej: elbueensabor.com" style="width:100%;padding:8px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text)"></div>
+            <div class="field" style="margin-top:.8rem"><label>Descripcion (opcional)</label><input type="text" id="wf-descripcion" placeholder="Ej: Cocina criolla y atención familiar" style="width:100%;padding:8px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text)"></div>
+            <button class="btn-main" style="width:100%;margin-top:1.2rem" onclick="crearProyectoWeb()">
+                <i class="fas fa-rocket" style="margin-right:.3rem"></i> Crear sitio
+            </button>
+            <p style="font-size:.72rem;color:var(--dim);margin-top:.8rem">El proceso crea un repo privado en GitHub, un sitio en Netlify y dispara el deploy. Puede tardar unos minutos; el estado se actualiza solo.</p>
+        `;
+        _wfSlugAuto = true;
+        document.getElementById('wf-modal').style.display = 'flex';
+    }
+
+    function wfAutogenSlug() {
+        if (!_wfSlugAuto) return;
+        const nombre = document.getElementById('wf-nombre').value || '';
+        const slug = nombre.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+            .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 63);
+        document.getElementById('wf-slug').value = slug;
+    }
+
+    async function crearProyectoWeb() {
+        const cliente = document.getElementById('wf-cliente').value.trim();
+        const nombre = document.getElementById('wf-nombre').value.trim();
+        const slug = document.getElementById('wf-slug').value.trim().toLowerCase();
+        const plantilla = document.getElementById('wf-plantilla').value;
+        const dominio = document.getElementById('wf-dominio').value.trim().toLowerCase();
+        const descripcion = document.getElementById('wf-descripcion').value.trim();
+
+        if (!cliente || !nombre || !slug) return showToast('Completa Cliente, Nombre y Slug', 'error');
+        if (!/^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$/.test(slug)) return showToast('Slug invalido (solo minusculas, numeros y guiones)', 'error');
+
+        const res = await fetch('/.netlify/functions/web-factory', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${currentSession?.access_token || ''}`,
+                'X-NF-Background': 'true'
+            },
+            body: JSON.stringify({ action: 'create', cliente, nombre, slug, plantilla, dominio, descripcion })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || data.ok === false) {
+            return showToast('Error: ' + (data.error || 'No se pudo crear el sitio'), 'error');
+        }
+        showToast('Sitio en creacion. El estado se actualiza solo.');
+        cerrarWfModal();
+        cargarWebFactory();
+    }
+
+    async function actualizarEstadoWeb(id) {
+        try {
+            const res = await fetch('/.netlify/functions/web-factory', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${currentSession?.access_token || ''}`
+                },
+                body: JSON.stringify({ action: 'refresh_status', id })
+            });
+            const data = await res.json();
+            if (!data.ok) return showToast('Error: ' + (data.error || 'No se pudo actualizar'), 'error');
+            showToast('Estado actualizado');
+            cargarWebFactory();
+        } catch (err) {
+            showToast('Error: ' + err.message, 'error');
+        }
+    }
+
+    async function eliminarProyectoWeb(id, nombre) {
+        if (!confirm(`Eliminar "${nombre}" de Web Factory?\n\nSolo borra el registro de AUVRO. El repo de GitHub y el sitio de Netlify se conservan.`)) return;
+        const res = await fetch('/.netlify/functions/web-factory', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${currentSession?.access_token || ''}`
+            },
+            body: JSON.stringify({ action: 'delete', id })
+        });
+        const data = await res.json();
+        if (!data.ok) return showToast('Error: ' + (data.error || 'No se pudo eliminar'), 'error');
+        showToast('Registro eliminado');
+        cargarWebFactory();
+    }
+
+    async function copiarClone(url, slug) {
+        const cmd = `git clone ${url} ${slug}`;
+        try {
+            await navigator.clipboard.writeText(cmd);
+            showToast('Comando copiado');
+        } catch (_) {
+            prompt('Copia el comando:', cmd);
+        }
+    }
+
     function toggleSidebarDesktop() {
         const collapsed = document.body.classList.toggle('sidebar-collapsed');
         try { localStorage.setItem('auvrouter_sidebar_collapsed', collapsed ? '1' : '0'); } catch (_) {}
@@ -5723,7 +6002,7 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
         verificarAdmin();
         cargarAgentes();
         const vistaHash = (window.location.hash || '').replace('#', '').toLowerCase();
-        const vistasValidas = ['bandeja', 'agentes', 'crm', 'tokens', 'config', 'integraciones'];
+        const vistasValidas = ['bandeja', 'agentes', 'crm', 'tokens', 'config', 'integraciones', 'webfactory'];
         if (vistasValidas.includes(vistaHash)) mostrarVista(vistaHash);
         if (new URLSearchParams(window.location.search).has('pago')) {
             showToast('Pago registrado. Tu saldo se actualizo.', 'success');

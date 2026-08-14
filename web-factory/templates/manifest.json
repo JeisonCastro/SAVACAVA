@@ -1,0 +1,9 @@
+{
+  "templates": [
+    {
+      "slug": "landing",
+      "nombre": "Landing Empresarial",
+      "descripcion": "Sitio estático de una página, sin build. Ideal para presentar una marca o negocio. Soporta los tokens {{EMPRESA}} y {{DESCRIPCION}}."
+    }
+  ]
+}
