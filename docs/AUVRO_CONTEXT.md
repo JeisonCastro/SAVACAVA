@@ -915,6 +915,22 @@ Multiusuario.
 
 # Changelog de Cambios Técnicos
 
+## 13 Ago 2026 — PWA/móvil: fixes de estructura y mejoras
+
+- **Bottom nav móvil corregido** (dashboard.html): la barra inferior tenía 5 botones pero `grid-template-columns:repeat(4,1fr)` → el 5º (Ajustes) se cortaba. Ahora `repeat(5,1fr)`.
+- **Deep-links por hash funcionando** (dashboard.html): `verificarSesion()` ahora lee `location.hash` y llama `mostrarVista()` → los shortcuts del manifest (`#bandeja`, `#agentes`) y los deep-links de notificaciones abren la vista correcta.
+- **Apple touch icon a PNG** (dashboard.html): el fallback sin `sizes` apuntaba a SVG (iOS lo ignora) → ahora `/icon-180.png`.
+- **Auto-prompt de notificaciones eliminado** (dashboard.html): ya no se pide permiso solo con un `setTimeout` de 8s (Chrome/Android lo descartan sin gesto de usuario). Se pide al instalar la PWA o por acción del usuario.
+- **Background sync activado** (dashboard.html): `suscribirPush()` registra `reg.sync.register('sync-messages')` (try/catch) para que en Android instalado se refresque la bandeja.
+- **sw.js v10 (SW v2.0)**:
+  - `offline.html` se agrega al precache y es el fallback real de navegación (antes caía a `login.html`).
+  - Nueva `putPruned()`: poda la cache a las 100 entradas más recientes para evitar crecimiento ilimitado en móvil.
+  - `CACHE_NAME` `auvro-v9` → `auvro-v10` (activate limpia la cache vieja).
+- **manifest.json**: `screenshots` vacío (los archivos `/screenshot-*.png` no existían → referencias rotas en el diálogo de instalación); agregado `"id": "/dashboard.html"`.
+- **SW registrado en index.html y agentes.html** (antes solo dashboard/login): la primera visita a `/` o landings queda bajo control del SW.
+
+Pendiente opcional (no ejecutado): refactor de rendimiento — `dashboard.html` es un archivo único de ~9.4K líneas inline (CSS/JS ~1.2MB); dividirlo en estáticos cacheados mejoraría el primer render móvil.
+
 ## 13 Ago 2026 — Landing de agentes (agentes.html) actualizada con la información reciente
 
 - **Plan/héroe:** chip ahora dice "WhatsApp · CRM · Cobros con Wompi"; sub refleja atención web+WhatsApp, leads, Wompi y +500 apps; stats actualizadas (∞ agentes en Business, +500 apps vía Composio, 24/7).

@@ -3,6 +3,7 @@
   "short_name": "AUVRO",
   "description": "Plataforma SaaS de agentes de inteligencia artificial multicanal con WhatsApp y Web",
   "start_url": "/dashboard.html",
+  "id": "/dashboard.html",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait-primary",
@@ -72,22 +73,7 @@
       "purpose": "any maskable"
     }
   ],
-  "screenshots": [
-    {
-      "src": "/screenshot-mobile.png",
-      "sizes": "390x844",
-      "type": "image/png",
-      "form_factor": "narrow",
-      "label": "Dashboard AUVRO en móvil"
-    },
-    {
-      "src": "/screenshot-desktop.png",
-      "sizes": "1280x720",
-      "type": "image/png",
-      "form_factor": "wide",
-      "label": "Dashboard AUVRO en escritorio"
-    }
-  ],
+  "screenshots": [],
   "shortcuts": [
     {
       "name": "Bandeja de conversaciones",

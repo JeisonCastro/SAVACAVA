@@ -1,12 +1,14 @@
-/* ─── AUVRO Service Worker v1.0 ─────────────────────────────────────────── */
-const CACHE_NAME = 'auvro-v9';
+/* ─── AUVRO Service Worker v2.0 ─────────────────────────────────────────── */
+const CACHE_NAME = 'auvro-v10';
 const OFFLINE_URL = '/offline.html';
+const CACHE_MAX_ENTRIES = 100;
 
 /* Archivos que siempre se cachean en instalación */
 const PRECACHE_URLS = [
   '/',
   '/dashboard.html',
   '/login.html',
+  '/offline.html',
   '/manifest.json',
   '/icon-192.svg',
   '/icon-512.svg',
@@ -14,6 +16,19 @@ const PRECACHE_URLS = [
   'https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap',
   'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css'
 ];
+
+/* Guarda en cache y poda las entradas más antiguas si supera el límite */
+function putPruned(cache, request, response) {
+  return cache.put(request, response).then(() =>
+    cache.keys().then(keys => {
+      const extra = keys.length - CACHE_MAX_ENTRIES;
+      if (extra <= 0) return;
+      return Promise.all(
+        keys.slice(0, extra).map(key => cache.delete(key))
+      );
+    })
+  );
+}
 
 /* ─── INSTALL ────────────────────────────────────────────────────────────── */
 self.addEventListener('install', event => {
@@ -65,11 +80,11 @@ self.addEventListener('fetch', event => {
       fetch(request)
         .then(response => {
           const clone = response.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(request, clone));
+          caches.open(CACHE_NAME).then(cache => putPruned(cache, request, clone));
           return response;
         })
         .catch(() =>
-          caches.match(request).then(cached => cached || caches.match('/login.html'))
+          caches.match(request).then(cached => cached || caches.match(OFFLINE_URL))
         )
     );
     return;
@@ -87,7 +102,7 @@ self.addEventListener('fetch', event => {
         if (cached) return cached;
         return fetch(request).then(response => {
           const clone = response.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(request, clone));
+          caches.open(CACHE_NAME).then(cache => putPruned(cache, request, clone));
           return response;
         });
       })
@@ -102,7 +117,7 @@ self.addEventListener('fetch', event => {
         .then(response => {
           if (response && response.status === 200) {
             const clone = response.clone();
-            caches.open(CACHE_NAME).then(cache => cache.put(request, clone));
+            caches.open(CACHE_NAME).then(cache => putPruned(cache, request, clone));
           }
           return response;
         })

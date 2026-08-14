@@ -35,7 +35,7 @@
         <link rel="icon" type="image/svg+xml" href="/icon-192.svg">
 
         <!-- Apple Touch Icons -->
-        <link rel="apple-touch-icon" href="/icon-192.svg">
+        <link rel="apple-touch-icon" href="/icon-180.png">
         <link rel="apple-touch-icon" sizes="152x152" href="/icon-152.png">
         <link rel="apple-touch-icon" sizes="167x167" href="/icon-167.png">
         <link rel="apple-touch-icon" sizes="180x180" href="/icon-180.png">
@@ -3192,7 +3192,7 @@ body.light-mode .mob-toggle{
         height:66px;
         z-index:190;
         display:grid;
-        grid-template-columns:repeat(4,1fr);
+        grid-template-columns:repeat(5,1fr);
         gap:4px;
         padding:7px;
         border-radius:24px;
@@ -5722,6 +5722,9 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
         ]);
         verificarAdmin();
         cargarAgentes();
+        const vistaHash = (window.location.hash || '').replace('#', '').toLowerCase();
+        const vistasValidas = ['bandeja', 'agentes', 'crm', 'tokens', 'config', 'integraciones'];
+        if (vistasValidas.includes(vistaHash)) mostrarVista(vistaHash);
         if (new URLSearchParams(window.location.search).has('pago')) {
             showToast('Pago registrado. Tu saldo se actualizo.', 'success');
             history.replaceState({}, '', window.location.pathname);
@@ -8518,6 +8521,10 @@ async function suscribirPush() {
         console.log('[Push] Suscripcion guardada:', data);
         showToast('Notificaciones activadas correctamente');
 
+        try {
+            if ('sync' in reg) await reg.sync.register('sync-messages');
+        } catch (_) {}
+
     } catch (err) {
         console.error('[Push] Error al suscribir:', err);
         showToast(err.message || 'Error activando notificaciones', 'error');
@@ -8562,14 +8569,6 @@ window.addEventListener('appinstalled', () => {
     try { localStorage.setItem('auvro_pwa_installed', '1'); } catch(_) {}
     if (typeof showToast === 'function') showToast('AUVRO instalado en tu dispositivo ✓');
 });
-
-setTimeout(() => {
-    try {
-        if ('Notification' in window && Notification.permission === 'default') {
-            solicitarPermisosNotificacion();
-        }
-    } catch(_) {}
-}, 8000);
 
 
 

@@ -369,5 +369,12 @@ const obs = new IntersectionObserver((entries) => {
 document.querySelectorAll('.fade-up').forEach(el => obs.observe(el));
 </script>
   <script src="https://auvro.netlify.app/widget.js" data-id="21" data-name="Asistente AUVRO" data-greeting="¡Hola! Soy el asistente de AUVRO. ¿En qué te apoyo hoy? Cuéntame tu necesidad."></script>
+<script>
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(() => {});
+    });
+}
+</script>
 </body>
 </html>
