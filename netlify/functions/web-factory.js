@@ -336,11 +336,12 @@ async function actualizarProyecto(id, campos) {
 async function refrescarYGuardar(proyecto) {
     try {
         const estado = await consultarEstadoNetlify(proyecto);
+        const { deploy_error, ...campos } = estado;
         const nuevo = {
             ...proyecto,
-            ...estado,
+            ...campos,
             estado: estadoGeneral(estado.estado_deploy, proyecto.dominio, estado.dominio_estado),
-            error: estado.estado_deploy === 'error' ? (estado.deploy_error || 'El deploy fallo en Netlify') : null
+            error: estado.estado_deploy === 'error' ? (deploy_error || 'El deploy fallo en Netlify') : null
         };
         return await actualizarProyecto(proyecto.id, nuevo);
     } catch (err) {
