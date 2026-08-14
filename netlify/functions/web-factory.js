@@ -81,6 +81,21 @@ function validarDominio(dominio) {
     return /^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,63}$/i.test(dominio);
 }
 
+// WhatsApp a solo dígitos (para wa.me/<digitos>)
+function normalizarWhatsapp(num) {
+    if (!num) return '';
+    return String(num).replace(/\D/g, '');
+}
+
+// Saneo para contenido que se incrusta en las plantillas generadas
+function sanearTexto(v) {
+    return String(v ?? '').replace(/[<>]/g, '').trim();
+}
+
+function sanearUrlLogo(v) {
+    return String(v ?? '').replace(/["'<>]/g, '').trim();
+}
+
 // ── Helpers GitHub ──
 async function detalleErrorGitHub(res) {
     let detalle = '';
@@ -355,13 +370,19 @@ async function refrescarYGuardar(proyecto) {
 
 // ── Pipeline de creación (background) ──
 async function pipelineCrear(body, adminId) {
-    const { cliente, nombre, slug, plantilla, dominio, descripcion } = body;
+    const { cliente, nombre, slug, plantilla, dominio, descripcion, logo, slogan, whatsapp } = body;
 
     const plantillas = leerPlantillas();
     const plantillaElegida = plantillas.find(p => p.slug === plantilla) || plantillas[0];
     if (!plantillaElegida) throw new Error('No hay plantillas disponibles');
 
-    const valores = { EMPRESA: nombre, DESCRIPCION: descripcion || nombre };
+    const valores = {
+        EMPRESA: nombre,
+        DESCRIPCION: descripcion || nombre,
+        SLOGAN: sanearTexto(slogan),
+        LOGO: sanearUrlLogo(logo),
+        WHATSAPP: normalizarWhatsapp(whatsapp)
+    };
 
     // 1) Registrar en Supabase (estado: creando)
     const { data: fila, error: insError } = await supabase
@@ -369,6 +390,7 @@ async function pipelineCrear(body, adminId) {
         .insert({
             cliente, nombre, slug, plantilla: plantillaElegida.slug,
             descripcion: descripcion || null, dominio: dominio || null,
+            logo: valores.LOGO || null, slogan: valores.SLOGAN || null, whatsapp: valores.WHATSAPP || null,
             estado: 'creando', created_by: adminId
         })
         .select()
@@ -547,6 +569,9 @@ module.exports.helpers = {
     reemplazarTokens,
     validarSlug,
     validarDominio,
+    normalizarWhatsapp,
+    sanearTexto,
+    sanearUrlLogo,
     mapearEstadoDominio,
     mapearEstadoDeploy,
     estadoGeneral

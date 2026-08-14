@@ -1,6 +1,6 @@
 # {{EMPRESA}}
 
-Sitio generado con **Web Factory (AUVRO)**. Plantilla: `landing` (estática, sin build).
+Sitio generado con **Web Factory (AUVRO)**. Plantilla: `inmobiliaria` (estática, sin build).
 
 ## Deploy
 
@@ -16,7 +16,7 @@ Abre `index.html` en tu navegador. No requiere dependencias.
 
 ## Personalización
 
-Edita `index.html` y `styles.css` según la marca. Puedes reemplazar los textos
-marcados (`EMPRESA`, `DESCRIPCION`, `SLOGAN`, `LOGO`, `WHATSAPP`) y el correo de
-contacto en la sección `#contacto`. Si el logo o el número de WhatsApp quedan
+Edita `index.html` y `styles.css`. Reemplaza los textos marcados
+(`EMPRESA`, `DESCRIPCION`, `SLOGAN`, `LOGO`, `WHATSAPP`) y las propiedades
+destacadas (precio, sector, tipo). Si el logo o el número de WhatsApp quedan
 vacíos, el sitio se genera igual (esos elementos se ocultan solos).

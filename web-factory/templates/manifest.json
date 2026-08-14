@@ -3,7 +3,47 @@
     {
       "slug": "landing",
       "nombre": "Landing Empresarial",
-      "descripcion": "Sitio estático de una página, sin build. Ideal para presentar una marca o negocio. Soporta los tokens {{EMPRESA}} y {{DESCRIPCION}}."
+      "descripcion": "Sitio estático de una página, sin build. Ideal para presentar una marca o negocio. Tokens: {{EMPRESA}}, {{DESCRIPCION}}, {{SLOGAN}}, {{LOGO}}, {{WHATSAPP}}."
+    },
+    {
+      "slug": "restaurante",
+      "nombre": "Restaurante / Cafetería",
+      "descripcion": "Menú destacado, especialidades, horarios y reserva por WhatsApp. Tono cálido. Tokens: {{EMPRESA}}, {{DESCRIPCION}}, {{SLOGAN}}, {{LOGO}}, {{WHATSAPP}}."
+    },
+    {
+      "slug": "abogados",
+      "nombre": "Abogados / Bufete",
+      "descripcion": "Áreas de práctica, valores del bufete y agendamiento de consulta. Estilo serio (azul marino + dorado). Tokens: {{EMPRESA}}, {{DESCRIPCION}}, {{SLOGAN}}, {{LOGO}}, {{WHATSAPP}}."
+    },
+    {
+      "slug": "odontologia",
+      "nombre": "Odontología / Clínica dental",
+      "descripcion": "Tratamientos dentales, por qué elegirnos y agenda tu cita. Estilo fresco (celeste). Tokens: {{EMPRESA}}, {{DESCRIPCION}}, {{SLOGAN}}, {{LOGO}}, {{WHATSAPP}}."
+    },
+    {
+      "slug": "belleza",
+      "nombre": "Salón / Estética / Barbería",
+      "descripcion": "Servicios de belleza, estilos, precios y reserva por WhatsApp. Estilo elegante (rosa). Tokens: {{EMPRESA}}, {{DESCRIPCION}}, {{SLOGAN}}, {{LOGO}}, {{WHATSAPP}}."
+    },
+    {
+      "slug": "gimnasio",
+      "nombre": "Gimnasio / Fitness",
+      "descripcion": "Planes de membresía, horarios, entrenadores y prueba gratis. Estilo enérgico (negro + verde). Tokens: {{EMPRESA}}, {{DESCRIPCION}}, {{SLOGAN}}, {{LOGO}}, {{WHATSAPP}}."
+    },
+    {
+      "slug": "inmobiliaria",
+      "nombre": "Inmobiliaria / Propiedades",
+      "descripcion": "Tipos de propiedad, portafolio destacado y contacto con asesor. Estilo moderno (teal). Tokens: {{EMPRESA}}, {{DESCRIPCION}}, {{SLOGAN}}, {{LOGO}}, {{WHATSAPP}}."
+    },
+    {
+      "slug": "construccion",
+      "nombre": "Construcción / Obras",
+      "descripcion": "Servicios de obra, proyectos recientes y cotización. Estilo industrial (ámbar + grafito). Tokens: {{EMPRESA}}, {{DESCRIPCION}}, {{SLOGAN}}, {{LOGO}}, {{WHATSAPP}}."
+    },
+    {
+      "slug": "salud",
+      "nombre": "Salud / Clínica médica",
+      "descripcion": "Especialidades, equipo médico y agenda tu cita. Estilo clínico (teal). Tokens: {{EMPRESA}}, {{DESCRIPCION}}, {{SLOGAN}}, {{LOGO}}, {{WHATSAPP}}."
     }
   ]
 }

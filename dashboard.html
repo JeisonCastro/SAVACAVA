@@ -4172,6 +4172,14 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
         </nav>
 
         <div class="toast" id="toast"></div>
+
+        <!-- OVERLAY DE CARGA GLOBAL (guardar/crear) -->
+        <style>@keyframes auvroSpin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}</style>
+        <div id="loading-overlay" style="display:none;position:fixed;inset:0;background:rgba(2,6,23,.6);backdrop-filter:blur(2px);z-index:100000;align-items:center;justify-content:center;flex-direction:column;gap:.9rem">
+            <div style="width:46px;height:46px;border:4px solid rgba(255,255,255,.25);border-top-color:#2563eb;border-radius:50%;animation:auvroSpin .8s linear infinite"></div>
+            <div id="loading-overlay-msg" style="color:#fff;font-family:'Inter',sans-serif;font-weight:600;font-size:.9rem;text-align:center;max-width:80%">Procesando...</div>
+        </div>
+
         <div class="media-lightbox" id="media-lightbox"
             onclick="cerrarMediaLightbox()">
             <button class="media-lightbox-close"
@@ -5289,6 +5297,20 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
         el.textContent = text; el.className = 'msg ' + type;
     }
 
+    // ── OVERLAY DE CARGA GLOBAL ──
+    function mostrarOverlayCarga(msg) {
+        const ov = document.getElementById('loading-overlay');
+        if (!ov) return;
+        const el = document.getElementById('loading-overlay-msg');
+        if (el) el.textContent = msg || 'Procesando...';
+        ov.style.display = 'flex';
+    }
+
+    function ocultarOverlayCarga() {
+        const ov = document.getElementById('loading-overlay');
+        if (ov) ov.style.display = 'none';
+    }
+
 
         let notificacionesSonidoHabilitadas = false;
     let ultimoMensajeNotificadoId = null;
@@ -5558,16 +5580,21 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
         const amount = parseInt(input.value);
         if (!amount || amount <= 0) return showToast('Ingresa una cantidad valida', 'error');
 
-        const res = await fetch('/.netlify/functions/admin-data', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${currentSession?.access_token || ''}` },
-            body: JSON.stringify({ action: 'set_tokens', user_id: userId, amount })
-        });
-        const data = await res.json();
-        if (!data.ok) return showToast('Error: ' + (data.error || 'Desconocido'), 'error');
-        showToast(`+${amount.toLocaleString()} tokens agregados`);
-        cerrarAdminModal();
-        cargarAdmin();
+        mostrarOverlayCarga('Agregando tokens...');
+        try {
+            const res = await fetch('/.netlify/functions/admin-data', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${currentSession?.access_token || ''}` },
+                body: JSON.stringify({ action: 'set_tokens', user_id: userId, amount })
+            });
+            const data = await res.json();
+            if (!data.ok) return showToast('Error: ' + (data.error || 'Desconocido'), 'error');
+            showToast(`+${amount.toLocaleString()} tokens agregados`);
+            cerrarAdminModal();
+            cargarAdmin();
+        } finally {
+            ocultarOverlayCarga();
+        }
     }
 
     function abrirModalPlanUsuario(userId, nombre, currentPlanId) {
@@ -5595,16 +5622,21 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
 
     async function guardarPlanUsuario(userId) {
         const planId = document.getElementById('admin-plan-select').value || null;
-        const res = await fetch('/.netlify/functions/admin-data', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${currentSession?.access_token || ''}` },
-            body: JSON.stringify({ action: 'set_plan', user_id: userId, plan_id: planId })
-        });
-        const data = await res.json();
-        if (!data.ok) return showToast('Error: ' + (data.error || 'Desconocido'), 'error');
-        showToast('Plan actualizado');
-        cerrarAdminModal();
-        cargarAdmin();
+        mostrarOverlayCarga('Guardando plan...');
+        try {
+            const res = await fetch('/.netlify/functions/admin-data', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${currentSession?.access_token || ''}` },
+                body: JSON.stringify({ action: 'set_plan', user_id: userId, plan_id: planId })
+            });
+            const data = await res.json();
+            if (!data.ok) return showToast('Error: ' + (data.error || 'Desconocido'), 'error');
+            showToast('Plan actualizado');
+            cerrarAdminModal();
+            cargarAdmin();
+        } finally {
+            ocultarOverlayCarga();
+        }
     }
 
     function estadoBadge(estado) {
@@ -5677,16 +5709,21 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
         if (!nombre) return showToast('Nombre requerido', 'error');
         if (!agentes) return showToast('Limite de agentes requerido', 'error');
 
-        const res = await fetch('/.netlify/functions/admin-data', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${currentSession?.access_token || ''}` },
-            body: JSON.stringify({ action: 'create_plan', nombre, limite_agentes: agentes, precio })
-        });
-        const data = await res.json();
-        if (!data.ok) return showToast('Error: ' + (data.error || 'Desconocido'), 'error');
-        showToast('Plan creado');
-        cerrarAdminModal();
-        cargarAdmin();
+        mostrarOverlayCarga('Creando plan...');
+        try {
+            const res = await fetch('/.netlify/functions/admin-data', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${currentSession?.access_token || ''}` },
+                body: JSON.stringify({ action: 'create_plan', nombre, limite_agentes: agentes, precio })
+            });
+            const data = await res.json();
+            if (!data.ok) return showToast('Error: ' + (data.error || 'Desconocido'), 'error');
+            showToast('Plan creado');
+            cerrarAdminModal();
+            cargarAdmin();
+        } finally {
+            ocultarOverlayCarga();
+        }
     }
 
     function editarPlan(id, nombre, agentes, precio) {
@@ -5708,16 +5745,21 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
         const precio = parseInt(document.getElementById('plan-precio').value) || 0;
         if (!nombre || !agentes) return showToast('Completa todos los campos', 'error');
 
-        const res = await fetch('/.netlify/functions/admin-data', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${currentSession?.access_token || ''}` },
-            body: JSON.stringify({ action: 'update_plan', plan_id: id, nombre, limite_agentes: agentes, precio })
-        });
-        const data = await res.json();
-        if (!data.ok) return showToast('Error: ' + (data.error || 'Desconocido'), 'error');
-        showToast('Plan actualizado');
-        cerrarAdminModal();
-        cargarAdmin();
+        mostrarOverlayCarga('Actualizando plan...');
+        try {
+            const res = await fetch('/.netlify/functions/admin-data', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${currentSession?.access_token || ''}` },
+                body: JSON.stringify({ action: 'update_plan', plan_id: id, nombre, limite_agentes: agentes, precio })
+            });
+            const data = await res.json();
+            if (!data.ok) return showToast('Error: ' + (data.error || 'Desconocido'), 'error');
+            showToast('Plan actualizado');
+            cerrarAdminModal();
+            cargarAdmin();
+        } finally {
+            ocultarOverlayCarga();
+        }
     }
 
     async function eliminarPlan(id, nombre) {
@@ -5882,6 +5924,10 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
             <div class="field" style="margin-top:.8rem"><label>Plantilla</label><select id="wf-plantilla" style="width:100%;padding:8px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text)">${opciones}</select></div>
             <div class="field" style="margin-top:.8rem"><label>Dominio (opcional)</label><input type="text" id="wf-dominio" placeholder="Ej: elbueensabor.com" style="width:100%;padding:8px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text)"></div>
             <div class="field" style="margin-top:.8rem"><label>Descripcion (opcional)</label><input type="text" id="wf-descripcion" placeholder="Ej: Cocina criolla y atención familiar" style="width:100%;padding:8px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text)"></div>
+            <div class="field" style="margin-top:.8rem"><label>Slogan (opcional)</label><input type="text" id="wf-slogan" placeholder="Ej: Sabor casero que enamora" style="width:100%;padding:8px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text)"></div>
+            <div class="field" style="margin-top:.8rem"><label>Logo (URL de imagen, opcional)</label><input type="url" id="wf-logo" placeholder="Ej: https://tusitio.com/logo.png" style="width:100%;padding:8px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text)"></div>
+            <div class="field" style="margin-top:.8rem"><label>WhatsApp (opcional)</label><input type="tel" id="wf-whatsapp" placeholder="Ej: 573001234567" style="width:100%;padding:8px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text)"></div>
+            <p style="font-size:.72rem;color:var(--dim);margin-top:.5rem">Logo, slogan y WhatsApp aparecen en el sitio (el botón de WhatsApp se oculta si lo dejas vacío).</p>
             <button class="btn-main" style="width:100%;margin-top:1.2rem" onclick="crearProyectoWeb()">
                 <i class="fas fa-rocket" style="margin-right:.3rem"></i> Crear sitio
             </button>
@@ -5906,27 +5952,38 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
         const plantilla = document.getElementById('wf-plantilla').value;
         const dominio = document.getElementById('wf-dominio').value.trim().toLowerCase();
         const descripcion = document.getElementById('wf-descripcion').value.trim();
+        const slogan = document.getElementById('wf-slogan').value.trim();
+        const logo = document.getElementById('wf-logo').value.trim();
+        const whatsapp = document.getElementById('wf-whatsapp').value.trim();
 
         if (!cliente || !nombre || !slug) return showToast('Completa Cliente, Nombre y Slug', 'error');
         if (!/^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$/.test(slug)) return showToast('Slug invalido (solo minusculas, numeros y guiones)', 'error');
         if (!_wfEnv.github || !_wfEnv.netlify) return showToast('Faltan GITHUB_TOKEN / NETLIFY_AUTH_TOKEN en las variables de entorno de Netlify', 'error');
 
-        const res = await fetch('/.netlify/functions/web-factory', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${currentSession?.access_token || ''}`,
-                'X-NF-Background': 'true'
-            },
-            body: JSON.stringify({ action: 'create', cliente, nombre, slug, plantilla, dominio, descripcion })
-        });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok || data.ok === false) {
-            return showToast('Error: ' + (data.error || 'No se pudo crear el sitio'), 'error');
+        mostrarOverlayCarga('Creando sitio web...');
+        try {
+            const res = await fetch('/.netlify/functions/web-factory', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${currentSession?.access_token || ''}`,
+                    'X-NF-Background': 'true'
+                },
+                body: JSON.stringify({ action: 'create', cliente, nombre, slug, plantilla, dominio, descripcion, slogan, logo, whatsapp })
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok || data.ok === false) {
+                ocultarOverlayCarga();
+                return showToast('Error: ' + (data.error || 'No se pudo crear el sitio'), 'error');
+            }
+            ocultarOverlayCarga();
+            showToast('Sitio en creacion. El estado se actualiza solo.');
+            cerrarWfModal();
+            cargarWebFactory();
+        } catch (err) {
+            ocultarOverlayCarga();
+            showToast('Error: ' + err.message, 'error');
         }
-        showToast('Sitio en creacion. El estado se actualiza solo.');
-        cerrarWfModal();
-        cargarWebFactory();
     }
 
     async function actualizarEstadoWeb(id) {
@@ -6169,6 +6226,7 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
         const name = document.getElementById('create-name').value.trim();
         const prompt = document.getElementById('create-prompt').value.trim();
         if (!name || !prompt) return showMsg('create-msg', 'Por favor completa los campos', 'error');
+        mostrarOverlayCarga('Creando agente...');
         document.getElementById('create-loading').style.display = 'block';
         document.getElementById('create-msg').className = 'msg';
         try {
@@ -6200,6 +6258,7 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
             showMsg('create-msg', 'Error de conexion con el servidor', 'error');
         } finally {
             document.getElementById('create-loading').style.display = 'none';
+            ocultarOverlayCarga();
         }
     }
 
@@ -6407,11 +6466,18 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
             showMsg('lead-msg', 'Captura al menos un dato (nombre, teléfono o email)', 'error');
             return;
         }
-        const data = await llamarCRM('lead_guardar', payload);
-        if (!data.ok) { showMsg('lead-msg', data.error || 'Error guardando lead', 'error'); return; }
-        showMsg('lead-msg', 'Lead guardado', 'success');
-        cargarCRM();
-        setTimeout(cerrarLeadModal, 900);
+        mostrarOverlayCarga('Guardando lead...');
+        try {
+            const data = await llamarCRM('lead_guardar', payload);
+            if (!data.ok) { showMsg('lead-msg', data.error || 'Error guardando lead', 'error'); return; }
+            showMsg('lead-msg', 'Lead guardado', 'success');
+            cargarCRM();
+            setTimeout(cerrarLeadModal, 900);
+        } catch (err) {
+            showMsg('lead-msg', 'Error de conexion: ' + (err.message || 'desconocido'), 'error');
+        } finally {
+            ocultarOverlayCarga();
+        }
     }
 
     async function eliminarLead() {
@@ -6880,6 +6946,7 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
 
     async function guardarConfigCRM() {
         if (!crmAgenteSeleccionado) { showMsg('crm-config-msg', 'Selecciona un agente primero', 'error'); return; }
+        mostrarOverlayCarga('Guardando configuración...');
         const campos = Array.from(document.querySelectorAll('.cfg-campo-box:checked')).map(c => c.value);
         const notifyRecipients = (document.getElementById('cfg-notify-recipients').value || '')
             .split(',')
@@ -6900,16 +6967,22 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
             notify_recipients: notifyRecipients,
             notify_webhook_url: document.getElementById('cfg-notify-webhook').value.trim()
         };
-        const data = await llamarCRM('config', payload);
-        if (!data.ok) { showMsg('crm-config-msg', data.error || 'Error guardando', 'error'); return; }
-        const entry = (crmData.configs || []).find(c => String(c.agente_id) === String(crmAgenteSeleccionado));
-        if (entry) entry.config = data.config;
-        crmData.config = data.config;
-        const agenteLista = (crmData.agentes || []).find(a => String(a.id) === String(crmAgenteSeleccionado));
-        if (agenteLista) agenteLista.crm_activo = payload.crm_activo;
-        showMsg('crm-config-msg', 'Configuracion guardada correctamente', 'success');
-        renderCRM();
-        setTimeout(cerrarConfigCRM, 900);
+        try {
+            const data = await llamarCRM('config', payload);
+            if (!data.ok) { showMsg('crm-config-msg', data.error || 'Error guardando', 'error'); return; }
+            const entry = (crmData.configs || []).find(c => String(c.agente_id) === String(crmAgenteSeleccionado));
+            if (entry) entry.config = data.config;
+            crmData.config = data.config;
+            const agenteLista = (crmData.agentes || []).find(a => String(a.id) === String(crmAgenteSeleccionado));
+            if (agenteLista) agenteLista.crm_activo = payload.crm_activo;
+            showMsg('crm-config-msg', 'Configuracion guardada correctamente', 'success');
+            renderCRM();
+            setTimeout(cerrarConfigCRM, 900);
+        } catch (err) {
+            showMsg('crm-config-msg', 'Error de conexion: ' + (err.message || 'desconocido'), 'error');
+        } finally {
+            ocultarOverlayCarga();
+        }
     }
 
     // ── MODAL DE UPGRADE ──
@@ -7551,6 +7624,7 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
     async function guardarEdicion(btn) {
         const orig = btn.innerText;
         btn.disabled = true; btn.innerText = 'Guardando...';
+        mostrarOverlayCarga('Guardando cambios...');
         const id = parseInt(document.getElementById('edit-id').value);
         const crmActivo = document.getElementById('edit-crm-activo').checked;
         const crmCampos = Array.from(document.querySelectorAll('.crm-campo-edit-box:checked')).map(c => c.value);
@@ -7562,6 +7636,7 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
             crm_campos: crmCampos.length ? crmCampos : null
         }).eq('id', id);
         btn.disabled = false; btn.innerText = orig;
+        ocultarOverlayCarga();
         if (error) { showToast('Error: ' + error.message, 'error'); return; }
         if (crmActivo) {
             try {
@@ -7734,15 +7809,20 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
         const btn = document.getElementById('btn-guardar-perfil');
         const orig = btn.innerText;
         btn.disabled = true; btn.innerText = 'Guardando...';
-        const { error } = await _supabase.from('perfiles').update({
-            nombre: document.getElementById('cfg-nombre').value.trim(),
-            apellido: document.getElementById('cfg-apellido').value.trim(),
-            telefono: document.getElementById('cfg-telefono').value.trim()
-        }).eq('id', currentUser.id);
-        btn.disabled = false; btn.innerText = orig;
-        if (error) { showMsg('config-msg', 'Error: ' + error.message, 'error'); return; }
-        showMsg('config-msg', 'Perfil actualizado correctamente.', 'success');
-        showToast('Perfil guardado');
+        mostrarOverlayCarga('Guardando perfil...');
+        try {
+            const { error } = await _supabase.from('perfiles').update({
+                nombre: document.getElementById('cfg-nombre').value.trim(),
+                apellido: document.getElementById('cfg-apellido').value.trim(),
+                telefono: document.getElementById('cfg-telefono').value.trim()
+            }).eq('id', currentUser.id);
+            if (error) { showMsg('config-msg', 'Error: ' + error.message, 'error'); return; }
+            showMsg('config-msg', 'Perfil actualizado correctamente.', 'success');
+            showToast('Perfil guardado');
+        } finally {
+            btn.disabled = false; btn.innerText = orig;
+            ocultarOverlayCarga();
+        }
     }
 
     async function enviarResetPassword() {
