@@ -969,6 +969,15 @@ Multiusuario.
 
 # Changelog de Cambios Técnicos
 
+## 14 Ago 2026 — Web Factory: el agente puede crear demos de sitios en la conversación
+
+- **Nueva herramienta nativa `WEBFACTORY_CREAR_DEMO`**: los agentes ya pueden vender/crear la demo directamente en el chat. Aparece como una app **"Web Factory"** (tipo `nativo`, sin conexión Composio) en **Integraciones del agente** → checkbox *"Crear sitio web demo en la conversación"* (se guarda en `agente_tools` con toolkit `webfactory`).
+- **Solo admin**: `chat.js` valida `perfiles.is_admin` del dueño del agente antes de crear; si no es admin, responde que la opción no está disponible. (Pendiente de extensión a un plan Plus de pago.)
+- **Ejecución**: el agente recopila `nombre` (negocio), `cliente` y opcionalmente `plantilla`/`descripcion`/`slogan`/`logo`/`whatsapp`; `chat.js` llama al `pipelineCrear` de `web-factory.js` (ahora exportado en `helpers`) con `agente_id = targetID` → la demo embebe el widget del agente vendedor y sus dominios quedan autorizados automáticamente (lógica de `garantizarDominiosAgente`).
+- **Prompt**: `tool-workflows.js` incluye la definición `WEBFACTORY_CREAR_DEMO` y reglas de uso en `construirToolsDescription` (con la lista de plantillas: landing, restaurante, abogados, odontologia, belleza, gimnasio, inmobiliaria, construccion, salud, turismo).
+- **`toolsDisponibles`**: en `chat.js` se añade el set `TOOLKITS_NATIVOS = ['webfactory']` para que las herramientas nativas queden disponibles sin conexión Composio (el resto sigue requiriendo toolkit conectado).
+- **Nota de tiempo**: el pipeline se ejecuta sincrónico en el turno del chat (puede tardar ~5-15s en crear repo GitHub + site Netlify); el deploy continúa en background de Netlify.
+
 ## 14 Ago 2026 — Web Factory: agente de IA embebible en sitios generados
 
 - **Seguridad por dominio del agente automatizada (14 Ago)**: el widget de chat.js exige que el Origin del sitio embebido esté en `agentes_ia.dominios_permitidos`, así que ahora `web-factory.js` autoriza automáticamente el subdominio de Netlify (`<site>.netlify.app`) y el dominio personalizado (variantes `dominio` y `www.dominio`) en el agente del sitio: al crearlo (`pipelineCrear`) y de forma idempotente al listar (repara los sitios ya creados con `agente_id`). Esto elimina el error `403 Seguridad: Este agente no tiene dominios configurados / Este dominio no está autorizado`. Nuevos helpers exportados: `hostnameDeUrl`, `hostnamesParaSitio`, `garantizarDominiosAgente`.

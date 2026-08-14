@@ -21,6 +21,11 @@ const {
     crearPaymentLinkVenta,
     extraerDatosLead
 } = require('./crm-helper');
+const { pipelineCrear, validarSlug } = require('./web-factory').helpers;
+
+// Toolkits nativos (no requieren conexión Composio): la disponibilidad depende
+// solo de que la herramienta esté habilitada en agente_tools.
+const TOOLKITS_NATIVOS = new Set(['webfactory']);
 
 // ── HELPERS DE OPTIMIZACIÓN ─────────────────────────────────────────────────
 
@@ -226,6 +231,11 @@ function obtenerConexion(userConnections = [], toolkit = "") {
 
 function toolDisponible(toolsDisponibles = [], toolKey = "") {
     return (toolsDisponibles || []).some(t => t.tool_key === toolKey);
+}
+
+function slugificar(nombre = "") {
+    return String(nombre || "").toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 63);
 }
 
 function construirPayloadCalendarDesdeAction(actionData = {}, prompt = "") {
@@ -1118,6 +1128,7 @@ exports.handler = async (event) => {
         const toolkitsConectados = new Set((userConnections || []).map(c => normalizarToolkit(c.toolkit)));
 
         const toolsDisponibles = (agentTools || []).filter(t =>
+            TOOLKITS_NATIVOS.has(normalizarToolkit(t.toolkit)) ||
             toolkitsConectados.has(normalizarToolkit(t.toolkit))
         );
 
@@ -1514,6 +1525,85 @@ INSTRUCCIONES:
                 role: 'assistant',
                 content: respuestaIA,
                 metadata: { canal, action: 'CRM_GENERAR_PAGO', origen: 'ia' }
+            });
+            await actualizarResumenConversacion({ conversacionId: conversationIdFinal, ultimoMensaje: respuestaIA, ultimoRole: 'assistant', requiereAtencion: false });
+            return {
+                statusCode: 200,
+                headers,
+                body: JSON.stringify({
+                    respuesta: respuestaIA,
+                    tokens_consumidos: apiTokensUsados,
+                    conversation_id: conversationIdFinal
+                })
+            };
+        }
+
+        // ── WEB FACTORY: CREAR DEMO EN LA CONVERSACIÓN (solo admin) ──
+        // El agente vende la demo: recopila nombre/cliente/plantilla y genera el
+        // sitio con el pipeline de Web Factory. Solo el dueño del agente (admin)
+        // puede activarlo (integración en "Integraciones del agente").
+        if (actionPayload?.action === 'WEBFACTORY_CREAR_DEMO') {
+            try {
+                if (!toolDisponible(toolsDisponibles, 'WEBFACTORY_CREAR_DEMO')) {
+                    respuestaIA = "La integración de Web Factory (crear demos) no está habilitada para este agente. El dueño debe activarla en Integraciones del agente.";
+                } else {
+                    const { data: perfilAdmin, error: errAdmin } = await supabase
+                        .from('perfiles')
+                        .select('is_admin')
+                        .eq('id', agente.user_id)
+                        .maybeSingle();
+                    if (errAdmin) {
+                        respuestaIA = "No pude verificar los permisos para crear la demo. Intenta de nuevo.";
+                    } else if (!perfilAdmin?.is_admin) {
+                        respuestaIA = "Crear demos de sitios web solo está disponible para el administrador. Cuéntame qué negocio quieres mostrar y un asesor te guiará.";
+                    } else {
+                        const accData = actionPayload.data || {};
+                        const nombre = String(accData.nombre || accData.negocio || '').trim();
+                        const cliente = String(accData.cliente || accData.usuario || '').trim();
+                        let slug = String(accData.slug || '').trim().toLowerCase() || slugificar(nombre);
+                        const plantilla = String(accData.plantilla || '').trim().toLowerCase() || 'landing';
+
+                        if (!nombre || !cliente) {
+                            respuestaIA = "Para crear tu demo necesito el nombre del negocio y el tuyo. ¿Me los compartes?";
+                        } else if (!validarSlug(slug)) {
+                            respuestaIA = "El subdominio solicitado no es válido. Usa solo minúsculas, números y guiones. ¿Quieres que lo genere automáticamente?";
+                        } else {
+                            const bodyDemo = {
+                                cliente,
+                                nombre,
+                                slug,
+                                plantilla,
+                                descripcion: String(accData.descripcion || '').trim() || null,
+                                logo: String(accData.logo || '').trim() || null,
+                                slogan: String(accData.slogan || '').trim() || null,
+                                whatsapp: String(accData.whatsapp || '').trim() || null,
+                                dominio: null,
+                                agente_id: targetID
+                            };
+                            const resultado = await pipelineCrear(bodyDemo, agente.user_id);
+                            const { data: proyectoCreado } = await supabase
+                                .from('web_projects')
+                                .select('*')
+                                .eq('id', resultado.id)
+                                .maybeSingle();
+                            if (proyectoCreado?.netlify_url) {
+                                respuestaIA = `🎉 ¡Demo creada ${nombre}!\n\nTu sitio está disponible en:\n🔗 ${proyectoCreado.netlify_url}\n\nPuede tardar un par de minutos en terminar de desplegarse. ¿Te gustaría que ajuste algo del diseño o el contenido?`;
+                            } else {
+                                respuestaIA = `✅ La demo de ${nombre} quedó en proceso de creación. En unos minutos te comparto el enlace.`;
+                            }
+                        }
+                    }
+                }
+            } catch (err) {
+                console.error("web-factory demo error:", err);
+                respuestaIA = `Lo siento, no pude crear la demo en este momento: ${err.message || 'error interno'}. Verifica que GITHUB_TOKEN y NETLIFY_AUTH_TOKEN estén configurados en las variables de entorno.`;
+            }
+            await guardarMensajeConversacion({
+                conversacionId: conversationIdFinal,
+                agenteId: targetID,
+                role: 'assistant',
+                content: respuestaIA,
+                metadata: { canal, action: 'WEBFACTORY_CREAR_DEMO', origen: 'ia' }
             });
             await actualizarResumenConversacion({ conversacionId: conversationIdFinal, ultimoMensaje: respuestaIA, ultimoRole: 'assistant', requiereAtencion: false });
             return {

@@ -135,6 +135,14 @@ GMAIL_LIST_LABELS: {
     optionalFields: [],
     confirmationRequired: false,
     premiumCost: 100000
+  },
+  WEBFACTORY_CREAR_DEMO: {
+    toolkit: 'webfactory',
+    label: 'Crear una página web demo para el negocio del usuario (Web Factory)',
+    workflow: 'collect_confirm_execute',
+    requiredFields: ['nombre', 'cliente'],
+    optionalFields: ['slug', 'plantilla', 'descripcion', 'logo', 'slogan', 'whatsapp', 'dominio'],
+    confirmationRequired: true
   }
 };
 
@@ -832,6 +840,31 @@ Responde ÚNICAMENTE con este JSON (sin texto adicional, sin markdown):
 - Ejemplo: { "action": "SHOPIFY_GET_CHECKOUT_URL", "data": { "draftOrderId": "gid://shopify/DraftOrder/123456" } }
 - El link devuelto es seguro y redirige al checkout de Shopify
 - El usuario puede pagar con tarjeta de crédito/débito, PSE, etc.
+
+### Para WEBFACTORY_CREAR_DEMO:
+- Úsala cuando el usuario quiera una página web, sitio web, demo de su negocio, landing o página para su empresa
+- "nombre": nombre del negocio o empresa (ej: "Heladería El Buen Sabor")
+- "cliente": nombre de la persona/empresa que la solicita (ej: "María Pérez")
+- "plantilla": slug de la plantilla (opcional, default "landing"). Disponibles: landing, restaurante, abogados, odontologia, belleza, gimnasio, inmobiliaria, construccion, salud, turismo
+- "descripcion": qué hace o vende el negocio (opcional)
+- "slogan": frase corta del negocio (opcional)
+- "logo": URL de imagen del logo (opcional)
+- "whatsapp": número con código de país (opcional)
+- "slug": subdominio deseado (opcional; se genera solo desde el nombre)
+- NO pidas dominio personalizado ni código: la demo usa subdominio gratis de Netlify
+- Primero confirma con el usuario el nombre del negocio antes de crear
+- Esta herramienta SOLO funciona si el dueño del agente es admin y tiene la integración habilitada en "Integraciones del agente"
+- Ejemplo:
+{
+  "action": "WEBFACTORY_CREAR_DEMO",
+  "data": {
+    "nombre": "Heladería El Buen Sabor",
+    "cliente": "María Pérez",
+    "plantilla": "restaurante",
+    "descripcion": "Helados artesanales y batidos",
+    "whatsapp": "+573001234567"
+  }
+}
 
 ## FLUJO DE VENTA (IMPORTANTE):
 Cuando el usuario quiera comprar:

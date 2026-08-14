@@ -686,6 +686,7 @@ module.exports.helpers = {
     inyectarWidgetIndex,
     hostnameDeUrl,
     hostnamesParaSitio,
+    pipelineCrear,
     mapearEstadoDominio,
     mapearEstadoDeploy,
     estadoGeneral
