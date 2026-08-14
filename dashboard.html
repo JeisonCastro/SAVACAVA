@@ -5831,6 +5831,9 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
                     const errorInfo = p.error
                         ? `<div title="${wfEscapeHtml(p.error)}" style="font-size:.65rem;color:var(--red);margin-top:.15rem;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:help">${wfEscapeHtml(p.error)}</div>`
                         : '';
+                    const dominioErrorInfo = p.dominio_error
+                        ? `<div title="${wfEscapeHtml(p.dominio_error)}" style="font-size:.65rem;color:var(--yellow);margin-top:.15rem;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:help">dominio: ${wfEscapeHtml(p.dominio_error)}</div>`
+                        : '';
                     const dominioBadge = p.dominio
                         ? `<span class="badge ${p.dominio_estado === 'verificado' ? 'badge-green' : 'badge-yellow'}">${p.dominio_estado === 'verificado' ? 'verificado' : 'pendiente'}</span>`
                         : '—';
@@ -5844,7 +5847,7 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
                         <td><span class="badge ${b.cls}"${badgeError}>${b.label}</span>${estadoDeploy}${errorInfo}</td>
                         <td>${p.netlify_url ? `<a href="${wfEscapeHtml(p.netlify_url)}" target="_blank" rel="noopener" style="color:var(--accent)">ver sitio</a>` : '—'}</td>
                         <td>
-                            ${p.dominio ? `<div style="font-size:.82rem">${wfEscapeHtml(p.dominio)}</div>${dominioBadge}` : '—'}
+                            ${p.dominio ? `<div style="font-size:.82rem">${wfEscapeHtml(p.dominio)}</div>${dominioBadge}${dominioErrorInfo}` : '—'}
                         </td>
                         <td style="white-space:nowrap">
                             ${p.netlify_url ? `<button class="btn-small" onclick="window.open('${wfEscapeHtml(p.netlify_url)}','_blank')" style="font-size:.72rem;padding:4px 8px"><i class="fas fa-external-link"></i></button>` : ''}

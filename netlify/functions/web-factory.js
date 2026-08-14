@@ -252,20 +252,26 @@ function mapearEstadoDeploy(state) {
 }
 
 async function registrarDominio(siteId, dominio) {
-    const res = await fetch(`https://api.netlify.com/api/v1/sites/${siteId}/domains`, {
-        method: 'POST',
-        headers: netlifyHeaders(),
-        body: JSON.stringify({ hostname: dominio })
-    });
-    if (!res.ok) {
-        const e = await res.json().catch(() => ({}));
-        throw new Error('Netlify: no se pudo registrar el dominio: ' + (e.message || res.statusText));
+    const reintentos = 3;
+    for (let i = 1; i <= reintentos; i++) {
+        const res = await fetch(`https://api.netlify.com/api/v1/sites/${siteId}/domains`, {
+            method: 'POST',
+            headers: netlifyHeaders(),
+            body: JSON.stringify({ hostname: dominio })
+        });
+        if (res.ok) {
+            const data = await res.json();
+            return {
+                dominio_estado: mapearEstadoDominio(data.state),
+                ssl_estado: data && data.ssl && data.ssl.state ? (data.ssl.state === 'issued' ? 'activo' : 'pendiente') : null
+            };
+        }
+        if (i < reintentos) await new Promise(r => setTimeout(r, 2000 * i));
     }
-    const data = await res.json();
-    return {
-        dominio_estado: mapearEstadoDominio(data.state),
-        ssl_estado: data && data.ssl && data.ssl.state ? (data.ssl.state === 'issued' ? 'activo' : 'pendiente') : null
-    };
+    const e = await res.json().catch(() => ({}));
+    throw new Error(
+        `Netlify: no se pudo registrar el dominio "${dominio}" en el sitio ${siteId} (HTTP ${res.status}): ${e.message || res.statusText}`
+    );
 }
 
 async function consultarEstadoNetlify(proyecto) {
@@ -391,15 +397,14 @@ async function pipelineCrear(body, adminId) {
         throw err;
     }
 
-    // 4) Dominio opcional
+    // 4) Dominio opcional (si falla, no tumba el proyecto: se anota en dominio_error)
     if (dominio) {
         try {
             const { data: row } = await supabase.from('web_projects').select('*').eq('id', id).single();
             const dom = await registrarDominio(row.netlify_site_id, dominio);
-            await actualizarProyecto(id, { dominio_estado: dom.dominio_estado, ssl_estado: dom.ssl_estado });
+            await actualizarProyecto(id, { dominio_estado: dom.dominio_estado, ssl_estado: dom.ssl_estado, dominio_error: null });
         } catch (err) {
-            await actualizarProyecto(id, { estado: 'error', error: err.message });
-            throw err;
+            await actualizarProyecto(id, { dominio_error: err.message }).catch(() => {});
         }
     }
 
