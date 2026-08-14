@@ -981,6 +981,7 @@ Multiusuario.
 - **Migración `supabase/migrations/20260813_web_factory.sql` (NUEVO)**: tabla `web_projects` (idempotente, sin RLS — el backend usa service role).
 - **`dashboard.html`**: vista `view-webfactory` + `nav-webfactory` (solo admin, junto a `nav-admin`), stats, tabla de proyectos con badges de estado, modal crear sitio (Cliente/Nombre/Slug autogen/Plantilla/Dominio opcional), botones ver sitio/GitHub/copiar clone/actualizar estado/eliminar registro (no destructivo), y polling cada 8s mientras haya proyectos en curso. Se registró la vista en `mostrarVista()` y `verificarSesion()` (hash `#webfactory`).
 - **Verificación**: `node --check` de la función y del JS del dashboard, `manifest.json` válido, y 52 pruebas unitarias de la lógica (plantillas, tokens, slugs, dominios, mapeo de estados) — todas pasan.
+- **Robustez de GitHub (13 Ago)**: tras crear el repo, `esperarRepoListo` espera hasta 10s a que GitHub lo tenga listo; `fetchGitHub` reintenta blobs/árbol/commit/ref ante 404/409/429; el owner real se toma del repo creado (`repo.owner.login`) en vez de confiar ciegamente en `GITHUB_OWNER`; y los errores ahora incluyen el status HTTP + detalle de GitHub (p.ej. `GitHub: no se pudo subir el archivo README.md (HTTP 404): ...`).
 - **Pendiente (prueba E2E con credenciales reales)**: aplicar la migración en Supabase, configurar `GITHUB_TOKEN` + `NETLIFY_AUTH_TOKEN` en Netlify, y crear un proyecto de prueba para confirmar repo GitHub + site Netlify + deploy + URL + dominio end-to-end.
 
 ## 13 Ago 2026 — PWA/móvil: fixes de estructura y mejoras

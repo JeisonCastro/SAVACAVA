@@ -82,6 +82,34 @@ function validarDominio(dominio) {
 }
 
 // ── Helpers GitHub ──
+async function detalleErrorGitHub(res) {
+    let detalle = '';
+    try {
+        const e = await res.json();
+        detalle = Array.isArray(e.errors) ? e.errors.map(x => x.message).join('; ') : (e.message || '');
+    } catch (_) {}
+    return detalle;
+}
+
+async function esperarRepoListo(owner, slug, headers, maxMs = 10000) {
+    const inicio = Date.now();
+    while (Date.now() - inicio < maxMs) {
+        const res = await fetch(`https://api.github.com/repos/${owner}/${slug}`, { headers });
+        if (res.ok) return;
+        await new Promise(r => setTimeout(r, 600));
+    }
+}
+
+async function fetchGitHub(uri, opciones, reintentos = 3) {
+    let res = null;
+    for (let i = 1; i <= reintentos; i++) {
+        res = await fetch(uri, opciones);
+        if (res.ok || ![404, 409, 429].includes(res.status)) return res;
+        if (i < reintentos) await new Promise(r => setTimeout(r, 800 * i));
+    }
+    return res;
+}
+
 async function crearRepoGitHub(owner, slug, descripcion, archivos) {
     const token = process.env.GITHUB_TOKEN;
     if (!token) throw new Error('Falta la variable GITHUB_TOKEN en Netlify');
@@ -109,40 +137,47 @@ async function crearRepoGitHub(owner, slug, descripcion, archivos) {
         throw new Error('GitHub: ' + detalle);
     }
     const repo = await repoRes.json();
-    const base = `https://api.github.com/repos/${owner}/${slug}`;
+    const ownerReal = (repo && repo.owner && repo.owner.login) || owner;
+    const base = `https://api.github.com/repos/${ownerReal}/${slug}`;
+
+    await esperarRepoListo(ownerReal, slug, headers);
 
     const tree = [];
     for (const f of archivos) {
-        const blobRes = await fetch(`${base}/git/blobs`, {
+        const blobRes = await fetchGitHub(`${base}/git/blobs`, {
             method: 'POST',
             headers,
             body: JSON.stringify({ content: Buffer.from(f.content, 'utf8').toString('base64'), encoding: 'base64' })
         });
-        if (!blobRes.ok) throw new Error('GitHub: no se pudo subir el archivo ' + f.path);
+        if (!blobRes.ok) {
+            throw new Error(
+                `GitHub: no se pudo subir el archivo ${f.path} (HTTP ${blobRes.status}): ${await detalleErrorGitHub(blobRes) || blobRes.statusText}`
+            );
+        }
         const blob = await blobRes.json();
         tree.push({ path: f.path, mode: '100644', type: 'blob', sha: blob.sha });
     }
 
-    const treeRes = await fetch(`${base}/git/trees`, { method: 'POST', headers, body: JSON.stringify({ tree }) });
-    if (!treeRes.ok) throw new Error('GitHub: no se pudo crear el árbol de archivos');
+    const treeRes = await fetchGitHub(`${base}/git/trees`, { method: 'POST', headers, body: JSON.stringify({ tree }) });
+    if (!treeRes.ok) throw new Error(`GitHub: no se pudo crear el árbol de archivos (HTTP ${treeRes.status}): ${await detalleErrorGitHub(treeRes) || treeRes.statusText}`);
     const tdata = await treeRes.json();
 
-    const commitRes = await fetch(`${base}/git/commits`, {
+    const commitRes = await fetchGitHub(`${base}/git/commits`, {
         method: 'POST',
         headers,
         body: JSON.stringify({ message: 'Sitio inicial generado por Web Factory', tree: tdata.sha })
     });
-    if (!commitRes.ok) throw new Error('GitHub: no se pudo crear el commit inicial');
+    if (!commitRes.ok) throw new Error(`GitHub: no se pudo crear el commit inicial (HTTP ${commitRes.status}): ${await detalleErrorGitHub(commitRes) || commitRes.statusText}`);
     const cdata = await commitRes.json();
 
-    const refRes = await fetch(`${base}/git/refs`, {
+    const refRes = await fetchGitHub(`${base}/git/refs`, {
         method: 'POST',
         headers,
         body: JSON.stringify({ ref: 'refs/heads/main', sha: cdata.sha })
     });
-    if (!refRes.ok) throw new Error('GitHub: no se pudo crear la rama main');
+    if (!refRes.ok) throw new Error(`GitHub: no se pudo crear la rama main (HTTP ${refRes.status}): ${await detalleErrorGitHub(refRes) || refRes.statusText}`);
 
-    return repo;
+    return { repo, owner: ownerReal };
 }
 
 async function obtenerOwnerGitHub() {
@@ -314,12 +349,12 @@ async function pipelineCrear(body, adminId) {
         const owner = await obtenerOwnerGitHub();
         const archivos = leerArchivosPlantilla(plantillaElegida.slug)
             .map(f => ({ ...f, content: reemplazarTokens(f.content, valores) }));
-        const repo = await crearRepoGitHub(owner, slug, descripcion || plantillaElegida.nombre, archivos);
+        const { repo, owner: ownerReal } = await crearRepoGitHub(owner, slug, descripcion || plantillaElegida.nombre, archivos);
         await actualizarProyecto(id, {
-            github_owner: owner,
+            github_owner: ownerReal,
             github_repo: slug,
             github_url: repo.html_url,
-            clone_url: repo.clone_url || `https://github.com/${owner}/${slug}.git`,
+            clone_url: repo.clone_url || `https://github.com/${ownerReal}/${slug}.git`,
             estado: 'configurando'
         });
     } catch (err) {
