@@ -915,6 +915,16 @@ Multiusuario.
 
 # Changelog de Cambios Técnicos
 
+## 13 Ago 2026 — Landing de agentes (agentes.html) actualizada con la información reciente
+
+- **Plan/héroe:** chip ahora dice "WhatsApp · CRM · Cobros con Wompi"; sub refleja atención web+WhatsApp, leads, Wompi y +500 apps; stats actualizadas (∞ agentes en Business, +500 apps vía Composio, 24/7).
+- **Casos de uso:** "Atención 24/7" ahora incluye WhatsApp; "Vendedor inteligente" menciona link de pago Wompi (tarjeta/PSE/Nequi); se añadió el caso "CRM de ventas" (captura de leads + notificaciones pre/post-pago).
+- **Cómo funciona:** paso 3 "Conecta tus canales" (widget web o número de WhatsApp); paso 4 menciona cobros con Wompi.
+- **Integraciones activas:** WhatsApp, Wompi y Shopify se marcan como disponibles ahora (además de Google Calendar/Gmail/Drive). Se retiraron Supabase/HubSpot de la lista visible.
+- **Planes (según dashboard/admin):** Free 1 agente $900/mes · Starter 3 agentes $30.900/mes · Pro 10 agentes $82.500/mes (Popular) · Business ilimitados $206.400/mes. Se eliminó el plan Custom de la grilla.
+- **Packs de tokens mencionados:** 100K $6.100 · 500K $21.600 · 1M $37.000 COP (fuente: vista "Tokens y Planes" del dashboard).
+- **Número WhatsApp confirmado por el usuario:** 573115062661 (se mantiene; el 573115364647 del dashboard es para upgrades, no para la landing).
+
 ## 8 Ago 2026 — Fix + optimización bandeja (mensajes duplicados, selects y realtime)
 
 ### 1) Mensajes duplicados en el flujo de IMAGEN (WhatsApp + IA vision)
