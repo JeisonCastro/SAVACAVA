@@ -96,6 +96,29 @@ function sanearUrlLogo(v) {
     return String(v ?? '').replace(/["'<>]/g, '').trim();
 }
 
+// ── Widget de agente IA (embebible) ──
+// Genera el snippet que el sitio generado carga de auvro.netlify.app/widget.js.
+// Escape estricto de atributos para no romper el HTML generado.
+function escaparAttr(v) {
+    return String(v ?? '').replace(/["'<>&]/g, '');
+}
+
+function crearSnippetAgente(agenteId, agente) {
+    const id = String(agenteId ?? '').trim();
+    if (!id) return '';
+    let attrs = `data-id="${escaparAttr(id)}"`;
+    const nombre = (agente && agente.nombre_agente) || (agente && agente.name);
+    if (nombre) attrs += ` data-name="${escaparAttr(nombre)}"`;
+    return `<script src="https://auvro.netlify.app/widget.js" ${attrs}><\/script>`;
+}
+
+// Inyecta el widget justo antes de </body> en el HTML generado (solo si viene snippet).
+function inyectarWidgetIndex(html, snippet) {
+    if (!snippet) return html;
+    if (!/<\/body>/i.test(html)) return html + snippet;
+    return html.replace(/<\/body>/i, snippet + '\n</body>');
+}
+
 // ── Helpers GitHub ──
 async function detalleErrorGitHub(res) {
     let detalle = '';
@@ -370,11 +393,26 @@ async function refrescarYGuardar(proyecto) {
 
 // ── Pipeline de creación (background) ──
 async function pipelineCrear(body, adminId) {
-    const { cliente, nombre, slug, plantilla, dominio, descripcion, logo, slogan, whatsapp } = body;
+    const { cliente, nombre, slug, plantilla, dominio, descripcion, logo, slogan, whatsapp, agente_id } = body;
 
     const plantillas = leerPlantillas();
     const plantillaElegida = plantillas.find(p => p.slug === plantilla) || plantillas[0];
     if (!plantillaElegida) throw new Error('No hay plantillas disponibles');
+
+    // Agente IA opcional: se valida ANTES de insertar (debe existir y pertenecer al admin).
+    let agenteRow = null;
+    if (agente_id) {
+        const { data: ag, error: agErr } = await supabase
+            .from('agentes_ia')
+            .select('id, nombre_agente, prompt_sistema')
+            .eq('id', Number(agente_id))
+            .eq('user_id', adminId)
+            .maybeSingle();
+        if (agErr) throw new Error('Error al validar el agente: ' + (agErr.message || agErr));
+        if (!ag) throw new Error('El agente de IA seleccionado no existe o no es tuyo');
+        agenteRow = ag;
+    }
+    const snippetAgente = crearSnippetAgente(agente_id, agenteRow);
 
     const valores = {
         EMPRESA: nombre,
@@ -391,6 +429,7 @@ async function pipelineCrear(body, adminId) {
             cliente, nombre, slug, plantilla: plantillaElegida.slug,
             descripcion: descripcion || null, dominio: dominio || null,
             logo: valores.LOGO || null, slogan: valores.SLOGAN || null, whatsapp: valores.WHATSAPP || null,
+            agente_id: agenteRow ? agenteRow.id : null,
             estado: 'creando', created_by: adminId
         })
         .select()
@@ -406,7 +445,11 @@ async function pipelineCrear(body, adminId) {
     try {
         const owner = await obtenerOwnerGitHub();
         const archivos = leerArchivosPlantilla(plantillaElegida.slug)
-            .map(f => ({ ...f, content: reemplazarTokens(f.content, valores) }));
+            .map(f => {
+                let content = reemplazarTokens(f.content, valores);
+                if (f.path === 'index.html') content = inyectarWidgetIndex(content, snippetAgente);
+                return { ...f, content };
+            });
         datosRepo = await crearRepoGitHub(owner, slug, descripcion || plantillaElegida.nombre, archivos);
         await actualizarProyecto(id, {
             github_owner: datosRepo.owner,
@@ -572,6 +615,8 @@ module.exports.helpers = {
     normalizarWhatsapp,
     sanearTexto,
     sanearUrlLogo,
+    crearSnippetAgente,
+    inyectarWidgetIndex,
     mapearEstadoDominio,
     mapearEstadoDeploy,
     estadoGeneral

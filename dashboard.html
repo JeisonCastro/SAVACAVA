@@ -5886,7 +5886,7 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
                             <div style="font-weight:600">${wfEscapeHtml(p.nombre)}</div>
                             <div style="color:var(--dim);font-size:.75rem">${wfEscapeHtml(p.slug)}</div>
                         </td>
-                        <td><span class="badge badge-accent">${wfEscapeHtml(p.plantilla || 'landing')}</span></td>
+                        <td><span class="badge badge-accent">${wfEscapeHtml(p.plantilla || 'landing')}</span>${p.agente_id ? ' <span class="badge" title="Chat de IA embebido en el sitio">🤖 IA</span>' : ''}</td>
                         <td><span class="badge ${b.cls}"${badgeError}>${b.label}</span>${estadoDeploy}${errorInfo}</td>
                         <td>${p.netlify_url ? `<a href="${wfEscapeHtml(p.netlify_url)}" target="_blank" rel="noopener" style="color:var(--accent)">ver sitio</a>` : '—'}</td>
                         <td>
@@ -5916,18 +5916,30 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
         const opciones = (_wfPlantillas.length ? _wfPlantillas : [{ slug: 'landing', nombre: 'Landing Empresarial', descripcion: '' }])
             .map((t, i) => `<option value="${wfEscapeHtml(t.slug)}"${i === 0 ? ' selected' : ''}>${wfEscapeHtml(t.nombre)}</option>`)
             .join('');
+        const opcionesAgentes = (agentes.length ? agentes : [])
+            .map(a => `<option value="${a.id}">${wfEscapeHtml(a.name)}</option>`)
+            .join('');
         document.getElementById('wf-modal-title').textContent = 'Nuevo sitio web';
         document.getElementById('wf-modal-body').innerHTML = `
-            <div class="field"><label>Cliente</label><input type="text" id="wf-cliente" placeholder="Ej: Restaurante El Buen Sabor" style="width:100%;padding:8px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text)"></div>
-            <div class="field" style="margin-top:.8rem"><label>Nombre del sitio</label><input type="text" id="wf-nombre" oninput="wfAutogenSlug()" placeholder="Ej: Restaurante El Buen Sabor" style="width:100%;padding:8px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text)"></div>
-            <div class="field" style="margin-top:.8rem"><label>Slug (subdominio/repo)</label><input type="text" id="wf-slug" oninput="_wfSlugAuto=false" placeholder="Ej: el-buen-sabor" style="width:100%;padding:8px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text)"></div>
-            <div class="field" style="margin-top:.8rem"><label>Plantilla</label><select id="wf-plantilla" style="width:100%;padding:8px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text)">${opciones}</select></div>
-            <div class="field" style="margin-top:.8rem"><label>Dominio (opcional)</label><input type="text" id="wf-dominio" placeholder="Ej: elbueensabor.com" style="width:100%;padding:8px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text)"></div>
-            <div class="field" style="margin-top:.8rem"><label>Descripcion (opcional)</label><input type="text" id="wf-descripcion" placeholder="Ej: Cocina criolla y atención familiar" style="width:100%;padding:8px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text)"></div>
-            <div class="field" style="margin-top:.8rem"><label>Slogan (opcional)</label><input type="text" id="wf-slogan" placeholder="Ej: Sabor casero que enamora" style="width:100%;padding:8px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text)"></div>
-            <div class="field" style="margin-top:.8rem"><label>Logo (URL de imagen, opcional)</label><input type="url" id="wf-logo" placeholder="Ej: https://tusitio.com/logo.png" style="width:100%;padding:8px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text)"></div>
-            <div class="field" style="margin-top:.8rem"><label>WhatsApp (opcional)</label><input type="tel" id="wf-whatsapp" placeholder="Ej: 573001234567" style="width:100%;padding:8px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text)"></div>
-            <p style="font-size:.72rem;color:var(--dim);margin-top:.5rem">Logo, slogan y WhatsApp aparecen en el sitio (el botón de WhatsApp se oculta si lo dejas vacío).</p>
+            <style>
+                .wf-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: .8rem; margin-top: .6rem; }
+                .wf-field label { display: block; font-size: .78rem; font-weight: 600; color: var(--dim); margin-bottom: .3rem; }
+                .wf-field input, .wf-field select { width: 100%; padding: 8px; border: 1px solid var(--border2); border-radius: 8px; background: var(--bg); color: var(--text); }
+                @media (max-width: 600px) { .wf-grid { grid-template-columns: 1fr; } }
+            </style>
+            <div class="wf-grid">
+                <div class="wf-field"><label>Cliente</label><input type="text" id="wf-cliente" placeholder="Ej: Restaurante El Buen Sabor"></div>
+                <div class="wf-field"><label>Nombre del sitio</label><input type="text" id="wf-nombre" oninput="wfAutogenSlug()" placeholder="Ej: Restaurante El Buen Sabor"></div>
+                <div class="wf-field"><label>Slug (subdominio/repo)</label><input type="text" id="wf-slug" oninput="_wfSlugAuto=false" placeholder="Ej: el-buen-sabor"></div>
+                <div class="wf-field"><label>Plantilla</label><select id="wf-plantilla">${opciones}</select></div>
+                <div class="wf-field"><label>Dominio (opcional)</label><input type="text" id="wf-dominio" placeholder="Ej: elbueensabor.com"></div>
+                <div class="wf-field"><label>Descripcion (opcional)</label><input type="text" id="wf-descripcion" placeholder="Ej: Cocina criolla y atención familiar"></div>
+                <div class="wf-field"><label>Slogan (opcional)</label><input type="text" id="wf-slogan" placeholder="Ej: Sabor casero que enamora"></div>
+                <div class="wf-field"><label>Logo (URL de imagen, opcional)</label><input type="url" id="wf-logo" placeholder="Ej: https://tusitio.com/logo.png"></div>
+                <div class="wf-field"><label>WhatsApp (opcional)</label><input type="tel" id="wf-whatsapp" placeholder="Ej: 573001234567"></div>
+                <div class="wf-field"><label>Agente de IA (opcional)</label><select id="wf-agente"><option value="">Sin agente de IA</option>${opcionesAgentes}</select></div>
+            </div>
+            <p style="font-size:.72rem;color:var(--dim);margin-top:.6rem">Logo, slogan y WhatsApp aparecen en el sitio (el botón de WhatsApp se oculta si lo dejas vacío). Si eliges un agente, su chat de IA se incrusta en la página para atender a los visitantes.</p>
             <button class="btn-main" style="width:100%;margin-top:1.2rem" onclick="crearProyectoWeb()">
                 <i class="fas fa-rocket" style="margin-right:.3rem"></i> Crear sitio
             </button>
@@ -5955,6 +5967,7 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
         const slogan = document.getElementById('wf-slogan').value.trim();
         const logo = document.getElementById('wf-logo').value.trim();
         const whatsapp = document.getElementById('wf-whatsapp').value.trim();
+        const agenteId = document.getElementById('wf-agente') ? document.getElementById('wf-agente').value.trim() : '';
 
         if (!cliente || !nombre || !slug) return showToast('Completa Cliente, Nombre y Slug', 'error');
         if (!/^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$/.test(slug)) return showToast('Slug invalido (solo minusculas, numeros y guiones)', 'error');
@@ -5969,7 +5982,7 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
                     'Authorization': `Bearer ${currentSession?.access_token || ''}`,
                     'X-NF-Background': 'true'
                 },
-                body: JSON.stringify({ action: 'create', cliente, nombre, slug, plantilla, dominio, descripcion, slogan, logo, whatsapp })
+                body: JSON.stringify({ action: 'create', cliente, nombre, slug, plantilla, dominio, descripcion, slogan, logo, whatsapp, agente_id: agenteId || null })
             });
             const data = await res.json().catch(() => ({}));
             if (!res.ok || data.ok === false) {

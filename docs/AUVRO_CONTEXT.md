@@ -632,7 +632,7 @@ Acciones: `list` (proyectos + plantillas), `get`, `refresh_status` (consulta dep
 - Secretos: `GITHUB_TOKEN` (scopes repo+user), `NETLIFY_AUTH_TOKEN` y opcional `GITHUB_OWNER` — SOLO en variables de entorno de Netlify, nunca en el repo/JS/HTML/Supabase.
 - Dominio: se registra vía API de Netlify pero el DNS lo configura el cliente manualmente. `dominio_estado` (pendiente/verificado) y `ssl_estado` se muestran en el panel.
 - El `delete` es no destructivo (avisa al admin que repo/site de GitHub/Netlify se conservan).
-- Migración: `supabase/migrations/20260813_web_factory.sql` (tabla `web_projects`) y `20260814_web_factory_personalizacion.sql` (columnas `logo`, `slogan`, `whatsapp`). Aplicar en Supabase antes de probar.
+- Migración: `supabase/migrations/20260813_web_factory.sql` (tabla `web_projects`), `20260814_web_factory_personalizacion.sql` (columnas `logo`, `slogan`, `whatsapp`) y `20260814_web_factory_agente_ia.sql` (columna `agente_id`). Aplicar en Supabase antes de probar.
 
 Integraciones Actuales
 Supabase
@@ -968,6 +968,14 @@ Multiusuario.
 ---
 
 # Changelog de Cambios Técnicos
+
+## 14 Ago 2026 — Web Factory: agente de IA embebible en sitios generados
+
+- **Formulario a 2 columnas**: el modal de crear sitio ahora usa grid de 2 columnas (1 en móvil) sin cambiar ids ni comportamiento; se añadió el campo **Agente de IA** (select con los agentes del admin, opcional).
+- **Backend `web-factory.js`**: `pipelineCrear` valida que el `agente_id` exista y pertenezca al admin (antes de insertar), guarda `web_projects.agente_id` e inyecta el widget `<script src="https://auvro.netlify.app/widget.js" data-id=... data-name=...>` justo antes de `</body>` del `index.html` generado. Nuevos helpers exportados: `crearSnippetAgente`, `inyectarWidgetIndex` (escape estricto de atributos).
+- **Migración `supabase/migrations/20260814_web_factory_agente_ia.sql` (NUEVO)**: columna `agente_id bigint` en `web_projects` (idempotente). Aplicar en Supabase.
+- **Panel**: la tabla de sitios muestra el badge `🤖 IA` en filas con agente embebido.
+- **Verificación**: harness con pruebas de snippet/inyección (todas pasan) + `node --check` de la función y del JS del dashboard.
 
 ## 13 Ago 2026 — Web Factory Fase 1 (crear sitios web para clientes)
 
