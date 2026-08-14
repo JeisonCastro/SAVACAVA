@@ -126,7 +126,7 @@ async function crearRepoGitHub(owner, slug, descripcion, archivos) {
             name: slug,
             private: true,
             description: descripcion || 'Sitio generado con Web Factory (AUVRO)',
-            auto_init: false,
+            auto_init: true,
             has_issues: true,
             has_wiki: false
         })
@@ -138,9 +138,18 @@ async function crearRepoGitHub(owner, slug, descripcion, archivos) {
     }
     const repo = await repoRes.json();
     const ownerReal = (repo && repo.owner && repo.owner.login) || owner;
+    const rama = (repo && repo.default_branch) || 'main';
     const base = `https://api.github.com/repos/${ownerReal}/${slug}`;
 
     await esperarRepoListo(ownerReal, slug, headers);
+
+    // La rama default ya existe (la creó auto_init con un commit mínimo).
+    const refRes = await fetchGitHub(`${base}/git/ref/heads/${rama}`, { headers });
+    if (!refRes.ok) throw new Error(`GitHub: no se pudo leer la rama ${rama} (HTTP ${refRes.status}): ${await detalleErrorGitHub(refRes) || refRes.statusText}`);
+    const refData = await refRes.json();
+    const headRes = await fetchGitHub(`${base}/git/commits/${refData.object.sha}`, { headers });
+    if (!headRes.ok) throw new Error(`GitHub: no se pudo leer el commit inicial (HTTP ${headRes.status}): ${await detalleErrorGitHub(headRes) || headRes.statusText}`);
+    const headCommit = await headRes.json();
 
     const tree = [];
     for (const f of archivos) {
@@ -158,26 +167,34 @@ async function crearRepoGitHub(owner, slug, descripcion, archivos) {
         tree.push({ path: f.path, mode: '100644', type: 'blob', sha: blob.sha });
     }
 
-    const treeRes = await fetchGitHub(`${base}/git/trees`, { method: 'POST', headers, body: JSON.stringify({ tree }) });
+    const treeRes = await fetchGitHub(`${base}/git/trees`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ tree, base_tree: headCommit.tree.sha })
+    });
     if (!treeRes.ok) throw new Error(`GitHub: no se pudo crear el árbol de archivos (HTTP ${treeRes.status}): ${await detalleErrorGitHub(treeRes) || treeRes.statusText}`);
     const tdata = await treeRes.json();
 
     const commitRes = await fetchGitHub(`${base}/git/commits`, {
         method: 'POST',
         headers,
-        body: JSON.stringify({ message: 'Sitio inicial generado por Web Factory', tree: tdata.sha })
+        body: JSON.stringify({
+            message: 'Sitio generado por Web Factory',
+            tree: tdata.sha,
+            parents: [refData.object.sha]
+        })
     });
-    if (!commitRes.ok) throw new Error(`GitHub: no se pudo crear el commit inicial (HTTP ${commitRes.status}): ${await detalleErrorGitHub(commitRes) || commitRes.statusText}`);
+    if (!commitRes.ok) throw new Error(`GitHub: no se pudo crear el commit (HTTP ${commitRes.status}): ${await detalleErrorGitHub(commitRes) || commitRes.statusText}`);
     const cdata = await commitRes.json();
 
-    const refRes = await fetchGitHub(`${base}/git/refs`, {
-        method: 'POST',
+    const refUpdate = await fetchGitHub(`${base}/git/refs/heads/${rama}`, {
+        method: 'PATCH',
         headers,
-        body: JSON.stringify({ ref: 'refs/heads/main', sha: cdata.sha })
+        body: JSON.stringify({ sha: cdata.sha, force: true })
     });
-    if (!refRes.ok) throw new Error(`GitHub: no se pudo crear la rama main (HTTP ${refRes.status}): ${await detalleErrorGitHub(refRes) || refRes.statusText}`);
+    if (!refUpdate.ok) throw new Error(`GitHub: no se pudo actualizar la rama ${rama} (HTTP ${refUpdate.status}): ${await detalleErrorGitHub(refUpdate) || refUpdate.statusText}`);
 
-    return { repo, owner: ownerReal };
+    return { repo, owner: ownerReal, branch: rama };
 }
 
 async function obtenerOwnerGitHub() {
@@ -199,12 +216,12 @@ function netlifyHeaders() {
     return { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
 }
 
-async function crearSitioNetlify(owner, slug) {
+async function crearSitioNetlify(owner, slug, branch = 'main') {
     const res = await fetch('https://api.netlify.com/api/v1/sites', {
         method: 'POST',
         headers: netlifyHeaders(),
         body: JSON.stringify({
-            repo: { provider: 'github', repo: `${owner}/${slug}`, branch: 'main', private: true, cmd: '', dir: '' }
+            repo: { provider: 'github', repo: `${owner}/${slug}`, branch, private: true, cmd: '', dir: '' }
         })
     });
     if (!res.ok) {
@@ -349,10 +366,11 @@ async function pipelineCrear(body, adminId) {
         const owner = await obtenerOwnerGitHub();
         const archivos = leerArchivosPlantilla(plantillaElegida.slug)
             .map(f => ({ ...f, content: reemplazarTokens(f.content, valores) }));
-        const { repo, owner: ownerReal } = await crearRepoGitHub(owner, slug, descripcion || plantillaElegida.nombre, archivos);
+        const { repo, owner: ownerReal, branch } = await crearRepoGitHub(owner, slug, descripcion || plantillaElegida.nombre, archivos);
         await actualizarProyecto(id, {
             github_owner: ownerReal,
             github_repo: slug,
+            default_branch: branch || 'main',
             github_url: repo.html_url,
             clone_url: repo.clone_url || `https://github.com/${ownerReal}/${slug}.git`,
             estado: 'configurando'
@@ -365,7 +383,7 @@ async function pipelineCrear(body, adminId) {
     // 3) Site en Netlify enlazado al repo + deploy inicial
     try {
         const { data: row } = await supabase.from('web_projects').select('*').eq('id', id).single();
-        const sitio = await crearSitioNetlify(row.github_owner, slug);
+        const sitio = await crearSitioNetlify(row.github_owner, slug, row.default_branch || 'main');
         await actualizarProyecto(id, { netlify_site_id: sitio.site_id, netlify_url: sitio.url, estado: 'deploying' });
         await dispararBuild(sitio.site_id);
     } catch (err) {
