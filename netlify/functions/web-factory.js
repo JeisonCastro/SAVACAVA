@@ -217,13 +217,20 @@ function netlifyHeaders() {
 }
 
 async function crearSitioNetlify(owner, slug, branch = 'main') {
-    const res = await fetch('https://api.netlify.com/api/v1/sites', {
-        method: 'POST',
-        headers: netlifyHeaders(),
-        body: JSON.stringify({
-            repo: { provider: 'github', repo: `${owner}/${slug}`, branch, private: true, cmd: '', dir: '' }
-        })
-    });
+    const repoBody = { provider: 'github', repo: `${owner}/${slug}`, branch, private: true, cmd: '', dir: '' };
+    const intento = async (conNombre) => {
+        return await fetch('https://api.netlify.com/api/v1/sites', {
+            method: 'POST',
+            headers: netlifyHeaders(),
+            body: JSON.stringify(conNombre ? { name: slug, repo: repoBody } : { repo: repoBody })
+        });
+    };
+
+    let res = await intento(true);
+    if (res.status === 422) {
+        // el subdominio slug.netlify.app ya está tomado: Netlify genera uno aleatorio
+        res = await intento(false);
+    }
     if (!res.ok) {
         const e = await res.json().catch(() => ({}));
         throw new Error('Netlify: ' + (e.message || res.statusText));
