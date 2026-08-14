@@ -4836,6 +4836,10 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
                 </div>
 
                 <!-- STATS -->
+                <div id="wf-env-alert" style="display:none;align-items:center;gap:.6rem;background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.25);color:var(--red);border-radius:10px;padding:.7rem 1rem;margin-bottom:1rem;font-size:.85rem">
+                    <i class="fas fa-triangle-exclamation"></i>
+                    <span id="wf-env-alert-msg"></span>
+                </div>
                 <div class="stats-row" id="wf-stats" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem;margin-bottom:1.5rem"></div>
 
                 <!-- TAB: Proyectos -->
@@ -5735,6 +5739,7 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
 
     // ── WEB FACTORY ──
     let _wfPlantillas = [];
+    let _wfEnv = {};
     let _wfSlugAuto = true;
 
     function cerrarWfModal() {
@@ -5777,6 +5782,17 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
             if (!data.ok) throw new Error(data.error || 'Error cargando proyectos');
 
             _wfPlantillas = data.plantillas || [];
+            _wfEnv = data.env || {};
+
+            const wfEnvAlert = document.getElementById('wf-env-alert');
+            if (wfEnvAlert) {
+                const faltan = [];
+                if (!_wfEnv.github) faltan.push('GITHUB_TOKEN');
+                if (!_wfEnv.netlify) faltan.push('NETLIFY_AUTH_TOKEN');
+                wfEnvAlert.style.display = faltan.length ? 'flex' : 'none';
+                if (faltan.length) wfEnvAlert.querySelector('#wf-env-alert-msg').textContent =
+                    'Faltan variables de entorno: ' + faltan.join(', ') + '. Agrega los tokens en Netlify → Site configuration → Environment variables.';
+            }
 
             const proyectos = data.proyectos || [];
             const enCurso = proyectos.filter(p => ['creando', 'configurando', 'deploying'].includes(p.estado));
@@ -5889,6 +5905,7 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
 
         if (!cliente || !nombre || !slug) return showToast('Completa Cliente, Nombre y Slug', 'error');
         if (!/^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$/.test(slug)) return showToast('Slug invalido (solo minusculas, numeros y guiones)', 'error');
+        if (!_wfEnv.github || !_wfEnv.netlify) return showToast('Faltan GITHUB_TOKEN / NETLIFY_AUTH_TOKEN en las variables de entorno de Netlify', 'error');
 
         const res = await fetch('/.netlify/functions/web-factory', {
             method: 'POST',

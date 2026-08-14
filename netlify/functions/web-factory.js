@@ -398,7 +398,17 @@ exports.handler = async (event) => {
             let plantillas_error = null;
             try { plantillas = leerPlantillas(); } catch (e) { plantillas_error = e.message; }
 
-            return { statusCode: 200, body: JSON.stringify({ ok: true, proyectos: proyectos || [], plantillas, plantillas_error }) };
+            return { statusCode: 200, body: JSON.stringify({
+                ok: true,
+                proyectos: proyectos || [],
+                plantillas,
+                plantillas_error,
+                env: {
+                    github: !!process.env.GITHUB_TOKEN,
+                    netlify: !!process.env.NETLIFY_AUTH_TOKEN,
+                    owner: process.env.GITHUB_OWNER || null
+                }
+            }) };
         }
 
         // ── GET: proyecto por id (y refresco si está en curso) ──
