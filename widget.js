@@ -479,6 +479,136 @@
       transform:scale(1.1);
     }
 
+    .auvro-catalog-btn{
+      width:36px;
+      height:36px;
+      border-radius:50%;
+      border:none;
+      background:transparent;
+      color:var(--auvro-color-text-secondary);
+      cursor:pointer;
+      display:none;
+      align-items:center;
+      justify-content:center;
+      flex:0 0 auto;
+      transition:all .16s ease;
+    }
+
+    .auvro-catalog-btn:hover{
+      color:var(--auvro-primary);
+      transform:scale(1.1);
+    }
+
+    .auvro-catalog-panel{
+      flex:0 0 auto;
+      display:none;
+      flex-direction:column;
+      gap:8px;
+      background:var(--auvro-bg-input-wrap);
+      border-top:1px solid rgba(148,163,184,.12);
+      padding:10px 12px;
+    }
+
+    .auvro-catalog-panel.visible{
+      display:flex;
+    }
+
+    .auvro-catalog-head{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      font-size:10px;
+      font-weight:700;
+      color:var(--auvro-color-text-secondary);
+      text-transform:uppercase;
+      letter-spacing:.07em;
+    }
+
+    .auvro-catalog-close{
+      background:none;
+      border:none;
+      color:var(--auvro-color-text-secondary);
+      font-size:14px;
+      cursor:pointer;
+      line-height:1;
+      padding:2px;
+    }
+
+    .auvro-catalog-close:hover{
+      color:#f87171;
+    }
+
+    .auvro-catalog-strip{
+      display:flex;
+      gap:8px;
+      overflow-x:auto;
+      padding-bottom:4px;
+      scrollbar-width:thin;
+    }
+
+    .auvro-product-card{
+      flex:0 0 168px;
+      font-family:var(--auvro-font);
+      background:var(--auvro-bg-input);
+      border:1px solid rgba(148,163,184,.2);
+      border-radius:12px;
+      padding:9px;
+      display:flex;
+      flex-direction:column;
+      gap:4px;
+      cursor:pointer;
+      text-align:left;
+      transition:border-color .18s, transform .18s;
+    }
+
+    .auvro-product-card:hover{
+      border-color:var(--auvro-primary);
+      transform:translateY(-2px);
+    }
+
+    .auvro-product-card .auvro-pc-img{
+      width:100%;
+      height:62px;
+      border-radius:8px;
+      object-fit:cover;
+      background:var(--auvro-bg-input-wrap);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      color:var(--auvro-color-text-secondary);
+    }
+
+    .auvro-product-card .auvro-pc-name{
+      font-size:12px;
+      font-weight:700;
+      color:var(--auvro-color-text);
+      line-height:1.3;
+      display:-webkit-box;
+      -webkit-line-clamp:2;
+      -webkit-box-orient:vertical;
+      overflow:hidden;
+    }
+
+    .auvro-product-card .auvro-pc-cat{
+      font-size:10px;
+      color:var(--auvro-color-text-secondary);
+      text-transform:capitalize;
+    }
+
+    .auvro-product-card .auvro-pc-price{
+      font-size:11px;
+      color:var(--auvro-primary);
+      font-weight:700;
+      line-height:1.35;
+    }
+
+    .auvro-product-card .auvro-pc-cta{
+      margin-top:auto;
+      font-size:11px;
+      font-weight:700;
+      color:var(--auvro-primary);
+    }
+
     .auvro-image-preview{
       padding:6px 10px;
       background:var(--auvro-bg-input-wrap);
@@ -562,6 +692,13 @@
         <button class="auvro-close" type="button" aria-label="Cerrar">×</button>
       </div>
       <div class="auvro-messages"></div>
+      <div class="auvro-catalog-panel" id="auvro-catalog-panel">
+        <div class="auvro-catalog-head">
+          <span>Catálogo</span>
+          <button class="auvro-catalog-close" id="auvro-catalog-close" type="button" aria-label="Cerrar catálogo">×</button>
+        </div>
+        <div class="auvro-catalog-strip" id="auvro-catalog-strip"></div>
+      </div>
       <div class="auvro-image-preview" id="auvro-image-preview">
         <img id="auvro-image-thumb" src="" alt="Preview">
         <span class="auvro-image-name" id="auvro-image-name"></span>
@@ -570,6 +707,9 @@
       <div class="auvro-input-wrap">
         <input type="file" id="auvro-file-input" accept="image/*" style="display:none">
         <button class="auvro-attach-btn" type="button" aria-label="Adjuntar imagen" id="auvro-attach-btn">📎</button>
+        <button class="auvro-catalog-btn" type="button" aria-label="Ver catálogo" id="auvro-catalog-btn">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+        </button>
         <textarea class="auvro-input" rows="1" placeholder="Escribe un mensaje..."></textarea>
         <button class="auvro-send" type="button" aria-label="Enviar">➤</button>
       </div>
@@ -594,8 +734,13 @@
   const imageThumb = root.querySelector('#auvro-image-thumb');
   const imageName = root.querySelector('#auvro-image-name');
   const imageRemove = root.querySelector('#auvro-image-remove');
+  const catalogBtn = root.querySelector('#auvro-catalog-btn');
+  const catalogPanel = root.querySelector('#auvro-catalog-panel');
+  const catalogStrip = root.querySelector('#auvro-catalog-strip');
+  const catalogClose = root.querySelector('#auvro-catalog-close');
 
   let pendingImage = null;
+  let catalogo = [];
 
   attachBtn.onclick = () => fileInput.click();
 
@@ -659,6 +804,7 @@
       setTimeout(() => input.focus(), 120);
     } else {
       detenerPolling();
+      catalogPanel.classList.remove('visible');
     }
   }
 
@@ -790,6 +936,77 @@
     messagesEl.scrollTop = messagesEl.scrollHeight;
   }
 
+  function fmtCop(cents) {
+    return '$' + Math.round((Number(cents) || 0) / 100).toLocaleString('es-CO');
+  }
+
+  function resumenCard(p) {
+    if (p.tipo === 'tour' && (p.categorias_pasajero || []).length) {
+      const precios = p.categorias_pasajero.map(b => b.precio_cents || 0);
+      return 'Desde ' + fmtCop(Math.min(...precios)) + ' / persona';
+    }
+    if ((p.variantes || []).length) {
+      return p.variantes.slice(0, 2).map(v => v.nombre + ' ' + fmtCop(v.precio_cents)).join(' · ');
+    }
+    return fmtCop(p.precio_cents);
+  }
+
+  function setCatalogo(lista) {
+    catalogo = Array.isArray(lista) ? lista : [];
+    catalogBtn.style.display = catalogo.length ? 'flex' : 'none';
+    renderCatalogoStrip();
+  }
+
+  function renderCatalogoStrip() {
+    catalogStrip.innerHTML = '';
+    if (!catalogo.length) return;
+
+    catalogo.forEach((p, i) => {
+      const card = document.createElement('button');
+      card.type = 'button';
+      card.className = 'auvro-product-card';
+      card.title = p.nombre || '';
+
+      const visual = document.createElement('div');
+      visual.className = 'auvro-pc-img';
+      if (p.url_imagen) {
+        const img = document.createElement('img');
+        img.className = 'auvro-pc-img';
+        img.src = p.url_imagen;
+        img.alt = '';
+        img.onerror = () => img.remove();
+        visual.replaceWith(img);
+      } else {
+        visual.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>';
+      }
+
+      const name = document.createElement('div');
+      name.className = 'auvro-pc-name';
+      name.textContent = p.nombre || '';
+      const cat = document.createElement('div');
+      cat.className = 'auvro-pc-cat';
+      cat.textContent = p.categoria || p.tipo || '';
+      const price = document.createElement('div');
+      price.className = 'auvro-pc-price';
+      price.textContent = resumenCard(p);
+      const cta = document.createElement('div');
+      cta.className = 'auvro-pc-cta';
+      cta.textContent = 'Pedir →';
+
+      card.append(visual, name, cat, price, cta);
+      card.onclick = () => elegirProducto(i);
+      catalogStrip.appendChild(card);
+    });
+  }
+
+  function elegirProducto(i) {
+    const p = catalogo[i];
+    if (!p) return;
+    input.value = 'Quiero comprar: ' + p.nombre;
+    autoResizeInput();
+    enviar();
+  }
+
   async function cargarMensajes() {
     try {
       const res = await fetch(`${baseUrl}/.netlify/functions/web-chat-messages`, {
@@ -811,6 +1028,8 @@
       }
 
       lastErrorKey = '';
+
+      if (Array.isArray(data.productos)) setCatalogo(data.productos);
 
       const serverMessages = (data.messages || []).map(normalizarServerMessage);
       const signature = serverMessages.map(m => m.id).join('|');
@@ -889,6 +1108,7 @@
 
       const data = await res.json().catch(() => ({}));
       removeTyping();
+      if (Array.isArray(data.productos)) setCatalogo(data.productos);
 
       if (data.skipped === true || data.modo_humano === true) {
         localMessages.push({
@@ -967,6 +1187,11 @@
   launcher.onclick = () => setOpen(true);
   closeBtn.onclick = () => setOpen(false);
   sendBtn.onclick = enviar;
+
+  catalogBtn.onclick = () => {
+    catalogPanel.classList.toggle('visible', !catalogPanel.classList.contains('visible'));
+  };
+  catalogClose.onclick = () => catalogPanel.classList.remove('visible');
 
   input.addEventListener('input', autoResizeInput);
 
