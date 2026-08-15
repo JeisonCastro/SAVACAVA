@@ -731,8 +731,18 @@
     }
 
     let ultimoDia = '';
+    let ultimoRol = '';
+    let ultimoTexto = '';
 
     for (const m of messages) {
+      // Dedup defensivo: nunca mostrar dos burbujas consecutivas con el MISMO
+      // rol y el MISMO contenido (evita la duplicación que ve el usuario por
+      // reintentos, dobles envíos entre pestañas o mensajes repetidos).
+      const textoActual = String(m.text || '').trim();
+      if (m.role === ultimoRol && textoActual && textoActual === ultimoTexto) continue;
+      ultimoRol = m.role;
+      ultimoTexto = textoActual;
+
       const d = dia(m.time);
       if (d && d !== ultimoDia) {
         ultimoDia = d;

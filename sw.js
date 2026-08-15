@@ -1,5 +1,5 @@
-/* ─── AUVRO Service Worker v2.0 ─────────────────────────────────────────── */
-const CACHE_NAME = 'auvro-v10';
+/* ─── AUVRO Service Worker v2.1 (widget.js network-first) ─────────────────── */
+const CACHE_NAME = 'auvro-v11';
 const OFFLINE_URL = '/offline.html';
 const CACHE_MAX_ENTRIES = 100;
 
@@ -106,6 +106,15 @@ self.addEventListener('fetch', event => {
           return response;
         });
       })
+    );
+    return;
+  }
+
+  /* widget.js — SIEMPRE red primero (nunca servir una copia vieja cacheada).
+     Cualquier fix del widget debe llegar al instante a los visitantes. */
+  if (url.pathname.endsWith('/widget.js')) {
+    event.respondWith(
+      fetch(request).catch(() => caches.match(request))
     );
     return;
   }

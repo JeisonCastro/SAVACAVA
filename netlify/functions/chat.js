@@ -867,6 +867,43 @@ async function guardarMensajeConversacion({ conversacionId, agenteId, role, cont
     }
 }
 
+// Guarda la respuesta IA evitando duplicados: si la última respuesta de la
+// conversación tiene contenido IDÉNTICO y se guardó hace menos de 10s (doble
+// envío concurrente del mismo prompt), no insertamos otra copia.
+async function guardarRespuestaDeducup({ conversacionId, agenteId, contenido, metadata = {} }) {
+    if (!contenido) return;
+
+    try {
+        const { data: ultimaResp } = await supabase
+            .from('mensajes_conversacion')
+            .select('role, content, created_at')
+            .eq('conversacion_id', conversacionId)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single();
+
+        const esDuplicado = ultimaResp &&
+            (ultimaResp.role === 'assistant' || ultimaResp.role === 'bot') &&
+            String(ultimaResp.content || '').trim() === String(contenido || '').trim() &&
+            Date.now() - new Date(ultimaResp.created_at).getTime() < 10000;
+
+        if (esDuplicado) {
+            console.log('Guard anti-duplicado IA: respuesta idéntica ya guardada, se omite.');
+            return;
+        }
+    } catch (dedupErr) {
+        console.warn('Error verificando duplicado IA (se guarda igual):', dedupErr.message);
+    }
+
+    await guardarMensajeConversacion({
+        conversacionId,
+        agenteId,
+        role: 'assistant',
+        content: contenido,
+        metadata
+    });
+}
+
 // Verifica el token de sesion de Supabase enviado en el header Authorization.
 // Devuelve null si NO se envio token (comportamiento widget/anónimo).
 // Lanza error con status 401 si el token es inválido o expiró.
@@ -1028,6 +1065,45 @@ exports.handler = async (event) => {
         });
 
         const conversationIdFinal = conversacion.id;
+
+        // ── Guard anti-duplicado (canal web) ──
+        // Evita que un mismo mensaje del visitante se procese dos veces (doble clic,
+        // reintento rápido tras timeout, dos pestañas con el mismo external_user_id).
+        // Si el último mensaje de la conversación es un user IGUAL al prompt y se
+        // envió hace menos de 20s, no guardamos duplicado ni relanzamos la IA.
+        if (canal === 'web' && !skip_user_save && prompt) {
+            const { data: ultimosMsgs, error: errUltimos } = await supabase
+                .from('mensajes_conversacion')
+                .select('role, content, created_at')
+                .eq('conversacion_id', conversationIdFinal)
+                .order('created_at', { ascending: false })
+                .limit(3);
+
+            if (!errUltimos && Array.isArray(ultimosMsgs) && ultimosMsgs.length) {
+                const ultimo = ultimosMsgs[0];
+                const mismoContenido = ultimo.role === 'user' &&
+                    String(ultimo.content || '').trim() === String(prompt || '').trim();
+                const hacePoco = Date.now() - new Date(ultimo.created_at).getTime() < 20000;
+                if (mismoContenido && hacePoco) {
+                    const respuestaYaExiste = ultimosMsgs.find(m =>
+                        (m.role === 'assistant' || m.role === 'bot') &&
+                        new Date(m.created_at) >= new Date(ultimo.created_at)
+                    );
+                    console.log('Guard anti-duplicado web activado para', prompt);
+                    return {
+                        statusCode: 200,
+                        headers,
+                        body: JSON.stringify({
+                            respuesta: respuestaYaExiste
+                                ? respuestaYaExiste.content
+                                : "Ya estoy procesando tu mensaje, en un momento te respondo. 👍",
+                            skipped: true,
+                            motivo: 'duplicado'
+                        })
+                    };
+                }
+            }
+        }
 
         // En el flujo de media por WhatsApp, el mensaje del usuario ya fue guardado
         // por whatsapp-webhook.js (con su metadata de adjunto). Con skip_user_save=true
@@ -2076,11 +2152,10 @@ INSTRUCCIONES:
             premiumTokens
         });
 
-        await guardarMensajeConversacion({
+        await guardarRespuestaDeducup({
             conversacionId: conversationIdFinal,
             agenteId: targetID,
-            role: 'assistant',
-            content: respuestaIA,
+            contenido: respuestaIA,
             metadata: { canal, origen: 'ia' }
         });
 
