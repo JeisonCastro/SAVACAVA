@@ -449,12 +449,15 @@ async function crearCuenta() {
 
   // Guarda los datos del perfil (funciona incluso antes de confirmar el correo).
   try {
-    await fetch('/.netlify/functions/registrar-perfil', {
+    const res = await fetch('/.netlify/functions/registrar-perfil', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ user_id: data.user.id, nombre, apellido, telefono })
     });
-  } catch (_) {}
+    if (!res.ok) console.error('[registrar-perfil]', res.status, await res.text());
+  } catch (e) {
+    console.error('[registrar-perfil]', e);
+  }
 
   setLoading(false);
 
