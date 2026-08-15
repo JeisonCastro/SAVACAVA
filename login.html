@@ -237,20 +237,45 @@ body{
   <h1 class="card-title">Fábrica de Agentes</h1>
   <p class="card-sub">Inicia sesión para gestionar tus agentes</p>
 
-  <div class="field">
-    <label>Correo electrónico</label>
-    <input type="email" id="email" placeholder="tu@correo.com" autocomplete="email" inputmode="email">
+  <div id="login-fields">
+    <div class="field">
+      <label>Correo electrónico</label>
+      <input type="email" id="email" placeholder="tu@correo.com" autocomplete="email" inputmode="email">
+    </div>
+    <div class="field">
+      <label>Contraseña</label>
+      <input type="password" id="password" placeholder="••••••••" autocomplete="current-password">
+    </div>
   </div>
-  <div class="field">
-    <label>Contraseña</label>
-    <input type="password" id="password" placeholder="••••••••" autocomplete="current-password">
+
+  <div id="registro-fields" style="display:none">
+    <div class="field">
+      <label>Nombre</label>
+      <input type="text" id="reg-nombre" placeholder="Tu nombre" autocomplete="given-name">
+    </div>
+    <div class="field">
+      <label>Apellido</label>
+      <input type="text" id="reg-apellido" placeholder="Tu apellido" autocomplete="family-name">
+    </div>
+    <div class="field">
+      <label>Teléfono</label>
+      <input type="tel" id="reg-telefono" placeholder="Ej: 300 123 4567" autocomplete="tel">
+    </div>
+    <div class="field">
+      <label>Correo electrónico</label>
+      <input type="email" id="reg-email" placeholder="tu@correo.com" autocomplete="email" inputmode="email">
+    </div>
+    <div class="field">
+      <label>Contraseña</label>
+      <input type="password" id="reg-password" placeholder="Mínimo 6 caracteres" autocomplete="new-password">
+    </div>
   </div>
 
-  <button class="btn-main" onclick="entrar()">Iniciar sesión</button>
+  <button class="btn-main" id="btn-submit" onclick="enviarForm()">Iniciar sesión</button>
 
-  <div class="divider"><span>¿No tienes cuenta?</span></div>
+  <div class="divider"><span id="divider-text">¿No tienes cuenta?</span></div>
 
-  <button class="btn-ghost" onclick="registrar()">Crear cuenta nueva</button>
+  <button class="btn-ghost" id="btn-toggle" onclick="toggleModo()">Crear cuenta nueva</button>
 
   <div class="loading" id="loading">
     <span class="loading-dot"></span><span class="loading-dot"></span><span class="loading-dot"></span>
@@ -294,15 +319,68 @@ function setLoading(on) {
 }
 
 /* ─── AUTH ───────────────────────────────────────────────────────────────── */
-async function registrar() {
-  const email = document.getElementById('email').value.trim();
-  const password = document.getElementById('password').value;
-  if (!email || !password) return showMsg('Completa todos los campos', 'error');
+let modo = 'login'; // 'login' | 'registro'
+
+function toggleModo() {
+  modo = modo === 'login' ? 'registro' : 'login';
+  document.getElementById('login-fields').style.display = modo === 'login' ? 'block' : 'none';
+  document.getElementById('registro-fields').style.display = modo === 'registro' ? 'block' : 'none';
+  document.getElementById('card-title').textContent = modo === 'login' ? 'Fábrica de Agentes' : 'Crea tu cuenta';
+  document.getElementById('card-sub').textContent = modo === 'login'
+    ? 'Inicia sesión para gestionar tus agentes'
+    : 'Regístrate en menos de un minuto';
+  document.getElementById('btn-submit').textContent = modo === 'login' ? 'Iniciar sesión' : 'Crear cuenta';
+  document.getElementById('divider-text').textContent = modo === 'login' ? '¿No tienes cuenta?' : '¿Ya tienes cuenta?';
+  document.getElementById('btn-toggle').textContent = modo === 'login' ? 'Crear cuenta nueva' : 'Iniciar sesión';
+  document.getElementById('msg').className = 'msg';
+}
+
+function enviarForm() {
+  if (modo === 'login') entrar();
+  else crearCuenta();
+}
+
+async function crearCuenta() {
+  const nombre = document.getElementById('reg-nombre').value.trim();
+  const apellido = document.getElementById('reg-apellido').value.trim();
+  const telefono = document.getElementById('reg-telefono').value.trim();
+  const email = document.getElementById('reg-email').value.trim();
+  const password = document.getElementById('reg-password').value;
+
+  if (!nombre || !apellido || !telefono || !email || !password) {
+    return showMsg('Completa todos los campos', 'error');
+  }
+  if (password.length < 6) {
+    return showMsg('La contraseña debe tener al menos 6 caracteres', 'error');
+  }
+
   setLoading(true);
-  const { error } = await _supabase.auth.signUp({ email, password });
+  const { data, error } = await _supabase.auth.signUp({
+    email,
+    password,
+    options: { data: { nombre, apellido, telefono } }
+  });
+  if (error) {
+    setLoading(false);
+    return showMsg('Error: ' + error.message, 'error');
+  }
+
+  // Guarda los datos del perfil (funciona incluso antes de confirmar el correo).
+  try {
+    await fetch('/.netlify/functions/registrar-perfil', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: data.user.id, nombre, apellido, telefono })
+    });
+  } catch (_) {}
+
   setLoading(false);
-  if (error) showMsg('Error: ' + error.message, 'error');
-  else showMsg('¡Cuenta creada! Revisa tu correo para confirmar.', 'success');
+
+  // Vuelve al login con el correo precargado para que el usuario inicie sesión.
+  document.getElementById('email').value = email;
+  document.getElementById('password').value = '';
+  toggleModo();
+  showMsg('¡Cuenta creada! Revisa tu correo para confirmar y luego inicia sesión.', 'success');
 }
 
 async function entrar() {
@@ -320,7 +398,7 @@ async function entrar() {
   }
 }
 
-document.addEventListener('keydown', e => { if (e.key === 'Enter') entrar(); });
+document.addEventListener('keydown', e => { if (e.key === 'Enter') enviarForm(); });
 
 /* ─── SERVICE WORKER ─────────────────────────────────────────────────────── */
 if ('serviceWorker' in navigator) {
