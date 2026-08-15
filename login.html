@@ -102,7 +102,7 @@ body{
   border-radius:12px;
   padding:2.5rem 2rem;
   width:100%;
-  max-width:380px;
+  max-width:420px;
   margin:1rem;
   box-shadow:0 1px 2px rgba(16,24,40,.05),0 20px 50px rgba(15,23,42,.10);
   max-height:calc(100dvh - 2rem);
@@ -243,8 +243,8 @@ body{
     <span class="logo-text">AUVRO</span>
   </div>
 
-  <h1 class="card-title">Fábrica de Agentes</h1>
-  <p class="card-sub">Inicia sesión para gestionar tus agentes</p>
+  <h1 class="card-title" id="card-title">Fábrica de Agentes</h1>
+  <p class="card-sub" id="card-sub">Inicia sesión para gestionar tus agentes</p>
 
   <div id="login-fields">
     <div class="field">
@@ -292,6 +292,19 @@ body{
     <span class="loading-dot"></span><span class="loading-dot"></span><span class="loading-dot"></span>
   </div>
   <div class="msg" id="msg"></div>
+
+  <div id="confirmacion" style="display:none;text-align:center;padding-top:.5rem;">
+    <div style="width:64px;height:64px;margin:0 auto 1.1rem;border-radius:50%;background:rgba(5,150,105,.12);display:flex;align-items:center;justify-content:center;color:var(--green);">
+      <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="m3 7 9 6 9-6"></path></svg>
+    </div>
+    <h2 style="font-family:'DM Sans',sans-serif;font-size:1.3rem;font-weight:800;color:var(--text);margin-bottom:.5rem;">Revisa tu correo</h2>
+    <p style="font-size:.88rem;color:var(--muted);line-height:1.6;margin-bottom:1.5rem;">
+      A tu correo <strong id="confirmacion-email" style="color:var(--text);word-break:break-all;"></strong>
+      te llegó un correo de confirmación.<br>Por favor da clic sobre el enlace del correo para verificar tu cuenta y luego inicia sesión.
+    </p>
+    <button class="btn-main" onclick="volverLogin()">Iniciar sesión</button>
+    <button class="btn-ghost" onclick="setModo('registro')">Registrar otra cuenta</button>
+  </div>
 </div>
 
 <!-- PWA Install Banner -->
@@ -351,11 +364,20 @@ function setLoading(on) {
 
 /* ─── AUTH ───────────────────────────────────────────────────────────────── */
 let modo = 'login'; // 'login' | 'registro'
+let ultimoEmail = '';
 
-function toggleModo() {
-  modo = modo === 'login' ? 'registro' : 'login';
+function setModo(m) {
+  modo = m === 'registro' ? 'registro' : 'login';
+  const conf = document.getElementById('confirmacion');
+  if (conf) conf.style.display = 'none';
+  document.getElementById('card-title').style.display = '';
+  document.getElementById('card-sub').style.display = '';
   document.getElementById('login-fields').style.display = modo === 'login' ? 'block' : 'none';
   document.getElementById('registro-fields').style.display = modo === 'registro' ? 'block' : 'none';
+  document.getElementById('btn-submit').style.display = '';
+  document.getElementById('btn-toggle').style.display = '';
+  document.getElementById('divider-text').parentElement.style.display = '';
+  document.getElementById('loading').style.display = 'none';
   document.getElementById('card-title').textContent = modo === 'login' ? 'Fábrica de Agentes' : 'Crea tu cuenta';
   document.getElementById('card-sub').textContent = modo === 'login'
     ? 'Inicia sesión para gestionar tus agentes'
@@ -364,6 +386,32 @@ function toggleModo() {
   document.getElementById('divider-text').textContent = modo === 'login' ? '¿No tienes cuenta?' : '¿Ya tienes cuenta?';
   document.getElementById('btn-toggle').textContent = modo === 'login' ? 'Crear cuenta nueva' : 'Iniciar sesión';
   document.getElementById('msg').className = 'msg';
+}
+
+function toggleModo() {
+  setModo(modo === 'login' ? 'registro' : 'login');
+}
+
+function mostrarConfirmacion(email) {
+  ultimoEmail = email;
+  document.getElementById('card-title').style.display = 'none';
+  document.getElementById('card-sub').style.display = 'none';
+  document.getElementById('login-fields').style.display = 'none';
+  document.getElementById('registro-fields').style.display = 'none';
+  document.getElementById('btn-submit').style.display = 'none';
+  document.getElementById('btn-toggle').style.display = 'none';
+  document.getElementById('divider-text').parentElement.style.display = 'none';
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('msg').className = 'msg';
+  document.getElementById('confirmacion-email').textContent = email;
+  document.getElementById('confirmacion').style.display = 'block';
+  modo = 'login';
+}
+
+function volverLogin() {
+  document.getElementById('email').value = ultimoEmail;
+  document.getElementById('password').value = '';
+  setModo('login');
 }
 
 function enviarForm() {
@@ -410,11 +458,9 @@ async function crearCuenta() {
 
   setLoading(false);
 
-  // Vuelve al login con el correo precargado para que el usuario inicie sesión.
-  document.getElementById('email').value = email;
-  document.getElementById('password').value = '';
-  toggleModo();
-  showMsg('¡Cuenta creada! Revisa tu correo para confirmar y luego inicia sesión.', 'success');
+  // Muestra la pantalla de confirmación: el usuario debe verificar su correo
+  // antes de poder iniciar sesión.
+  mostrarConfirmacion(email);
 }
 
 async function entrar() {
