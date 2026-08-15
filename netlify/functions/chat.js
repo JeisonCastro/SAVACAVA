@@ -21,7 +21,7 @@ const {
     crearPaymentLinkVenta,
     extraerDatosLead
 } = require('./crm-helper');
-const { pipelineCrear, validarSlug } = require('./web-factory').helpers;
+const { pipelineCrear, validarSlug } = require('./web-factory.js').helpers;
 
 // Toolkits nativos (no requieren conexión Composio): la disponibilidad depende
 // solo de que la herramienta esté habilitada en agente_tools.
