@@ -1090,7 +1090,7 @@ exports.handler = async (event) => {
             pendingActionResult,
             crmConfigResult
         ] = await Promise.all([
-            cargarHistorialConversacion(conversationIdFinal, 8),
+            cargarHistorialConversacion(conversationIdFinal, 6),
             supabase.from('perfiles').select('token_balance').eq('id', agente.user_id).single(),
             supabase.from('agente_tools').select('tool_key, toolkit, enabled').eq('agente_id', targetID).eq('enabled', true),
             supabase.from('composio_connections').select('toolkit, composio_entity_id, connected_at, shopify_store_url, access_token').eq('user_id', agente.user_id),
@@ -1223,7 +1223,7 @@ Eres el primer punto de contacto del negocio y DEBES capturar datos del cliente 
 - No inventes datos ni presiones; sé natural y breve.
 `;
             if (catalogoCRM.length > 0) {
-                const textoCatalogo = construirTextoCatalogo(crmConfig);
+                const textoCatalogo = truncarMensaje(construirTextoCatalogo(crmConfig), 4000);
                 const tienePago = crmConfig.wompi_private_key;
                 systemFinal += `
 CATÁLOGO DE PRODUCTOS DEL VENDEDOR:
@@ -1292,7 +1292,10 @@ INSTRUCCIONES:
 
         const mensajes = [
             { role: "system", content: systemFinal },
-            ...historialSinDuplicado.slice(-8),
+            ...historialSinDuplicado.slice(-6).map(m => ({
+                ...m,
+                content: Array.isArray(m.content) ? m.content : truncarMensaje(m.content, 1200)
+            })),
             userMessage
         ];
 
@@ -1315,7 +1318,7 @@ INSTRUCCIONES:
         // menor al límite de ejecución de Netlify (30s) para responder un error elegante.
         const timeout = setTimeout(
             () => controller.abort(),
-            useOpenAI ? calcularTimeout(inputChars) : 25000
+            useOpenAI ? calcularTimeout(inputChars) : 29000
         );
 
         const apiEndpoint = useOpenAI
@@ -1325,10 +1328,9 @@ INSTRUCCIONES:
             ? process.env.OPENIA_KEY
             : process.env.DEEPSEEK_API_KEY;
         const model = useOpenAI ? 'gpt-4o' : 'deepseek-v4-flash';
-        // Con reasoning desactivado (thinking.disabled), 1024 sería suficiente para la
-        // mayoría de respuestas; 4096 deja margen para respuestas largas sin costo extra
-        // (solo se cobra lo generado).
-        const maxOutputTokens = useOpenAI ? 1024 : 4096;
+        // Con reasoning desactivado (thinking.disabled), 1024 tokens son suficientes para
+        // respuestas de chat y reducen el tiempo de generación (evita timeouts de 25s+).
+        const maxOutputTokens = 1024;
 
         if (!apiKey) {
             clearTimeout(timeout);
