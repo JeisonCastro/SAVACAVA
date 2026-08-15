@@ -119,6 +119,61 @@ function inyectarWidgetIndex(html, snippet) {
     return html.replace(/<\/body>/i, snippet + '\n</body>');
 }
 
+// ── Personalización de sitios: color principal + estilo de fuente ──
+// El color y la fuente se inyectan como capa de override sobre las plantillas
+// (que ya usan las variables --accent / --accent-dark), sin modificar los
+// archivos de plantilla. Funciona con cualquier plantilla.
+const FUENTES_GOOGLE = {
+    inter: { css: 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap', familia: "'Inter', system-ui, -apple-system, sans-serif" },
+    poppins: { css: 'https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap', familia: "'Poppins', system-ui, -apple-system, sans-serif" },
+    montserrat: { css: 'https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap', familia: "'Montserrat', system-ui, -apple-system, sans-serif" },
+    roboto: { css: 'https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap', familia: "'Roboto', system-ui, -apple-system, sans-serif" },
+    lora: { css: 'https://fonts.googleapis.com/css2?family=Lora:wght@400;500;600;700&display=swap', familia: "'Lora', Georgia, serif" },
+    playfair: { css: 'https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700;800&display=swap', familia: "'Playfair Display', Georgia, serif" },
+    oswald: { css: 'https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&display=swap', familia: "'Oswald', system-ui, sans-serif" }
+};
+const FUENTE_SISTEMA = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif";
+
+function validarAccent(v) {
+    if (!v) return '#2563eb';
+    const s = String(v).trim().toLowerCase();
+    if (!/^#([0-9a-f]{3}|[0-9a-f]{6})$/.test(s)) return null;
+    if (s.length === 4) {
+        const h = s.slice(1);
+        return '#' + h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+    }
+    return s;
+}
+
+function oscurecerHex(hex) {
+    const h = String(hex || '').replace('#', '');
+    const n = parseInt(h, 16);
+    if (isNaN(n) || h.length !== 6) return hex || '#1d4ed8';
+    const f = v => Math.max(0, Math.round(v * 0.82)).toString(16).padStart(2, '0');
+    return '#' + f((n >> 16) & 255) + f((n >> 8) & 255) + f(n & 255);
+}
+
+function fuenteElegida(v) {
+    const s = String(v || '').trim().toLowerCase();
+    if (!s || s === 'sistema') return null;
+    const f = FUENTES_GOOGLE[s];
+    return f ? { key: s, ...f } : null;
+}
+
+function inyectarTema(html, accent, fuenteInfo) {
+    const acc = validarAccent(accent) || '#2563eb';
+    const dark = oscurecerHex(acc);
+    const familia = (fuenteInfo && fuenteInfo.familia) || FUENTE_SISTEMA;
+    let bloque = `<style id="auvro-theme">:root{--accent:${acc}!important;--accent-dark:${dark}!important}*{font-family:${familia}!important}</style>`;
+    if (fuenteInfo && fuenteInfo.css) {
+        bloque = `<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="${fuenteInfo.css}" rel="stylesheet">` + bloque;
+    }
+    if (!/<\/head>/i.test(html)) {
+        return html.replace(/<html[^>]*>/i, m => m + '\n' + bloque).replace(/<!DOCTYPE[^>]*>/i, m => m + '\n' + bloque);
+    }
+    return html.replace(/<\/head>/i, bloque + '\n</head>');
+}
+
 // ── Seguridad por dominio del agente ──
 // chat.js valida que el Origin del sitio embebido esté en agente.dominios_permitidos.
 // Aquí garantizamos que los sitios generados queden autorizados automáticamente.
@@ -439,7 +494,11 @@ async function refrescarYGuardar(proyecto) {
 
 // ── Pipeline de creación (background) ──
 async function pipelineCrear(body, adminId) {
-    const { cliente, nombre, slug, plantilla, dominio, descripcion, logo, slogan, whatsapp, agente_id } = body;
+    const { cliente, nombre, slug, plantilla, dominio, descripcion, logo, slogan, whatsapp, agente_id, accent_color, fuente } = body;
+
+    const accent = validarAccent(accent_color);
+    if (accent === null) throw new Error('Color principal inválido (usa #RRGGBB)');
+    const fuenteInfo = fuenteElegida(fuente);
 
     const plantillas = leerPlantillas();
     const plantillaElegida = plantillas.find(p => p.slug === plantilla) || plantillas[0];
@@ -465,21 +524,37 @@ async function pipelineCrear(body, adminId) {
         DESCRIPCION: descripcion || nombre,
         SLOGAN: sanearTexto(slogan),
         LOGO: sanearUrlLogo(logo),
-        WHATSAPP: normalizarWhatsapp(whatsapp)
+        WHATSAPP: normalizarWhatsapp(whatsapp),
+        ACCENT: accent,
+        ACCENT_DARK: oscurecerHex(accent),
+        FONT_FAMILY: (fuenteInfo ? fuenteInfo.familia : FUENTE_SISTEMA),
+        FONT_NAME: (fuenteInfo ? fuenteInfo.key : 'sistema'),
+        FONT_LINK: (fuenteInfo && fuenteInfo.css ? fuenteInfo.css : '')
     };
 
     // 1) Registrar en Supabase (estado: creando)
-    const { data: fila, error: insError } = await supabase
+    const insDatos = {
+        cliente, nombre, slug, plantilla: plantillaElegida.slug,
+        descripcion: descripcion || null, dominio: dominio || null,
+        logo: valores.LOGO || null, slogan: valores.SLOGAN || null, whatsapp: valores.WHATSAPP || null,
+        agente_id: agenteRow ? agenteRow.id : null,
+        accent_color: accent, fuente: (fuenteInfo ? fuenteInfo.key : 'sistema'),
+        estado: 'creando', created_by: adminId
+    };
+    let { data: fila, error: insError } = await supabase
         .from('web_projects')
-        .insert({
-            cliente, nombre, slug, plantilla: plantillaElegida.slug,
-            descripcion: descripcion || null, dominio: dominio || null,
-            logo: valores.LOGO || null, slogan: valores.SLOGAN || null, whatsapp: valores.WHATSAPP || null,
-            agente_id: agenteRow ? agenteRow.id : null,
-            estado: 'creando', created_by: adminId
-        })
+        .insert(insDatos)
         .select()
         .single();
+    if (insError && insError.code === '42703') {
+        // Columnas accent_color/fuente aún no migradas en la BD: reintentar sin ellas.
+        const { accent_color: _a, fuente: _f, ...sinExtra } = insDatos;
+        ({ data: fila, error: insError } = await supabase
+            .from('web_projects')
+            .insert(sinExtra)
+            .select()
+            .single());
+    }
     if (insError) {
         if (insError.code === '23505') throw new Error('El slug "' + slug + '" ya está en uso');
         throw new Error('Supabase: ' + insError.message);
@@ -494,6 +569,7 @@ async function pipelineCrear(body, adminId) {
             .map(f => {
                 let content = reemplazarTokens(f.content, valores);
                 if (f.path === 'index.html') content = inyectarWidgetIndex(content, snippetAgente);
+                if (/\.html$/i.test(f.path)) content = inyectarTema(content, accent, fuenteInfo);
                 return { ...f, content };
             });
         datosRepo = await crearRepoGitHub(owner, slug, descripcion || plantillaElegida.nombre, archivos);
@@ -643,11 +719,14 @@ exports.handler = async (event) => {
 
         // ── CREATE: pipeline completo (background) ──
         if (action === 'create') {
-            const { cliente, nombre, slug, plantilla, dominio, descripcion } = body;
+            const { cliente, nombre, slug, plantilla, dominio, descripcion, accent_color } = body;
             if (!cliente || !String(cliente).trim()) return { statusCode: 400, body: JSON.stringify({ error: 'Falta el cliente' }) };
             if (!nombre || !String(nombre).trim()) return { statusCode: 400, body: JSON.stringify({ error: 'Falta el nombre' }) };
             if (!validarSlug(slug)) return { statusCode: 400, body: JSON.stringify({ error: 'Slug inválido (solo minusculas, numeros y guiones)' }) };
             if (!validarDominio(dominio)) return { statusCode: 400, body: JSON.stringify({ error: 'Dominio inválido' }) };
+            if (accent_color !== undefined && accent_color !== null && accent_color !== '' && validarAccent(accent_color) === null) {
+                return { statusCode: 400, body: JSON.stringify({ error: 'Color principal inválido (usa #RRGGBB)' }) };
+            }
             if (!process.env.GITHUB_TOKEN) return { statusCode: 500, body: JSON.stringify({ error: 'Falta GITHUB_TOKEN en las variables de entorno' }) };
             if (!process.env.NETLIFY_AUTH_TOKEN) return { statusCode: 500, body: JSON.stringify({ error: 'Falta NETLIFY_AUTH_TOKEN en las variables de entorno' }) };
 
@@ -684,6 +763,10 @@ module.exports.helpers = {
     sanearUrlLogo,
     crearSnippetAgente,
     inyectarWidgetIndex,
+    validarAccent,
+    oscurecerHex,
+    fuenteElegida,
+    inyectarTema,
     hostnameDeUrl,
     hostnamesParaSitio,
     pipelineCrear,

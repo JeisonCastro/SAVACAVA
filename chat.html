@@ -10,27 +10,14 @@
 <meta name="robots" content="noindex">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{
-  --bg:#f8fafc;--bg2:#ffffff;--surface:#ffffff;--border:#e2e8f0;--border2:#cbd5e1;
-  --accent:#2563eb;--accent2:#1d4ed8;--text:#0f172a;--muted:#64748b;--dim:#94a3b8;
-  --chat-bg:#ffffff;--chat-panel:#f8fafc;--bubble-user:#ffffff;--bubble-ai:#f1f5f9;
-  --green:#059669;--red:#dc2626;--yellow:#d97706;
-  --shadow-soft:0 1px 2px rgba(16,24,40,.05),0 8px 24px rgba(16,24,40,.07);
-}
-body.light-mode{
-  --bg:#f8fafc;--bg2:#ffffff;--surface:#ffffff;--border:#e2e8f0;--border2:#cbd5e1;
-  --accent:#2563eb;--accent2:#1d4ed8;--text:#0f172a;--muted:#64748b;--dim:#94a3b8;
-  --chat-bg:#ffffff;--chat-panel:#f8fafc;--bubble-user:#ffffff;--bubble-ai:#f1f5f9;
-  --green:#059669;--red:#dc2626;--yellow:#d97706;
-  --shadow-soft:0 1px 2px rgba(16,24,40,.05),0 8px 24px rgba(16,24,40,.07);
-}
+/* Tokens de color (dark/light) provienen de auvro-design.css (estandar compartido con el dashboard). */
 html{height:100%}
 body{
-  font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);
+  font-family:'Inter',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);
   height:100%;height:100dvh;display:flex;flex-direction:column;overflow:hidden;
   -webkit-tap-highlight-color:transparent;
 }
@@ -195,14 +182,34 @@ footer{
 .product-card .pc-price{font-size:.74rem;color:var(--accent);font-weight:700;line-height:1.35}
 .product-card .pc-cta{margin-top:auto;font-size:.7rem;font-weight:700;color:var(--accent)}
 
+/* �"?�"? THEME TOGGLE �"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"? */
+.theme-toggle-btn{
+  width:38px;height:38px;flex:0 0 auto;border-radius:12px;
+  border:1px solid var(--border2);background:var(--bg);color:var(--muted);
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+  transition:all .2s;
+}
+.theme-toggle-btn:hover{border-color:var(--accent);color:var(--accent)}
+.theme-toggle-btn .icon-sun{display:none}
+.theme-toggle-btn .icon-moon{display:block}
+body.light-mode .theme-toggle-btn .icon-sun{display:block}
+body.light-mode .theme-toggle-btn .icon-moon{display:none}
+
+/* �"?�"? DARK MODE REFINEMENTS �"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"? */
+body:not(.light-mode) .msg.error .bubble{background:rgba(251,191,36,.10);border-color:rgba(251,191,36,.26)}
+body:not(.light-mode) #chat-input,body:not(.light-mode) .back-btn,body:not(.light-mode) .composer-icon-btn,body:not(.light-mode) .theme-toggle-btn{background:var(--bg2)}
+body:not(.light-mode) .bubble{box-shadow:0 1px 3px rgba(0,0,0,.4)}
+
 @media(max-width:560px){
   .msg{max-width:88%}
   #user-email{display:none}
   .btn-small span{display:none}
 }
 </style>
+<link rel="stylesheet" href="auvro-design.css">
 </head>
 <body class="light-mode">
+<script>try{if((localStorage.getItem('auvrouter_theme')||'light')!=='light'){document.body.classList.remove('light-mode')}}catch(_){}</script>
 
 <header>
   <a class="back-btn" href="dashboard.html" title="Volver al dashboard" aria-label="Volver">
@@ -215,6 +222,10 @@ footer{
   </div>
   <div class="header-right">
     <span id="user-email"></span>
+    <button class="theme-toggle-btn" id="theme-toggle-btn" onclick="toggleTheme()" title="Cambiar modo claro/oscuro" aria-label="Cambiar modo claro/oscuro">
+      <svg class="icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+      <svg class="icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+    </button>
     <button class="btn-small" id="nuevo-btn" title="Nueva conversación">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg><span>Nuevo</span>
     </button>
@@ -430,6 +441,11 @@ function showToast(msg) {
   toast.style.display = 'block';
   clearTimeout(showToast._t);
   showToast._t = setTimeout(() => { toast.style.display = 'none'; }, 3500);
+}
+
+function toggleTheme() {
+  const claro = document.body.classList.toggle('light-mode');
+  try { localStorage.setItem('auvrouter_theme', claro ? 'light' : 'dark'); } catch (_) {}
 }
 
 function setStatus(text) {
