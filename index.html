@@ -4,33 +4,23 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Herca Labs | Soluciones Tecnológicas</title>
-
-<!-- PWA Meta Tags -->
-<meta name="application-name" content="AUVRO">
-<meta name="description" content="Plataforma SaaS de agentes de IA multicanal con WhatsApp y Web">
-<meta name="theme-color" content="#0f1115" media="(prefers-color-scheme: dark)">
-<meta name="theme-color" content="#f8fafc" media="(prefers-color-scheme: light)">
-<meta name="color-scheme" content="dark light">
+<meta name="description" content="Páginas web con agente de IA, agentes inteligentes, automatización, infraestructura y soluciones tecnológicas a la medida de tu negocio.">
+<meta name="theme-color" content="#f8fafc">
+<meta name="color-scheme" content="light">
+<meta name="application-name" content="Herca Labs">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="AUVRO">
+<meta name="apple-mobile-web-app-title" content="Herca Labs">
 <meta name="msapplication-TileColor" content="#0f1115">
 <meta name="msapplication-tap-highlight" content="no">
-
-<!-- Manifest -->
 <link rel="manifest" href="/manifest.json">
-
-<!-- Favicons -->
 <link rel="icon" href="/favicon.ico">
 <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
 <link rel="icon" type="image/svg+xml" href="/icon-192.svg">
-
-<!-- Apple Touch Icons -->
 <link rel="apple-touch-icon" href="/icon-192.svg">
 <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon-180.png">
-
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -39,161 +29,155 @@
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
   --bg:#f8fafc;--bg2:#ffffff;--bg3:#f1f5f9;--surface:#ffffff;--border:#e2e8f0;--border2:#cbd5e1;
-  --accent:#2563eb;--accent2:#1d4ed8;--green:#059669;--red:#dc2626;--yellow:#d97706;
+  --accent:#2563eb;--accent2:#0ea5e9;--green:#059669;--red:#dc2626;--yellow:#d97706;
   --text:#0f172a;--muted:#64748b;--dim:#94a3b8;
-  --chat-bg:#ffffff;--chat-panel:#f8fafc;--bubble-user:#ffffff;--bubble-ai:#f1f5f9;--bubble-human:#ecfdf5;
+  --grad:linear-gradient(120deg,#2563eb 0%,#0ea5e9 55%,#38bdf8 100%);
+  --grad-soft:linear-gradient(135deg,rgba(37,99,235,.08),rgba(14,165,233,.05));
+  --grad-warm:linear-gradient(120deg,#7c3aed 0%,#2563eb 60%,#0ea5e9 100%);
   --shadow-soft:0 1px 2px rgba(16,24,40,.05),0 8px 24px rgba(16,24,40,.07);
-  --safe-top:env(safe-area-inset-top, 0px);--safe-bottom:env(safe-area-inset-bottom, 0px);
-}
-body.light-mode{
-  --bg:#f8fafc;--bg2:#ffffff;--surface:#ffffff;--border:#e2e8f0;--border2:#cbd5e1;
-  --bg3:#f1f5f9;
-  --accent:#2563eb;--accent2:#1d4ed8;--green:#059669;--red:#dc2626;--yellow:#d97706;
-  --text:#0f172a;--muted:#64748b;--dim:#94a3b8;
-  --chat-bg:#ffffff;--chat-panel:#f8fafc;--bubble-user:#ffffff;--bubble-ai:#f1f5f9;--bubble-human:#ecfdf5;
-  --shadow-soft:0 1px 2px rgba(16,24,40,.05),0 8px 24px rgba(16,24,40,.07);
+  --shadow-lift:0 12px 40px rgba(16,24,40,.12);
 }
 html{scroll-behavior:smooth}
-body{font-family:'DM Sans',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);overflow-x:hidden;line-height:1.6}
-
-/* SCROLLBAR */
-::-webkit-scrollbar{width:4px}
+body{font-family:'DM Sans',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;background:var(--bg);color:var(--text);overflow-x:hidden;line-height:1.6;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-rendering:geometricPrecision;letter-spacing:-.01em}
+::selection{background:rgba(37,99,235,.16)}
+::-webkit-scrollbar{width:6px;height:6px}
 ::-webkit-scrollbar-track{background:var(--bg)}
-::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+h1,h2,h3,h4{font-family:'DM Sans',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;letter-spacing:-.03em}
 
 /* NAV */
-nav{position:fixed;top:0;left:0;right:0;z-index:100;padding:0 5vw;height:68px;display:flex;align-items:center;justify-content:space-between;background:var(--bg2);backdrop-filter:blur(16px);border-bottom:1px solid var(--border)}
-.nav-logo{font-family:'DM Sans',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-weight:800;font-size:1.1rem;letter-spacing:0.04em;color:var(--text);text-decoration:none;display:flex;align-items:center;gap:10px}
-.nav-logo-dot{width:8px;height:8px;border-radius:50%;background:var(--accent);display:inline-block}
-.nav-links{display:flex;align-items:center;gap:2rem}
-.nav-links a{color:var(--muted);text-decoration:none;font-size:.9rem;font-weight:400;transition:color .2s}
+nav{position:fixed;top:0;left:0;right:0;z-index:100;padding:0 5vw;height:68px;display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,.82);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border-bottom:1px solid var(--border)}
+.nav-logo{font-family:'DM Sans',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-weight:800;font-size:1.05rem;letter-spacing:.04em;color:var(--text);text-decoration:none;display:flex;align-items:center;gap:10px}
+.nav-logo-mark{width:30px;height:30px;border-radius:9px;background:var(--grad-warm);color:#fff;display:flex;align-items:center;justify-content:center;font-size:.95rem;font-weight:800;box-shadow:0 4px 12px rgba(37,99,235,.35)}
+.nav-links{display:flex;align-items:center;gap:1.75rem}
+.nav-links a{color:var(--muted);text-decoration:none;font-size:.88rem;transition:color .2s}
 .nav-links a:hover{color:var(--text)}
-.nav-cta{background:var(--accent);color:#fff;padding:.45rem 1.1rem;border-radius:6px;font-size:.85rem;font-weight:500;text-decoration:none;transition:background .2s,transform .15s}
-.nav-cta:hover{background:var(--accent2);transform:translateY(-1px)}
-.nav-mobile-toggle{display:none;background:none;border:1px solid var(--border2);color:var(--muted);padding:.4rem .6rem;border-radius:6px;cursor:pointer;font-size:1rem}
-@media(max-width:768px){
-  .nav-links{display:none;position:absolute;top:68px;left:0;right:0;background:var(--bg2);flex-direction:column;padding:1rem 5vw 1.5rem;border-bottom:1px solid var(--border);gap:1rem}
+.nav-cta{background:var(--grad);background-size:150% 150%;color:#fff!important;padding:.5rem 1.2rem;border-radius:8px;font-weight:600!important;font-size:.85rem!important;transition:background-position .3s,transform .15s!important;box-shadow:0 4px 14px rgba(37,99,235,.3)}
+.nav-cta:hover{background-position:100% 50%;transform:translateY(-1px);color:#fff!important}
+.nav-mobile-toggle{display:none;background:none;border:1px solid var(--border2);color:var(--muted);padding:.4rem .65rem;border-radius:8px;cursor:pointer;font-size:1rem}
+@media(max-width:860px){
+  .nav-links{display:none;position:absolute;top:68px;left:0;right:0;background:#fff;flex-direction:column;align-items:flex-start;padding:1rem 5vw 1.5rem;border-bottom:1px solid var(--border);gap:1rem;box-shadow:var(--shadow-soft)}
   .nav-links.open{display:flex}
   .nav-mobile-toggle{display:block}
 }
 
 /* HERO */
-.hero{min-height:100vh;display:flex;align-items:center;padding:120px 5vw 80px;position:relative;overflow:hidden}
-.hero-grid{position:absolute;inset:0;background-image:linear-gradient(var(--border) 1px,transparent 1px),linear-gradient(90deg,var(--border) 1px,transparent 1px);background-size:60px 60px;opacity:0;pointer-events:none}
-.hero-glow{position:absolute;top:10%;left:50%;transform:translateX(-50%);width:600px;height:400px;background:radial-gradient(ellipse,rgba(14,165,233,.12) 0%,transparent 70%);pointer-events:none;opacity:0}
-.hero-content{max-width:760px;position:relative;z-index:1}
-.hero-badge{display:inline-flex;align-items:center;gap:.5rem;background:var(--bg3);border:1px solid var(--border);border-radius:20px;padding:.35rem 1rem;font-size:.8rem;color:var(--muted);margin-bottom:1.5rem;font-family:'DM Sans',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
-.hero-badge-dot{width:6px;height:6px;border-radius:50%;background:var(--green);flex:0 0 auto}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
-h1{font-family:'DM Sans',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:clamp(2.2rem,5vw,3.8rem);font-weight:800;line-height:1.1;letter-spacing:-0.02em;color:var(--text);margin-bottom:1.5rem}
-h1 .highlight{color:var(--accent)}
-.hero-sub{font-size:1.05rem;color:var(--muted);max-width:540px;margin-bottom:2.5rem;font-weight:300;line-height:1.75}
-.hero-actions{display:flex;gap:1rem;flex-wrap:wrap}
-.btn-main{display:inline-flex;align-items:center;gap:.6rem;background:var(--accent);color:#fff;padding:.75rem 1.6rem;border-radius:8px;font-weight:600;text-decoration:none;font-size:.95rem;transition:background .2s}
-.btn-main:hover{background:var(--accent2)}
-.btn-ghost{display:inline-flex;align-items:center;gap:.6rem;background:transparent;color:var(--muted);padding:.75rem 1.6rem;border-radius:8px;font-weight:400;text-decoration:none;font-size:.95rem;border:1px solid var(--border2);transition:all .2s}
-.btn-ghost:hover{color:var(--text);border-color:var(--dim)}
-.hero-stats{display:flex;gap:3rem;margin-top:4rem;padding-top:2.5rem;border-top:1px solid var(--border);flex-wrap:wrap}
-.stat-num{font-family:'DM Sans',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:2rem;font-weight:800;color:var(--text)}
-.stat-label{font-size:.82rem;color:var(--muted);margin-top:.1rem}
-
-/* SECTIONS */
-section{padding:90px 5vw}
-.section-label{font-size:.78rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin-bottom:.75rem}
-.section-title{font-family:'DM Sans',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:clamp(1.6rem,3.5vw,2.4rem);font-weight:700;line-height:1.2;color:var(--text);margin-bottom:1rem}
-.section-sub{color:var(--muted);font-size:1rem;max-width:520px;font-weight:300}
-.section-header{margin-bottom:4rem}
+.hero{min-height:100vh;display:flex;align-items:center;padding:130px 5vw 80px;position:relative;overflow:hidden}
+.hero-grid{position:absolute;inset:0;background-image:linear-gradient(var(--border) 1px,transparent 1px),linear-gradient(90deg,var(--border) 1px,transparent 1px);background-size:64px 64px;-webkit-mask-image:radial-gradient(ellipse 75% 70% at 50% 30%,#000 40%,transparent 100%);mask-image:radial-gradient(ellipse 75% 70% at 50% 30%,#000 40%,transparent 100%);opacity:.5;pointer-events:none}
+.hero-glow{position:absolute;top:8%;left:50%;transform:translateX(-50%);width:760px;height:480px;background:radial-gradient(ellipse,rgba(14,165,233,.15) 0%,transparent 65%);pointer-events:none;animation:glowFloat 9s ease-in-out infinite}
+@keyframes glowFloat{0%,100%{transform:translateX(-50%) translateY(0)}50%{transform:translateX(-50%) translateY(-18px)}}
+.hero-content{max-width:820px;position:relative;z-index:1;margin:0 auto;text-align:center}
+.hero-badge{display:inline-flex;align-items:center;gap:.5rem;background:#fff;border:1px solid var(--border);border-radius:20px;padding:.38rem 1rem;font-size:.78rem;color:var(--muted);margin-bottom:1.5rem;font-weight:600;letter-spacing:.04em;box-shadow:var(--shadow-soft)}
+.hero-badge-dot{width:7px;height:7px;border-radius:50%;background:var(--green);flex:0 0 auto;box-shadow:0 0 0 3px rgba(5,150,105,.15);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+h1{font-size:clamp(2.3rem,5.4vw,3.9rem);font-weight:800;line-height:1.06;letter-spacing:-.03em;margin-bottom:1.4rem}
+h1 .grad{background:var(--grad-warm);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent}
+.hero-sub{font-size:1.08rem;color:var(--muted);max-width:600px;margin:0 auto 2.5rem;font-weight:300;line-height:1.8}
+.hero-sub strong{color:var(--text);font-weight:600}
+.hero-actions{display:flex;gap:1rem;justify-content:center;flex-wrap:wrap}
+.btn-main{display:inline-flex;align-items:center;justify-content:center;gap:.6rem;background:var(--grad);background-size:150% 150%;color:#fff;padding:.85rem 1.7rem;border-radius:10px;font-weight:600;text-decoration:none;font-size:.95rem;transition:background-position .3s,transform .15s,box-shadow .2s;box-shadow:0 6px 20px rgba(37,99,235,.35)}
+.btn-main:hover{background-position:100% 50%;transform:translateY(-2px);box-shadow:0 10px 26px rgba(37,99,235,.4)}
+.btn-wa{background:#25d366!important;box-shadow:0 6px 20px rgba(37,211,102,.35)!important}
+.btn-wa:hover{box-shadow:0 10px 26px rgba(37,211,102,.45)!important}
+.btn-ghost{display:inline-flex;align-items:center;justify-content:center;gap:.6rem;background:#fff;color:var(--muted);padding:.85rem 1.7rem;border-radius:10px;font-weight:500;text-decoration:none;font-size:.95rem;border:1px solid var(--border2);transition:all .2s}
+.btn-ghost:hover{color:var(--text);border-color:var(--dim);transform:translateY(-2px)}
+.hero-stats{display:flex;justify-content:center;gap:3rem;margin-top:4rem;padding-top:2.4rem;border-top:1px solid var(--border);flex-wrap:wrap}
+.stat-num{font-family:'DM Sans',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:1.9rem;font-weight:800;color:var(--text)}
+.stat-num .grad{background:var(--grad);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent}
+.stat-label{font-size:.82rem;color:var(--muted);margin-top:.1rem;font-weight:300}
 
 /* SERVICES */
+section{padding:96px 5vw}
+.sec-label{font-size:.75rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin-bottom:.7rem}
+.sec-title{font-size:clamp(1.7rem,3.8vw,2.5rem);font-weight:800;line-height:1.15;color:var(--text);margin-bottom:1rem;letter-spacing:-.03em}
+.sec-sub{color:var(--muted);font-size:1rem;max-width:560px;font-weight:300;line-height:1.75}
+.sec-header{margin-bottom:3.5rem;max-width:640px}
 #servicios{background:var(--bg2)}
-.services-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:1.5px;background:var(--border)}
-.service-card{background:var(--bg2);padding:2rem 2rem;transition:background .25s;cursor:default;position:relative;overflow:hidden}
-.service-card::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(14,165,233,.04),transparent);opacity:0;transition:opacity .3s}
-.service-card:hover{background:var(--surface)}
+.services-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:1.25rem}
+.service-card{background:#fff;border:1px solid var(--border);border-radius:16px;padding:2rem 1.8rem;position:relative;overflow:hidden;transition:border-color .25s,transform .25s,box-shadow .25s;text-decoration:none;display:flex;flex-direction:column}
+.service-card:hover{border-color:var(--border2);transform:translateY(-4px);box-shadow:var(--shadow-lift)}
+.service-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--grad);opacity:0;transition:opacity .3s}
 .service-card:hover::before{opacity:1}
-.service-icon{width:44px;height:44px;border-radius:10px;background:var(--bg3);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;margin-bottom:1.25rem;font-size:1.1rem;color:var(--accent)}
-.service-title{font-family:'DM Sans',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:1rem;font-weight:700;color:var(--text);margin-bottom:.6rem}
-.service-desc{font-size:.88rem;color:var(--muted);line-height:1.65;font-weight:300}
-.service-tag{display:inline-block;margin-top:1rem;font-size:.75rem;color:var(--dim);border:1px solid var(--border);padding:.2rem .65rem;border-radius:20px;font-weight:400}
+.service-icon{width:48px;height:48px;border-radius:12px;background:var(--grad-soft);border:1px solid rgba(37,99,235,.14);display:flex;align-items:center;justify-content:center;margin-bottom:1.2rem;font-size:1.2rem;color:var(--accent)}
+.service-title{font-family:'DM Sans',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:1.05rem;font-weight:700;color:var(--text);margin-bottom:.6rem}
+.service-desc{font-size:.88rem;color:var(--muted);line-height:1.65;font-weight:300;flex:1}
+.service-foot{display:flex;align-items:center;justify-content:space-between;margin-top:1.2rem}
+.service-tag{display:inline-block;font-size:.72rem;color:var(--dim);border:1px solid var(--border);padding:.2rem .65rem;border-radius:20px;font-weight:500}
+.service-link{display:inline-flex;align-items:center;gap:.4rem;font-size:.85rem;font-weight:600;color:var(--accent)}
+.service-link i{transition:transform .2s}
+.service-card:hover .service-link i{transform:translateX(3px)}
+.service-card.featured{border:1px solid rgba(37,99,235,.4);background:linear-gradient(180deg,#fff 0%,rgba(37,99,235,.04) 100%);box-shadow:0 8px 30px rgba(37,99,235,.12)}
+.service-card.featured:hover{border-color:var(--accent)}
+.service-card.featured .service-icon{background:var(--grad);color:#fff;border:none;box-shadow:0 4px 14px rgba(37,99,235,.35)}
+.service-badge{position:absolute;top:16px;right:16px;background:var(--grad);color:#fff;font-size:.66rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:.28rem .7rem;border-radius:20px;box-shadow:0 3px 10px rgba(37,99,235,.35)}
 
 /* VALUE */
-#diferencial{background:var(--bg3)}
-.value-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1.5rem}
-.value-card{border:1px solid var(--border);border-radius:12px;padding:1.75rem;background:var(--surface);transition:border-color .25s}
-.value-card:hover{border-color:var(--border2)}
-.value-number{font-family:'DM Sans',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:2.5rem;font-weight:800;color:var(--border2);line-height:1;margin-bottom:1rem}
+#diferencial{background:var(--bg)}
+.value-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1.25rem}
+.value-card{background:#fff;border:1px solid var(--border);border-radius:16px;padding:1.9rem;transition:transform .25s,box-shadow .25s}
+.value-card:hover{transform:translateY(-4px);box-shadow:var(--shadow-lift)}
+.value-number{font-family:'DM Sans',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:2.4rem;font-weight:800;line-height:1;margin-bottom:1rem;background:var(--grad);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent}
 .value-title{font-family:'DM Sans',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:1rem;font-weight:700;color:var(--text);margin-bottom:.5rem}
 .value-desc{font-size:.88rem;color:var(--muted);line-height:1.65;font-weight:300}
 
 /* PROCESO */
 #proceso{background:var(--bg2)}
-.proceso-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:0;position:relative}
-.proceso-step{padding:2rem 1.75rem;position:relative}
-.proceso-step:not(:last-child)::after{content:'';position:absolute;top:2.5rem;right:-1px;width:1px;height:2rem;background:var(--border2);display:none}
-@media(min-width:600px){.proceso-step:not(:last-child)::after{display:block}}
-.paso-num{font-family:'DM Sans',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:.75rem;font-weight:700;letter-spacing:.1em;color:var(--accent);margin-bottom:.8rem}
-.paso-title{font-family:'DM Sans',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:1.05rem;font-weight:700;color:var(--text);margin-bottom:.5rem}
-.paso-desc{font-size:.85rem;color:var(--muted);font-weight:300;line-height:1.6}
-.paso-bar{width:28px;height:2px;background:var(--accent);margin-bottom:.9rem;border-radius:2px}
+.proceso-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:1.25rem}
+.proceso-step{background:#fff;border:1px solid var(--border);border-radius:16px;padding:1.8rem;transition:transform .25s,box-shadow .25s}
+.proceso-step:hover{transform:translateY(-4px);box-shadow:var(--shadow-lift)}
+.paso-num{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:10px;background:var(--grad);color:#fff;font-size:.8rem;font-weight:800;margin-bottom:1rem;box-shadow:0 4px 12px rgba(37,99,235,.3)}
+.paso-title{font-family:'DM Sans',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:1rem;font-weight:700;color:var(--text);margin-bottom:.5rem}
+.paso-desc{font-size:.86rem;color:var(--muted);font-weight:300;line-height:1.65}
 
 /* CTA */
-.cta-section{background:var(--bg);padding:90px 5vw;text-align:center;position:relative;overflow:hidden}
-.cta-glow{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:500px;height:300px;background:radial-gradient(ellipse,rgba(14,165,233,.08) 0%,transparent 70%);opacity:0}
-.cta-section h2{font-family:'DM Sans',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:clamp(1.7rem,4vw,2.8rem);font-weight:800;color:var(--text);margin-bottom:1rem;position:relative}
-.cta-section p{color:var(--muted);font-size:1rem;max-width:480px;margin:0 auto 2.5rem;font-weight:300;position:relative}
-.cta-section .btn-main{position:relative}
-
-/* WHATSAPP FLOAT */
-.wa-float{position:fixed;bottom:24px;right:24px;z-index:99;width:50px;height:50px;border-radius:50%;background:#25d366;display:flex;align-items:center;justify-content:center;color:#fff;font-size:1.3rem;text-decoration:none;box-shadow:0 4px 20px rgba(37,211,102,.4);transition:transform .2s}
-.wa-float:hover{transform:scale(1.1)}
+.cta-section{background:#0f172a;padding:96px 5vw;text-align:center;position:relative;overflow:hidden}
+.cta-section::before{content:'';position:absolute;inset:0;background-image:linear-gradient(rgba(148,163,184,.12) 1px,transparent 1px),linear-gradient(90deg,rgba(148,163,184,.12) 1px,transparent 1px);background-size:60px 60px;opacity:.35;pointer-events:none}
+.cta-section::after{content:'';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:700px;height:400px;background:radial-gradient(ellipse,rgba(14,165,233,.22) 0%,transparent 65%);pointer-events:none}
+.cta-section h2{font-size:clamp(1.8rem,4.2vw,2.8rem);font-weight:800;color:#fff;margin-bottom:.9rem;position:relative}
+.cta-section h2 .grad{background:linear-gradient(120deg,#38bdf8,#818cf8);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent}
+.cta-section p{color:#94a3b8;font-size:1rem;max-width:520px;margin:0 auto 2.4rem;font-weight:300;position:relative}
+.cta-section .hero-actions{position:relative}
+.cta-section .btn-ghost{border-color:#334155;background:transparent;color:#cbd5e1}
+.cta-section .btn-ghost:hover{color:#fff;border-color:#64748b}
 
 /* FOOTER */
-footer{background:var(--bg2);border-top:1px solid var(--border);padding:2rem 5vw;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem}
-.footer-brand{font-family:'DM Sans',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-weight:700;font-size:.95rem;color:var(--muted)}
-.footer-copy{font-size:.82rem;color:var(--dim)}
+footer{background:#fff;border-top:1px solid var(--border);padding:2.2rem 5vw;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem}
+.footer-brand{font-family:'DM Sans',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-weight:800;font-size:.95rem;color:var(--text);display:flex;align-items:center;gap:8px}
+.footer-links{display:flex;gap:1.5rem}
+.footer-links a{font-size:.84rem;color:var(--dim);text-decoration:none;transition:color .2s}
+.footer-links a:hover{color:var(--muted)}
+.footer-copy{font-size:.8rem;color:var(--dim)}
 
-/* ANIMATIONS */
-.fade-up{opacity:0;transform:translateY(24px);transition:opacity .6s ease,transform .6s ease}
+/* WA FLOAT */
+.wa-float{position:fixed;bottom:24px;right:24px;z-index:98;width:52px;height:52px;border-radius:50%;background:#25d366;display:flex;align-items:center;justify-content:center;color:#fff;font-size:1.4rem;text-decoration:none;box-shadow:0 6px 22px rgba(37,211,102,.45);transition:transform .2s}
+.wa-float:hover{transform:scale(1.1)}
+
+/* REVEAL */
+.fade-up{opacity:0;transform:translateY(26px);transition:opacity .6s ease,transform .6s ease}
 .fade-up.visible{opacity:1;transform:translateY(0)}
-
-
-        /* AUVRO UI TYPOGRAPHY PATCH — fuente más limpia y profesional */
-        :root{--font-ui:'DM Sans',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif}
-        html,body,button,input,select,textarea{
-            font-family:var(--font-ui)!important;
-            -webkit-font-smoothing:antialiased;
-            -moz-osx-font-smoothing:grayscale;
-            text-rendering:geometricPrecision;
-        }
-        h1,h2,h3,h4,.section-title,.sec-title,.nav-logo,.service-title,
-        .value-title,.paso-title,.stat-num,.stat-n,.plan-price,.plan-name{
-            font-family:'DM Sans',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif!important;
-            letter-spacing:-0.03em;
-        }
-        body{letter-spacing:-0.01em}
-        p,.hero-sub,.section-sub,.sec-sub,.service-desc,.value-desc,.paso-desc,.caso-desc{
-            letter-spacing:-0.006em;
-        }
-        
+@media(max-width:600px){
+  section{padding:76px 5vw}
+  .hero-stats{flex-direction:column;align-items:center;gap:1.5rem}
+}
 </style>
 </head>
-<body class="light-mode">
+<body>
 
 <!-- NAV -->
 <nav>
-  <a class="nav-logo" href="#">
-    <span class="nav-logo-dot"></span>
+  <a class="nav-logo" href="#inicio">
+    <span class="nav-logo-mark">H</span>
     Herca Labs
   </a>
-  <button class="nav-mobile-toggle" onclick="document.querySelector('.nav-links').classList.toggle('open')">
-    <i class="fas fa-bars"></i>
-  </button>
-  <div class="nav-links">
+  <div class="nav-links" id="nav-links">
     <a href="#servicios">Servicios</a>
     <a href="#diferencial">Valor</a>
     <a href="#proceso">Proceso</a>
     <a href="login.html" class="nav-cta"><i class="fas fa-rocket"></i> Acceder al Panel de Agentes IA</a>
-</div>
+  </div>
+  <button class="nav-mobile-toggle" id="nav-toggle" type="button" aria-label="Menú">
+    <i class="fas fa-bars"></i>
+  </button>
 </nav>
 
 <!-- HERO -->
@@ -203,26 +187,26 @@ footer{background:var(--bg2);border-top:1px solid var(--border);padding:2rem 5vw
   <div class="hero-content">
     <div class="hero-badge">
       <span class="hero-badge-dot"></span>
-      Disponible para nuevos proyectos
+      Ingeniería tecnológica para empresas que quieren escalar
     </div>
-    <h1>Ingeniería tecnológica para empresas que quieren <span class="highlight">escalar</span></h1>
-    <p class="hero-sub">Diseño e implementación de soluciones en infraestructura, automatización e inteligencia artificial orientadas a optimizar procesos y aumentar la eficiencia operativa.</p>
+    <h1>Tecnología que <span class="grad">vende, atiende y escala</span> tu negocio</h1>
+    <p class="hero-sub">Creamos <strong>páginas web con agente de IA</strong>, asistentes inteligentes y soluciones de automatización que dan presencia profesional a tu negocio y atienden clientes <strong>24/7</strong>.</p>
     <div class="hero-actions">
-      <a href="https://api.whatsapp.com/send?phone=573115062661&text=Quiero%20agendar%20una%20asesor%C3%ADa" class="btn-main"><i class="fab fa-whatsapp"></i> Agendar asesoría</a>
+      <a href="https://wa.me/573115062661?text=Quiero%20agendar%20una%20asesor%C3%ADa" target="_blank" rel="noopener" class="btn-main btn-wa"><i class="fab fa-whatsapp"></i> Agendar asesoría</a>
       <a href="#servicios" class="btn-ghost">Ver servicios <i class="fas fa-arrow-down"></i></a>
     </div>
     <div class="hero-stats">
       <div>
-        <div class="stat-num">6+</div>
+        <div class="stat-num"><span class="grad">6+</span></div>
         <div class="stat-label">Servicios especializados</div>
       </div>
       <div>
-        <div class="stat-num">360°</div>
-        <div class="stat-label">Cobertura tecnológica</div>
+        <div class="stat-num"><span class="grad">24/7</span></div>
+        <div class="stat-label">Atención con agentes de IA</div>
       </div>
       <div>
-        <div class="stat-num">1</div>
-        <div class="stat-label">Solo interlocutor</div>
+        <div class="stat-num"><span class="grad">100%</span></div>
+        <div class="stat-label">Personalización en cada entrega</div>
       </div>
     </div>
   </div>
@@ -230,68 +214,87 @@ footer{background:var(--bg2);border-top:1px solid var(--border);padding:2rem 5vw
 
 <!-- SERVICIOS -->
 <section id="servicios">
-  <div class="section-header fade-up">
-    <div class="section-label">Especialidades</div>
-    <h2 class="section-title">Servicios</h2>
-    <p class="section-sub">Soluciones integrales para cada capa de tu operación tecnológica.</p>
+  <div class="sec-header fade-up">
+    <div class="sec-label">Servicios</div>
+    <h2 class="sec-title">Soluciones a la medida de tu negocio</h2>
+    <p class="sec-sub">Cada servicio tiene su propia landing con todos los detalles. Elige el tuyo y conócelo a fondo.</p>
   </div>
-  <div class="services-grid fade-up">
-    <div class="service-card">
-      <div class="service-icon"><i class="fas fa-laptop"></i></div>
-      <div class="service-title">Mantenimiento de equipos</div>
-      <p class="service-desc">Diagnóstico, optimización y mantenimiento preventivo y correctivo para garantizar el rendimiento y la vida útil de tus equipos.</p>
-      <span class="service-tag">Hardware</span>
-    </div>
-    <div class="service-card">
+  <div class="services-grid">
+    <a href="paginas-web.html" class="service-card featured fade-up">
+      <span class="service-badge">Nuevo</span>
+      <div class="service-icon"><i class="fas fa-globe"></i></div>
+      <div class="service-title">Página web 100% personalizable con Agente de IA</div>
+      <p class="service-desc">Tu página web diseñada según tu negocio y tus clientes, con un agente de IA que atiende por ti 24/7 y nunca pierde una venta. Demo personalizada sin costo.</p>
+      <div class="service-foot">
+        <span class="service-tag">Web + IA</span>
+        <span class="service-link">Ver landing <i class="fas fa-arrow-right"></i></span>
+      </div>
+    </a>
+    <a href="agentes.html" class="service-card fade-up">
+      <div class="service-icon"><i class="fas fa-robot"></i></div>
+      <div class="service-title">Agentes de inteligencia artificial</div>
+      <p class="service-desc">Asistentes inteligentes que atienden, cotizan, cobran y capturan leads por WhatsApp y web, conectados a tus herramientas.</p>
+      <div class="service-foot">
+        <span class="service-tag">IA</span>
+        <span class="service-link">Ver landing <i class="fas fa-arrow-right"></i></span>
+      </div>
+    </a>
+    <a href="https://wa.me/573115062661?text=Quiero%20una%20cotizaci%C3%B3n%20de%20Desarrollo%20web" target="_blank" rel="noopener" class="service-card fade-up">
+      <div class="service-icon"><i class="fas fa-code"></i></div>
+      <div class="service-title">Desarrollo web</div>
+      <p class="service-desc">Plataformas web, sistemas a la medida y soluciones digitales orientadas a resultados concretos para tu operación.</p>
+      <div class="service-foot">
+        <span class="service-tag">Dev</span>
+        <span class="service-link">Cotizar <i class="fas fa-arrow-right"></i></span>
+      </div>
+    </a>
+    <a href="https://wa.me/573115062661?text=Quiero%20una%20cotizaci%C3%B3n%20de%20Automatizaci%C3%B3n%20de%20procesos" target="_blank" rel="noopener" class="service-card fade-up">
+      <div class="service-icon"><i class="fas fa-cogs"></i></div>
+      <div class="service-title">Automatización de procesos</div>
+      <p class="service-desc">Integración de herramientas y flujos automáticos que reducen tiempos operativos y aumentan tu productividad.</p>
+      <div class="service-foot">
+        <span class="service-tag">RPA</span>
+        <span class="service-link">Cotizar <i class="fas fa-arrow-right"></i></span>
+      </div>
+    </a>
+    <a href="https://wa.me/573115062661?text=Quiero%20una%20cotizaci%C3%B3n%20de%20Infraestructura%20y%20redes" target="_blank" rel="noopener" class="service-card fade-up">
       <div class="service-icon"><i class="fas fa-network-wired"></i></div>
       <div class="service-title">Infraestructura y redes</div>
       <p class="service-desc">Diseño, implementación y administración de redes, servidores y entornos tecnológicos seguros y escalables.</p>
-      <span class="service-tag">Networking</span>
-    </div>
-    <div class="service-card">
-      <div class="service-icon"><i class="fas fa-robot"></i></div>
-      <div class="service-title">Agentes de inteligencia artificial</div>
-      <p class="service-desc">Desarrollo de asistentes inteligentes para automatizar atención, ventas y procesos internos en tu negocio.</p>
-      <span class="service-tag">IA</span>
-    </div>
-    <div class="service-card">
-      <div class="service-icon"><i class="fas fa-cogs"></i></div>
-      <div class="service-title">Automatización de procesos</div>
-      <p class="service-desc">Integración de herramientas y flujos automáticos que reducen tiempos operativos y aumentan la productividad.</p>
-      <span class="service-tag">RPA</span>
-    </div>
-    <div class="service-card">
-      <div class="service-icon"><i class="fas fa-code"></i></div>
-      <div class="service-title">Desarrollo web</div>
-      <p class="service-desc">Creación de plataformas web, sistemas a la medida y soluciones digitales orientadas a resultados concretos.</p>
-      <span class="service-tag">Dev</span>
-    </div>
-    <div class="service-card">
+      <div class="service-foot">
+        <span class="service-tag">Networking</span>
+        <span class="service-link">Cotizar <i class="fas fa-arrow-right"></i></span>
+      </div>
+    </a>
+    <a href="https://wa.me/573115062661?text=Quiero%20una%20cotizaci%C3%B3n%20de%20Servidores%20y%20nube" target="_blank" rel="noopener" class="service-card fade-up">
       <div class="service-icon"><i class="fas fa-server"></i></div>
       <div class="service-title">Servidores y nube</div>
-      <p class="service-desc">Configuración y administración de servidores, hosting y soluciones cloud para alta disponibilidad.</p>
-      <span class="service-tag">Cloud</span>
-    </div>
+      <p class="service-desc">Configuración y administración de hosting y soluciones cloud con alta disponibilidad para tu negocio.</p>
+      <div class="service-foot">
+        <span class="service-tag">Cloud</span>
+        <span class="service-link">Cotizar <i class="fas fa-arrow-right"></i></span>
+      </div>
+    </a>
   </div>
 </section>
 
 <!-- VALOR DIFERENCIAL -->
 <section id="diferencial">
-  <div class="section-header fade-up">
-    <div class="section-label">¿Por qué elegirme?</div>
-    <h2 class="section-title">Valor diferencial</h2>
-    <p class="section-sub">Más que un proveedor, un aliado estratégico para tu empresa.</p>
+  <div class="sec-header fade-up">
+    <div class="sec-label">¿Por qué elegirme?</div>
+    <h2 class="sec-title">Valor diferencial</h2>
+    <p class="sec-sub">Más que un proveedor, un aliado estratégico para tu negocio.</p>
   </div>
   <div class="value-grid">
     <div class="value-card fade-up">
       <div class="value-number">01</div>
-      <div class="value-title">Enfoque estratégico</div>
+      <div class="value-title">Enfoque en resultados</div>
       <p class="value-desc">No solo implemento tecnología. Desarrollo soluciones alineadas a los objetivos reales de tu negocio para generar impacto medible.</p>
     </div>
     <div class="value-card fade-up">
       <div class="value-number">02</div>
       <div class="value-title">Experiencia integral</div>
-      <p class="value-desc">Infraestructura, desarrollo y automatización en un solo lugar. Sin fragmentar tu operación ni multiplicar proveedores.</p>
+      <p class="value-desc">Páginas web, agentes de IA, desarrollo y automatización en un solo lugar. Sin fragmentar tu operación ni multiplicar proveedores.</p>
     </div>
     <div class="value-card fade-up">
       <div class="value-number">03</div>
@@ -303,33 +306,29 @@ footer{background:var(--bg2);border-top:1px solid var(--border);padding:2rem 5vw
 
 <!-- PROCESO -->
 <section id="proceso">
-  <div class="section-header fade-up">
-    <div class="section-label">Metodología</div>
-    <h2 class="section-title">Cómo trabajo</h2>
-    <p class="section-sub">Un proceso claro y estructurado desde el primer contacto hasta el soporte.</p>
+  <div class="sec-header fade-up">
+    <div class="sec-label">Metodología</div>
+    <h2 class="sec-title">Cómo trabajo</h2>
+    <p class="sec-sub">Un proceso claro y estructurado desde el primer contacto hasta el soporte.</p>
   </div>
   <div class="proceso-grid fade-up">
     <div class="proceso-step">
-      <div class="paso-num">PASO 01</div>
-      <div class="paso-bar"></div>
+      <div class="paso-num">01</div>
       <div class="paso-title">Análisis</div>
-      <p class="paso-desc">Evaluación técnica y de negocio para entender el contexto y definir prioridades.</p>
+      <p class="paso-desc">Evaluación técnica y de negocio para entender tu contexto y definir prioridades.</p>
     </div>
     <div class="proceso-step">
-      <div class="paso-num">PASO 02</div>
-      <div class="paso-bar"></div>
+      <div class="paso-num">02</div>
       <div class="paso-title">Diseño</div>
-      <p class="paso-desc">Arquitectura de solución personalizada con tecnologías adecuadas para el caso.</p>
+      <p class="paso-desc">Arquitectura de solución personalizada con las tecnologías adecuadas para tu caso.</p>
     </div>
     <div class="proceso-step">
-      <div class="paso-num">PASO 03</div>
-      <div class="paso-bar"></div>
+      <div class="paso-num">03</div>
       <div class="paso-title">Implementación</div>
       <p class="paso-desc">Desarrollo, configuración y pruebas con validación constante durante el proceso.</p>
     </div>
     <div class="proceso-step">
-      <div class="paso-num">PASO 04</div>
-      <div class="paso-bar"></div>
+      <div class="paso-num">04</div>
       <div class="paso-title">Soporte</div>
       <p class="paso-desc">Monitoreo, mejora continua y acompañamiento posterior a la entrega.</p>
     </div>
@@ -337,38 +336,46 @@ footer{background:var(--bg2);border-top:1px solid var(--border);padding:2rem 5vw
 </section>
 
 <!-- CTA FINAL -->
-<section class="cta-section" id="contacto">
+<section class="cta-section">
   <div class="cta-glow"></div>
-  <h2>¿Listo para transformar tu operación?</h2>
-  <p>Agenda una asesoría gratuita y descubre cómo optimizar tus procesos con tecnología a la medida.</p>
-  <a href="https://wa.me/573115062661" class="btn-main"><i class="fab fa-whatsapp"></i> Contactar por WhatsApp</a>
+  <h2>¿Listo para llevar tu negocio a Internet y <span class="grad">atender 24/7?</span></h2>
+  <p>Agenda una asesoría gratuita o solicita tu demo personalizada de página web sin costo.</p>
+  <div class="hero-actions">
+    <a href="https://wa.me/573115062661" target="_blank" rel="noopener" class="btn-main btn-wa"><i class="fab fa-whatsapp"></i> Contactar por WhatsApp</a>
+    <a href="paginas-web.html" class="btn-ghost"><i class="fas fa-globe"></i> Ver landing de páginas web</a>
+  </div>
 </section>
-  
-  
-
 
 <!-- WHATSAPP FLOTANTE -->
-<a href="https://api.whatsapp.com/send?phone=573115062661&text=Quiero%20agendar%20una%20asesor%C3%ADa" class="wa-float" title="WhatsApp">
+<a href="https://wa.me/573115062661" target="_blank" rel="noopener" class="wa-float" title="WhatsApp">
   <i class="fab fa-whatsapp"></i>
 </a>
 
 <!-- FOOTER -->
 <footer>
-  <span class="footer-brand">Herca Labs</span>
-  <span class="footer-copy">© 2026 — Soluciones Tecnológicas</span>
+  <span class="footer-brand"><span class="nav-logo-mark" style="width:24px;height:24px;font-size:.7rem">H</span> Herca Labs</span>
+  <div class="footer-links">
+    <a href="#servicios">Servicios</a>
+    <a href="paginas-web.html">Páginas web</a>
+    <a href="agentes.html">Agentes IA</a>
+    <a href="login.html">Acceder</a>
+  </div>
+  <span class="footer-copy">© <span id="year"></span> — Soluciones Tecnológicas</span>
 </footer>
 
 <script>
+document.getElementById('year').textContent = new Date().getFullYear();
+document.getElementById('nav-toggle').addEventListener('click', () => {
+  document.getElementById('nav-links').classList.toggle('open');
+});
 const obs = new IntersectionObserver((entries) => {
   entries.forEach((e, i) => {
-    if (e.isIntersecting) {
-      setTimeout(() => e.target.classList.add('visible'), i * 80);
-    }
+    if (e.isIntersecting) setTimeout(() => e.target.classList.add('visible'), i * 70);
   });
 }, { threshold: 0.1 });
 document.querySelectorAll('.fade-up').forEach(el => obs.observe(el));
 </script>
-  <script src="https://auvro.netlify.app/widget.js" data-id="21" data-name="Asistente AUVRO" data-greeting="¡Hola! Soy el asistente de AUVRO. ¿En qué te apoyo hoy? Cuéntame tu necesidad."></script>
+<script src="https://auvro.netlify.app/widget.js" data-id="21" data-name="Asistente AUVRO" data-greeting="¡Hola! Soy el asistente de AUVRO. ¿En qué te apoyo hoy? Cuéntame tu necesidad."></script>
 <script>
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
