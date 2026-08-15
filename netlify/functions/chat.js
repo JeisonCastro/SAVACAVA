@@ -43,35 +43,49 @@ function calcularTimeout(inputChars) {
 }
 
 // ── LLAMADA AL MODELO DE IA (compartida por proveedor principal y respaldo) ──
+// IMPORTANTE: en undici (fetch de Node), abortar durante la lectura del cuerpo NO
+// garantiza que res.json() rechace: si el socket queda colgado, la promesa puede
+// no resolverse nunca y Netlify mata la función a los 30s sin responder. Por eso
+// se envuelve TODO (fetch + cuerpo) en un Promise.race con plazo duro: la función
+// SIEMPRE termina, aunque el abort falle.
 async function llamarModelo({ endpoint, apiKey, model, mensajes, timeoutMs, thinkingDisabled = false }) {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), timeoutMs);
+    const abortTimer = setTimeout(() => controller.abort(), timeoutMs);
+    let deadlineTimer = null;
+    const deadline = new Promise((_, reject) => {
+        deadlineTimer = setTimeout(() => reject(new Error(`Timeout: ${model} no respondió dentro de ${Math.round(timeoutMs / 1000)}s`)), timeoutMs);
+    });
     try {
-        const res = await fetch(endpoint, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${apiKey}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                model,
-                messages: mensajes,
-                temperature: 0.2,
-                max_tokens: 1024,
-                ...(thinkingDisabled ? { thinking: { type: 'disabled' } } : {})
-            }),
-            signal: controller.signal
-        });
-        console.log(`${model} respondió con status:`, res.status);
+        const data = await Promise.race([
+            (async () => {
+                const res = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${apiKey}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        model,
+                        messages: mensajes,
+                        temperature: 0.2,
+                        max_tokens: 1024,
+                        ...(thinkingDisabled ? { thinking: { type: 'disabled' } } : {})
+                    }),
+                    signal: controller.signal
+                });
+                console.log(`${model} respondió con status:`, res.status);
 
-        // El cuerpo llega de forma progresiva y puede tardar mucho; el timeout DEBE
-        // seguir activo durante la lectura del cuerpo: si se limpia aquí, una
-        // generación lenta mata la función por el límite de Netlify en silencio
-        // (Duration: 30000 ms) sin responder nada al usuario.
-        const data = await res.json();
-        if (!res.ok || !data?.choices) {
+                // El cuerpo llega de forma progresiva y puede tardar mucho; el
+                // deadline DEBE cubrir también su lectura: si una generación lenta
+                // o un socket colgado no deja terminar json(), el race corta aquí
+                // (el abort por sí solo a veces no rechaza en undici).
+                return await res.json();
+            })(),
+            deadline
+        ]);
+        if (!data || !data.choices) {
             console.error(`Error ${model}:`, data);
-            throw new Error(data?.error?.message || `Error en la respuesta de la IA (${res.status})`);
+            throw new Error(data?.error?.message || `Error en la respuesta de la IA`);
         }
 
         let contenido = limpiarTextoIA(data.choices[0].message.content);
@@ -90,7 +104,8 @@ async function llamarModelo({ endpoint, apiKey, model, mensajes, timeoutMs, thin
 
         return { respuesta: contenido, apiTokensUsados };
     } finally {
-        clearTimeout(timeout);
+        clearTimeout(abortTimer);
+        if (deadlineTimer) clearTimeout(deadlineTimer);
     }
 }
 
@@ -2189,6 +2204,7 @@ INSTRUCCIONES:
             }
         }
 
+        const tPost = Date.now();
         const tokensUsados = await registrarConsumo({
             agente,
             targetID,
@@ -2198,24 +2214,30 @@ INSTRUCCIONES:
             apiTokens: apiTokensUsados,
             premiumTokens
         });
+        console.log(`[timing] registrarConsumo: ${Date.now() - tPost}ms`);
 
+        const tDedup = Date.now();
         await guardarRespuestaDeducup({
             conversacionId: conversationIdFinal,
             agenteId: targetID,
             contenido: respuestaIA,
             metadata: { canal, origen: 'ia' }
         });
+        console.log(`[timing] guardarRespuestaDeducup: ${Date.now() - tDedup}ms`);
 
+        const tResumen = Date.now();
         await actualizarResumenConversacion({
             conversacionId: conversationIdFinal,
             ultimoMensaje: respuestaIA,
             ultimoRole: 'assistant',
             requiereAtencion: false
         });
+        console.log(`[timing] actualizarResumenConversacion: ${Date.now() - tResumen}ms`);
 
         // ── CRM: captura post-chat (extracción de datos del lead) ──
         // No bloquea la respuesta; si falla, el chat sigue normal.
         if (agente.crm_activo) {
+            const tCRM = Date.now();
             try {
                 await extraerDatosLead({
                     agente,
@@ -2226,6 +2248,7 @@ INSTRUCCIONES:
             } catch (crmErr) {
                 console.error('Error capturando lead:', crmErr.message);
             }
+            console.log(`[timing] extraerDatosLead: ${Date.now() - tCRM}ms`);
         }
 
         return {

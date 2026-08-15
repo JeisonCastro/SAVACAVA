@@ -206,27 +206,39 @@ async function deepseekJSON(systemPrompt, userText, maxTokens = 400) {
     // Extracción de lead es best-effort: no debe robar presupuesto de tiempo de la
     // respuesta del chat (la función de Netlify muere a los 30s). Si DeepSeek está
     // lento, abortamos rápido y simplemente no se actualiza el lead en ese turno.
+    // El Promise.race con plazo duro es obligatorio: el abort de undici a veces NO
+    // rechaza res.json() y la promesa quedaría colgada para siempre (30s => 502).
     const timer = setTimeout(() => controller.abort(), 5000);
+    let deadlineTimer = null;
+    const deadline = new Promise((_, reject) => {
+        deadlineTimer = setTimeout(() => reject(new Error('Timeout: DeepSeek (deepseekJSON) tardó más de 5s')), 5000);
+    });
 
     try {
-        const res = await fetch('https://api.deepseek.com/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${process.env.DEEPSEEK_API_KEY}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                model: 'deepseek-v4-flash',
-                messages: [
-                    { role: 'system', content: systemPrompt },
-                    { role: 'user', content: userText }
-                ],
-                temperature: 0,
-                max_tokens: maxTokens,
-                thinking: { type: 'disabled' }
-            })
-        });
-        const data = await res.json();
+        const data = await Promise.race([
+            (async () => {
+                const res = await fetch('https://api.deepseek.com/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${process.env.DEEPSEEK_API_KEY}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        model: 'deepseek-v4-flash',
+                        messages: [
+                            { role: 'system', content: systemPrompt },
+                            { role: 'user', content: userText }
+                        ],
+                        temperature: 0,
+                        max_tokens: maxTokens,
+                        thinking: { type: 'disabled' }
+                    }),
+                    signal: controller.signal
+                });
+                return await res.json();
+            })(),
+            deadline
+        ]);
         const content = data?.choices?.[0]?.message?.content || '';
         if (!content.trim()) return null;
 
@@ -244,6 +256,7 @@ async function deepseekJSON(systemPrompt, userText, maxTokens = 400) {
         return null;
     } finally {
         clearTimeout(timer);
+        if (deadlineTimer) clearTimeout(deadlineTimer);
     }
 }
 
@@ -251,12 +264,14 @@ async function deepseekJSON(systemPrompt, userText, maxTokens = 400) {
 // Toma los últimos mensajes de la conversación y extrae los datos del lead.
 async function extraerDatosLead({ agente, canal, externalUserId, conversacionId }) {
     try {
+        const t0 = Date.now();
         const { data: mensajesRaw } = await supabase
             .from('mensajes_conversacion')
             .select('role, content, created_at')
             .eq('conversacion_id', conversacionId)
             .order('created_at', { ascending: false })
             .limit(14);
+        console.log(`[timing] lead select mensajes: ${Date.now() - t0}ms`);
 
         const mensajes = (mensajesRaw || []).slice().reverse();
         if (!mensajes || mensajes.length === 0) return;
@@ -284,7 +299,9 @@ Campos a extraer: ${campos}.
 Reglas:
 - "etapa": "nuevo" solo saludo; "contactado" si ya hay intercambio real; "calificado" si mostró interés concreto; "negociacion" si habla de compra, precio o condiciones; "compra" si confirmó que va a comprar (NO si solo preguntó).
 - Usa null cuando el dato no esté presente en la conversación. No inventes datos.`;
+        const t1 = Date.now();
         const extraido = await deepseekJSON(systemPrompt, `Transcripción:\n${transcripcion}`);
+        console.log(`[timing] lead deepseekJSON: ${Date.now() - t1}ms extraido=${!!extraido}`);
 
         if (!extraido || typeof extraido !== 'object') return;
 
