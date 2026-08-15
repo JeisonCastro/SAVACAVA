@@ -23,6 +23,18 @@ exports.handler = async (event) => {
             return { statusCode: 400, body: JSON.stringify({ error: 'Datos incompletos' }) };
         }
 
+        // `perfiles.email` es NOT NULL: lo toma del body, o lo busca en auth.users.
+        let email = String(body.email || '').trim();
+        if (!email) {
+            const { data: userData, error: userError } = await supabase.auth.admin.getUserById(user_id);
+            if (!userError && userData?.user?.email) {
+                email = userData.user.email;
+            }
+        }
+        if (!email) {
+            return { statusCode: 400, body: JSON.stringify({ error: 'Falta email' }) };
+        }
+
         const plan_inicio = new Date().toISOString();
         const plan_vencimiento = new Date(Date.now() + 30 * 86400000).toISOString();
 
@@ -34,6 +46,7 @@ exports.handler = async (event) => {
             .upsert(
                 {
                     id: user_id,
+                    email,
                     nombre,
                     apellido,
                     telefono,

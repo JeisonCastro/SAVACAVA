@@ -452,7 +452,7 @@ async function crearCuenta() {
     const res = await fetch('/.netlify/functions/registrar-perfil', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_id: data.user.id, nombre, apellido, telefono })
+      body: JSON.stringify({ user_id: data.user.id, email, nombre, apellido, telefono })
     });
     if (!res.ok) console.error('[registrar-perfil]', res.status, await res.text());
   } catch (e) {
