@@ -1438,7 +1438,6 @@ INSTRUCCIONES:
         console.log("Conversation ID final:", conversationIdFinal);
         console.log("Caracteres input total:", inputChars);
         const useOpenAI = !!image_url;
-        console.log(useOpenAI ? "Usando OpenAI GPT-4o (vision)..." : "Llamando a DeepSeek...");
 
         // ── LLAMADA AL MODELO con respaldo automático ──
         // DeepSeek es el proveedor principal (rápido y económico). Si tarda más de
@@ -1499,7 +1498,7 @@ INSTRUCCIONES:
                         apiKey: fallbackKey,
                         model: fallbackModel,
                         mensajes,
-                        timeoutMs: 8000
+                        timeoutMs: 6000
                     });
                 } catch (err2) {
                     ultimoError = err2;

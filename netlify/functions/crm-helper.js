@@ -203,7 +203,10 @@ function productosParaCliente(catalogo) {
 async function deepseekJSON(systemPrompt, userText, maxTokens = 400) {
     if (!process.env.DEEPSEEK_API_KEY) return null;
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 12000);
+    // Extracción de lead es best-effort: no debe robar presupuesto de tiempo de la
+    // respuesta del chat (la función de Netlify muere a los 30s). Si DeepSeek está
+    // lento, abortamos rápido y simplemente no se actualiza el lead en ese turno.
+    const timer = setTimeout(() => controller.abort(), 5000);
 
     try {
         const res = await fetch('https://api.deepseek.com/v1/chat/completions', {
