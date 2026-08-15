@@ -42,6 +42,58 @@ function calcularTimeout(inputChars) {
     return Math.min(base + extra, 9000);
 }
 
+// ── LLAMADA AL MODELO DE IA (compartida por proveedor principal y respaldo) ──
+async function llamarModelo({ endpoint, apiKey, model, mensajes, timeoutMs, thinkingDisabled = false }) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+        const res = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${apiKey}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                model,
+                messages: mensajes,
+                temperature: 0.2,
+                max_tokens: 1024,
+                ...(thinkingDisabled ? { thinking: { type: 'disabled' } } : {})
+            }),
+            signal: controller.signal
+        });
+        console.log(`${model} respondió con status:`, res.status);
+
+        // El cuerpo llega de forma progresiva y puede tardar mucho; el timeout DEBE
+        // seguir activo durante la lectura del cuerpo: si se limpia aquí, una
+        // generación lenta mata la función por el límite de Netlify en silencio
+        // (Duration: 30000 ms) sin responder nada al usuario.
+        const data = await res.json();
+        if (!res.ok || !data?.choices) {
+            console.error(`Error ${model}:`, data);
+            throw new Error(data?.error?.message || `Error en la respuesta de la IA (${res.status})`);
+        }
+
+        let contenido = limpiarTextoIA(data.choices[0].message.content);
+        // Los modelos de razonamiento pueden agotar el presupuesto de salida solo en
+        // reasoning_content y devolver content vacío con finish_reason="length".
+        // Evitamos guardar/responder un mensaje en blanco.
+        if ((!contenido || !contenido.trim()) && data.choices?.[0]?.finish_reason === 'length') {
+            console.warn(`${model} devolvió content vacío (finish_reason=length). Respuesta de respaldo activada.`);
+            contenido = "Lo siento, tu solicitud resultó demasiado extensa y no alcancé a completar la respuesta. Intenta dividirla en partes más cortas o reformularla.";
+        }
+
+        const apiTokensUsados = data.usage
+            ? (data.usage.prompt_tokens || 0) + (data.usage.completion_tokens || 0)
+            : null;
+        console.log(`Tokens reales de ${model}:`, apiTokensUsados);
+
+        return { respuesta: contenido, apiTokensUsados };
+    } finally {
+        clearTimeout(timeout);
+    }
+}
+
 // ── PUSH NOTIFICATIONS ──────────────────────────────────────────────────────
 async function dispararPush({ userId, title, body, conversationId, canal = 'web' }) {
     try {
@@ -1388,87 +1440,80 @@ INSTRUCCIONES:
         const useOpenAI = !!image_url;
         console.log(useOpenAI ? "Usando OpenAI GPT-4o (vision)..." : "Llamando a DeepSeek...");
 
-        const controller = new AbortController();
-        // Los modelos de razonamiento de DeepSeek generan reasoning_content de forma
-        // progresiva y pueden tardar decenas de segundos; les damos margen amplio pero
-        // menor al límite de ejecución de Netlify (30s) para responder un error elegante.
-        const timeout = setTimeout(
-            () => controller.abort(),
-            useOpenAI ? calcularTimeout(inputChars) : 29000
-        );
+        // ── LLAMADA AL MODELO con respaldo automático ──
+        // DeepSeek es el proveedor principal (rápido y económico). Si tarda más de
+        // 16s o falla, respondemos con un modelo de respaldo (OpenAI gpt-4o-mini por
+        // defecto) para que el cliente nunca se quede sin respuesta. Presupuesto
+        // total de la IA: ~24s — por debajo del límite de ejecución de Netlify (30s)
+        // para poder devolver un error elegante si ambos proveedores fallan.
+        let respuestaIA = null;
+        let apiTokensUsados = null;
+        let proveedorIA = null;
 
-        const apiEndpoint = useOpenAI
-            ? 'https://api.openai.com/v1/chat/completions'
-            : 'https://api.deepseek.com/v1/chat/completions';
-        const apiKey = useOpenAI
-            ? process.env.OPENIA_KEY
-            : process.env.DEEPSEEK_API_KEY;
-        const model = useOpenAI ? 'gpt-4o' : 'deepseek-v4-flash';
-        // Con reasoning desactivado (thinking.disabled), 1024 tokens son suficientes para
-        // respuestas de chat y reducen el tiempo de generación (evita timeouts de 25s+).
-        const maxOutputTokens = 1024;
+        if (useOpenAI) {
+            // Visión: solo OpenAI (gpt-4o). No hay proveedor secundario de imágenes.
+            if (!process.env.OPENIA_KEY) {
+                throw new Error("OPENIA_KEY no configurada en el servidor");
+            }
+            const resultado = await llamarModelo({
+                endpoint: 'https://api.openai.com/v1/chat/completions',
+                apiKey: process.env.OPENIA_KEY,
+                model: 'gpt-4o',
+                mensajes,
+                timeoutMs: calcularTimeout(inputChars)
+            });
+            respuestaIA = resultado.respuesta;
+            apiTokensUsados = resultado.apiTokensUsados;
+            proveedorIA = 'gpt-4o';
+        } else {
+            if (!process.env.DEEPSEEK_API_KEY) {
+                throw new Error("DEEPSEEK_API_KEY no configurada en el servidor");
+            }
+            const fallbackKey = process.env.FALLBACK_API_KEY || process.env.OPENIA_KEY;
+            const fallbackEndpoint = process.env.FALLBACK_API_URL || 'https://api.openai.com/v1/chat/completions';
+            const fallbackModel = process.env.FALLBACK_MODEL || 'gpt-4o-mini';
 
-        if (!apiKey) {
-            clearTimeout(timeout);
-            throw new Error(useOpenAI
-                ? "OPENIA_KEY no configurada en el servidor"
-                : "DEEPSEEK_API_KEY no configurada en el servidor");
+            let resultado = null;
+            let ultimoError = null;
+            let proveedor = 'deepseek-v4-flash';
+            try {
+                console.log("Llamando a DeepSeek...");
+                resultado = await llamarModelo({
+                    endpoint: 'https://api.deepseek.com/v1/chat/completions',
+                    apiKey: process.env.DEEPSEEK_API_KEY,
+                    model: 'deepseek-v4-flash',
+                    mensajes,
+                    timeoutMs: 16000,
+                    thinkingDisabled: true
+                });
+            } catch (err) {
+                ultimoError = err;
+                console.warn("DeepSeek falló (tiempo o error), probando modelo de respaldo:", err.message);
+            }
+            if (!resultado && fallbackKey) {
+                try {
+                    proveedor = fallbackModel;
+                    console.log(`Llamando al modelo de respaldo ${fallbackModel}...`);
+                    resultado = await llamarModelo({
+                        endpoint: fallbackEndpoint,
+                        apiKey: fallbackKey,
+                        model: fallbackModel,
+                        mensajes,
+                        timeoutMs: 8000
+                    });
+                } catch (err2) {
+                    ultimoError = err2;
+                    console.warn("El modelo de respaldo también falló:", err2.message);
+                }
+            }
+            if (!resultado) {
+                throw ultimoError || new Error("No se obtuvo respuesta de la IA");
+            }
+            respuestaIA = resultado.respuesta;
+            apiTokensUsados = resultado.apiTokensUsados;
+            proveedorIA = proveedor;
         }
-
-        const aiResponse = await fetch(apiEndpoint, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${apiKey}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                model,
-                messages: mensajes,
-                temperature: 0.2,
-                max_tokens: maxOutputTokens,
-                // deepseek-v4-flash razona por defecto y puede tardar >25s en tareas
-                // complejas, superando el límite de ejecución de Netlify. Sin
-                // razonamiento responde en ~5s y cubre casos como agendar clases.
-                ...(useOpenAI ? {} : { thinking: { type: 'disabled' } })
-            }),
-            signal: controller.signal
-        });
-
-        const provider = useOpenAI ? 'OpenAI' : 'DeepSeek';
-        console.log(`${provider} respondió con status:`, aiResponse.status);
-
-        // El cuerpo llega de forma progresiva (tokens de razonamiento) y puede tardar
-        // mucho. El timeout DEBE seguir activo durante la lectura del cuerpo: si se
-        // limpia aquí, una generación lenta mata la función por el límite de Netlify
-        // en silencio (Duration: 30000 ms) sin responder nada al usuario.
-        let aiData;
-        try {
-            aiData = await aiResponse.json();
-        } finally {
-            clearTimeout(timeout);
-        }
-        console.log(`Respuesta JSON ${provider}:`, JSON.stringify(aiData));
-
-        if (!aiResponse.ok || !aiData?.choices) {
-            console.error(`Error ${provider}:`, aiData);
-            throw new Error(aiData?.error?.message || "Error en la respuesta de la IA");
-        }
-
-        let respuestaIA = limpiarTextoIA(aiData.choices[0].message.content);
         console.log("Respuesta raw IA:", respuestaIA);
-
-        // DeepSeek (razonamiento) puede agotar el presupuesto de salida solo en
-        // reasoning_content y devolver content vacío con finish_reason="length".
-        // Evitamos guardar/responder un mensaje en blanco.
-        if ((!respuestaIA || !respuestaIA.trim()) && aiData.choices?.[0]?.finish_reason === 'length') {
-            console.warn("DeepSeek devolvió content vacío (finish_reason=length). Respuesta de respaldo activada.");
-            respuestaIA = "Lo siento, tu solicitud resultó demasiado extensa y no alcancé a completar la respuesta. Intenta dividirla en partes más cortas o reformularla.";
-        }
-
-        const apiTokensUsados = aiData.usage
-            ? (aiData.usage.prompt_tokens || 0) + (aiData.usage.completion_tokens || 0)
-            : null;
-        console.log("Tokens reales de API:", apiTokensUsados);
 
         const actionPayload = parseActionPayload(respuestaIA);
         console.log("Action payload parseado:", actionPayload ? actionPayload.action : 'null');
@@ -1516,7 +1561,8 @@ INSTRUCCIONES:
                 body: JSON.stringify({
                     respuesta: respuestaIA,
                     tokens_consumidos: apiTokensUsados,
-                    conversation_id: conversationIdFinal
+                    conversation_id: conversationIdFinal,
+                    proveedor: proveedorIA
                 })
             };
         }
@@ -1611,7 +1657,8 @@ INSTRUCCIONES:
                 body: JSON.stringify({
                     respuesta: respuestaIA,
                     tokens_consumidos: apiTokensUsados,
-                    conversation_id: conversationIdFinal
+                    conversation_id: conversationIdFinal,
+                    proveedor: proveedorIA
                 })
             };
         }
@@ -1690,7 +1737,8 @@ INSTRUCCIONES:
                 body: JSON.stringify({
                     respuesta: respuestaIA,
                     tokens_consumidos: apiTokensUsados,
-                    conversation_id: conversationIdFinal
+                    conversation_id: conversationIdFinal,
+                    proveedor: proveedorIA
                 })
             };
         }
@@ -2188,7 +2236,8 @@ INSTRUCCIONES:
                 respuesta: respuestaIA,
                 tokens_consumidos: tokensUsados,
                 conversation_id: conversationIdFinal,
-                productos: crmActivo && catalogoCRM.length > 0 ? productosParaCliente(catalogoCRM) : []
+                productos: crmActivo && catalogoCRM.length > 0 ? productosParaCliente(catalogoCRM) : [],
+                proveedor: proveedorIA
             })
         };
 
