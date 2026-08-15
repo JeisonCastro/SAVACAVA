@@ -307,6 +307,26 @@ const CONFIG = {
 };
 const _supabase = supabase.createClient(CONFIG.URL, CONFIG.ANON_KEY);
 
+/* ─── CONFIRMACION POR CORREO ───────────────────────────────────────────────
+   Al llegar a este login con un token en el hash (p.ej. ...#access_token=..),
+   se procesa la sesión y se entra directo al dashboard. */
+(async function procesarConfirmacion() {
+  if (!location.hash || !location.hash.includes('access_token')) return;
+  try {
+    setLoading(true);
+    const { data: { session }, error } = await _supabase.auth.getSession();
+    if (!error && session) {
+      location.replace('dashboard.html');
+      return;
+    }
+    showMsg('El enlace de confirmación no es válido o expiró. Inicia sesión con tu correo y contraseña.', 'error');
+  } catch (_) {
+    showMsg('El enlace de confirmación no es válido o expiró. Inicia sesión con tu correo y contraseña.', 'error');
+  } finally {
+    setLoading(false);
+  }
+})();
+
 /* ─── UI ─────────────────────────────────────────────────────────────────── */
 function showMsg(text, type) {
   const el = document.getElementById('msg');
