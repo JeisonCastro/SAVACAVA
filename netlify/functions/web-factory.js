@@ -12,6 +12,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const { supabase } = require('./supabase-admin');
 const { createClient } = require('@supabase/supabase-js');
 
@@ -389,6 +390,92 @@ async function dispararBuild(siteId) {
     }).catch(() => {});
 }
 
+// ── Suspension (apagar/reactivar sitios) ──
+// Para "apagar" un sitio se publica un deploy directo (sin build) que solo
+// contiene index.html con una pagina de "suspendido". Al reactivar se dispara
+// un build desde el repo de GitHub (que conserva el sitio real), restaurandolo.
+function paginaSuspension(empresa) {
+    const nom = sanearTexto(empresa);
+    const titulo = nom ? `El sitio de ${nom} está suspendido` : 'Este sitio está suspendido';
+    return `<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>${titulo}</title>
+<style>
+  *{margin:0;box-sizing:border-box}
+  body{min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0a0d14;font-family:'Inter',system-ui,-apple-system,'Segoe UI',sans-serif;color:#eef2f8;padding:24px;text-align:center}
+  .card{max-width:430px;width:100%}
+  .ico{width:76px;height:76px;margin:0 auto 24px;border-radius:22px;display:flex;align-items:center;justify-content:center;background:rgba(59,130,246,.12);border:1px solid rgba(59,130,246,.32)}
+  .ico svg{width:34px;height:34px;stroke:#3b82f6}
+  h1{font-size:1.3rem;font-weight:800;letter-spacing:-.02em;line-height:1.3;margin-bottom:12px}
+  p{color:#94a3b8;font-size:.95rem;line-height:1.6}
+  .note{margin-top:24px;padding-top:18px;border-top:1px solid rgba(148,163,184,.16);font-size:.8rem;color:#5d6b7d}
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="ico">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><line x1="12" y1="2" x2="12" y2="12"/></svg>
+    </div>
+    <h1>${titulo}</h1>
+    <p>Este sitio está temporalmente fuera de línea.<br>Si eres el propietario, contacta a tu proveedor para reactivarlo.</p>
+    <div class="note">AUVRO · Web Factory</div>
+  </div>
+</body>
+</html>`;
+}
+
+function sha1hex(s) {
+    return crypto.createHash('sha1').update(Buffer.from(s, 'utf8')).digest('hex');
+}
+
+// Publica un deploy directo (file deploy) en el sitio: solo index.html.
+async function publicarSuspension(siteId, html) {
+    const headers = netlifyHeaders();
+    const files = { '/index.html': html };
+    const digest = {};
+    for (const [ruta, contenido] of Object.entries(files)) digest[ruta] = sha1hex(contenido);
+
+    const res = await fetch(`https://api.netlify.com/api/v1/sites/${siteId}/deploys`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ files: digest })
+    });
+    if (!res.ok) {
+        const e = await res.json().catch(() => ({}));
+        throw new Error('Netlify: no se pudo crear el deploy de suspensión: ' + (e.message || res.statusText));
+    }
+    const deploy = await res.json();
+
+    const pendientes = (deploy.required && deploy.required.length) ? deploy.required : Object.keys(files);
+    for (const rel of pendientes) {
+        const ruta = String(rel).replace(/^\//, '');
+        const contenido = files['/' + ruta];
+        if (contenido === undefined) continue;
+        const up = await fetch(`https://api.netlify.com/api/v1/deploys/${deploy.id}/files/${ruta}`, {
+            method: 'PUT',
+            headers: { ...headers, 'Content-Type': 'text/html' },
+            body: contenido
+        });
+        if (!up.ok) throw new Error('Netlify: no se pudo subir el archivo de suspensión (' + ruta + ')');
+    }
+
+    const inicio = Date.now();
+    while (Date.now() - inicio < 30000) {
+        const d = await fetch(`https://api.netlify.com/api/v1/deploys/${deploy.id}`, { headers });
+        if (d.ok) {
+            const data = await d.json();
+            if (data.state === 'ready') return deploy;
+            if (data.state === 'error') throw new Error('Netlify: el deploy de suspensión falló');
+        }
+        await new Promise(r => setTimeout(r, 1500));
+    }
+    throw new Error('Netlify: el deploy de suspensión tardó demasiado');
+}
+
 function mapearEstadoDominio(state) {
     if (!state) return 'pendiente';
     return /^(verified|active|configured)$/i.test(state) ? 'verificado' : 'pendiente';
@@ -472,7 +559,7 @@ async function actualizarProyecto(id, campos) {
         .eq('id', id)
         .select()
         .single();
-    if (error) throw new Error('Supabase: ' + error.message);
+    if (error) throw new Error('Supabase: ' + (error.code ? '[' + error.code + '] ' : '') + error.message);
     return data;
 }
 
@@ -483,7 +570,7 @@ async function refrescarYGuardar(proyecto) {
         const nuevo = {
             ...proyecto,
             ...campos,
-            estado: estadoGeneral(estado.estado_deploy, proyecto.dominio, estado.dominio_estado),
+            estado: proyecto.activo === false ? 'inactivo' : estadoGeneral(estado.estado_deploy, proyecto.dominio, estado.dominio_estado),
             error: estado.estado_deploy === 'error' ? (deploy_error || 'El deploy fallo en Netlify') : null
         };
         return await actualizarProyecto(proyecto.id, nuevo);
@@ -701,7 +788,7 @@ exports.handler = async (event) => {
             if (!id) return { statusCode: 400, body: JSON.stringify({ error: 'Falta id' }) };
             let { data: proyecto, error } = await supabase.from('web_projects').select('*').eq('id', id).single();
             if (error) return { statusCode: 404, body: JSON.stringify({ error: error.message }) };
-            if (['creando', 'configurando', 'deploying'].includes(proyecto.estado)) {
+            if (['creando', 'configurando', 'deploying', 'suspending'].includes(proyecto.estado)) {
                 proyecto = await refrescarYGuardar(proyecto);
             }
             return { statusCode: 200, body: JSON.stringify({ ok: true, proyecto }) };
@@ -732,6 +819,47 @@ exports.handler = async (event) => {
 
             const resultado = await pipelineCrear(body, adminId);
             return { statusCode: 200, body: JSON.stringify(resultado) };
+        }
+
+        // ── SET_ACTIVO: apagar (suspender) o reactivar un sitio ──
+        // Apagar: publica un deploy directo con la pagina de "suspendido" (instantáneo).
+        // Reactivar: dispara un build desde el repo (el sitio real sigue en GitHub).
+        if (action === 'set_activo') {
+            const { id, activo } = body;
+            if (!id) return { statusCode: 400, body: JSON.stringify({ error: 'Falta id' }) };
+            if (typeof activo !== 'boolean') return { statusCode: 400, body: JSON.stringify({ error: 'activo debe ser true o false' }) };
+
+            const { data: proyecto, error: getErr } = await supabase.from('web_projects').select('*').eq('id', id).single();
+            if (getErr) return { statusCode: 404, body: JSON.stringify({ error: getErr.message }) };
+            if (!proyecto.netlify_site_id) return { statusCode: 400, body: JSON.stringify({ error: 'El sitio aún no tiene un sitio de Netlify asociado' }) };
+
+            const errMigracion = 'Supabase: la tabla web_projects no tiene la columna "activo". Ejecuta la migración 20260816_web_factory_activo en el SQL Editor de Supabase.';
+
+            if (activo === false) {
+                // Apagar: primero marcar en DB, luego publicar la página de suspensión.
+                await actualizarProyecto(id, { activo: false, estado: 'suspending', error: null })
+                    .catch(e => {
+                        if (String(e.message).includes('42703') || String(e.message).includes('"activo"')) throw new Error(errMigracion);
+                        throw e;
+                    });
+                try {
+                    await publicarSuspension(proyecto.netlify_site_id, paginaSuspension(proyecto.nombre));
+                    await actualizarProyecto(id, { estado: 'inactivo', estado_deploy: 'ready', deploy_error: null });
+                } catch (err) {
+                    await actualizarProyecto(id, { activo: true, estado: 'publicado' }).catch(() => {});
+                    throw err;
+                }
+                return { statusCode: 200, body: JSON.stringify({ ok: true, activo: false }) };
+            }
+
+            // Reactivar: dispara el build desde GitHub y marca como desplegando.
+            await actualizarProyecto(id, { activo: true, estado: 'deploying', error: null })
+                .catch(e => {
+                    if (String(e.message).includes('42703') || String(e.message).includes('"activo"')) throw new Error(errMigracion);
+                    throw e;
+                });
+            await dispararBuild(proyecto.netlify_site_id);
+            return { statusCode: 200, body: JSON.stringify({ ok: true, activo: true }) };
         }
 
         // ── DELETE: elimina el registro de AUVRO (no borra repo/site en GitHub/Netlify) ──
@@ -770,6 +898,9 @@ module.exports.helpers = {
     hostnameDeUrl,
     hostnamesParaSitio,
     pipelineCrear,
+    paginaSuspension,
+    sha1hex,
+    publicarSuspension,
     mapearEstadoDominio,
     mapearEstadoDeploy,
     estadoGeneral

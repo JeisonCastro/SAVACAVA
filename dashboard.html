@@ -5897,6 +5897,8 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
             case 'creando': return { cls: 'badge-accent', label: 'Creando' };
             case 'configurando': return { cls: 'badge-accent', label: 'Configurando' };
             case 'deploying': return { cls: 'badge-yellow', label: 'Desplegando' };
+            case 'suspending': return { cls: 'badge-red', label: 'Apagando' };
+            case 'inactivo': return { cls: 'badge-red', label: 'Suspendido' };
             case 'dominio_pendiente': return { cls: 'badge-yellow', label: 'Dominio pendiente' };
             case 'error': return { cls: '', label: 'Error' };
             default: return { cls: 'badge', label: estado || '—' };
@@ -5935,7 +5937,7 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
             }
 
             const proyectos = data.proyectos || [];
-            const enCurso = proyectos.filter(p => ['creando', 'configurando', 'deploying'].includes(p.estado));
+            const enCurso = proyectos.filter(p => ['creando', 'configurando', 'deploying', 'suspending'].includes(p.estado));
 
             document.getElementById('wf-stats').innerHTML = `
                 <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:1rem">
@@ -5977,7 +5979,8 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
                     const dominioBadge = p.dominio
                         ? `<span class="badge ${p.dominio_estado === 'verificado' ? 'badge-green' : 'badge-yellow'}">${p.dominio_estado === 'verificado' ? 'verificado' : 'pendiente'}</span>`
                         : '—';
-                    return `<tr>
+                    const inactivo = p.activo === false;
+                    return `<tr style="${inactivo ? 'opacity:.6' : ''}">
                         <td style="font-weight:600">${wfEscapeHtml(p.cliente)}</td>
                         <td>
                             <div style="font-weight:600">${wfEscapeHtml(p.nombre)}</div>
@@ -5985,15 +5988,18 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
                         </td>
                         <td><span class="badge badge-accent">${wfEscapeHtml(p.plantilla || 'landing')}</span>${p.accent_color ? '<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:' + wfEscapeHtml(p.accent_color) + ';border:1px solid var(--border2);vertical-align:middle;margin-left:.35rem" title="' + wfEscapeHtml(p.accent_color) + '"></span>' : ''}${p.agente_id ? ' <span class="badge" title="Chat de IA embebido en el sitio">🤖 IA</span>' : ''}</td>
                         <td><span class="badge ${b.cls}"${badgeError}>${b.label}</span>${estadoDeploy}${errorInfo}</td>
-                        <td>${p.netlify_url ? `<a href="${wfEscapeHtml(p.netlify_url)}" target="_blank" rel="noopener" style="color:var(--accent)">ver sitio</a>` : '—'}</td>
+                        <td>${p.netlify_url ? `<a href="${wfEscapeHtml(p.netlify_url)}" target="_blank" rel="noopener" style="color:${inactivo ? 'var(--red)' : 'var(--accent)'}">${inactivo ? 'offline' : 'ver sitio'}</a>` : '—'}</td>
                         <td>
                             ${p.dominio ? `<div style="font-size:.82rem">${wfEscapeHtml(p.dominio)}</div>${dominioBadge}${dominioErrorInfo}` : '—'}
                         </td>
                         <td style="white-space:nowrap">
-                            ${p.netlify_url ? `<button class="btn-small" onclick="window.open('${wfEscapeHtml(p.netlify_url)}','_blank')" style="font-size:.72rem;padding:4px 8px"><i class="fas fa-external-link"></i></button>` : ''}
-                            ${p.github_url ? `<button class="btn-small" onclick="window.open('${wfEscapeHtml(p.github_url)}','_blank')" style="font-size:.72rem;padding:4px 8px"><i class="fab fa-github"></i></button>` : ''}
+                            ${p.netlify_url ? `<button class="btn-small" onclick="window.open('${wfEscapeHtml(p.netlify_url)}','_blank')" style="font-size:.72rem;padding:4px 8px" title="Abrir sitio"><i class="fas fa-external-link"></i></button>` : ''}
+                            ${p.github_url ? `<button class="btn-small" onclick="window.open('${wfEscapeHtml(p.github_url)}','_blank')" style="font-size:.72rem;padding:4px 8px" title="Abrir repo en GitHub"><i class="fab fa-github"></i></button>` : ''}
                             ${p.clone_url ? `<button class="btn-small" onclick="copiarClone('${wfEscapeHtml(p.clone_url)}', '${wfEscapeHtml(p.slug)}')" style="font-size:.72rem;padding:4px 8px" title="Copiar comando clone"><i class="fas fa-copy"></i></button>` : ''}
                             <button class="btn-small" onclick="actualizarEstadoWeb('${p.id}')" style="font-size:.72rem;padding:4px 8px" title="Actualizar estado"><i class="fas fa-rotate"></i></button>
+                            ${p.netlify_site_id ? (inactivo
+                                ? `<button class="btn-small green" onclick="toggleActivoWeb('${p.id}', false, '${wfEscapeHtml(p.nombre)}')" style="font-size:.72rem;padding:4px 8px" title="Reactivar sitio (redesplegar desde GitHub)"><i class="fas fa-play"></i></button>`
+                                : `<button class="btn-small danger" onclick="toggleActivoWeb('${p.id}', true, '${wfEscapeHtml(p.nombre)}')" style="font-size:.72rem;padding:4px 8px" title="Apagar sitio (mostrar página de suspendido)"><i class="fas fa-power-off"></i></button>`) : ''}
                             <button class="btn-small danger" onclick="eliminarProyectoWeb('${p.id}', '${wfEscapeHtml(p.nombre)}')" style="font-size:.72rem;padding:4px 8px" title="Eliminar registro"><i class="fas fa-trash"></i></button>
                         </td>
                     </tr>`;
@@ -6124,6 +6130,38 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
             showToast('Estado actualizado');
             cargarWebFactory();
         } catch (err) {
+            showToast('Error: ' + err.message, 'error');
+        }
+    }
+
+    async function toggleActivoWeb(id, activoActual, nombre) {
+        const apagar = !activoActual;
+        if (apagar) {
+            if (!confirm(`Apagar el sitio "${nombre}"?\n\nEl sitio mostrará una página de "suspendido" y dejará de estar en línea (instantáneo). Podrás reactivarlo cuando el cliente pague.`)) return;
+        } else {
+            if (!confirm(`Reactivar el sitio "${nombre}"?\n\nSe redesplegará desde GitHub y puede tardar 1-2 minutos.`)) return;
+        }
+        mostrarOverlayCarga(apagar ? 'Apagando sitio...' : 'Reactivando sitio...');
+        try {
+            const res = await fetch('/.netlify/functions/web-factory', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${currentSession?.access_token || ''}`,
+                    'X-NF-Background': 'true'
+                },
+                body: JSON.stringify({ action: 'set_activo', id, activo: !activoActual })
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok || data.ok === false) {
+                ocultarOverlayCarga();
+                return showToast('Error: ' + (data.error || 'No se pudo ejecutar la acción'), 'error');
+            }
+            ocultarOverlayCarga();
+            showToast(apagar ? 'Apagando sitio...' : 'Reactivando sitio...');
+            cargarWebFactory();
+        } catch (err) {
+            ocultarOverlayCarga();
             showToast('Error: ' + err.message, 'error');
         }
     }
