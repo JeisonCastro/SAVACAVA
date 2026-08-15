@@ -58,16 +58,76 @@ exports.handler = async (event) => {
                 .eq('user_id', user.id)
                 .order('orden', { ascending: true });
 
-            const { data: leads } = await supabase
-                .from('crm_leads')
-                .select(`
-                    *, 
-                    estados:estado_id(id, nombre, color, es_cerrada, es_perdida, orden),
-                    agente:agente_id(nombre_agente)
-                `)
-                .eq('user_id', user.id)
+            // Filtros por fecha de creación (desde/hasta ISO) y origen
+            const qs = event.queryStringParameters || {};
+            const desde = qs.desde || null;
+            const hasta = qs.hasta || null;
+            const origen = qs.origen || null;
+            const agenteFiltro = qs.agente_id || null;
+
+            const filtros = (q) => {
+                let query = q.eq('user_id', user.id);
+                if (desde) query = query.gte('created_at', desde);
+                if (hasta) query = query.lte('created_at', hasta);
+                if (origen) query = query.eq('origen', origen);
+                if (agenteFiltro) query = query.eq('agente_id', agenteFiltro);
+                return query;
+            };
+
+            const { data: leads } = await filtros(
+                supabase
+                    .from('crm_leads')
+                    .select(`
+                        *, 
+                        estados:estado_id(id, nombre, color, es_cerrada, es_perdida, orden),
+                        agente:agente_id(nombre_agente)
+                    `)
+            )
                 .order('updated_at', { ascending: false })
                 .limit(200);
+
+            // Resumen por estado para el embudo de ventas (exacto, sin límite de filas)
+            const { data: aggRows } = await filtros(
+                supabase.from('crm_leads').select('estado_id, valor_venta_cents')
+            );
+
+            const estadoMap = {};
+            for (const e of estados || []) {
+                estadoMap[e.id] = {
+                    estado_id: e.id,
+                    nombre: e.nombre,
+                    color: e.color || '#0ea5e9',
+                    orden: e.orden || 0,
+                    es_cerrada: !!e.es_cerrada,
+                    es_perdida: !!e.es_perdida,
+                    total: 0,
+                    valor_cents: 0
+                };
+            }
+            let sinEstado = 0, sinEstadoValor = 0;
+            for (const r of aggRows || []) {
+                const entry = r.estado_id ? estadoMap[r.estado_id] : null;
+                if (entry) {
+                    entry.total += 1;
+                    entry.valor_cents += Number(r.valor_venta_cents) || 0;
+                } else {
+                    sinEstado += 1;
+                    sinEstadoValor += Number(r.valor_venta_cents) || 0;
+                }
+            }
+            const resumen_estados = Object.values(estadoMap).sort((a, b) => a.orden - b.orden);
+            if (sinEstado > 0) {
+                resumen_estados.push({
+                    estado_id: null,
+                    nombre: 'Sin estado',
+                    color: '#4a6580',
+                    orden: 999,
+                    es_cerrada: false,
+                    es_perdida: false,
+                    total: sinEstado,
+                    valor_cents: sinEstadoValor
+                });
+            }
 
             const configs = (agentes || []).map(a => {
                 const cfg = (configRows || []).find(c => String(c.agente_id) === String(a.id));
@@ -92,7 +152,8 @@ exports.handler = async (event) => {
                         estados: undefined,
                         agente: undefined
                     })),
-                    campos_disponibles: CAMPOS_BASE
+                    campos_disponibles: CAMPOS_BASE,
+                    resumen_estados
                 })
             };
         }

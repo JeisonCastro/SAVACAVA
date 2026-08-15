@@ -4276,9 +4276,40 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
 
                 <div id="crm-agent-filter" style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;margin-bottom:1rem;"></div>
 
+                <div id="crm-date-filter" style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;margin-bottom:1rem;background:var(--surface);border:1px solid var(--border2);border-radius:12px;padding:.6rem .8rem;">
+                    <span style="font-size:.78rem;color:var(--muted);"><i class="fas fa-calendar-days" style="margin-right:.35rem;"></i>Desde:</span>
+                    <input type="date" id="crm-filtro-desde" style="color-scheme:dark;background:var(--bg2);border:1px solid var(--border2);border-radius:10px;padding:.4rem .6rem;font-size:.78rem;color:var(--text);">
+                    <span style="font-size:.78rem;color:var(--muted);">Hasta:</span>
+                    <input type="date" id="crm-filtro-hasta" style="color-scheme:dark;background:var(--bg2);border:1px solid var(--border2);border-radius:10px;padding:.4rem .6rem;font-size:.78rem;color:var(--text);">
+                    <span style="font-size:.78rem;color:var(--muted);"><i class="fas fa-arrow-right-arrow-left" style="margin:0 .35rem;"></i>Origen:</span>
+                    <select id="crm-filtro-origen" style="background:var(--bg2);border:1px solid var(--border2);border-radius:10px;padding:.4rem .6rem;font-size:.78rem;color:var(--text);">
+                        <option value="">Todos</option>
+                        <option value="web">Web / widget</option>
+                        <option value="whatsapp">WhatsApp</option>
+                        <option value="dashboard">Manual</option>
+                    </select>
+                    <button class="btn-main" onclick="aplicarFiltrosCRM()" style="padding:.45rem .8rem;font-size:.76rem;border-radius:10px;">
+                        <i class="fas fa-filter" style="margin-right:.3rem;"></i>Aplicar
+                    </button>
+                    <button class="btn-ghost" onclick="limpiarFiltrosCRM()" style="padding:.45rem .8rem;font-size:.76rem;border-radius:10px;">Limpiar</button>
+                </div>
+
                 <div id="crm-banner" style="display:none"></div>
 
                 <div id="crm-stats" style="display:flex;gap:.75rem;flex-wrap:wrap;margin-bottom:1rem;"></div>
+
+                <div class="card" style="margin-bottom:1rem;">
+                    <div class="card-header">
+                        <div class="card-icon"><i class="fas fa-filter"></i></div>
+                        <span class="card-title">Embudo de ventas</span>
+                        <span id="crm-embudo-sub" style="margin-left:auto;font-size:.75rem;color:var(--muted);"></span>
+                    </div>
+                    <div id="crm-embudo" style="padding:.25rem 0 0 0;">
+                        <div class="empty-state" style="width:100%"><i class="fas fa-chart-simple"></i>
+                            <p style="margin-top:.5rem">Cargando embudo...</p>
+                        </div>
+                    </div>
+                </div>
 
                 <div class="card">
                     <div class="card-header">
@@ -6280,6 +6311,7 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
     let crmCatalogo = [];
     let crmLeadActual = null;
     let crmAgenteSeleccionado = null;
+    let crmFiltros = { desde: '', hasta: '', origen: '' };
 
     function fmtPesos(cents) {
         const n = Number(cents) || 0;
@@ -6299,7 +6331,19 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
     async function cargarCRM() {
         try {
             const { data: { session } } = await _supabase.auth.getSession();
-            const res = await fetch('/.netlify/functions/crm', {
+            const p = new URLSearchParams();
+            if (crmFiltros.desde) {
+                const [y, m, d] = crmFiltros.desde.split('-');
+                p.set('desde', new Date(y, m - 1, d, 0, 0, 0).toISOString());
+            }
+            if (crmFiltros.hasta) {
+                const [y, m, d] = crmFiltros.hasta.split('-');
+                p.set('hasta', new Date(y, m - 1, d, 23, 59, 59, 999).toISOString());
+            }
+            if (crmFiltros.origen) p.set('origen', crmFiltros.origen);
+            if (crmAgenteSeleccionado) p.set('agente_id', crmAgenteSeleccionado);
+            const qs = p.toString();
+            const res = await fetch('/.netlify/functions/crm' + (qs ? '?' + qs : ''), {
                 method: 'GET',
                 headers: { 'Authorization': `Bearer ${session?.access_token || ''}` }
             });
@@ -6317,6 +6361,7 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
             if (!valido) {
                 const primero = agentes.find(a => a.crm_activo) || agentes[0];
                 crmAgenteSeleccionado = primero.id;
+                return cargarCRM();
             }
             aplicarConfigAgente();
             renderCRM();
@@ -6334,7 +6379,33 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
     function cambiarAgenteCRM(id) {
         crmAgenteSeleccionado = id;
         aplicarConfigAgente();
-        renderCRM();
+        cargarCRM();
+    }
+
+    function leerFiltrosCRM() {
+        return {
+            desde: document.getElementById('crm-filtro-desde')?.value || '',
+            hasta: document.getElementById('crm-filtro-hasta')?.value || '',
+            origen: document.getElementById('crm-filtro-origen')?.value || ''
+        };
+    }
+
+    function aplicarFiltrosCRM() {
+        const f = leerFiltrosCRM();
+        if (f.desde && f.hasta && f.desde > f.hasta) {
+            showToast('La fecha "desde" es posterior a "hasta"', 'error');
+            return;
+        }
+        crmFiltros = f;
+        cargarCRM();
+    }
+
+    function limpiarFiltrosCRM() {
+        crmFiltros = { desde: '', hasta: '', origen: '' };
+        const d = document.getElementById('crm-filtro-desde'); if (d) d.value = '';
+        const h = document.getElementById('crm-filtro-hasta'); if (h) h.value = '';
+        const o = document.getElementById('crm-filtro-origen'); if (o) o.value = '';
+        cargarCRM();
     }
 
     function renderCRM() {
@@ -6376,13 +6447,19 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
         banner.style.display = bannerHtml ? '' : 'none';
         banner.innerHTML = bannerHtml;
 
-        // Stats
-        const cerradas = leads.filter(l => l.estado?.es_cerrada);
-        const valor = cerradas.reduce((s, l) => s + (Number(l.valor_venta_cents) || 0), 0);
+        // Stats (desde el resumen por estado, exacto pese al límite de filas del kanban)
+        const resumen = crmData.resumen_estados || [];
+        const totalLeads = resumen.reduce((s, r) => s + r.total, 0);
+        const ventas = resumen.filter(r => r.es_cerrada).reduce((s, r) => s + r.total, 0);
+        const valorTotal = resumen.filter(r => r.es_cerrada).reduce((s, r) => s + (Number(r.valor_cents) || 0), 0);
+        const conversion = totalLeads ? (ventas / totalLeads) * 100 : 0;
+        const ticket = ventas ? Math.round((valorTotal / ventas) / 100) : 0;
         const stats = [
-            { label: 'Leads capturados', valor: leads.length, icon: 'fa-users', color: 'var(--accent)' },
-            { label: 'Ventas cerradas', valor: cerradas.length, icon: 'fa-circle-check', color: 'var(--green)' },
-            { label: 'Valor cerrado', valor: fmtPesos(valor), icon: 'fa-coins', color: 'var(--yellow)' }
+            { label: 'Leads capturados', valor: totalLeads, icon: 'fa-users', color: 'var(--accent)' },
+            { label: 'Ventas cerradas', valor: ventas, icon: 'fa-circle-check', color: 'var(--green)' },
+            { label: 'Valor cerrado', valor: fmtPesos(valorTotal), icon: 'fa-coins', color: 'var(--yellow)' },
+            { label: 'Conversión', valor: conversion.toFixed(1) + '%', icon: 'fa-arrow-trend-up', color: 'var(--accent2)' },
+            { label: 'Ticket promedio', valor: '$' + ticket.toLocaleString('es-CO'), icon: 'fa-receipt', color: 'var(--green)' }
         ];
         document.getElementById('crm-stats').innerHTML = stats.map(s => `
             <div style="flex:1;min-width:150px;background:var(--surface);border:1px solid var(--border2);border-radius:14px;padding:1rem;display:flex;align-items:center;gap:.8rem;">
@@ -6392,6 +6469,8 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
                     <div style="font-size:.72rem;color:var(--muted);">${s.label}</div>
                 </div>
             </div>`).join('');
+
+        renderEmbudo();
 
         document.getElementById('crm-pipeline-title').textContent = estados.length
             ? 'Pipeline de ventas'
@@ -6424,10 +6503,44 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
                                 <i class="fas fa-chevron-right" style="font-size:.6rem;color:var(--dim);"></i>
                             </div>
                             <div style="font-size:.7rem;color:var(--muted);margin-top:.2rem;">${l.telefono || l.email || '—'}</div>
-                            <div style="font-size:.68rem;color:var(--dim);margin-top:.15rem;">${l.interes ? '· ' + l.interes : ''} ${l.agente_nombre ? '· ' + l.agente_nombre : ''} ${l.origen === 'whatsapp' ? '· WhatsApp' : ''}</div>
+                            <div style="font-size:.68rem;color:var(--dim);margin-top:.15rem;">${l.interes ? '· ' + l.interes : ''} ${l.agente_nombre ? '· ' + l.agente_nombre : ''} ${l.origen === 'whatsapp' ? '· WhatsApp' : ''} ${l.created_at ? '· ' + new Date(l.created_at).toLocaleDateString('es-CO') : ''}</div>
                             ${l.valor_venta_cents ? `<div style="font-size:.72rem;color:var(--green);font-weight:700;margin-top:.2rem;">${fmtPesos(l.valor_venta_cents)}</div>` : ''}
                         </div>`).join('')}
                 </div>
+            </div>`;
+        }).join('');
+    }
+
+    function renderEmbudo() {
+        const cont = document.getElementById('crm-embudo');
+        const sub = document.getElementById('crm-embudo-sub');
+        const resumen = crmData.resumen_estados || [];
+        if (!resumen.length) {
+            cont.innerHTML = `<div class="empty-state" style="width:100%"><i class="fas fa-filter-circle-xmark"></i>
+                <p style="margin-top:.5rem">Sin datos para el rango seleccionado.</p></div>`;
+            if (sub) sub.textContent = '';
+            return;
+        }
+        const total = resumen.reduce((s, r) => s + r.total, 0);
+        const max = Math.max(...resumen.map(r => r.total), 1);
+        if (sub) sub.textContent = `${total} leads en el rango`;
+        cont.innerHTML = resumen.map(r => {
+            const pct = total ? ((r.total / total) * 100) : 0;
+            const width = Math.max(Math.round((r.total / max) * 100), r.total ? 12 : 2);
+            const color = r.color || '#0ea5e9';
+            return `
+            <div style="display:flex;align-items:center;gap:.7rem;margin:.55rem 0;">
+                <div style="width:175px;min-width:175px;display:flex;align-items:center;gap:.4rem;">
+                    <span style="width:9px;height:9px;border-radius:50%;background:${color};display:inline-block;flex-shrink:0;"></span>
+                    <span style="font-size:.78rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${r.nombre}</span>
+                </div>
+                <div style="flex:1;display:flex;justify-content:center;">
+                    <div style="width:${width}%;min-width:76px;height:27px;border-radius:7px;background:linear-gradient(90deg,${color}d9,${color}80);display:flex;align-items:center;justify-content:space-between;padding:0 .55rem;font-size:.72rem;font-weight:700;color:#fff;">
+                        <span>${r.total}</span>
+                        <span style="opacity:.85">${pct.toFixed(1)}%</span>
+                    </div>
+                </div>
+                <div style="width:115px;min-width:115px;text-align:right;font-size:.74rem;${r.valor_cents ? 'color:var(--green);font-weight:700;' : 'color:var(--dim);'}">${r.valor_cents ? fmtPesos(r.valor_cents) : '—'}</div>
             </div>`;
         }).join('');
     }

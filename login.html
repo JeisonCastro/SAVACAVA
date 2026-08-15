@@ -358,7 +358,10 @@ async function crearCuenta() {
   const { data, error } = await _supabase.auth.signUp({
     email,
     password,
-    options: { data: { nombre, apellido, telefono } }
+    options: {
+      emailRedirectTo: 'https://auvro.netlify.app/login.html',
+      data: { nombre, apellido, telefono }
+    }
   });
   if (error) {
     setLoading(false);
