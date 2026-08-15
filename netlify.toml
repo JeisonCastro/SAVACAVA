@@ -4,7 +4,7 @@
 [functions]
   node_bundler = "esbuild"
   external_node_modules = ["@supabase/supabase-js"]
-  included_files = ["web-factory/templates/**"]
+  included_files = ["wf-templates/**"]
 
 # ── Cron diario: ciclo de suscripciones (desactivar planes vencidos) ─────────
 [functions."verificar-suscripciones"]

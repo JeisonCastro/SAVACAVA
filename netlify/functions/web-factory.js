@@ -18,18 +18,18 @@ const { createClient } = require('@supabase/supabase-js');
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
 
-// ── Plantillas (archivos reales en web-factory/templates, incluidas en el bundle) ──
+// ── Plantillas (archivos reales en wf-templates/templates, incluidas en el bundle) ──
 function templatesDir() {
     const candidates = [
-        path.resolve(process.cwd(), 'web-factory', 'templates'),
-        path.resolve(__dirname, '..', '..', 'web-factory', 'templates'),
-        path.resolve(__dirname, 'web-factory', 'templates')
+        path.resolve(process.cwd(), 'wf-templates', 'templates'),
+        path.resolve(__dirname, '..', '..', 'wf-templates', 'templates'),
+        path.resolve(__dirname, 'wf-templates', 'templates')
     ];
     for (const c of candidates) {
         if (fs.existsSync(path.join(c, 'manifest.json'))) return c;
     }
     throw new Error(
-        'No se encontraron las plantillas (web-factory/templates). Verifica included_files en netlify.toml. Rutas probadas: ' +
+        'No se encontraron las plantillas (wf-templates/templates). Verifica included_files en netlify.toml. Rutas probadas: ' +
         candidates.map(c => c + (fs.existsSync(c) ? ' (existe)' : ' (no existe)')).join(' | ')
     );
 }
