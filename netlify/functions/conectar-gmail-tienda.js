@@ -81,7 +81,7 @@ exports.handler = async (event) => {
   try {
     const adminId = await autenticar(event);
     const body = JSON.parse(event.body || '{}');
-    const { action, proyecto_id } = body;
+    const { action, proyecto_id, redirectTo } = body;
     await validarPropietario(proyecto_id, adminId);
 
     if (!composioApiKey) return ok({ ok: false, error: 'Falta COMPOSIO_API_KEY en las variables de entorno' }, 500);
@@ -91,13 +91,17 @@ exports.handler = async (event) => {
       const authConfig = await authConfigGmail();
       if (!authConfig?.id) return ok({ ok: false, error: 'No hay config OAuth de Gmail habilitada en Composio' }, 500);
 
+      // La conexión puede venir desde dashboard.html (por defecto) o tienda-admin.html
+      const cbPath = /^\/[a-zA-Z0-9_.\-/]*$/.test(String(redirectTo || '')) ? String(redirectTo) : '/dashboard.html';
+      const callbackUrl = `${SITE_URL}${cbPath}?tienda_gmail=${encodeURIComponent(proyecto_id)}`;
+
       const linkRes = await fetch('https://backend.composio.dev/api/v3/connected_accounts/link', {
         method: 'POST',
         headers: { 'x-api-key': composioApiKey, 'Content-Type': 'application/json' },
         body: JSON.stringify({
           auth_config_id: authConfig.id,
           user_id: namespaceTienda(proyecto_id),
-          callback_url: `${SITE_URL}/dashboard.html?tienda_gmail=${encodeURIComponent(proyecto_id)}`
+          callback_url: callbackUrl
         })
       });
       const linkData = await linkRes.json().catch(() => ({}));

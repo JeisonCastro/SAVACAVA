@@ -1068,6 +1068,20 @@ Evolución de TechSoacha a un e-commerce completo multi-tenant (todo particionad
 - **Validación E2E en producción** (proyecto/tienda de prueba, limpiado al final): categoría Relojes, atributos Color+Talla, producto simple, **variable con Color(Negro,Blanco)×Talla(S,M,L)=6 variaciones**, edición de variaciones (promo $110.000 aplicada → `precio_desde`), digital, catálogo, checkout incompleto (rechaza), agotado (rechaza), checkout válido → orden `ROMA / Negro / M` x1 $110.000 con SKU y variación, cliente creado. Wompi link borrado tras la prueba.
 - **TechSoacha actualizada en vivo**: template regenerado con los tokens de la tienda y pusheado al repo `JeisonCastro/techsoacha` → Netlify redeploy automático (deploy `d339410f6673`). Verificado en producción: `attr-selector`, `data-aid`, "Elige las opciones", `promo`, `auvro-theme`.
 
+## 17 Ago 2026 — Módulo de gestión de tienda (página dedicada tipo WooCommerce)
+
+El botón **"Gestionar tienda"** del panel ya no abre un modal: redirige a **`tienda-admin.html?proyecto=<id>`**, un módulo independiente con experiencia WooCommerce y navegación lateral:
+
+- **Secciones**: Resumen (stats + accesos rápidos), Productos, Categorías, Atributos, Órdenes, Clientes, Pasarela, Notificaciones.
+- **Productos**: crear/editar por tipo (Simple/Variable/Digital/Servicio), categoría (desde las administradas), ficha técnica, selector de atributos de variación, varias imágenes (URL o subida), archivo digital, y **editor de variaciones** (SKU, precio, promo, stock, imagen, activo).
+- **Categorías / Atributos**: CRUD; los atributos son reutilizables entre productos.
+- **Órdenes / Clientes**: tablas con N°, estado de pago, método, ref, y total por cliente.
+- **Pasarela / Notificaciones**: mismas funcionalidades que el modal (keys Wompi del cliente, conexión Gmail de la tienda vía Composio, avisos por correo/WhatsApp).
+- **Auth**: usa la sesión de Supabase (redirige a `login.html` si no hay sesión); todas las llamadas usan `tienda.js` con validación de dueño (`perfiles.is_admin` + `proyecto.created_by`).
+- **Backend**: nueva acción `info` (datos de la tienda para el header) y `conectar-gmail-tienda` acepta `redirectTo` (el OAuth de Gmail vuelve a `tienda-admin.html?tienda_gmail=...`).
+- El modal antiguo en `dashboard.html` queda inactivo (no se elimina para no tocar código compartido), pero el botón redirige a la página.
+- **Validado en producción** (deploy `6a823703c5eb6af31f22583d`): `tienda-admin.html` se sirve (HTTP 200, 52 KB) y las acciones que usa la página (`info`, listar productos/categorías/atributos/órdenes/clientes, estado pasarela/notificaciones) responden OK con un admin de prueba; recursos de prueba limpiados.
+
 ## 16 Ago 2026 — Fix: el create de Web Factory fallaba en silencio (background functions)
 
 **Bug:** las background functions de Netlify (`web-factory-background`) responden **siempre `202 Accepted` con body vacío** (el resultado real se descarta y solo vive en los logs). `dashboard.html` `crearProyectoWeb()` leía ese body (`data.ok`/`data.error`) → **siempre parecía éxito** ("Sitio en creacion. El estado se actualiza solo.") aunque la función fallara (token vencido, error en Supabase, etc.). Resultado: al crear "storecase" no aparecía ninguna fila ni error.

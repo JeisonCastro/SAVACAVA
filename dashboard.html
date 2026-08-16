@@ -6287,18 +6287,9 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
     }
 
     function abrirTiendaModal(proyectoId, nombre, slug) {
-        _tiendaCtx = { proyecto_id: proyectoId, slug: slug || '', nombre: nombre || '' };
-        document.getElementById('tienda-nombre').textContent = nombre || '';
-        const u = document.getElementById('tienda-url');
-        if (slug) {
-            u.href = 'https://' + slug + '.netlify.app';
-            u.textContent = 'https://' + slug + '.netlify.app';
-            u.style.display = '';
-        } else {
-            u.style.display = 'none';
-        }
-        document.getElementById('tienda-modal').style.display = 'flex';
-        tiendaTab('productos');
+        // La gestión de la tienda vive en su propia página (tienda-admin.html),
+        // con experiencia tipo WooCommerce. Aquí solo redirigimos.
+        window.location.href = 'tienda-admin.html?proyecto=' + encodeURIComponent(proyectoId) + '&slug=' + encodeURIComponent(slug || '');
     }
 
     function cerrarTiendaModal() {

@@ -957,6 +957,19 @@ async function accionConfigurarPasarela(adminId, body) {
 }
 
 // ── Notificaciones de la tienda ──
+async function accionInfoTienda(adminId, params) {
+    const { proyecto_id } = params;
+    const acceso = await validarAcceso(proyecto_id, adminId);
+    if (acceso) return acceso;
+    const { data: proyecto } = await supabase
+        .from('web_projects')
+        .select('id, slug, nombre, descripcion, slogan, logo, accent_color, fuente, netlify_url')
+        .eq('id', proyecto_id)
+        .maybeSingle();
+    if (!proyecto) return ok({ ok: false, error: 'Sitio no encontrado' }, 404);
+    return ok({ ok: true, tienda: proyecto });
+}
+
 async function accionEstadoNotificaciones(adminId, params) {
     const { proyecto_id } = params;
     const acceso = await validarAcceso(proyecto_id, adminId);
@@ -1051,6 +1064,7 @@ exports.handler = async (event) => {
         if (action === 'listar_ordenes') return await accionListarOrdenes(adminId, params);
         if (action === 'cambiar_estado_orden') return await accionCambiarEstadoOrden(adminId, body);
         if (action === 'listar_clientes') return await accionListarClientes(adminId, params);
+        if (action === 'info') return await accionInfoTienda(adminId, params);
         if (action === 'configurar_pasarela') return await accionConfigurarPasarela(adminId, body);
         if (action === 'estado_pasarela') return await accionEstadoPasarela(adminId, params);
         if (action === 'estado_notificaciones') return await accionEstadoNotificaciones(adminId, params);

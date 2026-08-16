@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Tienda · AUVRO</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        :root {
+            --accent: #2563eb; --accent-dark: #1d4ed8;
+            --bg: #0f1115; --surface: #171a21; --bg2: #1d212b; --text: #eef2f8; --muted: #94a3b8; --dim: #64748b;
+            --border: #262b36; --border2: #323947; --green: #16a34a; --red: #dc2626; --yellow: #d97706;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg); color: var(--text); min-height: 100vh; display: flex; flex-direction: column;
+        }
+        a { color: var(--accent); text-decoration: none; }
+        .app { display: flex; flex: 1; min-height: 0; }
+        .sidebar {
+            width: 220px; background: var(--surface); border-right: 1px solid var(--border);
+            padding: 16px 10px; display: flex; flex-direction: column; gap: 4px; flex-shrink: 0;
+        }
+        .sidebar .brand { font-weight: 800; font-size: .95rem; padding: 4px 10px 14px; display: flex; align-items: center; gap: 8px; }
+        .nav-btn {
+            display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
+            padding: 10px 12px; border: none; background: transparent; color: var(--muted);
+            font-size: .88rem; font-weight: 600; border-radius: 9px; cursor: pointer; transition: .12s ease;
+        }
+        .nav-btn:hover { background: var(--bg2); color: var(--text); }
+        .nav-btn.on { background: var(--accent); color: #fff; }
+        .main { flex: 1; padding: 24px; overflow-y: auto; }
+        .topbar {
+            display: flex; align-items: center; gap: 12px; padding: 14px 24px;
+            background: var(--surface); border-bottom: 1px solid var(--border); flex-wrap: wrap;
+        }
+        .topbar .title { font-weight: 800; font-size: 1rem; }
+        .topbar .spacer { flex: 1; }
+        .btn {
+            display: inline-flex; align-items: center; gap: 7px; padding: 9px 15px; border-radius: 9px;
+            border: 1px solid var(--border2); background: var(--bg2); color: var(--text);
+            font-weight: 700; font-size: .84rem; cursor: pointer; transition: .12s ease; text-decoration: none;
+        }
+        .btn:hover { border-color: var(--accent); }
+        .btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+        .btn-primary:hover { background: var(--accent-dark); }
+        .btn-green { background: var(--green); border-color: var(--green); color: #fff; }
+        .btn-danger { background: transparent; border-color: var(--red); color: var(--red); }
+        .btn-sm { padding: 6px 10px; font-size: .76rem; }
+        .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 14px; }
+        .card h3 { font-size: .95rem; margin-bottom: 10px; }
+        .field { margin-bottom: 10px; }
+        .field label { display: block; font-size: .74rem; font-weight: 700; color: var(--muted); margin-bottom: 5px; }
+        .field input, .field select, .field textarea {
+            width: 100%; padding: 9px 11px; border: 1px solid var(--border2); border-radius: 8px;
+            background: var(--bg); color: var(--text); font-size: .86rem; outline: none; font-family: inherit;
+        }
+        .field input:focus, .field select:focus, .field textarea:focus { border-color: var(--accent); }
+        .row { display: flex; gap: 10px; flex-wrap: wrap; }
+        .row > * { flex: 1; min-width: 0; }
+        .table-wrap { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; font-size: .84rem; }
+        th { text-align: left; color: var(--muted); font-size: .72rem; text-transform: uppercase; letter-spacing: .03em; padding: 8px 10px; border-bottom: 1px solid var(--border); }
+        td { padding: 9px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+        .badge { font-size: .68rem; font-weight: 700; padding: 3px 9px; border-radius: 999px; text-transform: uppercase; letter-spacing: .03em; }
+        .badge-green { background: rgba(22,163,74,.15); color: #4ade80; }
+        .badge-yellow { background: rgba(217,119,6,.15); color: #fbbf24; }
+        .badge-red { background: rgba(220,38,38,.15); color: #f87171; }
+        .msg { font-size: .8rem; margin-top: 8px; }
+        .msg.error { color: var(--red); }
+        .msg.ok { color: var(--green); }
+        .empty { text-align: center; color: var(--dim); padding: 26px 0; font-size: .86rem; }
+        .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 16px; }
+        .stat { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
+        .stat .n { font-size: 1.5rem; font-weight: 800; color: var(--accent); }
+        .stat .l { font-size: .74rem; color: var(--muted); margin-top: 2px; }
+        .variante-editor { display: flex; gap: 6px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 6px; }
+        .variante-editor input { padding: 6px 8px; border: 1px solid var(--border2); border-radius: 7px; background: var(--bg); color: var(--text); font-size: .78rem; }
+        .prod-item { display: flex; align-items: center; gap: 12px; background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; }
+        .prod-item img { width: 46px; height: 46px; border-radius: 8px; object-fit: cover; }
+        .prod-item .info { flex: 1; min-width: 0; }
+        .toast { position: fixed; bottom: 18px; right: 18px; z-index: 1000; background: var(--surface); border: 1px solid var(--border2); border-left: 4px solid var(--green); padding: 12px 16px; border-radius: 10px; font-size: .86rem; box-shadow: 0 8px 24px rgba(0,0,0,.4); opacity: 0; transform: translateY(8px); transition: .2s ease; }
+        .toast.show { opacity: 1; transform: translateY(0); }
+        .toast.error { border-left-color: var(--red); }
+        @media (max-width: 760px) {
+            .app { flex-direction: column; }
+            .sidebar { width: 100%; flex-direction: row; flex-wrap: wrap; border-right: none; border-bottom: 1px solid var(--border); }
+            .main { padding: 16px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="topbar">
+        <span class="title" id="tb-nombre">Cargando tienda…</span>
+        <a class="btn btn-primary" id="tb-ver" href="#" target="_blank" rel="noopener" style="display:none"><i>🔗</i> Ver tienda</a>
+        <span class="spacer"></span>
+        <span id="tb-email" style="font-size:.8rem;color:var(--muted)"></span>
+        <a class="btn btn-sm" href="dashboard.html">← Panel AUVRO</a>
+        <button class="btn btn-sm" onclick="salir()">Salir</button>
+    </div>
+
+    <div class="app">
+        <nav class="sidebar">
+            <div class="brand">🛍️ Gestión de tienda</div>
+            <button class="nav-btn on" data-sec="dashboard" onclick="ir('dashboard')">📊 Resumen</button>
+            <button class="nav-btn" data-sec="productos" onclick="ir('productos')">📦 Productos</button>
+            <button class="nav-btn" data-sec="categorias" onclick="ir('categorias')">🏷️ Categorías</button>
+            <button class="nav-btn" data-sec="atributos" onclick="ir('atributos')">🎛️ Atributos</button>
+            <button class="nav-btn" data-sec="ordenes" onclick="ir('ordenes')">🧾 Órdenes</button>
+            <button class="nav-btn" data-sec="clientes" onclick="ir('clientes')">👥 Clientes</button>
+            <button class="nav-btn" data-sec="pasarela" onclick="ir('pasarela')">💳 Pasarela</button>
+            <button class="nav-btn" data-sec="notificaciones" onclick="ir('notificaciones')">🔔 Notificaciones</button>
+        </nav>
+        <main class="main" id="main"></main>
+    </div>
+    <div class="toast" id="toast"></div>
+
+    <script>
+(function () {
+    const SUPABASE_URL = "https://zsxkfqnalkfvwjrzuqip.supabase.co";
+    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzeGtmcW5hbGtmdndqcnp1cWlwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0NDgyODMsImV4cCI6MjA5MjAyNDI4M30.R4j23l3IHEL966VupeR-Sx_KtDQzB8NzfJtEVDGewGs";
+    const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    let session = null;
+    const ctx = { proyecto_id: '', slug: '' };
+    const S = {
+        productos: [], categorias: [], atributos: [], ordenes: [], clientes: [],
+        editandoId: null, imagenes: [], archivoDigital: null
+    };
+
+    const $ = (id) => document.getElementById(id);
+    const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    const fmtCOP = (c) => '$' + (Math.round(Number(c) || 0) / 100).toLocaleString('es-CO');
+
+    let toastTimer = null;
+    function toast(msg, err) {
+        const t = $('toast');
+        t.textContent = msg; t.className = 'toast show' + (err ? ' error' : '');
+        clearTimeout(toastTimer); toastTimer = setTimeout(() => t.className = 'toast', 2600);
+    }
+
+    async function api(action, body = {}) {
+        const res = await fetch('/.netlify/functions/tienda', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (session ? session.access_token : '') },
+            body: JSON.stringify({ action, ...body })
+        });
+        return res.json();
+    }
+
+    function tipoLabel(t) {
+        return { simple: 'Simple', fisico: 'Simple', variable: 'Variable', digital: 'Digital', servicio: 'Servicio' }[t] || t || '—';
+    }
+
+    // ── Inicio / auth ──
+    async function init() {
+        const { data } = await _supabase.auth.getSession();
+        session = data.session;
+        if (!session) { window.location.href = 'login.html'; return; }
+        $('tb-email').textContent = session.user.email;
+
+        const params = new URLSearchParams(window.location.search);
+        const proyecto = params.get('proyecto');
+        const slug = params.get('slug');
+        ctx.proyecto_id = proyecto || '';
+        ctx.slug = slug || '';
+
+        const tiendaGmail = params.get('tienda_gmail');
+        if (tiendaGmail) {
+            try {
+                const res = await fetch('/.netlify/functions/conectar-gmail-tienda', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + session.access_token },
+                    body: JSON.stringify({ action: 'guardar', proyecto_id: tiendaGmail })
+                });
+                const d = await res.json();
+                toast(d.ok ? 'Gmail de la tienda conectado ✅' : ('Error: ' + (d.error || 'reintenta')), !d.ok);
+            } catch (_) { toast('Error conectando Gmail', true); }
+            history.replaceState({}, '', window.location.pathname + (proyecto ? '?proyecto=' + proyecto : ''));
+        }
+
+        if (!ctx.proyecto_id) {
+            $('main').innerHTML = '<div class="card"><div class="empty">Falta el parámetro proyecto. Vuelve al panel y usa "Gestionar tienda".</div></div>';
+            return;
+        }
+        try {
+            const info = await api('info', { proyecto_id: ctx.proyecto_id });
+            if (!info.ok) throw new Error(info.error || 'Sin acceso a la tienda');
+            const t = info.tienda;
+            ctx.slug = t.slug || ctx.slug;
+            $('tb-nombre').textContent = t.nombre || 'Mi tienda';
+            const u = $('tb-ver');
+            if (t.netlify_url) { u.href = t.netlify_url; u.style.display = ''; }
+            else if (t.slug) { u.href = 'https://' + t.slug + '.netlify.app'; u.style.display = ''; }
+            ir('dashboard');
+        } catch (err) {
+            $('main').innerHTML = '<div class="card"><div class="empty">' + esc(err.message || 'Error') + '</div></div>';
+        }
+    }
+
+    function ir(sec) {
+        document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('on', b.getAttribute('data-sec') === sec));
+        ({ dashboard: renderDashboard, productos: renderProductos, categorias: renderCategorias,
+            atributos: renderAtributos, ordenes: renderOrdenes, clientes: renderClientes,
+            pasarela: renderPasarela, notificaciones: renderNotificaciones })[sec]();
+    }
+
+    function salir() { _supabase.auth.signOut().then(() => window.location.href = 'login.html'); }
+
+    // ── RESUMEN ──
+    async function renderDashboard() {
+        const main = $('main');
+        main.innerHTML = '<div class="empty">Cargando…</div>';
+        try {
+            const [p, o, c] = await Promise.all([
+                api('listar_productos', { proyecto_id: ctx.proyecto_id }),
+                api('listar_ordenes', { proyecto_id: ctx.proyecto_id }),
+                api('listar_clientes', { proyecto_id: ctx.proyecto_id })
+            ]);
+            const prods = (p.ok && p.productos) || [];
+            const ords = (o.ok && o.ordenes) || [];
+            const clis = (c.ok && c.clientes) || [];
+            const pend = ords.filter(x => x.estado !== 'pagada').length;
+            const vendido = ords.filter(x => x.estado === 'pagada').reduce((a, x) => a + Number(x.total_cents || 0), 0);
+            S.productos = prods; S.ordenes = ords; S.clientes = clis;
+            main.innerHTML = `
+                <div class="stats">
+                    <div class="stat"><div class="n">${prods.length}</div><div class="l">Productos</div></div>
+                    <div class="stat"><div class="n">${pend}</div><div class="l">Órdenes pendientes</div></div>
+                    <div class="stat"><div class="n">${clis.length}</div><div class="l">Clientes</div></div>
+                    <div class="stat"><div class="n">${fmtCOP(vendido)}</div><div class="l">Vendido</div></div>
+                </div>
+                <div class="row">
+                    <div class="card"><h3>Accesos rápidos</h3>
+                        <div class="row" style="gap:8px">
+                            <button class="btn btn-primary" onclick="nuevoProducto()">+ Nuevo producto</button>
+                            <button class="btn" onclick="ir('categorias')">Categorías</button>
+                            <button class="btn" onclick="ir('atributos')">Atributos</button>
+                            <button class="btn" onclick="ir('ordenes')">Órdenes</button>
+                        </div>
+                    </div>
+                </div>`;
+        } catch (err) { main.innerHTML = '<div class="empty">' + esc(err.message) + '</div>'; }
+    }
+
+    // ── PRODUCTOS ──
+    async function renderProductos() {
+        const main = $('main');
+        main.innerHTML = '<div class="empty">Cargando…</div>';
+        try {
+            const [p, c, a] = await Promise.all([
+                api('listar_productos', { proyecto_id: ctx.proyecto_id }),
+                api('listar_categorias', { proyecto_id: ctx.proyecto_id }),
+                api('listar_atributos', { proyecto_id: ctx.proyecto_id })
+            ]);
+            if (!p.ok) throw new Error(p.error || 'Error');
+            S.productos = p.productos || [];
+            S.categorias = (c.ok && c.categorias) || [];
+            S.atributos = (a.ok && a.atributos) || [];
+            main.innerHTML = `
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
+                    <h3 style="flex:1">Productos</h3>
+                    <button class="btn btn-primary" onclick="formProducto(null)">+ Nuevo producto</button>
+                </div>
+                ${S.productos.length ? S.productos.map(p => `
+                    <div class="prod-item">
+                        ${p.imagen ? `<img src="${esc(p.imagen)}" alt="">` : '<div style="width:46px;height:46px;border-radius:8px;background:var(--bg);border:1px solid var(--border2)"></div>'}
+                        <div class="info">
+                            <div style="font-weight:700">${esc(p.nombre)}</div>
+                            <div style="font-size:.74rem;color:var(--dim)">${tipoLabel(p.tipo)} · ${fmtCOP(p.precio_cents)}${p.categoria ? ' · ' + esc(p.categoria) : ''}${p.tipo === 'variable' ? ' · ' + (p.variaciones || []).length + ' variaciones' : ''}${p.tipo === 'simple' && p.stock != null ? ' · Stock: ' + p.stock : ''}${p.activo ? '' : ' · <span style="color:var(--red)">oculto</span>'}</div>
+                        </div>
+                        <button class="btn btn-sm" onclick="editarProducto('${p.id}')">Editar</button>
+                        <button class="btn btn-sm btn-danger" onclick="eliminarProducto('${p.id}','${esc(p.nombre)}')">🗑</button>
+                    </div>`).join('')
+                : '<div class="card"><div class="empty">No hay productos todavía. Crea el primero.</div></div>'}
+            `;
+        } catch (err) { main.innerHTML = '<div class="empty">' + esc(err.message) + '</div>'; }
+    }
+
+    function editarProducto(id) {
+        const p = S.productos.find(x => x.id === id);
+        formProducto(p || null);
+    }
+
+    async function nuevoProducto() {
+        const [c, a] = await Promise.all([
+            api('listar_categorias', { proyecto_id: ctx.proyecto_id }),
+            api('listar_atributos', { proyecto_id: ctx.proyecto_id })
+        ]);
+        S.categorias = (c.ok && c.categorias) || [];
+        S.atributos = (a.ok && a.atributos) || [];
+        document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('on', b.getAttribute('data-sec') === 'productos'));
+        formProducto(null);
+    }
+
+    function formProducto(prod) {
+        S.editandoId = prod ? prod.id : null;
+        S.imagenes = (Array.isArray(prod && prod.imagenes) && prod.imagenes.length ? prod.imagenes : (prod && prod.imagen ? [prod.imagen] : [])).map(u => String(u || ''));
+        S.archivoDigital = null;
+        const tipo = (prod && prod.tipo === 'fisico' ? 'simple' : (prod && prod.tipo)) || 'simple';
+        const catId = (prod && prod.categoria_id) || '';
+        const catsOpts = S.categorias.map(c => `<option value="${c.id}"${String(catId) === String(c.id) ? ' selected' : ''}>${esc(c.nombre)}</option>`).join('');
+        const attrTxt = Object.entries((prod && prod.atributos) || {}).map(([k, v]) => k + ': ' + v).join('\n');
+        const selector = (prod && Array.isArray(prod.atributos_selector)) ? prod.atributos_selector : [];
+
+        $('main').innerHTML = `
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
+                <button class="btn btn-sm" onclick="renderProductos()">← Volver</button>
+                <h3 style="flex:1">${prod ? 'Editar producto' : 'Nuevo producto'}</h3>
+            </div>
+            <div class="card">
+                <div class="row">
+                    <div style="flex:2"><div class="field"><label>Nombre del producto</label><input id="p-nombre" value="${esc(prod && prod.nombre || '')}" placeholder="Ej: Reloj PEPITO"></div></div>
+                    <div style="flex:1"><div class="field"><label>Tipo</label>
+                        <select id="p-tipo" onchange="syncTipo()">
+                            <option value="simple"${tipo === 'simple' ? ' selected' : ''}>Simple (físico)</option>
+                            <option value="variable"${tipo === 'variable' ? ' selected' : ''}>Variable (atributos)</option>
+                            <option value="digital"${tipo === 'digital' ? ' selected' : ''}>Digital</option>
+                            <option value="servicio"${tipo === 'servicio' ? ' selected' : ''}>Servicio</option>
+                        </select></div></div>
+                    <div style="flex:1"><div class="field"><label>Precio base (COP)${tipo === 'variable' ? ' — desde' : ''}</label><input id="p-precio" type="number" min="0" value="${Math.round(((prod && prod.precio_cents) || 0) / 100)}" placeholder="Ej: 95000"></div></div>
+                    <div style="flex:1" id="wrap-stock"><div class="field"><label>Stock</label><input id="p-stock" type="number" min="0" value="${tipo === 'simple' && prod && prod.stock != null ? prod.stock : ''}" placeholder="Vacío = ilimitado"></div></div>
+                    <div style="flex:1"><div class="field"><label>SKU (opcional)</label><input id="p-sku" value="${esc(prod && prod.sku || '')}" placeholder="PEPITO-01"></div></div>
+                </div>
+                <div class="field"><label>Descripción</label><input id="p-desc" value="${esc(prod && prod.descripcion || '')}" placeholder="Breve descripción para el cliente"></div>
+                <div class="field"><label>Categoría</label>
+                    <select id="p-cat">
+                        <option value="">Sin categoría</option>${catsOpts}
+                    </select>
+                </div>
+                <div class="field"><label>Ficha técnica (clave: valor, una por línea)</label><textarea id="p-attrs" rows="2" placeholder="Material: Acero&#10;Garantía: 1 año">${esc(attrTxt)}</textarea></div>
+                <div id="wrap-var" style="display:none">
+                    <div class="field"><label>Atributos de variación (elige atributo y sus valores → se generan las combinaciones)</label>
+                        <div id="p-selector"></div>
+                        <div style="font-size:.72rem;color:var(--dim);margin-top:6px">Ej: Color (Negro, Blanco) + Talla (S, M, L) = 6 variaciones. Crea atributos en la sección Atributos.</div>
+                    </div>
+                </div>
+                <div class="field"><label>Imágenes (varias para colores/presentaciones; la primera es portada)</label>
+                    <div id="p-imgs"></div>
+                    <button class="btn btn-sm" onclick="addImg()">+ Agregar imagen</button>
+                </div>
+                <div id="wrap-digital" style="display:none" class="field">
+                    <label>Archivo para entrega digital</label>
+                    <input type="file" id="p-file" onchange="leerArchivo(this)">
+                    <div id="p-file-note" style="font-size:.74rem;color:var(--accent);margin-top:4px"></div>
+                </div>
+                <div style="display:flex;gap:10px;align-items:center;margin-top:6px;flex-wrap:wrap">
+                    <label style="font-size:.84rem;display:flex;align-items:center;gap:6px"><input type="checkbox" id="p-activo" ${!(prod && prod.activo === false) ? 'checked' : ''}> Disponible en la tienda</label>
+                    <span style="flex:1"></span>
+                    <button class="btn btn-green" onclick="guardarProducto()">💾 Guardar producto</button>
+                    <button class="btn" onclick="renderProductos()">Cancelar</button>
+                </div>
+                <div class="msg" id="p-msg"></div>
+            </div>`;
+        syncTipo();
+        renderSelector(selector);
+        renderImgs();
+    }
+
+    function syncTipo() {
+        const t = $('p-tipo').value;
+        $('wrap-stock').style.display = t === 'simple' ? '' : 'none';
+        $('wrap-digital').style.display = t === 'digital' ? '' : 'none';
+        $('wrap-var').style.display = t === 'variable' ? '' : 'none';
+    }
+
+    function renderSelector(selector) {
+        const cont = $('p-selector');
+        if (!cont) return;
+        if (!S.atributos.length) { cont.innerHTML = '<div style="font-size:.8rem;color:var(--dim)">No hay atributos creados. Ve a la sección Atributos y crea uno (ej. Color, Talla).</div>'; return; }
+        const mapa = {};
+        (selector || []).forEach(a => { mapa[a.atributo_id] = a.valores || []; });
+        cont.innerHTML = S.atributos.map(a => `
+            <div style="border:1px solid var(--border);border-radius:8px;padding:8px;margin-bottom:6px">
+                <label style="font-weight:700;font-size:.84rem;display:flex;align-items:center;gap:6px"><input type="checkbox" class="sel-a" data-aid="${a.id}" ${mapa[a.id] ? 'checked' : ''}> ${esc(a.nombre)}</label>
+                <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">
+                    ${(a.valores || []).map(v => `<label style="font-size:.78rem;display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" class="sel-v" data-aid="${a.id}" data-val="${esc(String(v))}" ${(mapa[a.id] || []).includes(String(v)) ? 'checked' : ''}> ${esc(String(v))}</label>`).join('')}
+                </div>
+            </div>`).join('');
+    }
+
+    function renderImgs() {
+        const cont = $('p-imgs');
+        if (!cont) return;
+        if (!S.imagenes.length) { cont.innerHTML = '<div style="font-size:.78rem;color:var(--dim)">Sin imágenes.</div>'; return; }
+        cont.innerHTML = S.imagenes.map((u, i) => `
+            <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px">
+                <input value="${esc(u)}" id="p-img-${i}" placeholder="https://... o sube una imagen" style="flex:1;padding:7px;border:1px solid var(--border2);border-radius:7px;background:var(--bg);color:var(--text);font-size:.8rem">
+                <input type="file" accept="image/*" style="display:none" id="p-imgf-${i}" onchange="imgSubir(${i}, this)">
+                <button class="btn btn-sm" onclick="document.getElementById('p-imgf-${i}').click()">Subir</button>
+                <button class="btn btn-sm btn-danger" onclick="quitImg(${i})">✕</button>
+            </div>`).join('');
+    }
+    function addImg() { S.imagenes.push(''); renderImgs(); }
+    function quitImg(i) { S.imagenes.splice(i, 1); renderImgs(); }
+    function imgSubir(i, input) {
+        const f = input.files && input.files[0]; if (!f) return;
+        if (f.size > 7 * 1024 * 1024) { toast('La imagen supera 7 MB', true); input.value = ''; return; }
+        const rd = new FileReader();
+        rd.onload = () => {
+            S.imagenes[i] = String(rd.result);
+            const el = $('p-img-' + i); if (el) el.value = String(rd.result);
+        };
+        rd.readAsDataURL(f);
+    }
+    function leerArchivo(input) {
+        const f = input.files && input.files[0]; if (!f) return;
+        if (f.size > 7 * 1024 * 1024) { toast('El archivo supera 7 MB', true); input.value = ''; return; }
+        const rd = new FileReader();
+        rd.onload = () => { S.archivoDigital = { dataUrl: String(rd.result), name: f.name }; $('p-file-note').textContent = 'Archivo digital: ' + f.name; };
+        rd.readAsDataURL(f);
+    }
+
+    async function guardarProducto() {
+        const msg = $('p-msg');
+        const nombre = $('p-nombre').value.trim();
+        const tipo = $('p-tipo').value;
+        const precio = Math.round(Number($('p-precio').value) || 0) * 100;
+        if (!nombre) { msg.textContent = 'Escribe el nombre del producto'; msg.className = 'msg error'; return; }
+        if (tipo !== 'variable' && precio <= 0) { msg.textContent = 'El precio debe ser mayor a 0'; msg.className = 'msg error'; return; }
+        let stock = null;
+        if (tipo === 'simple') { const v = $('p-stock').value.trim(); stock = v === '' ? null : Math.max(0, Math.floor(Number(v) || 0)); }
+        const desc = $('p-desc').value.trim();
+        const categoria_id = $('p-cat').value || null;
+        const sku = $('p-sku').value.trim() || null;
+        const atributos = {};
+        ($('p-attrs').value || '').split('\n').map(s => s.trim()).filter(Boolean).forEach(l => { const i = l.indexOf(':'); if (i > -1) atributos[l.slice(0, i).trim()] = l.slice(i + 1).trim(); });
+        const selector = [];
+        if (tipo === 'variable') {
+            document.querySelectorAll('.sel-a:checked').forEach(chk => {
+                const aid = chk.getAttribute('data-aid');
+                const attr = S.atributos.find(a => String(a.id) === aid); if (!attr) return;
+                const valores = [];
+                document.querySelectorAll('.sel-v[data-aid="' + aid + '"]:checked').forEach(v => valores.push(v.getAttribute('data-val')));
+                if (valores.length) selector.push({ atributo_id: aid, nombre: attr.nombre, valores });
+            });
+        }
+        const imagenes = S.imagenes.map((_, i) => { const el = $('p-img-' + i); return el ? el.value.trim() : ''; }).filter(Boolean);
+        const imagen = imagenes[0] || '';
+        const activo = $('p-activo').checked;
+        msg.textContent = 'Guardando…'; msg.className = 'msg';
+        try {
+            const data = await api('guardar_producto', {
+                proyecto_id: ctx.proyecto_id, id: S.editandoId || null,
+                nombre, descripcion: desc, precio_cents: precio, tipo, activo, stock, imagen, imagenes,
+                categoria_id, categoria: null, sku,
+                atributos: Object.keys(atributos).length ? atributos : null,
+                atributos_selector: selector.length ? selector : null,
+                archivo_data_url: S.archivoDigital ? S.archivoDigital.dataUrl : null,
+                filename: S.archivoDigital ? S.archivoDigital.name : 'archivo'
+            });
+            if (!data.ok) throw new Error(data.error || 'No se pudo guardar');
+            toast('Producto guardado ✅');
+            if (data.producto && data.producto.tipo === 'variable' && Array.isArray(data.producto.variaciones)) {
+                formVariaciones(data.producto);
+            } else { renderProductos(); }
+        } catch (err) { msg.textContent = 'Error: ' + err.message; msg.className = 'msg error'; }
+    }
+
+    function formVariaciones(producto) {
+        const vars = (producto.variaciones || []).slice();
+        S._varsIds = vars.map(v => v.id);
+        $('main').innerHTML = `
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
+                <button class="btn btn-sm" onclick="renderProductos()">← Volver a productos</button>
+                <h3 style="flex:1">Variaciones de ${esc(producto.nombre)}</h3>
+            </div>
+            ${vars.length ? `<div class="card"><div class="table-wrap"><table>
+                <thead><tr><th>Combinación</th><th>Precio</th><th>Promo</th><th>Stock</th><th>SKU</th><th>Imagen (URL)</th><th>Activo</th></tr></thead>
+                <tbody>
+                ${vars.map((v, i) => `
+                    <tr>
+                        <td style="font-weight:700;white-space:nowrap">${esc(v.nombre)}</td>
+                        <td><input id="vx-p-${i}" type="number" min="0" value="${v.precio_cents != null ? Math.round(v.precio_cents / 100) : ''}" placeholder="Usa base" style="width:88px;padding:5px;border:1px solid var(--border2);border-radius:6px;background:var(--bg);color:var(--text);font-size:.76rem"></td>
+                        <td><input id="vx-pr-${i}" type="number" min="0" value="${v.precio_promo_cents != null ? Math.round(v.precio_promo_cents / 100) : ''}" placeholder="—" style="width:88px;padding:5px;border:1px solid var(--border2);border-radius:6px;background:var(--bg);color:var(--text);font-size:.76rem"></td>
+                        <td><input id="vx-s-${i}" type="number" min="0" value="${v.stock == null ? '' : v.stock}" placeholder="Ilimitado" style="width:74px;padding:5px;border:1px solid var(--border2);border-radius:6px;background:var(--bg);color:var(--text);font-size:.76rem"></td>
+                        <td><input id="vx-k-${i}" value="${esc(v.sku || '')}" placeholder="SKU" style="width:104px;padding:5px;border:1px solid var(--border2);border-radius:6px;background:var(--bg);color:var(--text);font-size:.76rem"></td>
+                        <td><input id="vx-i-${i}" value="${esc(v.imagen || '')}" placeholder="https://..." style="width:150px;padding:5px;border:1px solid var(--border2);border-radius:6px;background:var(--bg);color:var(--text);font-size:.76rem"></td>
+                        <td style="text-align:center"><input type="checkbox" id="vx-a-${i}" ${v.activo === false ? '' : 'checked'}></td>
+                    </tr>`).join('')}
+                </tbody>
+            </table></div>
+            <div style="display:flex;gap:10px;margin-top:12px">
+                <button class="btn btn-green" onclick="guardarVariaciones('${producto.id}')">💾 Guardar variaciones</button>
+                <button class="btn" onclick="renderProductos()">Cancelar</button>
+            </div>
+            <div class="msg" id="vx-msg"></div></div>`
+            : '<div class="card"><div class="empty">Este producto no tiene combinaciones. Agrega atributos y valores en el formulario.</div></div>'}
+        `;
+    }
+
+    async function guardarVariaciones(productoId) {
+        const msg = $('vx-msg');
+        const body = [];
+        let i = 0;
+        while (true) {
+            const p = $('vx-p-' + i), s = $('vx-s-' + i), k = $('vx-k-' + i);
+            if (!p) break;
+            const pr = $('vx-pr-' + i), im = $('vx-i-' + i), a = $('vx-a-' + i);
+            body.push({
+                id: (S._varsIds && S._varsIds[i]) || null,
+                precio_cents: p.value !== '' ? Math.round(Number(p.value) || 0) * 100 : null,
+                precio_promo_cents: pr.value !== '' ? Math.round(Number(pr.value) || 0) * 100 : null,
+                stock: s.value !== '' ? Math.max(0, Math.floor(Number(s.value) || 0)) : null,
+                sku: k.value.trim(), imagen: im.value.trim(), activo: a.checked
+            });
+            i++;
+        }
+        const limpio = body.filter(b => b.id);
+        if (!limpio.length) { toast('No hay variaciones para guardar', true); return; }
+        msg.textContent = 'Guardando…'; msg.className = 'msg';
+        try {
+            const data = await api('guardar_variaciones', { producto_id: productoId, variaciones: limpio });
+            if (!data.ok) throw new Error(data.error || 'No se pudo guardar');
+            toast('Variaciones guardadas ✅');
+            renderProductos();
+        } catch (err) { msg.textContent = 'Error: ' + err.message; msg.className = 'msg error'; }
+    }
+
+    async function eliminarProducto(id, nombre) {
+        if (!confirm('Eliminar el producto "' + nombre + '"?')) return;
+        const data = await api('eliminar_producto', { id });
+        if (!data.ok) return toast('Error: ' + (data.error || 'No se pudo eliminar'), true);
+        toast('Producto eliminado');
+        renderProductos();
+    }
+
+    // ── CATEGORÍAS ──
+    async function renderCategorias() {
+        const main = $('main');
+        main.innerHTML = '<div class="empty">Cargando…</div>';
+        const data = await api('listar_categorias', { proyecto_id: ctx.proyecto_id });
+        if (!data.ok) { main.innerHTML = '<div class="empty">' + esc(data.error) + '</div>'; return; }
+        S.categorias = data.categorias || [];
+        main.innerHTML = `
+            <h3 style="margin-bottom:14px">Categorías</h3>
+            <div class="card">
+                <div style="display:flex;gap:10px;flex-wrap:wrap">
+                    <input id="cat-nombre" placeholder="Nueva categoría (ej. Relojes)" style="flex:1;min-width:180px;padding:9px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text)">
+                    <button class="btn btn-green" onclick="guardarCategoria()">+ Agregar</button>
+                </div>
+            </div>
+            ${S.categorias.length ? S.categorias.map(c => `
+                <div style="display:flex;align-items:center;gap:10px;background:var(--bg2);border:1px solid var(--border);border-radius:9px;padding:9px 12px;margin-bottom:6px">
+                    <span style="font-weight:700;flex:1">${esc(c.nombre)}</span>
+                    <button class="btn btn-sm btn-danger" onclick="eliminarCategoria('${c.id}','${esc(c.nombre)}')">🗑</button>
+                </div>`).join('') : '<div class="card"><div class="empty">Sin categorías. Agrega la primera.</div></div>'}
+        `;
+    }
+    async function guardarCategoria() {
+        const nombre = $('cat-nombre').value.trim();
+        if (!nombre) return toast('Escribe el nombre', true);
+        const data = await api('guardar_categoria', { proyecto_id: ctx.proyecto_id, nombre });
+        if (!data.ok) return toast('Error: ' + data.error, true);
+        toast('Categoría agregada ✅'); renderCategorias();
+    }
+    async function eliminarCategoria(id, nombre) {
+        if (!confirm('Eliminar la categoría "' + nombre + '"?')) return;
+        const data = await api('eliminar_categoria', { id });
+        if (!data.ok) return toast('Error: ' + data.error, true);
+        toast('Categoría eliminada'); renderCategorias();
+    }
+
+    // ── ATRIBUTOS ──
+    async function renderAtributos() {
+        const main = $('main');
+        main.innerHTML = '<div class="empty">Cargando…</div>';
+        const data = await api('listar_atributos', { proyecto_id: ctx.proyecto_id });
+        if (!data.ok) { main.innerHTML = '<div class="empty">' + esc(data.error) + '</div>'; return; }
+        S.atributos = data.atributos || [];
+        main.innerHTML = `
+            <h3 style="margin-bottom:14px">Atributos (reutilizables entre productos)</h3>
+            <div class="card">
+                <div style="display:flex;gap:10px;flex-wrap:wrap">
+                    <input id="a-nombre" placeholder="Atributo (ej. Color)" style="flex:1;min-width:140px;padding:9px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text)">
+                    <input id="a-valores" placeholder="Valores separados por coma (ej. Azul, Rojo, Negro)" style="flex:2;min-width:220px;padding:9px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text)">
+                    <button class="btn btn-green" onclick="guardarAtributo()">+ Agregar</button>
+                </div>
+            </div>
+            ${S.atributos.length ? S.atributos.map(a => `
+                <div style="display:flex;align-items:center;gap:10px;background:var(--bg2);border:1px solid var(--border);border-radius:9px;padding:9px 12px;margin-bottom:6px;flex-wrap:wrap">
+                    <span style="font-weight:700">${esc(a.nombre)}</span>
+                    <span style="font-size:.8rem;color:var(--dim)">${(a.valores || []).map(v => esc(String(v))).join(' · ')}</span>
+                    <span style="flex:1"></span>
+                    <button class="btn btn-sm btn-danger" onclick="eliminarAtributo('${a.id}','${esc(a.nombre)}')">🗑</button>
+                </div>`).join('') : '<div class="card"><div class="empty">Sin atributos. Crea uno (ej. Color, Talla) para los productos variables.</div></div>'}
+        `;
+    }
+    async function guardarAtributo() {
+        const nombre = $('a-nombre').value.trim();
+        const valores = $('a-valores').value.trim();
+        if (!nombre) return toast('Escribe el nombre', true);
+        const data = await api('guardar_atributo', { proyecto_id: ctx.proyecto_id, nombre, valores });
+        if (!data.ok) return toast('Error: ' + data.error, true);
+        toast('Atributo guardado ✅'); renderAtributos();
+    }
+    async function eliminarAtributo(id, nombre) {
+        if (!confirm('Eliminar el atributo "' + nombre + '"? Se quitará de los productos y se regenerarán sus variaciones.')) return;
+        const data = await api('eliminar_atributo', { id });
+        if (!data.ok) return toast('Error: ' + data.error, true);
+        toast('Atributo eliminado'); renderAtributos();
+    }
+
+    // ── ÓRDENES ──
+    async function renderOrdenes() {
+        const main = $('main');
+        main.innerHTML = '<div class="empty">Cargando…</div>';
+        const data = await api('listar_ordenes', { proyecto_id: ctx.proyecto_id });
+        if (!data.ok) { main.innerHTML = '<div class="empty">' + esc(data.error) + '</div>'; return; }
+        S.ordenes = data.ordenes || [];
+        main.innerHTML = `
+            <h3 style="margin-bottom:14px">Órdenes</h3>
+            ${S.ordenes.length ? `<div class="card"><div class="table-wrap"><table>
+                <thead><tr><th>N°</th><th>Fecha</th><th>Cliente</th><th>Items</th><th>Total</th><th>Pago</th><th>Acciones</th></tr></thead>
+                <tbody>
+                ${S.ordenes.map(o => {
+                    const b = o.estado_pago === 'pagado' || o.estado === 'pagada' ? 'badge-green' : (o.estado === 'cancelada' ? 'badge-red' : 'badge-yellow');
+                    const label = o.estado_pago || o.estado;
+                    const items = (o.items || []).map(i => i.nombre + (i.cantidad > 1 ? ' x' + i.cantidad : '')).join(', ');
+                    return `<tr>
+                        <td style="font-weight:700;white-space:nowrap">#${esc(o.numero || o.id.slice(0, 8))}</td>
+                        <td style="white-space:nowrap">${esc((o.created_at || '').slice(0, 10))}</td>
+                        <td><div style="font-weight:700">${esc(o.cliente_nombre || '')}</div><div style="font-size:.72rem;color:var(--dim)">${esc(o.cliente_email || '')}</div></td>
+                        <td style="max-width:220px;font-size:.8rem">${esc(items)}</td>
+                        <td style="font-weight:700;white-space:nowrap">${fmtCOP(o.total_cents)}</td>
+                        <td><span class="badge ${b}">${label}</span>${o.transaction_id ? '<div style="font-size:.66rem;color:var(--dim)">ref ' + esc(o.transaction_id) + '</div>' : ''}</td>
+                        <td><select onchange="cambiarEstado('${o.id}', this.value)" style="padding:5px;border:1px solid var(--border2);border-radius:6px;background:var(--bg);color:var(--text);font-size:.76rem">
+                            <option value="pendiente"${o.estado === 'pendiente' ? ' selected' : ''}>Pendiente</option>
+                            <option value="pagada"${o.estado === 'pagada' ? ' selected' : ''}>Pagada</option>
+                            <option value="cancelada"${o.estado === 'cancelada' ? ' selected' : ''}>Cancelada</option>
+                        </select></td>
+                    </tr>`;
+                }).join('')}
+                </tbody>
+            </table></div></div>` : '<div class="card"><div class="empty">Aún no hay órdenes.</div></div>'}
+        `;
+    }
+    async function cambiarEstado(id, estado) {
+        const data = await api('cambiar_estado_orden', { id, estado });
+        if (!data.ok) return toast('Error: ' + data.error, true);
+        toast('Estado actualizado ✅'); renderOrdenes();
+    }
+
+    // ── CLIENTES ──
+    async function renderClientes() {
+        const main = $('main');
+        main.innerHTML = '<div class="empty">Cargando…</div>';
+        const data = await api('listar_clientes', { proyecto_id: ctx.proyecto_id });
+        if (!data.ok) { main.innerHTML = '<div class="empty">' + esc(data.error) + '</div>'; return; }
+        S.clientes = data.clientes || [];
+        main.innerHTML = `
+            <h3 style="margin-bottom:14px">Clientes</h3>
+            ${S.clientes.length ? `<div class="card"><div class="table-wrap"><table>
+                <thead><tr><th>Cliente</th><th>Email</th><th>Teléfono</th><th>Pedidos</th><th>Total comprado</th></tr></thead>
+                <tbody>
+                ${S.clientes.map(c => `<tr>
+                    <td style="font-weight:700">${esc(c.nombre || '—')}</td>
+                    <td>${esc(c.email || '')}</td>
+                    <td>${esc(c.telefono || '—')}</td>
+                    <td style="text-align:center">${c.pedidos || 0}</td>
+                    <td style="font-weight:700;white-space:nowrap">${fmtCOP(c.total_cents || 0)}</td>
+                </tr>`).join('')}
+                </tbody>
+            </table></div></div>` : '<div class="card"><div class="empty">Aún no hay clientes.</div></div>'}
+        `;
+    }
+
+    // ── PASARELA ──
+    async function renderPasarela() {
+        const main = $('main');
+        main.innerHTML = '<div class="empty">Cargando…</div>';
+        const data = await api('estado_pasarela', { proyecto_id: ctx.proyecto_id });
+        if (!data.ok) { main.innerHTML = '<div class="empty">' + esc(data.error) + '</div>'; return; }
+        main.innerHTML = `
+            <h3 style="margin-bottom:14px">Pasarela de pago (Wompi del cliente)</h3>
+            <div class="card">
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">
+                    <span class="badge ${data.configurada ? 'badge-green' : 'badge-yellow'}">${data.configurada ? 'Configurada' : 'Sin configurar'}</span>
+                    <span class="badge ${data.sandbox ? 'badge-yellow' : 'badge-green'}">${data.sandbox ? 'sandbox' : 'producción'}</span>
+                </div>
+                <p style="font-size:.8rem;color:var(--muted);margin-bottom:12px">
+                    Conecta la cuenta Wompi <b>del cliente</b>: sus cobros van a su propia pasarela.
+                    Deja en blanco para no cambiar la llave actual. Configura el webhook de eventos de Wompi hacia
+                    <code style="background:var(--bg);padding:2px 6px;border-radius:4px;font-size:.72rem">https://auvro.netlify.app/.netlify/functions/pago-webhook</code>
+                    con el events secret del cliente para que la orden se marque pagada automáticamente.
+                </p>
+                <div class="field"><label>Private key (prv_)</label><input type="password" id="pg-priv" placeholder="${data.privada_guardada ? 'Guardada. Escribe una nueva para reemplazar' : 'prv_...'}"></div>
+                <div class="field"><label>Events secret</label><input type="password" id="pg-secret" placeholder="${data.secret_guardado ? 'Guardado. Escribe uno nuevo' : 'events secret...'}"></div>
+                <label style="display:flex;align-items:center;gap:8px;font-size:.84rem;margin-bottom:10px"><input type="checkbox" id="pg-sandbox" ${data.sandbox ? 'checked' : ''}> Usar entorno de pruebas (sandbox)</label>
+                <button class="btn btn-green" onclick="guardarPasarela()">💾 Guardar pasarela</button>
+                <div class="msg" id="pg-msg"></div>
+            </div>
+        `;
+    }
+    async function guardarPasarela() {
+        const msg = $('pg-msg');
+        msg.textContent = 'Guardando…'; msg.className = 'msg';
+        try {
+            const data = await api('configurar_pasarela', { proyecto_id: ctx.proyecto_id, wompi_private_key: $('pg-priv').value.trim(), wompi_events_secret: $('pg-secret').value.trim(), wompi_sandbox: $('pg-sandbox').checked });
+            if (!data.ok) throw new Error(data.error || 'Error');
+            toast('Pasarela guardada ✅'); renderPasarela();
+        } catch (err) { msg.textContent = 'Error: ' + err.message; msg.className = 'msg error'; }
+    }
+
+    // ── NOTIFICACIONES ──
+    async function renderNotificaciones() {
+        const main = $('main');
+        main.innerHTML = '<div class="empty">Cargando…</div>';
+        const data = await api('estado_notificaciones', { proyecto_id: ctx.proyecto_id });
+        if (!data.ok) { main.innerHTML = '<div class="empty">' + esc(data.error) + '</div>'; return; }
+        const waOpts = (data.agentes && data.agentes.length)
+            ? '<option value="">— Sin WhatsApp —</option>' + data.agentes.map(a => `<option value="${a.id}"${String(data.whatsapp_agente_id) === String(a.id) ? ' selected' : ''}>${esc(a.nombre_agente)}</option>`).join('')
+            : '<option value="">— No tienes agentes —</option>';
+        main.innerHTML = `
+            <h3 style="margin-bottom:14px">Notificaciones</h3>
+            <div class="card">
+                <div style="font-weight:700;font-size:.9rem;margin-bottom:6px">Gmail de la tienda (correo del cliente)</div>
+                <p style="font-size:.8rem;color:var(--muted);margin-bottom:10px">Conecta el Gmail del dueño de la tienda: cuando alguien haga un pedido o pague, el aviso saldrá desde ese correo. El dueño autoriza con su cuenta de Google.</p>
+                <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+                    ${data.gmail_conectado
+                        ? `<span class="badge badge-green">✅ ${esc(data.gmail_email || 'Gmail conectado')}</span>
+                           <button class="btn btn-sm btn-danger" onclick="desconectarGmail()">Desconectar</button>`
+                        : `<button class="btn btn-green" onclick="conectarGmail()">📧 Conectar Gmail de la tienda</button>`}
+                </div>
+                <div class="msg" id="n-msg"></div>
+            </div>
+            <div class="card">
+                <div style="font-weight:700;font-size:.9rem;margin-bottom:10px">Avisos de ventas</div>
+                <label style="display:flex;align-items:center;gap:8px;font-size:.86rem;margin-bottom:8px"><input type="checkbox" id="n-new" ${data.notify_on_new_order ? 'checked' : ''}> Avisar en cada <b>nuevo pedido</b></label>
+                <label style="display:flex;align-items:center;gap:8px;font-size:.86rem;margin-bottom:12px"><input type="checkbox" id="n-pay" ${data.notify_on_payment ? 'checked' : ''}> Avisar al <b>confirmar el pago</b></label>
+                <div class="field"><label>Correos de aviso (separados por coma)</label><input id="n-emails" value="${esc((data.notify_emails || []).join(', '))}" placeholder="correo@cliente.com, copia@agencia.com"></div>
+                <div class="row">
+                    <div><div class="field"><label>WhatsApp de aviso (agente)</label><select id="n-wa-agente">${waOpts}</select></div></div>
+                    <div><div class="field"><label>Número WhatsApp (código país, ej 57300...)</label><input id="n-wa-numero" value="${esc(data.whatsapp_numero || '')}" placeholder="57300..."></div></div>
+                </div>
+                <button class="btn btn-green" onclick="guardarNotif()">💾 Guardar notificaciones</button>
+                <div class="msg" id="n-save"></div>
+            </div>
+        `;
+    }
+    async function conectarGmail() {
+        const msg = $('n-msg');
+        msg.textContent = 'Generando enlace…'; msg.className = 'msg';
+        try {
+            const res = await fetch('/.netlify/functions/conectar-gmail-tienda', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + session.access_token },
+                body: JSON.stringify({ action: 'link', proyecto_id: ctx.proyecto_id, redirectTo: '/tienda-admin.html' })
+            });
+            const d = await res.json();
+            if (!d.ok || !d.redirectUrl) throw new Error(d.error || 'No se generó el enlace');
+            toast('Autoriza con la cuenta de Google del cliente');
+            window.location.href = d.redirectUrl;
+        } catch (err) { msg.textContent = 'Error: ' + err.message; msg.className = 'msg error'; }
+    }
+    async function desconectarGmail() {
+        if (!confirm('Desconectar el Gmail de la tienda?')) return;
+        const data = await api('desconectar_gmail', { proyecto_id: ctx.proyecto_id });
+        if (!data.ok) return toast('Error: ' + data.error, true);
+        toast('Gmail desconectado'); renderNotificaciones();
+    }
+    async function guardarNotif() {
+        const msg = $('n-save');
+        msg.textContent = 'Guardando…'; msg.className = 'msg';
+        try {
+            const data = await api('configurar_notificaciones', {
+                proyecto_id: ctx.proyecto_id,
+                notify_on_new_order: $('n-new').checked,
+                notify_on_payment: $('n-pay').checked,
+                notify_emails: $('n-emails').value,
+                notify_whatsapp_agente_id: $('n-wa-agente').value,
+                notify_whatsapp_numero: $('n-wa-numero').value
+            });
+            if (!data.ok) throw new Error(data.error || 'Error');
+            toast('Notificaciones guardadas ✅'); renderNotificaciones();
+        } catch (err) { msg.textContent = 'Error: ' + err.message; msg.className = 'msg error'; }
+    }
+
+    // Exponer funciones globales para onclick
+    Object.assign(window, {
+        ir, salir, formProducto, nuevoProducto, editarProducto, eliminarProducto, syncTipo, renderSelector, renderImgs,
+        addImg, quitImg, imgSubir, leerArchivo, guardarProducto, formVariaciones, guardarVariaciones,
+        renderCategorias, guardarCategoria, eliminarCategoria,
+        renderAtributos, guardarAtributo, eliminarAtributo,
+        renderOrdenes, cambiarEstado, renderClientes,
+        renderPasarela, guardarPasarela, renderNotificaciones, conectarGmail, desconectarGmail, guardarNotif
+    });
+
+    init();
+})();
+    </script>
+</body>
+</html>
