@@ -632,7 +632,7 @@ AUVRO Admin (vista Web Factory)
 
 Acciones: `list` (proyectos + plantillas), `get`, `refresh_status` (consulta deploys/dominios/SSL en Netlify y actualiza), `create` (pipeline), `delete` (solo borra el registro de AUVRO; NO borra repo/site).
 
-- El `create` (y `set_activo`) corre en una **background function real** `web-factory-background.js` (sufijo `-background` en Netlify, ejecución hasta 15 min, sin el timeout síncrono de 10s). OJO: el header `X-NF-Background` ya NO es el mecanismo de background en Netlify (quedó obsoleto); el sufijo `-background` en el nombre del archivo (o `config.background`) es lo que activa el modo background. Las acciones interactivas (`list`, `get`, `refresh_status`, `delete`) viven en `web-factory.js` (síncrono). El dashboard hace polling de `list`/`refresh_status` cada 8s mientras haya estados en curso.
+- El `create` corre en una **background function real** `web-factory-background.js` (sufijo `-background` en Netlify, ejecución hasta 15 min, sin el timeout síncrono de 10s). OJO: el header `X-NF-Background` ya NO es el mecanismo de background en Netlify (quedó obsoleto); el sufijo `-background` en el nombre del archivo (o `config.background`) es lo que activa el modo background. El `set_activo` (apagar/reactivar) es rápido (~2s) y corre **síncrono en `web-factory.js`** para devolver el ok/error real al cliente. El dashboard hace polling de `list`/`refresh_status` cada 8s mientras haya estados en curso.
 - Plantillas en `web-factory/templates/<slug>/` (archivos reales), incluidas en el bundle vía `included_files` en `netlify.toml`. El `manifest.json` lista las disponibles. Tokens de plantilla: `{{EMPRESA}}`, `{{DESCRIPCION}}`.
 - Secretos: `GITHUB_TOKEN` (scopes repo+user), `NETLIFY_AUTH_TOKEN` y opcional `GITHUB_OWNER` — SOLO en variables de entorno de Netlify, nunca en el repo/JS/HTML/Supabase.
 - Dominio: se registra vía API de Netlify pero el DNS lo configura el cliente manualmente. `dominio_estado` (pendiente/verificado) y `ssl_estado` se muestran en el panel.
@@ -763,7 +763,7 @@ Deploy.
 ✅ Todas las funciones serverless migradas a helper compartido `supabase-admin.js`.
 ✅ Web Factory Fase 1 (13 Ago 2026): generar sitios web estáticos para clientes desde el panel Admin — repo privado en GitHub + site en Netlify + dominio opcional + deploy + estado en tiempo real.
 ✅ Web Factory (14-15 Ago 2026): 10 plantillas, agente IA embebible con dominios autorizados automáticamente, herramienta nativa `WEBFACTORY_CREAR_DEMO` (el agente vende/crea demos en el chat), personalización de color y fuente, y **apagar/reactivar sitios** (suspensión instantánea por impago vía file deploy).
-✅ Fix apagar/reactivar (16 Ago 2026): deploy de suspensión ahora sube el archivo correctamente (digest→ruta), `create`/`set_activo` viven en la background function real `web-factory-background.js` (el header `X-NF-Background` quedó obsoleto en Netlify), fix `res is not defined` en `registrarDominio`, y se quitó `deploy_error` de los updates (columna inexistente). Cosmecolo quedó correctamente suspendido.
+✅ Fix apagar/reactivar (16 Ago 2026): deploy de suspensión ahora sube el archivo correctamente (digest→ruta), fix `res is not defined` en `registrarDominio`, se quitó `deploy_error` de los updates (columna inexistente), el botón apagar/reactivar ya no estaba invertido, y `set_activo` corre **síncrono en `web-factory.js`** (rápido, ~2s) mientras `create` quedó en la background function real `web-factory-background.js` (el header `X-NF-Background` quedó obsoleto en Netlify). Cosmecolo quedó correctamente suspendido; flujo verificado de extremo a extremo con Locotours.
 ✅ Design system compartido (15 Ago 2026): `auvro-design.css` estándar en dashboard + chat, toggle de tema claro/oscuro sincronizado (`localStorage auvrouter_theme`).
 ✅ Chat estable (14-15 Ago 2026): timeouts garantizados con `Promise.race`, modelo de respaldo automático (OpenAI gpt-4o-mini si DeepSeek tarda/falla).
 ✅ Registro y login completo (14-15 Ago 2026): perfil con trial de 30 días, confirmación por correo, registro a 2 columnas.
@@ -974,7 +974,7 @@ updated_at      timestamptz
 - `20260814_web_factory_dominio_error.sql` — columna dominio_error (APLICADA).
 - `20260814_web_factory_agente_ia.sql` — columna agente_id (APLICADA).
 - `20260815_web_factory_color_fuente.sql` — columnas accent_color, fuente (APLICADA).
-- `20260816_web_factory_activo.sql` — columna activo (PENDIENTE DE APLICAR en Supabase).
+- `20260816_web_factory_activo.sql` — columna activo (APLICADA, verificada por REST: `select id,activo` responde).
 
 ## RPC Function
 ```
@@ -1006,6 +1006,24 @@ Multiusuario.
 
 # Changelog de Cambios Técnicos
 
+## 16 Ago 2026 — Fix v3: el apagar/reactivar pasó de background a SÍNCRONO (set_activo es rápido)
+
+**Síntoma reportado por el usuario:** "el botón de apagado no ejecuta el apagado ni cambia estados ni apaga el sitio". El usuario espera: clic en ⚡ → se apaga de verdad → el overlay de espera se mantiene mientras apaga → al terminar el botón queda ▶ (play) para reactivar.
+
+**Diagnóstico:** con la arquitectura de background function, el cliente recibe **202 + body vacío** al instante, así que:
+- El overlay de espera se cerraba en ~1ms (no se veía).
+- Si la función background falla en silencio (auth, env, bundle), el usuario NO ve ningún error: no cambian estados ni se apaga el sitio.
+- `netlify logs --function web-factory-background` mostró que los clics del usuario **no generaban invocaciones** (el dashboard viejo en caché seguía llamando al endpoint síncrono), y el 202 silencioso enmascaraba cualquier fallo.
+
+**Rediseño (correcto por duración):**
+- `set_activo` (apagar/reactivar) es **RÁPIDO** (~2s: publicar el file deploy de suspensión + 2 updates de BD; reactivar solo dispara el build, ~1s). Ahora corre **SÍNCRONO en `web-factory.js`** (mismo sitio que `list`/`refresh_status`, que ya funcionan en producción): el cliente recibe el **JSON real con ok/error**, el overlay dura mientras apaga y los errores se ven en el toast.
+- **`create`** sigue en la **background function** `web-factory-background.js` (el pipeline GitHub+Netlify+dominio SÍ es largo). Se eliminó `set_activo` de esa función.
+- `dashboard.html` → `toggleActivoWeb` vuelve a llamar a `/.netlify/functions/web-factory` (síncrono). Toasts nuevos: "Sitio apagado" / "Sitio reactivado (build en curso)".
+
+**Verificado de extremo a extremo con la lógica real (helpers exportados) sobre Locotours:** apagar → marca `suspending` → publica la página de suspensión (el sitio sirve HTTP 200 con "suspendido") → `inactivo/ready`; reactivar → `deploying` + build disparado. Luego se restauró con el build de GitHub.
+
+**Nota de diseño:** una acción que el usuario espera que termine "mientras espera" debe ser síncrona si cabe en el límite (10s); las background functions solo para pipelines largos, y siempre con el estado final visible por polling (`refresh_status`).
+
 ## 16 Ago 2026 — Fix: botón apagar/reactivar invertido en el panel de Web Factory
 
 **Síntoma:** todos los sitios activos muestran el icono de apagar (⚡), pero al hacer clic el confirm decía "Se redesplegará desde GitHub, tardará 1-2 minutos" (mensaje de REACTIVAR), en vez de "Apagar el sitio...".
@@ -1027,9 +1045,9 @@ Multiusuario.
 - `web-factory.js` → `publicarSuspension`: mapeo `digest → ruta` para subir los archivos que Netlify realmente necesita (fallback: subir todos los nuestros). **Verificado con la API real: el deploy pasa a `ready` en ~2s.**
 - `web-factory.js` → `registrarDominio`: `let res` fuera del bucle.
 - `web-factory.js` → se quitó `deploy_error` de los updates (esa columna **no existe** en `web_projects`; solo era un campo interno de `consultarEstadoNetlify` que `refrescarYGuardar` ya descartaba). Dejarlo en un update producía `PGRST204` y rompía el flujo.
-- **Nueva background function real `netlify/functions/web-factory-background.js`** (sufijo `-background` = background en Netlify, hasta 15 min): alberga `create` (pipeline completo) y `set_activo` (apagar/reactivar). Reutiliza los helpers de `web-factory.js` (se exportaron además `actualizarProyecto` y `dispararBuild`). El `set_activo` síncrono con timeout de 10s era un riesgo latente incluso con el upload corregido.
-- `web-factory.js` (síncrono): quedan solo `list`, `get`, `refresh_status`, `delete`. `create`/`set_activo` responden 400 con aviso de usar la función background (para no caer en el kill por timeout).
-- `dashboard.html`: `crearProyectoWeb` y `toggleActivoWeb` llaman a `/.netlify/functions/web-factory-background` y se eliminó el header `X-NF-Background` (obsoleto). La respuesta al cliente es 202 inmediata; el estado final llega por polling (`refresh_status`).
+- **Background function real `netlify/functions/web-factory-background.js`** (sufijo `-background` = background en Netlify, hasta 15 min): inicialmente albergó `create` y `set_activo`. Tras el Fix v3 (misma fecha) **solo alberga `create`**; el `set_activo` volvió al handler síncrono (es rápido y así el cliente recibe el ok/error real). Se exportaron además los helpers `actualizarProyecto` y `dispararBuild`.
+- `web-factory.js` (síncrono): `list`, `get`, `refresh_status`, `delete` **y `set_activo`** (apagar/reactivar). `create` responde 400 con aviso de usar la función background.
+- `dashboard.html`: `crearProyectoWeb` llama a `/.netlify/functions/web-factory-background` (202 + polling); `toggleActivoWeb` llama a `/.netlify/functions/web-factory` (síncrono, JSON real). Se eliminó el header `X-NF-Background` (obsoleto).
 - **Cosmecolo (datos reales)**: se publicó la página de suspensión correcta con la lógica corregida (el deploy anterior quedó atascado y además una prueba local había publicado una página "TEST") y se reseteó la BD a `activo=false, estado='inactivo', estado_deploy='ready'`, limpiando `error` y `dominio_error`. El sitio quedó apagado correctamente (verificado: sirve la página "El sitio de Cosmecolo está suspendido").
 
 **Lección:** el `X-NF-Background` no garantiza background en Netlify actual; las funciones largas DEBEN declararse background con el sufijo `-background` (o `config.background`) y nunca depender de un header para operaciones que tardan más de 10s.
@@ -1040,7 +1058,7 @@ Multiusuario.
   - **Apagar** (`activo:false`): publica un *file deploy* directo (sin build y sin tocar el repo de GitHub) en el sitio de Netlify con un único `index.html` = página self-contained "Este sitio está suspendido" (dark, con el nombre del negocio). El sitio queda offline en segundos. Flujo: marca en BD `activo=false, estado='suspending'` → `publicarSuspension()` (deploy vía digest SHA1 + `PUT /deploys/{id}/files/index.html` + polling hasta `ready`) → `estado='inactivo', estado_deploy='ready'`. Si falla, revierte a `activo=true, estado='publicado'`.
   - **Reactivar** (`activo:true`): `dispararBuild(siteId)` redespliega desde el repo (el sitio real sigue intacto en GitHub; el file deploy no lo modifica) → `estado='deploying'` → `publicado` al terminar (1-2 min).
   - `refrescarYGuardar` fuerza `estado='inactivo'` cuando `activo === false` (evita que el refresh de Netlify lo vuelva a marcar `publicado`).
-  - La acción corre en la **background function real** `web-factory-background.js` (sufijo `-background`); el dashboard hace polling del estado intermedio `suspending` (añadido a la lista de estados en curso).
+  - La acción corría en la **background function real** `web-factory-background.js` (sufijo `-background`). **Corrección (Fix v3, 16 Ago):** `set_activo` es rápido y pasó a síncrono en `web-factory.js` para que el cliente reciba el ok/error real; el dashboard hace polling del estado intermedio `suspending` (añadido a la lista de estados en curso).
 - **Panel (`dashboard.html`)**: botón de encendido/apagado por sitio (⚡ apagar / ▶ reactivar, con confirmación), badge rojo **Suspendido** para `estado='inactivo'`, estado **Apagando…** para `suspending`, fila atenuada (`opacity:.6`) y link `offline` cuando está apagado. Nueva función `toggleActivoWeb(id, activoActual, nombre)`.
 - **Migración `supabase/migrations/20260816_web_factory_activo.sql` (NUEVO, APLICADA)**: `alter table web_projects add column if not exists activo boolean not null default true;`. Sin la columna, `set_activo` responde un aviso claro de ejecutar la migración (detección de error `42703`).
 - **`estado` ampliado**: `creando | configurando | deploying | suspending | dominio_pendiente | publicado | inactivo | error`.

@@ -1,9 +1,10 @@
 // web-factory-background.js — Acciones largas de Web Factory (background function real)
 // Netlify ejecuta como background toda función cuyo archivo termine en "-background"
-// (hasta 15 min, sin el timeout síncrono de 10s). Aquí viven:
-//   - create:     pipeline completo (GitHub repo + Netlify site + build + dominio).
-//   - set_activo: apagar (file deploy con página de suspensión) o reactivar (build).
-// Reutiliza los helpers de web-factory.js (validaciones, pipelineCrear, publicarSuspension...).
+// (hasta 15 min, sin el timeout síncrono de 10s). Aquí vive SOLO el create
+// (pipeline GitHub repo + Netlify site + build + dominio), que es lo único largo.
+// El set_activo (apagar/reactivar) es rápido (~2s) y corre SÍNCRONO en web-factory.js
+// para que el cliente reciba el ok/error real con el overlay de espera.
+// Reutiliza los helpers de web-factory.js (validaciones, pipelineCrear...).
 // El dashboard recibe 202 al instante y hace polling de refresh_status/get.
 
 const { supabase } = require('./supabase-admin');
@@ -59,48 +60,6 @@ exports.handler = async (event) => {
 
             const resultado = await wf.pipelineCrear(body, adminId);
             return { statusCode: 200, body: JSON.stringify(resultado) };
-        }
-
-        // ── SET_ACTIVO: apagar (suspender) o reactivar un sitio ──
-        // Apagar: publica un deploy directo con la pagina de "suspendido" (instantáneo).
-        // Reactivar: dispara un build desde el repo (el sitio real sigue en GitHub).
-        if (action === 'set_activo') {
-            const { id, activo } = body;
-            if (!id) return { statusCode: 400, body: JSON.stringify({ error: 'Falta id' }) };
-            if (typeof activo !== 'boolean') return { statusCode: 400, body: JSON.stringify({ error: 'activo debe ser true o false' }) };
-
-            const { data: proyecto, error: getErr } = await supabase.from('web_projects').select('*').eq('id', id).single();
-            if (getErr) return { statusCode: 404, body: JSON.stringify({ error: getErr.message }) };
-            if (!proyecto.netlify_site_id) return { statusCode: 400, body: JSON.stringify({ error: 'El sitio aún no tiene un sitio de Netlify asociado' }) };
-
-            const errMigracion = 'Supabase: la tabla web_projects no tiene la columna "activo". Ejecuta la migración 20260816_web_factory_activo en el SQL Editor de Supabase.';
-
-            if (activo === false) {
-                // Apagar: primero marcar en DB, luego publicar la página de suspensión.
-                await wf.actualizarProyecto(id, { activo: false, estado: 'suspending', error: null })
-                    .catch(e => {
-                        if (String(e.message).includes('42703') || String(e.message).includes('"activo"')) throw new Error(errMigracion);
-                        throw e;
-                    });
-                try {
-                    await wf.publicarSuspension(proyecto.netlify_site_id, wf.paginaSuspension(proyecto.nombre));
-                    await wf.actualizarProyecto(id, { estado: 'inactivo', estado_deploy: 'ready' });
-                } catch (err) {
-                    // Revertir y dejar constancia del motivo para el panel.
-                    await wf.actualizarProyecto(id, { activo: true, estado: 'publicado', error: 'No se pudo apagar: ' + err.message }).catch(() => {});
-                    throw err;
-                }
-                return { statusCode: 200, body: JSON.stringify({ ok: true, activo: false }) };
-            }
-
-            // Reactivar: dispara el build desde GitHub y marca como desplegando.
-            await wf.actualizarProyecto(id, { activo: true, estado: 'deploying', error: null })
-                .catch(e => {
-                    if (String(e.message).includes('42703') || String(e.message).includes('"activo"')) throw new Error(errMigracion);
-                    throw e;
-                });
-            await wf.dispararBuild(proyecto.netlify_site_id);
-            return { statusCode: 200, body: JSON.stringify({ ok: true, activo: true }) };
         }
 
         return { statusCode: 400, body: JSON.stringify({ error: 'Acción no válida' }) };

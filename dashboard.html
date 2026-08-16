@@ -6142,7 +6142,7 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
         }
         mostrarOverlayCarga(apagar ? 'Apagando sitio...' : 'Reactivando sitio...');
         try {
-            const res = await fetch('/.netlify/functions/web-factory-background', {
+            const res = await fetch('/.netlify/functions/web-factory', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -6156,7 +6156,7 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
                 return showToast('Error: ' + (data.error || 'No se pudo ejecutar la acción'), 'error');
             }
             ocultarOverlayCarga();
-            showToast(apagar ? 'Apagando sitio...' : 'Reactivando sitio...');
+            showToast(apagar ? 'Sitio apagado' : 'Sitio reactivado (build en curso)');
             cargarWebFactory();
         } catch (err) {
             ocultarOverlayCarga();

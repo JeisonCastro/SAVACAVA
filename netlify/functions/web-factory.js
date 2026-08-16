@@ -811,15 +811,57 @@ exports.handler = async (event) => {
             return { statusCode: 200, body: JSON.stringify({ ok: true, proyecto: actualizado }) };
         }
 
-        // ── CREATE / SET_ACTIVO ──
-        // Estas acciones son largas (pipeline GitHub+Netlify, suspensión por deploy).
-        // Viven en web-factory-background.js (background function, hasta 15 min).
-        // Aquí solo se indican como no disponibles para evitar el kill por timeout
-        // síncrono (10s) si alguien las llama a este endpoint.
-        if (action === 'create' || action === 'set_activo') {
+        // ── SET_ACTIVO: apagar (suspender) o reactivar un sitio ──
+        // Apagar: publica un deploy directo con la pagina de "suspendido" (instantáneo, ~2s).
+        // Reactivar: dispara un build desde el repo (el sitio real sigue en GitHub) y devuelve
+        // enseguida; el build termina en segundo plano y el dashboard lo ve por polling.
+        // Síncrono a propósito: es rápido y el cliente recibe el ok/error real.
+        if (action === 'set_activo') {
+            const { id, activo } = body;
+            if (!id) return { statusCode: 400, body: JSON.stringify({ error: 'Falta id' }) };
+            if (typeof activo !== 'boolean') return { statusCode: 400, body: JSON.stringify({ error: 'activo debe ser true o false' }) };
+
+            const { data: proyecto, error: getErr } = await supabase.from('web_projects').select('*').eq('id', id).single();
+            if (getErr) return { statusCode: 404, body: JSON.stringify({ error: getErr.message }) };
+            if (!proyecto.netlify_site_id) return { statusCode: 400, body: JSON.stringify({ error: 'El sitio aún no tiene un sitio de Netlify asociado' }) };
+
+            const errMigracion = 'Supabase: la tabla web_projects no tiene la columna "activo". Ejecuta la migración 20260816_web_factory_activo en el SQL Editor de Supabase.';
+
+            if (activo === false) {
+                // Apagar: primero marcar en DB, luego publicar la página de suspensión.
+                await actualizarProyecto(id, { activo: false, estado: 'suspending', error: null })
+                    .catch(e => {
+                        if (String(e.message).includes('42703') || String(e.message).includes('"activo"')) throw new Error(errMigracion);
+                        throw e;
+                    });
+                try {
+                    await publicarSuspension(proyecto.netlify_site_id, paginaSuspension(proyecto.nombre));
+                    await actualizarProyecto(id, { estado: 'inactivo', estado_deploy: 'ready' });
+                } catch (err) {
+                    await actualizarProyecto(id, { activo: true, estado: 'publicado', error: 'No se pudo apagar: ' + err.message }).catch(() => {});
+                    throw err;
+                }
+                return { statusCode: 200, body: JSON.stringify({ ok: true, activo: false }) };
+            }
+
+            // Reactivar: dispara el build desde GitHub y marca como desplegando.
+            await actualizarProyecto(id, { activo: true, estado: 'deploying', error: null })
+                .catch(e => {
+                    if (String(e.message).includes('42703') || String(e.message).includes('"activo"')) throw new Error(errMigracion);
+                    throw e;
+                });
+            await dispararBuild(proyecto.netlify_site_id);
+            return { statusCode: 200, body: JSON.stringify({ ok: true, activo: true }) };
+        }
+
+        // ── CREATE ──
+        // El pipeline completo (GitHub + Netlify + build + dominio) es largo; vive en
+        // web-factory-background.js (background function, hasta 15 min). El dashboard
+        // recibe 202 al instante y hace polling de refresh_status / get.
+        if (action === 'create') {
             return {
                 statusCode: 400,
-                body: JSON.stringify({ error: 'Esta acción corre como background function: usa /.netlify/functions/web-factory-background' })
+                body: JSON.stringify({ error: 'El create corre como background function: usa /.netlify/functions/web-factory-background' })
             };
         }
 
