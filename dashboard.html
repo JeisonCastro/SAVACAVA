@@ -6134,7 +6134,7 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
     }
 
     async function toggleActivoWeb(id, activoActual, nombre) {
-        const apagar = !activoActual;
+        const apagar = activoActual;
         if (apagar) {
             if (!confirm(`Apagar el sitio "${nombre}"?\n\nEl sitio mostrará una página de "suspendido" y dejará de estar en línea (instantáneo). Podrás reactivarlo cuando el cliente pague.`)) return;
         } else {

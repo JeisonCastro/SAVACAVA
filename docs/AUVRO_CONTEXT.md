@@ -1006,6 +1006,14 @@ Multiusuario.
 
 # Changelog de Cambios Técnicos
 
+## 16 Ago 2026 — Fix: botón apagar/reactivar invertido en el panel de Web Factory
+
+**Síntoma:** todos los sitios activos muestran el icono de apagar (⚡), pero al hacer clic el confirm decía "Se redesplegará desde GitHub, tardará 1-2 minutos" (mensaje de REACTIVAR), en vez de "Apagar el sitio...".
+
+**Causa:** `toggleActivoWeb(id, activoActual, nombre)` en `dashboard.html` calculaba `const apagar = !activoActual`. El parámetro `activoActual` ya llega con el significado "¿está activo ahora?" (los botones pasan `true` en sitios activos / `false` en inactivos), así que el `!` invertía la acción: para un sitio activo salía el flujo de reactivar.
+
+**Fix:** `const apagar = activoActual;` (si está activo → apagar; si está inactivo → reactivar). El payload sigue enviando `activo: !activoActual` (el estado objetivo es el contrario del actual), que ya era correcto. Con esto: activo → confirm "Apagar el sitio..." + `activo:false`; inactivo → confirm "Reactivar..." + `activo:true`.
+
 ## 16 Ago 2026 — Fix: apagar/reactivar sitios no funcionaba (deploy de suspensión nunca subía el archivo) + background functions reales
 
 **Síntoma reportado:** al desactivar un sitio (p.ej. Cosmecolo) el panel mostraba `✕ Error: No se pudo ejecutar la acción`, la BD quedaba atascada en `estado='suspending', activo=false` y el sitio seguía en línea.
