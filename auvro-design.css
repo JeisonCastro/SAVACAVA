@@ -75,8 +75,8 @@ body{background:var(--bg)!important}
 a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}
 button{cursor:pointer}
 a{transition:color .15s ease}
-.view.active{animation:auvroViewIn .18s ease both}
-@keyframes auvroViewIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.view.active{animation:auvroFade .16s ease both}
+@keyframes auvroFade{from{opacity:0}to{opacity:1}}
 
 /* ── Sidebar ───────────────────────────────────────────────────────────── */
 .sidebar{background:var(--bg2)!important;border-right:1px solid var(--border)!important}
@@ -130,11 +130,23 @@ body.light-mode .sidebar nav a.active{background:rgba(37,99,235,.09)!important;c
     transition:border-color .15s ease!important;
 }
 .card-header{margin-bottom:1.1rem!important}
-.card-icon{border-radius:10px!important}
+.card-icon{
+    border-radius:8px!important;
+    background:transparent!important;
+    border:none!important;
+    box-shadow:none!important;
+    color:var(--muted)!important;
+    width:auto!important;
+    height:auto!important;
+    font-size:.92rem!important;
+    margin-right:.45rem!important;
+}
+.card-icon.green,.card-icon.yellow,.card-icon.blue{color:var(--muted)!important}
 .card-title{letter-spacing:-.02em!important;font-size:.98rem!important}
 .stat-card{padding:1.25rem 1.4rem!important}
-.stat-label{letter-spacing:.07em!important;font-weight:700!important;font-size:.7rem!important}
-.stat-value{letter-spacing:-.03em!important}
+.stat-label{letter-spacing:.01em!important;font-weight:600!important;font-size:.72rem!important;text-transform:none!important;color:var(--muted)!important}
+.stat-value{letter-spacing:-.03em!important;color:var(--text)!important}
+.stat-value.green{color:var(--green)!important}.stat-value.accent{color:var(--text)!important}.stat-value.yellow{color:var(--text)!important}
 .stat-sub{color:var(--dim)!important}
 .grid-2,.grid-3{gap:1.25rem!important}
 .stats-row{display:grid!important;grid-template-columns:repeat(auto-fit,minmax(200px,1fr))!important;gap:1rem!important;margin-bottom:1.4rem!important}
@@ -198,9 +210,28 @@ body.light-mode .sidebar nav a.active{background:rgba(37,99,235,.09)!important;c
 }
 .composer-icon-btn,.inbox-icon-btn{border-radius:10px!important;transition:background .15s ease,color .15s ease!important}
 .composer-icon-btn:hover,.inbox-icon-btn:hover{color:var(--accent)!important}
+.icon-btn{
+    display:inline-flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+    width:32px!important;height:32px!important;
+    padding:0!important;
+    border:1px solid var(--border2)!important;
+    border-radius:8px!important;
+    background:var(--bg2)!important;
+    color:var(--muted)!important;
+    font-size:.82rem!important;
+    cursor:pointer!important;
+    transition:border-color .15s ease,color .15s ease,background .15s ease!important;
+}
+.icon-btn:hover{border-color:var(--accent)!important;color:var(--accent)!important;background:var(--surface)!important}
+.icon-btn.primary{background:var(--accent)!important;border-color:var(--accent)!important;color:#fff!important}
+.icon-btn.primary:hover{background:var(--accent2)!important;color:#fff!important}
+.icon-btn.danger:hover{border-color:var(--red)!important;color:var(--red)!important;background:rgba(248,113,113,.08)!important}
 
 /* ── Formularios ───────────────────────────────────────────────────────── */
-.field label{font-weight:600!important;letter-spacing:.05em!important;font-size:.72rem!important}
+.field label{font-weight:600!important;letter-spacing:0!important;font-size:.8rem!important;text-transform:none!important;color:var(--muted)!important}
+.token-label,.plan-info-label{text-transform:none!important;letter-spacing:0!important;font-weight:600!important;color:var(--muted)!important;font-size:.72rem!important}
 .field input,.field textarea,select,.inbox-filters input,.inbox-filters select,.manual-reply-box textarea,.wf-field input,.wf-field select{
     border-radius:10px!important;
     border-color:var(--border2)!important;

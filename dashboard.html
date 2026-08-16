@@ -213,7 +213,7 @@
                             style="padding:.55rem 1rem;font-size:.82rem;border-radius:12px">
                             <i class="fas fa-gear" style="margin-right:.35rem"></i> Configurar
                         </button>
-                        <button class="btn-main btn-green" onclick="abrirLeadModal()"
+                        <button class="btn-main" onclick="abrirLeadModal()"
                             style="padding:.55rem 1rem;font-size:.82rem;border-radius:12px">
                             <i class="fas fa-plus" style="margin-right:.35rem"></i> Nuevo lead
                         </button>
@@ -275,8 +275,7 @@
                 <div class="topbar">
                     <div>
                         <h2 class="page-title">Panel de Control</h2>
-                        <p class="page-sub">Gestiona tus agentes de inteligencia
-                            artificial</p>
+                        <p class="page-sub">Crea y administra tus agentes</p>
                     </div>
                     <div class="topbar-right">
                         <div class="plan-indicator" id="plan-indicator"
@@ -295,15 +294,13 @@
                             </div>
                         </div>
                         <div class="token-card">
-                            <div class="token-icon"><i
-                                    class="fas fa-bolt"></i></div>
                             <div>
                                 <div class="token-label">Tokens
                                     disponibles</div>
                                 <div id="token-balance">—</div>
                             </div>
                         </div>
-                        <button class="btn-main btn-green" onclick="abrirCrearAgente()"
+                        <button class="btn-main" onclick="abrirCrearAgente()"
                             style="padding:.55rem 1rem;font-size:.82rem;border-radius:12px">
                             <i class="fas fa-plus" style="margin-right:.35rem"></i> Nuevo agente
                         </button>
@@ -311,9 +308,7 @@
                 </div>
                 <div class="card">
                     <div class="card-header">
-                        <div class="card-icon"><i
-                                class="fas fa-layer-group"></i></div>
-                        <span class="card-title">Tus agentes activos</span>
+                        <span class="card-title">Agentes</span>
                     </div>
                     <div id="lista-agentes"><div class="empty-state"><i
                                 class="fas fa-robot"></i>Aun no has creado
@@ -4056,11 +4051,11 @@
                     <div class="agent-prompt">${a.prompt}</div>
                 </div>
                 <div class="agent-actions">
-                    <button onclick="abrirChat('${a.id}','${a.name}')" title="Probar" style="background:rgba(14,165,233,0.1);color:var(--accent);border:1px solid var(--border);padding:8px;border-radius:8px;cursor:pointer;"><i class="fas fa-play"></i></button>
-                    <button onclick="copiarCDN('${a.id}')" title="Copiar CDN" style="background:rgba(34,211,165,0.1);color:var(--green);border:1px solid var(--border);padding:8px;border-radius:8px;cursor:pointer;"><i class="fas fa-code"></i></button>
-                    <button onclick="abrirEdicion('${a.id}')" title="Editar" style="background:rgba(122,152,184,0.1);color:var(--muted);border:1px solid var(--border);padding:8px;border-radius:8px;cursor:pointer;"><i class="fas fa-edit"></i></button>
-                    <button onclick="abrirIntegraciones('${a.id}','${a.name}')" title="Integraciones" style="background:rgba(251,191,36,0.1);color:var(--yellow);border:1px solid var(--border);padding:8px;border-radius:8px;cursor:pointer;"><i class="fas fa-plug"></i></button>
-                    <button onclick="eliminarAgente('${a.id}')" title="Borrar" style="background:rgba(248,113,113,0.1);color:var(--red);border:1px solid var(--border);padding:8px;border-radius:8px;cursor:pointer;"><i class="fas fa-trash"></i></button>
+                    <button class="icon-btn primary" onclick="abrirChat('${a.id}','${a.name}')" title="Probar"><i class="fas fa-play"></i></button>
+                    <button class="icon-btn" onclick="copiarCDN('${a.id}')" title="Copiar CDN"><i class="fas fa-code"></i></button>
+                    <button class="icon-btn" onclick="abrirEdicion('${a.id}')" title="Editar"><i class="fas fa-edit"></i></button>
+                    <button class="icon-btn" onclick="abrirIntegraciones('${a.id}','${a.name}')" title="Integraciones"><i class="fas fa-plug"></i></button>
+                    <button class="icon-btn danger" onclick="eliminarAgente('${a.id}')" title="Borrar"><i class="fas fa-trash"></i></button>
                 </div>
             </div>
         `).join('');
