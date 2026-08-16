@@ -11,6 +11,11 @@ Este archivo es la **fuente de verdad** del proyecto. Todo agente/modelo que tra
 3. **Mantener la estructura existente**: Descripción, Arquitectura, Flujo, Base de Datos, Funciones, Integraciones, Estado (Completado/Pendiente/Blocked), Decisiones de diseño (ej. correo = Gmail vía Composio, no SMTP).
 4. **Actualizar el estado** (Completado / Pendiente / Blocked) al terminar, iniciar o bloquear cualquier tarea.
 5. **Registrar decisiones importantes y su porqué** para que un modelo nuevo entienda qué necesita el sistema y cómo funciona, sin adivinar.
+6. **REGLA GENERAL (aplica SIEMPRE)**: el objetivo es que este archivo mantenga en todo momento un contexto claro de TODO lo realizado y de TODA la lógica de negocio. Por tanto:
+   - Todo commit de código que cambie comportamiento debe incluir, en el MISMO commit, su entrada correspondiente en `# Changelog de Cambios Técnicos` (con fecha, motivo y detalle técnico verificable).
+   - Al final de cada sesión de trabajo no puede quedar ningún cambio sin documentar ni el estado (Completado/Pendiente/Blocked) desactualizado.
+   - Cuando se añadan/renombren/eliminen columnas o tablas, actualizar de inmediato el esquema en "Esquema de Base de Datos" y la lista de migraciones (`supabase/migrations/*`), indicando cuáles están aplicadas en Supabase y cuáles faltan por aplicar.
+   - Un agente/modelo que trabaje aquí y NO cumpla esto deja el proyecto en estado "incompleto": la documentación es parte del entregable, no opcional.
 
 ---
 
@@ -757,8 +762,25 @@ Deploy.
 ✅ Cliente Supabase centralizado con polyfill WebSocket (Node.js 20 compat).
 ✅ Todas las funciones serverless migradas a helper compartido `supabase-admin.js`.
 ✅ Web Factory Fase 1 (13 Ago 2026): generar sitios web estáticos para clientes desde el panel Admin — repo privado en GitHub + site en Netlify + dominio opcional + deploy + estado en tiempo real.
+✅ Web Factory (14-15 Ago 2026): 10 plantillas, agente IA embebible con dominios autorizados automáticamente, herramienta nativa `WEBFACTORY_CREAR_DEMO` (el agente vende/crea demos en el chat), personalización de color y fuente, y **apagar/reactivar sitios** (suspensión instantánea por impago vía file deploy).
+✅ Design system compartido (15 Ago 2026): `auvro-design.css` estándar en dashboard + chat, toggle de tema claro/oscuro sincronizado (`localStorage auvrouter_theme`).
+✅ Chat estable (14-15 Ago 2026): timeouts garantizados con `Promise.race`, modelo de respaldo automático (OpenAI gpt-4o-mini si DeepSeek tarda/falla).
+✅ Registro y login completo (14-15 Ago 2026): perfil con trial de 30 días, confirmación por correo, registro a 2 columnas.
+✅ CRM: embudo de ventas por estados + filtros por fecha/origen/agente (14 Ago 2026).
+✅ Widget: catálogo de productos y fix de respuestas duplicadas (14 Ago 2026).
+✅ Landing hub (`index.html`) + `paginas-web.html` + `agentes.html` rediseñadas (14 Ago 2026).
 
 ### Pendientes del Proyecto
+
+#### Migraciones por aplicar en Supabase (SQL Editor)
+- ⏳ `supabase/migrations/20260816_web_factory_activo.sql` — columna `activo` en web_projects (necesaria para apagar/reactivar sitios; el resto funciona sin ella).
+- ⏳ `supabase/migrations/20260814_crm_embudo.sql` — índices de `crm_leads` para el embudo/filtros por fecha.
+- ✅ `20260815_web_factory_color_fuente.sql` — APLICADA (columnas accent_color/fuente existen).
+- ✅ Migraciones previas de web_projects — APLICADAS.
+
+#### Configuración pendiente
+- ⏳ **Site URL de Supabase Auth**: sigue en `https://jeisondigital.netlify.app` (dominio muerto). Cambiar en Supabase → Authentication → URL Configuration → Site URL a `https://auvro.netlify.app` (afecta los emails de confirmación de registro).
+- ⏳ Probar E2E con credenciales reales: crear un sitio de prueba en Web Factory y verificar repo + deploy + dominio + apagado/reactivación.
 
 #### Seguridad avanzada
 - API Key única por agente.
@@ -923,7 +945,7 @@ slug            text UNIQUE (nombre del repo / subdominio)
 plantilla       text (default 'landing')
 descripcion     text
 dominio         text
-estado          text (creando | configurando | deploying | dominio_pendiente | publicado | error)
+estado          text (creando | configurando | deploying | suspending | dominio_pendiente | publicado | inactivo | error)
 estado_deploy   text (building | ready | error)
 dominio_estado  text (pendiente | verificado)
 ssl_estado      text (pendiente | activo)
@@ -933,11 +955,25 @@ github_url      text
 netlify_site_id text
 netlify_url     text
 clone_url       text
+default_branch  text (rama default del repo, 'main' o 'master')
 error           text
+dominio_error   text (si falla registrar el dominio no bloquea el proyecto)
+agente_id       bigint (agente IA embebido en el sitio, opcional)
+accent_color    text (#RRGGBB color principal inyectado en la plantilla)
+fuente          text (inter | poppins | montserrat | roboto | lora | playfair | oswald | sistema)
+activo          boolean not null default true (false = sitio suspendido/offline)
 created_by      uuid
 created_at      timestamptz
 updated_at      timestamptz
 ```
+### Migraciones de Web Factory (supabase/migrations)
+- `20260813_web_factory.sql` — tabla web_projects (APLICADA).
+- `20260813_web_factory_branch.sql` — columna default_branch (APLICADA).
+- `20260814_web_factory_personalizacion.sql` — columnas logo, slogan, whatsapp (APLICADA).
+- `20260814_web_factory_dominio_error.sql` — columna dominio_error (APLICADA).
+- `20260814_web_factory_agente_ia.sql` — columna agente_id (APLICADA).
+- `20260815_web_factory_color_fuente.sql` — columnas accent_color, fuente (APLICADA).
+- `20260816_web_factory_activo.sql` — columna activo (PENDIENTE DE APLICAR en Supabase).
 
 ## RPC Function
 ```
@@ -968,6 +1004,59 @@ Multiusuario.
 ---
 
 # Changelog de Cambios Técnicos
+
+## 15 Ago 2026 — Web Factory: apagar/reactivar sitios (suspensión por impago de demos)
+
+- **Nueva acción `set_activo` en `web-factory.js`** (solo admin, verificado con el mismo patrón de `admin-data.js`): apaga o reactiva un sitio desde el panel.
+  - **Apagar** (`activo:false`): publica un *file deploy* directo (sin build y sin tocar el repo de GitHub) en el sitio de Netlify con un único `index.html` = página self-contained "Este sitio está suspendido" (dark, con el nombre del negocio). El sitio queda offline en segundos. Flujo: marca en BD `activo=false, estado='suspending'` → `publicarSuspension()` (deploy vía digest SHA1 + `PUT /deploys/{id}/files/index.html` + polling hasta `ready`) → `estado='inactivo', estado_deploy='ready'`. Si falla, revierte a `activo=true, estado='publicado'`.
+  - **Reactivar** (`activo:true`): `dispararBuild(siteId)` redespliega desde el repo (el sitio real sigue intacto en GitHub; el file deploy no lo modifica) → `estado='deploying'` → `publicado` al terminar (1-2 min).
+  - `refrescarYGuardar` fuerza `estado='inactivo'` cuando `activo === false` (evita que el refresh de Netlify lo vuelva a marcar `publicado`).
+  - La acción corre como background function (`X-NF-Background: true`); el dashboard hace polling del estado intermedio `suspending` (añadido a la lista de estados en curso).
+- **Panel (`dashboard.html`)**: botón de encendido/apagado por sitio (⚡ apagar / ▶ reactivar, con confirmación), badge rojo **Suspendido** para `estado='inactivo'`, estado **Apagando…** para `suspending`, fila atenuada (`opacity:.6`) y link `offline` cuando está apagado. Nueva función `toggleActivoWeb(id, activoActual, nombre)`.
+- **Migración `supabase/migrations/20260816_web_factory_activo.sql` (NUEVO, PENDIENTE de aplicar)**: `alter table web_projects add column if not exists activo boolean not null default true;`. Sin la columna, `set_activo` responde un aviso claro de ejecutar la migración (detección de error `42703`).
+- **`estado` ampliado**: `creando | configurando | deploying | suspending | dominio_pendiente | publicado | inactivo | error`.
+- **Helpers exportados nuevos**: `paginaSuspension`, `sha1hex`, `publicarSuspension`.
+
+## 15 Ago 2026 — UI: design system compartido (auvro-design.css) en dashboard + chat + Web Factory
+
+- **Nuevo `auvro-design.css`** (raíz): design system "landing inspired" que nació como bloque inline del dashboard (`72333d4`) y se extrajo a archivo compartido (`c033a3d`). Contiene tokens dark/light con `!important` (`--bg #0a0d14`/`#f6f8fb`, `--surface`, `--accent #3b82f6`/`#2563eb`, `--green/--red/--yellow`, `--bubble-*`, sombras), base/micro-UX (Inter, letter-spacing, scrollbars finas, focus rings, keyframes `auvroViewIn`), sidebar, botones pill (`.btn-main/.btn-ghost/.btn-green/.btn-wa/.btn-small`), forms, tablas, badges, toasts, plan cards/upgrade, bandeja/chat, agentes, modales, mobile nav, y `prefers-reduced-motion`. **Es el estándar visual de `dashboard.html` y `chat.html`** (ambos lo enlazan con `<link rel="stylesheet" href="auvro-design.css">` tras su `</style>`).
+- **Dashboard (`dashboard.html`)**: se eliminó el bloque CSS inline (~342 líneas) y se reemplazó por el link al CSS compartido (un único link en `<head>`).
+- **Chat (`chat.html`)**: ahora comparte el design system; se eliminaron sus tokens propios (`:root`/`body.light-mode`), sustituidos por un comentario que apunta al CSS compartido. **Toggle de tema claro/oscuro** idéntico al dashboard: botón `.theme-toggle-btn` (iconos sun/moon) + `toggleTheme()` con la MISMA regla del dashboard — `localStorage 'auvrouter_theme'` (default `'light'`), `body.light-mode` = claro (ausencia de la clase = oscuro) — y un script temprano justo tras `<body class="light-mode">` que quita la clase si el tema guardado es `'dark'`. Refinamientos dark propios (`body:not(.light-mode)`): burbuja de error del agente, inputs/composer/back-btn, sombras de burbuja. Fuente del chat: Inter (restos de `DM Sans` — que ya no se cargaba — sustituidos por Inter).
+- **Web Factory: personalización color + fuente**:
+  - Modal "Nuevo sitio web": campos **Color principal** (input color + campo texto hex validado `#RRGGBB`, expande 3→6 dígitos) y **Estilo de fuente** (8 opciones: Inter, Poppins, Montserrat, Roboto, Lora, Playfair Display, Oswald, Sistema) con **vista previa en vivo** (`.wf-preview`) que carga la fuente Google dinámicamente.
+  - Backend `web-factory.js`: mapa `FUENTES_GOOGLE`, `FUENTE_SISTEMA`, y helpers `validarAccent` / `oscurecerHex` (×0.82) / `fuenteElegida` / `inyectarTema` — inyecta antes de `</head>` un `<style id="auvro-theme">:root{--accent:X!important;--accent-dark:Y!important}*{font-family:F!important}</style>` + link de Google Fonts (las 10 plantillas definen `--accent`/`--accent-dark` en su `:root`, así el override funciona en todas). Nuevos tokens de plantilla: `ACCENT`, `ACCENT_DARK`, `FONT_FAMILY`, `FONT_NAME`, `FONT_LINK`. Guarda `accent_color` + `fuente` en `web_projects`.
+  - **Migración `supabase/migrations/20260815_web_factory_color_fuente.sql` (NUEVO, APLICADA)**: columnas `accent_color text`, `fuente text`. El pipeline reintenta el insert sin esas columnas si falla con error `42703` (retrocompatible con BD sin migrar).
+  - El panel muestra un punto de color en la columna Plantilla cuando el proyecto tiene `accent_color`.
+- **Nota de encoding (lección):** al editar `dashboard.html` con `Get-Content`/`Set-Content` se corrompieron los acentos (mojibake). Se restauró con `git checkout -- dashboard.html` y se rehicieron los cambios con `[System.IO.File]::ReadAllText/WriteAllText` + `UTF8Encoding($false)` (LF, sin BOM). **Regla: nunca volcar HTML con acentos con Get-Content/Set-Content; usar lectura/escritura byte-safe.**
+
+## 15 Ago 2026 — Web Factory: fix 502 (Directory import) y carpeta de plantillas
+
+- **Fix 502 "Directory import '/var/task/web-factory'"**: Netlify intentaba importar la función `web-factory.js` como directorio porque existía `web-factory/templates/`. Solución: **renombrar `web-factory/templates` → `wf-templates/templates`** (10 plantillas, R100) y actualizar `included_files` en `netlify.toml` + los candidatos de `templatesDir()` en `web-factory.js`.
+- **Fix 502 (require sin extensión)**: `chat.js` usaba `require('./web-factory')`; ahora `require('./web-factory.js')` para no caer en Directory import.
+- **Plantillas (10)**: `landing, restaurante, abogados, odontologia, belleza, gimnasio, inmobiliaria, construccion, salud, turismo`; cada una con `index.html`/`styles.css`/`netlify.toml`/`robots.txt`/`README.md`. Todas usan `--accent`/`--accent-dark` en su `:root` (clave para el override de color/fuente) e iconos SVG (sin icon-fonts).
+
+## 15 Ago 2026 — Registro y login completo (prueba de 30 días)
+
+- **`netlify/functions/registrar-perfil.js` (NUEVO)**: guarda nombre/apellido/teléfono justo tras el `signUp` usando el `user_id` de `data.user.id` (sin depender de triggers ni de `getUserByEmail`). Como `perfiles.email` es NOT NULL, toma el email del body o de `auth.admin.getUserById`. Crea la fila completa del plan gratis (`plan_id 1`, `token_balance 5000`) con `upsert onConflict id ignoreDuplicates` (no pisa planes pagados) y asigna `plan_inicio`/`plan_vencimiento` = **trial de 30 días** solo a filas de plan gratis sin vencimiento (`.is('plan_vencimiento', null)`).
+- **`login.html`**: formulario de registro a 2 columnas + tarjeta con scroll interno (420px); fix de ids `card-title`/`card-sub` (toggleModo roto); pantalla "Revisa tu correo" tras registrar; procesa el token de confirmación por correo desde el hash y entra al dashboard; fix de la URL de confirmación a `auvro.netlify.app`; log de errores de `registrar-perfil` en el cliente.
+
+## 14 Ago 2026 — CRM: embudo de ventas por estados + filtros
+
+- **`netlify/functions/crm.js`**: el listado de leads acepta filtros por query string `desde`/`hasta` (ISO sobre `created_at`), `origen` y `agente_id` (aplicados también al resumen). Nueva respuesta `resumen_estados`: conteo de leads y suma de `valor_venta_cents` por estado (consulta agregada sin límite de filas), con orden por `orden` y una entrada "Sin estado" si hay leads sin estado.
+- **Panel CRM (`dashboard.html`)**: embudo de ventas por estados (totales y montos) + filtros por fecha/origen/agente.
+- **Migración `supabase/migrations/20260814_crm_embudo.sql` (NUEVO, PENDIENTE de aplicar)**: índices `idx_crm_leads_user_created (user_id, created_at)` e `idx_crm_leads_agente_created (agente_id, created_at)` para acelerar los filtros por fecha.
+
+## 14 Ago 2026 — Chat: timeouts garantizados y modelo de respaldo
+
+- **Fix muertes a los 30s (502)**: el `res.json()` de undici a veces no rechaza con el socket colgado y la función moría a los 30s. Ahora `Promise.race` garantiza el corte en `chat.js`: DeepSeek 16s, respaldo 6s, `deepseekJSON` 5s. Se añadieron timings post-modelo.
+- **Modelo de respaldo automático**: si DeepSeek tarda o falla, se usa OpenAI `gpt-4o-mini` (8s), configurable vía `FALLBACK_MODEL`/`FALLBACK_API_KEY`/`FALLBACK_API_URL`; la respuesta incluye el proveedor usado.
+- **Reducción de timeouts IA**: `max_tokens 1024`, historial 6 turnos, catálogo truncado, timeout 29s.
+- **`crm-helper.js`**: `deepseekJSON` de extracción de lead pasa de 12s a 5s (best-effort).
+
+## 14 Ago 2026 — Widget + landing: catálogo, dedup y hub
+
+- **Widget (`widget.js`)**: botón de catálogo con tarjetas de producto (mismo lenguaje que `chat.html`); fix de respuestas duplicadas en el chat web (dedup en render del widget + guard anti-duplicado en `chat.js` para el canal web + network-first en `sw.js`).
+- **Landing hub (`index.html`)** rediseñada como hub + **nueva `paginas-web.html`** (landing de páginas web con agente IA embebido). **`agentes.html`** rediseñada con el mismo lenguaje visual del hub y `paginas-web`.
 
 ## 14 Ago 2026 — Web Factory: el agente puede crear demos de sitios en la conversación
 
