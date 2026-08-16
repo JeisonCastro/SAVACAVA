@@ -122,16 +122,22 @@ async function accionCatalogo(params) {
     if (!proyecto) return ok({ ok: false, error: 'Sitio no encontrado' }, 404);
     const { data: productos, error } = await supabase
         .from('tienda_productos')
-        .select('id, nombre, descripcion, precio_cents, tipo, imagen, stock')
+        .select('id, nombre, descripcion, precio_cents, tipo, imagen, stock, categoria, atributos, variantes')
         .eq('proyecto_id', proyecto.id)
         .eq('activo', true)
         .order('created_at', { ascending: true });
     if (error) return ok({ ok: false, error: error.message }, 500);
-    const visibles = (productos || []).map(p => ({
-        ...p,
-        agotado: p.tipo === 'fisico' && p.stock !== null && p.stock <= 0
-    }));
-    return ok({ ok: true, productos: visibles });
+    const visibles = (productos || []).map(p => {
+        const variantes = Array.isArray(p.variantes) ? p.variantes : [];
+        const agotado = p.tipo === 'fisico'
+            ? (variantes.length
+                ? variantes.every(v => v.stock !== null && v.stock <= 0)
+                : p.stock !== null && p.stock <= 0)
+            : false;
+        return { ...p, variantes, agotado };
+    });
+    const categorias = [...new Set((productos || []).map(p => (p.categoria || '').trim()).filter(Boolean))];
+    return ok({ ok: true, productos: visibles, categorias });
 }
 
 // ── Checkout público ──
@@ -167,12 +173,26 @@ async function accionCheckout(body) {
         const prod = porId[it.producto_id];
         if (!prod || !prod.activo) return ok({ ok: false, error: 'Un producto del carrito ya no está disponible' }, 400);
         const cant = Math.min(Math.max(1, Math.floor(Number(it.cantidad) || 1)), 99);
-        if (prod.tipo === 'fisico' && prod.stock !== null && prod.stock < cant) {
-            return ok({ ok: false, error: `Stock insuficiente para: ${prod.nombre}` }, 400);
+        const variantes = Array.isArray(prod.variantes) ? prod.variantes : [];
+        const varianteId = String(it.variante_id || '');
+        let precioUnit = prod.precio_cents;
+        let nombreLinea = prod.nombre;
+        if (varianteId) {
+            const varObj = variantes.find(v => String(v.id) === varianteId);
+            if (!varObj) return ok({ ok: false, error: `Opción no válida para: ${prod.nombre}` }, 400);
+            precioUnit = (prod.precio_cents || 0) + (Number(varObj.precio_cents) || 0);
+            nombreLinea = varObj.nombre ? `${prod.nombre} (${varObj.nombre})` : prod.nombre;
+            if (prod.tipo === 'fisico' && varObj.stock !== null && varObj.stock < cant) {
+                return ok({ ok: false, error: `Stock insuficiente para: ${prod.nombre} (${varObj.nombre})` }, 400);
+            }
+        } else {
+            if (prod.tipo === 'fisico' && prod.stock !== null && prod.stock < cant) {
+                return ok({ ok: false, error: `Stock insuficiente para: ${prod.nombre}` }, 400);
+            }
         }
         if (prod.tipo === 'fisico') hayFisico = true;
-        total += prod.precio_cents * cant;
-        lineas.push({ producto_id: prod.id, nombre: prod.nombre, precio_cents: prod.precio_cents, cantidad: cant });
+        total += precioUnit * cant;
+        lineas.push({ producto_id: prod.id, nombre: nombreLinea, precio_cents: precioUnit, cantidad: cant });
     }
     if (total <= 0) return ok({ ok: false, error: 'Total inválido' }, 400);
     if (hayFisico && !String(direccion || '').trim()) return ok({ ok: false, error: 'La dirección de envío es obligatoria' }, 400);
@@ -350,7 +370,7 @@ async function accionGetOrden(params) {
 
 // ── Acciones de admin ──
 async function accionGuardarProducto(adminId, body) {
-    const { proyecto_id, id, nombre, descripcion, precio_cents, tipo, activo, stock, imagen, archivo_data_url, filename } = body;
+    const { proyecto_id, id, nombre, descripcion, precio_cents, tipo, activo, stock, imagen, archivo_data_url, filename, categoria, atributos, variantes } = body;
     if (!proyecto_id) return ok({ ok: false, error: 'Falta proyecto_id' }, 400);
     if (!nombre || !String(nombre).trim()) return ok({ ok: false, error: 'Falta el nombre del producto' }, 400);
     const precio = Math.max(0, Math.round(Number(precio_cents) || 0));
@@ -379,6 +399,16 @@ async function accionGuardarProducto(adminId, body) {
         activo: activo === false ? false : true,
         stock: tipo === 'fisico' ? (stock === null || stock === undefined || stock === '' ? null : Math.max(0, Math.floor(Number(stock)))) : null,
         imagen: imagenFinal || null,
+        categoria: categoria ? String(categoria).trim() : null,
+        atributos: (atributos && typeof atributos === 'object' && !Array.isArray(atributos)) ? atributos : null,
+        variantes: Array.isArray(variantes) && variantes.length
+            ? variantes.map(v => ({
+                id: String(v.id || 'v' + Math.random().toString(36).slice(2, 8)),
+                nombre: String(v.nombre || '').trim(),
+                precio_cents: Math.max(0, Math.round(Number(v.precio_cents) || 0)),
+                stock: (v.stock === null || v.stock === undefined || v.stock === '') ? null : Math.max(0, Math.floor(Number(v.stock) || 0))
+            })).filter(v => v.nombre)
+            : null,
         updated_at: new Date().toISOString()
     };
     if (archivoFinal) datos.archivo_url = archivoFinal;

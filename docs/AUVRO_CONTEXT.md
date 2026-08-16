@@ -1045,6 +1045,16 @@ Multiusuario.
 
 **Verificado E2E en producción** con admin de prueba + proyecto tienda de prueba (creado y eliminado): `estado_notificaciones` defaults (newOrder/pay ON, gmail off, agentes), `configurar_notificaciones` guarda y se lee (toggles + emails), `conectar-gmail-tienda link` devuelve `redirectUrl` real (`connect.composio.dev/link/lk_...`). Sin efectos colaterales sobre `techsoacha`/otros sitios.
 
+## 16 Ago 2026 — Catálogo de tienda: categorías, atributos y variantes (modelo CRM)
+
+Se replica en tiendas el modelo del catálogo CRM (`crm_config_agente.catalogo`): categorías + atributos + variantes, para productos físicos, digitales y servicios (turismo/paquetes).
+
+- **Migración `20260816_tienda_categorias.sql`**: columnas `categoria text`, `atributos jsonb`, `variantes jsonb` en `tienda_productos` (+ índice por `(proyecto_id, categoria)`).
+- **`tienda.js`**: `catalogo` devuelve `categorias` (lista única) y cada producto con `categoria/atributos/variantes`; `agotado` se calcula por variante (si hay variantes, se agota cuando todas lo están). `checkout` acepta `variante_id` por item: valida la opción, calcula precio = base + delta, valida stock por variante y guarda el nombre de la línea como "Producto (Opción)". `guardar_producto` acepta y normaliza `categoria`, `atributos` (objeto clave:valor) y `variantes` (`[{id,nombre,precio_cents,stock}]`).
+- **`dashboard.html`**: formulario de producto con **Categoría = select fijo** (`CATEGORIAS_TIENDA`: Tecnología y Electrónica, Moda y Accesorios, Hogar y Decoración, Electrodomésticos, Belleza y Cuidado Personal, Salud y Bienestar, Deportes y Aire Libre, Bebés y Juguetería, Mascotas, Papelería y Oficina, Otros) para que el dueño no escriba; Atributos (clave: valor por línea) y Variantes dinámicas (nombre, precio adicional COP, stock por opción). Lista de productos muestra categoría y nº de opciones.
+- **Plantilla `tienda`**: chips de filtro por categoría, badges de categoría, lista de atributos y selector de variantes (píldoras) con precio dinámico; el carrito distingue por producto+variante (key) y el checkout envía `variante_id`.
+- **Nota**: el storefront es estático y se hornea al crear el sitio; las tiendas YA creadas (`techsoacha`, etc.) conservan el template anterior hasta recrearse. La lógica backend (categorías/atributos/variantes en catálogo y checkout) sí aplica a cualquier tienda al instante.
+
 ## 16 Ago 2026 — Fix: el create de Web Factory fallaba en silencio (background functions)
 
 **Bug:** las background functions de Netlify (`web-factory-background`) responden **siempre `202 Accepted` con body vacío** (el resultado real se descarta y solo vive en los logs). `dashboard.html` `crearProyectoWeb()` leía ese body (`data.ok`/`data.error`) → **siempre parecía éxito** ("Sitio en creacion. El estado se actualiza solo.") aunque la función fallara (token vencido, error en Supabase, etc.). Resultado: al crear "storecase" no aparecía ninguna fila ni error.
