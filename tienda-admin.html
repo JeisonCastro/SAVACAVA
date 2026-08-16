@@ -4,115 +4,65 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestión de Tienda · AUVRO</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="dashboard.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        :root {
-            --accent: #2563eb; --accent-dark: #1d4ed8;
-            --bg: #0f1115; --surface: #171a21; --bg2: #1d212b; --text: #eef2f8; --muted: #94a3b8; --dim: #64748b;
-            --border: #262b36; --border2: #323947; --green: #16a34a; --red: #dc2626; --yellow: #d97706;
-        }
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-            background: var(--bg); color: var(--text); min-height: 100vh; display: flex; flex-direction: column;
-        }
-        a { color: var(--accent); text-decoration: none; }
-        .app { display: flex; flex: 1; min-height: 0; }
-        .sidebar {
-            width: 220px; background: var(--surface); border-right: 1px solid var(--border);
-            padding: 16px 10px; display: flex; flex-direction: column; gap: 4px; flex-shrink: 0;
-        }
-        .sidebar .brand { font-weight: 800; font-size: .95rem; padding: 4px 10px 14px; display: flex; align-items: center; gap: 8px; }
-        .nav-btn {
-            display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
-            padding: 10px 12px; border: none; background: transparent; color: var(--muted);
-            font-size: .88rem; font-weight: 600; border-radius: 9px; cursor: pointer; transition: .12s ease;
-        }
-        .nav-btn:hover { background: var(--bg2); color: var(--text); }
-        .nav-btn.on { background: var(--accent); color: #fff; }
-        .main { flex: 1; padding: 24px; overflow-y: auto; }
-        .topbar {
-            display: flex; align-items: center; gap: 12px; padding: 14px 24px;
-            background: var(--surface); border-bottom: 1px solid var(--border); flex-wrap: wrap;
-        }
-        .topbar .title { font-weight: 800; font-size: 1rem; }
-        .topbar .spacer { flex: 1; }
-        .btn {
-            display: inline-flex; align-items: center; gap: 7px; padding: 9px 15px; border-radius: 9px;
-            border: 1px solid var(--border2); background: var(--bg2); color: var(--text);
-            font-weight: 700; font-size: .84rem; cursor: pointer; transition: .12s ease; text-decoration: none;
-        }
-        .btn:hover { border-color: var(--accent); }
-        .btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
-        .btn-primary:hover { background: var(--accent-dark); }
-        .btn-green { background: var(--green); border-color: var(--green); color: #fff; }
-        .btn-danger { background: transparent; border-color: var(--red); color: var(--red); }
-        .btn-sm { padding: 6px 10px; font-size: .76rem; }
-        .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 14px; }
-        .card h3 { font-size: .95rem; margin-bottom: 10px; }
-        .field { margin-bottom: 10px; }
-        .field label { display: block; font-size: .74rem; font-weight: 700; color: var(--muted); margin-bottom: 5px; }
-        .field input, .field select, .field textarea {
-            width: 100%; padding: 9px 11px; border: 1px solid var(--border2); border-radius: 8px;
-            background: var(--bg); color: var(--text); font-size: .86rem; outline: none; font-family: inherit;
-        }
-        .field input:focus, .field select:focus, .field textarea:focus { border-color: var(--accent); }
-        .row { display: flex; gap: 10px; flex-wrap: wrap; }
-        .row > * { flex: 1; min-width: 0; }
-        .table-wrap { overflow-x: auto; }
-        table { width: 100%; border-collapse: collapse; font-size: .84rem; }
-        th { text-align: left; color: var(--muted); font-size: .72rem; text-transform: uppercase; letter-spacing: .03em; padding: 8px 10px; border-bottom: 1px solid var(--border); }
-        td { padding: 9px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
-        .badge { font-size: .68rem; font-weight: 700; padding: 3px 9px; border-radius: 999px; text-transform: uppercase; letter-spacing: .03em; }
-        .badge-green { background: rgba(22,163,74,.15); color: #4ade80; }
-        .badge-yellow { background: rgba(217,119,6,.15); color: #fbbf24; }
-        .badge-red { background: rgba(220,38,38,.15); color: #f87171; }
-        .msg { font-size: .8rem; margin-top: 8px; }
-        .msg.error { color: var(--red); }
-        .msg.ok { color: var(--green); }
-        .empty { text-align: center; color: var(--dim); padding: 26px 0; font-size: .86rem; }
+        body { background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, sans-serif; }
+        .tienda-content { max-width: 1200px; }
+        .prod-item { display: flex; align-items: center; gap: 12px; background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; }
+        .prod-item img { width: 46px; height: 46px; border-radius: 8px; object-fit: cover; }
+        .prod-item .info { flex: 1; min-width: 0; }
         .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 16px; }
         .stat { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
         .stat .n { font-size: 1.5rem; font-weight: 800; color: var(--accent); }
         .stat .l { font-size: .74rem; color: var(--muted); margin-top: 2px; }
-        .variante-editor { display: flex; gap: 6px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 6px; }
-        .variante-editor input { padding: 6px 8px; border: 1px solid var(--border2); border-radius: 7px; background: var(--bg); color: var(--text); font-size: .78rem; }
-        .prod-item { display: flex; align-items: center; gap: 12px; background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; }
-        .prod-item img { width: 46px; height: 46px; border-radius: 8px; object-fit: cover; }
-        .prod-item .info { flex: 1; min-width: 0; }
-        .toast { position: fixed; bottom: 18px; right: 18px; z-index: 1000; background: var(--surface); border: 1px solid var(--border2); border-left: 4px solid var(--green); padding: 12px 16px; border-radius: 10px; font-size: .86rem; box-shadow: 0 8px 24px rgba(0,0,0,.4); opacity: 0; transform: translateY(8px); transition: .2s ease; }
+        .sel-box { border: 1px solid var(--border); border-radius: 8px; padding: 8px; margin-bottom: 6px; }
+        .toast { position: fixed; bottom: 18px; right: 18px; z-index: 1000; background: var(--surface); border: 1px solid var(--border2); border-left: 4px solid var(--green); padding: 12px 16px; border-radius: 10px; font-size: .86rem; box-shadow: var(--shadow-soft); opacity: 0; transform: translateY(8px); transition: .2s ease; }
         .toast.show { opacity: 1; transform: translateY(0); }
         .toast.error { border-left-color: var(--red); }
-        @media (max-width: 760px) {
-            .app { flex-direction: column; }
-            .sidebar { width: 100%; flex-direction: row; flex-wrap: wrap; border-right: none; border-bottom: 1px solid var(--border); }
-            .main { padding: 16px; }
-        }
+        table input { width: auto; }
     </style>
 </head>
 <body>
-    <div class="topbar">
-        <span class="title" id="tb-nombre">Cargando tienda…</span>
-        <a class="btn btn-primary" id="tb-ver" href="#" target="_blank" rel="noopener" style="display:none"><i>🔗</i> Ver tienda</a>
-        <span class="spacer"></span>
-        <span id="tb-email" style="font-size:.8rem;color:var(--muted)"></span>
-        <a class="btn btn-sm" href="dashboard.html">← Panel AUVRO</a>
-        <button class="btn btn-sm" onclick="salir()">Salir</button>
-    </div>
-
-    <div class="app">
-        <nav class="sidebar">
-            <div class="brand">🛍️ Gestión de tienda</div>
-            <button class="nav-btn on" data-sec="dashboard" onclick="ir('dashboard')">📊 Resumen</button>
-            <button class="nav-btn" data-sec="productos" onclick="ir('productos')">📦 Productos</button>
-            <button class="nav-btn" data-sec="categorias" onclick="ir('categorias')">🏷️ Categorías</button>
-            <button class="nav-btn" data-sec="atributos" onclick="ir('atributos')">🎛️ Atributos</button>
-            <button class="nav-btn" data-sec="ordenes" onclick="ir('ordenes')">🧾 Órdenes</button>
-            <button class="nav-btn" data-sec="clientes" onclick="ir('clientes')">👥 Clientes</button>
-            <button class="nav-btn" data-sec="pasarela" onclick="ir('pasarela')">💳 Pasarela</button>
-            <button class="nav-btn" data-sec="notificaciones" onclick="ir('notificaciones')">🔔 Notificaciones</button>
+    <aside class="sidebar">
+        <div class="sidebar-logo">
+            <i class="fas fa-store" style="color:var(--accent);font-size:1.1rem"></i>
+            <span style="font-weight:800;letter-spacing:-.02em">Gestión de tienda</span>
+        </div>
+        <nav>
+            <a href="#" data-sec="dashboard" class="active" onclick="return nav('dashboard')"><i class="fas fa-chart-pie"></i> Resumen</a>
+            <a href="#" data-sec="productos" onclick="return nav('productos')"><i class="fas fa-box"></i> Productos</a>
+            <a href="#" data-sec="categorias" onclick="return nav('categorias')"><i class="fas fa-tags"></i> Categorías</a>
+            <a href="#" data-sec="atributos" onclick="return nav('atributos')"><i class="fas fa-sliders-h"></i> Atributos</a>
+            <a href="#" data-sec="ordenes" onclick="return nav('ordenes')"><i class="fas fa-receipt"></i> Órdenes</a>
+            <a href="#" data-sec="clientes" onclick="return nav('clientes')"><i class="fas fa-users"></i> Clientes</a>
+            <a href="#" data-sec="pasarela" onclick="return nav('pasarela')"><i class="fas fa-credit-card"></i> Pasarela</a>
+            <a href="#" data-sec="notificaciones" onclick="return nav('notificaciones')"><i class="fas fa-bell"></i> Notificaciones</a>
         </nav>
-        <main class="main" id="main"></main>
+        <div class="sidebar-bottom">
+            <a href="dashboard.html"><i class="fas fa-arrow-left"></i> Panel AUVRO</a>
+        </div>
+    </aside>
+
+    <div class="main-content">
+        <div class="tienda-content">
+            <div class="topbar">
+                <div>
+                    <h1 style="font-size:1.15rem;font-weight:800;letter-spacing:-.02em" id="tb-nombre">Cargando tienda…</h1>
+                    <a id="tb-ver" href="#" target="_blank" rel="noopener" style="display:none;font-size:.8rem"><i class="fas fa-external-link-alt"></i> Ver tienda</a>
+                </div>
+                <div class="topbar-right">
+                    <span id="tb-email" style="font-size:.8rem;color:var(--muted)"></span>
+                    <button class="btn-small" id="theme-toggle" onclick="toggleTheme()" title="Cambiar tema"><i class="fas fa-moon"></i></button>
+                    <button class="btn-small" onclick="salir()"><i class="fas fa-sign-out-alt"></i> Salir</button>
+                </div>
+            </div>
+            <div id="main"></div>
+        </div>
     </div>
     <div class="toast" id="toast"></div>
 
@@ -124,10 +74,7 @@
 
     let session = null;
     const ctx = { proyecto_id: '', slug: '' };
-    const S = {
-        productos: [], categorias: [], atributos: [], ordenes: [], clientes: [],
-        editandoId: null, imagenes: [], archivoDigital: null
-    };
+    const S = { productos: [], categorias: [], atributos: [], ordenes: [], clientes: [], editandoId: null, imagenes: [], archivoDigital: null, _varsIds: [] };
 
     const $ = (id) => document.getElementById(id);
     const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -153,7 +100,19 @@
         return { simple: 'Simple', fisico: 'Simple', variable: 'Variable', digital: 'Digital', servicio: 'Servicio' }[t] || t || '—';
     }
 
-    // ── Inicio / auth ──
+    function toggleTheme() {
+        const claro = document.body.classList.toggle('light-mode');
+        try { localStorage.setItem('auvrouter_theme', claro ? 'light' : 'dark'); } catch (_) {}
+        actualizarBotonTema();
+    }
+    function actualizarBotonTema() {
+        const btn = $('theme-toggle');
+        if (!btn) return;
+        const claro = document.body.classList.contains('light-mode');
+        btn.innerHTML = claro ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
+    }
+    try { if (localStorage.getItem('auvrouter_theme') === 'light') document.body.classList.add('light-mode'); } catch (_) {}
+
     async function init() {
         const { data } = await _supabase.auth.getSession();
         session = data.session;
@@ -175,7 +134,7 @@
                     body: JSON.stringify({ action: 'guardar', proyecto_id: tiendaGmail })
                 });
                 const d = await res.json();
-                toast(d.ok ? 'Gmail de la tienda conectado ✅' : ('Error: ' + (d.error || 'reintenta')), !d.ok);
+                toast(d.ok ? 'Gmail de la tienda conectado' : ('Error: ' + (d.error || 'reintenta')), !d.ok);
             } catch (_) { toast('Error conectando Gmail', true); }
             history.replaceState({}, '', window.location.pathname + (proyecto ? '?proyecto=' + proyecto : ''));
         }
@@ -189,21 +148,22 @@
             if (!info.ok) throw new Error(info.error || 'Sin acceso a la tienda');
             const t = info.tienda;
             ctx.slug = t.slug || ctx.slug;
-            $('tb-nombre').textContent = t.nombre || 'Mi tienda';
+            $('tb-nombre').textContent = (t.nombre || 'Mi tienda') + ' · Tienda';
             const u = $('tb-ver');
             if (t.netlify_url) { u.href = t.netlify_url; u.style.display = ''; }
             else if (t.slug) { u.href = 'https://' + t.slug + '.netlify.app'; u.style.display = ''; }
-            ir('dashboard');
+            nav('dashboard');
         } catch (err) {
             $('main').innerHTML = '<div class="card"><div class="empty">' + esc(err.message || 'Error') + '</div></div>';
         }
     }
 
-    function ir(sec) {
-        document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('on', b.getAttribute('data-sec') === sec));
+    function nav(sec) {
+        document.querySelectorAll('.sidebar nav a').forEach(a => a.classList.toggle('active', a.getAttribute('data-sec') === sec));
         ({ dashboard: renderDashboard, productos: renderProductos, categorias: renderCategorias,
             atributos: renderAtributos, ordenes: renderOrdenes, clientes: renderClientes,
             pasarela: renderPasarela, notificaciones: renderNotificaciones })[sec]();
+        return false;
     }
 
     function salir() { _supabase.auth.signOut().then(() => window.location.href = 'login.html'); }
@@ -231,14 +191,13 @@
                     <div class="stat"><div class="n">${clis.length}</div><div class="l">Clientes</div></div>
                     <div class="stat"><div class="n">${fmtCOP(vendido)}</div><div class="l">Vendido</div></div>
                 </div>
-                <div class="row">
-                    <div class="card"><h3>Accesos rápidos</h3>
-                        <div class="row" style="gap:8px">
-                            <button class="btn btn-primary" onclick="nuevoProducto()">+ Nuevo producto</button>
-                            <button class="btn" onclick="ir('categorias')">Categorías</button>
-                            <button class="btn" onclick="ir('atributos')">Atributos</button>
-                            <button class="btn" onclick="ir('ordenes')">Órdenes</button>
-                        </div>
+                <div class="card">
+                    <h3 class="card-title">Accesos rápidos</h3>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap">
+                        <button class="btn-main" onclick="nuevoProducto()"><i class="fas fa-plus"></i> Nuevo producto</button>
+                        <button class="btn-small" onclick="nav('categorias')">Categorías</button>
+                        <button class="btn-small" onclick="nav('atributos')">Atributos</button>
+                        <button class="btn-small" onclick="nav('ordenes')">Órdenes</button>
                     </div>
                 </div>`;
         } catch (err) { main.innerHTML = '<div class="empty">' + esc(err.message) + '</div>'; }
@@ -260,8 +219,8 @@
             S.atributos = (a.ok && a.atributos) || [];
             main.innerHTML = `
                 <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
-                    <h3 style="flex:1">Productos</h3>
-                    <button class="btn btn-primary" onclick="formProducto(null)">+ Nuevo producto</button>
+                    <h2 class="card-title" style="flex:1">Productos</h2>
+                    <button class="btn-main" onclick="formProducto(null)"><i class="fas fa-plus"></i> Nuevo producto</button>
                 </div>
                 ${S.productos.length ? S.productos.map(p => `
                     <div class="prod-item">
@@ -270,8 +229,8 @@
                             <div style="font-weight:700">${esc(p.nombre)}</div>
                             <div style="font-size:.74rem;color:var(--dim)">${tipoLabel(p.tipo)} · ${fmtCOP(p.precio_cents)}${p.categoria ? ' · ' + esc(p.categoria) : ''}${p.tipo === 'variable' ? ' · ' + (p.variaciones || []).length + ' variaciones' : ''}${p.tipo === 'simple' && p.stock != null ? ' · Stock: ' + p.stock : ''}${p.activo ? '' : ' · <span style="color:var(--red)">oculto</span>'}</div>
                         </div>
-                        <button class="btn btn-sm" onclick="editarProducto('${p.id}')">Editar</button>
-                        <button class="btn btn-sm btn-danger" onclick="eliminarProducto('${p.id}','${esc(p.nombre)}')">🗑</button>
+                        <button class="btn-small" onclick="editarProducto('${p.id}')"><i class="fas fa-pen"></i> Editar</button>
+                        <button class="btn-small danger" onclick="eliminarProducto('${p.id}','${esc(p.nombre)}')"><i class="fas fa-trash"></i></button>
                     </div>`).join('')
                 : '<div class="card"><div class="empty">No hay productos todavía. Crea el primero.</div></div>'}
             `;
@@ -290,7 +249,7 @@
         ]);
         S.categorias = (c.ok && c.categorias) || [];
         S.atributos = (a.ok && a.atributos) || [];
-        document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('on', b.getAttribute('data-sec') === 'productos'));
+        document.querySelectorAll('.sidebar nav a').forEach(x => x.classList.toggle('active', x.getAttribute('data-sec') === 'productos'));
         formProducto(null);
     }
 
@@ -306,28 +265,26 @@
 
         $('main').innerHTML = `
             <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
-                <button class="btn btn-sm" onclick="renderProductos()">← Volver</button>
-                <h3 style="flex:1">${prod ? 'Editar producto' : 'Nuevo producto'}</h3>
+                <button class="btn-small" onclick="renderProductos()"><i class="fas fa-arrow-left"></i> Volver</button>
+                <h2 class="card-title" style="flex:1">${prod ? 'Editar producto' : 'Nuevo producto'}</h2>
             </div>
             <div class="card">
-                <div class="row">
-                    <div style="flex:2"><div class="field"><label>Nombre del producto</label><input id="p-nombre" value="${esc(prod && prod.nombre || '')}" placeholder="Ej: Reloj PEPITO"></div></div>
-                    <div style="flex:1"><div class="field"><label>Tipo</label>
+                <div style="display:flex;gap:10px;flex-wrap:wrap">
+                    <div style="flex:2;min-width:180px"><div class="field"><label>Nombre del producto</label><input id="p-nombre" value="${esc(prod && prod.nombre || '')}" placeholder="Ej: Reloj PEPITO"></div></div>
+                    <div style="flex:1;min-width:110px"><div class="field"><label>Tipo</label>
                         <select id="p-tipo" onchange="syncTipo()">
                             <option value="simple"${tipo === 'simple' ? ' selected' : ''}>Simple (físico)</option>
                             <option value="variable"${tipo === 'variable' ? ' selected' : ''}>Variable (atributos)</option>
                             <option value="digital"${tipo === 'digital' ? ' selected' : ''}>Digital</option>
                             <option value="servicio"${tipo === 'servicio' ? ' selected' : ''}>Servicio</option>
                         </select></div></div>
-                    <div style="flex:1"><div class="field"><label>Precio base (COP)${tipo === 'variable' ? ' — desde' : ''}</label><input id="p-precio" type="number" min="0" value="${Math.round(((prod && prod.precio_cents) || 0) / 100)}" placeholder="Ej: 95000"></div></div>
-                    <div style="flex:1" id="wrap-stock"><div class="field"><label>Stock</label><input id="p-stock" type="number" min="0" value="${tipo === 'simple' && prod && prod.stock != null ? prod.stock : ''}" placeholder="Vacío = ilimitado"></div></div>
-                    <div style="flex:1"><div class="field"><label>SKU (opcional)</label><input id="p-sku" value="${esc(prod && prod.sku || '')}" placeholder="PEPITO-01"></div></div>
+                    <div style="flex:1;min-width:110px"><div class="field"><label>Precio base (COP)${tipo === 'variable' ? ' — desde' : ''}</label><input id="p-precio" type="number" min="0" value="${Math.round(((prod && prod.precio_cents) || 0) / 100)}" placeholder="Ej: 95000"></div></div>
+                    <div style="flex:1;min-width:90px" id="wrap-stock"><div class="field"><label>Stock</label><input id="p-stock" type="number" min="0" value="${tipo === 'simple' && prod && prod.stock != null ? prod.stock : ''}" placeholder="Vacío = ilimitado"></div></div>
+                    <div style="flex:1;min-width:110px"><div class="field"><label>SKU (opcional)</label><input id="p-sku" value="${esc(prod && prod.sku || '')}" placeholder="PEPITO-01"></div></div>
                 </div>
                 <div class="field"><label>Descripción</label><input id="p-desc" value="${esc(prod && prod.descripcion || '')}" placeholder="Breve descripción para el cliente"></div>
                 <div class="field"><label>Categoría</label>
-                    <select id="p-cat">
-                        <option value="">Sin categoría</option>${catsOpts}
-                    </select>
+                    <select id="p-cat"><option value="">Sin categoría</option>${catsOpts}</select>
                 </div>
                 <div class="field"><label>Ficha técnica (clave: valor, una por línea)</label><textarea id="p-attrs" rows="2" placeholder="Material: Acero&#10;Garantía: 1 año">${esc(attrTxt)}</textarea></div>
                 <div id="wrap-var" style="display:none">
@@ -338,7 +295,7 @@
                 </div>
                 <div class="field"><label>Imágenes (varias para colores/presentaciones; la primera es portada)</label>
                     <div id="p-imgs"></div>
-                    <button class="btn btn-sm" onclick="addImg()">+ Agregar imagen</button>
+                    <button class="btn-small" onclick="addImg()"><i class="fas fa-plus"></i> Agregar imagen</button>
                 </div>
                 <div id="wrap-digital" style="display:none" class="field">
                     <label>Archivo para entrega digital</label>
@@ -348,8 +305,8 @@
                 <div style="display:flex;gap:10px;align-items:center;margin-top:6px;flex-wrap:wrap">
                     <label style="font-size:.84rem;display:flex;align-items:center;gap:6px"><input type="checkbox" id="p-activo" ${!(prod && prod.activo === false) ? 'checked' : ''}> Disponible en la tienda</label>
                     <span style="flex:1"></span>
-                    <button class="btn btn-green" onclick="guardarProducto()">💾 Guardar producto</button>
-                    <button class="btn" onclick="renderProductos()">Cancelar</button>
+                    <button class="btn-main btn-green" onclick="guardarProducto()"><i class="fas fa-save"></i> Guardar producto</button>
+                    <button class="btn-small" onclick="renderProductos()">Cancelar</button>
                 </div>
                 <div class="msg" id="p-msg"></div>
             </div>`;
@@ -372,7 +329,7 @@
         const mapa = {};
         (selector || []).forEach(a => { mapa[a.atributo_id] = a.valores || []; });
         cont.innerHTML = S.atributos.map(a => `
-            <div style="border:1px solid var(--border);border-radius:8px;padding:8px;margin-bottom:6px">
+            <div class="sel-box">
                 <label style="font-weight:700;font-size:.84rem;display:flex;align-items:center;gap:6px"><input type="checkbox" class="sel-a" data-aid="${a.id}" ${mapa[a.id] ? 'checked' : ''}> ${esc(a.nombre)}</label>
                 <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">
                     ${(a.valores || []).map(v => `<label style="font-size:.78rem;display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" class="sel-v" data-aid="${a.id}" data-val="${esc(String(v))}" ${(mapa[a.id] || []).includes(String(v)) ? 'checked' : ''}> ${esc(String(v))}</label>`).join('')}
@@ -388,8 +345,8 @@
             <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px">
                 <input value="${esc(u)}" id="p-img-${i}" placeholder="https://... o sube una imagen" style="flex:1;padding:7px;border:1px solid var(--border2);border-radius:7px;background:var(--bg);color:var(--text);font-size:.8rem">
                 <input type="file" accept="image/*" style="display:none" id="p-imgf-${i}" onchange="imgSubir(${i}, this)">
-                <button class="btn btn-sm" onclick="document.getElementById('p-imgf-${i}').click()">Subir</button>
-                <button class="btn btn-sm btn-danger" onclick="quitImg(${i})">✕</button>
+                <button class="btn-small" onclick="document.getElementById('p-imgf-${i}').click()"><i class="fas fa-upload"></i></button>
+                <button class="btn-small danger" onclick="quitImg(${i})"><i class="fas fa-trash"></i></button>
             </div>`).join('');
     }
     function addImg() { S.imagenes.push(''); renderImgs(); }
@@ -398,10 +355,7 @@
         const f = input.files && input.files[0]; if (!f) return;
         if (f.size > 7 * 1024 * 1024) { toast('La imagen supera 7 MB', true); input.value = ''; return; }
         const rd = new FileReader();
-        rd.onload = () => {
-            S.imagenes[i] = String(rd.result);
-            const el = $('p-img-' + i); if (el) el.value = String(rd.result);
-        };
+        rd.onload = () => { S.imagenes[i] = String(rd.result); const el = $('p-img-' + i); if (el) el.value = String(rd.result); };
         rd.readAsDataURL(f);
     }
     function leerArchivo(input) {
@@ -451,7 +405,7 @@
                 filename: S.archivoDigital ? S.archivoDigital.name : 'archivo'
             });
             if (!data.ok) throw new Error(data.error || 'No se pudo guardar');
-            toast('Producto guardado ✅');
+            toast('Producto guardado');
             if (data.producto && data.producto.tipo === 'variable' && Array.isArray(data.producto.variaciones)) {
                 formVariaciones(data.producto);
             } else { renderProductos(); }
@@ -463,8 +417,8 @@
         S._varsIds = vars.map(v => v.id);
         $('main').innerHTML = `
             <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
-                <button class="btn btn-sm" onclick="renderProductos()">← Volver a productos</button>
-                <h3 style="flex:1">Variaciones de ${esc(producto.nombre)}</h3>
+                <button class="btn-small" onclick="renderProductos()"><i class="fas fa-arrow-left"></i> Volver a productos</button>
+                <h2 class="card-title" style="flex:1">Variaciones de ${esc(producto.nombre)}</h2>
             </div>
             ${vars.length ? `<div class="card"><div class="table-wrap"><table>
                 <thead><tr><th>Combinación</th><th>Precio</th><th>Promo</th><th>Stock</th><th>SKU</th><th>Imagen (URL)</th><th>Activo</th></tr></thead>
@@ -482,8 +436,8 @@
                 </tbody>
             </table></div>
             <div style="display:flex;gap:10px;margin-top:12px">
-                <button class="btn btn-green" onclick="guardarVariaciones('${producto.id}')">💾 Guardar variaciones</button>
-                <button class="btn" onclick="renderProductos()">Cancelar</button>
+                <button class="btn-main btn-green" onclick="guardarVariaciones('${producto.id}')"><i class="fas fa-save"></i> Guardar variaciones</button>
+                <button class="btn-small" onclick="renderProductos()">Cancelar</button>
             </div>
             <div class="msg" id="vx-msg"></div></div>`
             : '<div class="card"><div class="empty">Este producto no tiene combinaciones. Agrega atributos y valores en el formulario.</div></div>'}
@@ -513,7 +467,7 @@
         try {
             const data = await api('guardar_variaciones', { producto_id: productoId, variaciones: limpio });
             if (!data.ok) throw new Error(data.error || 'No se pudo guardar');
-            toast('Variaciones guardadas ✅');
+            toast('Variaciones guardadas');
             renderProductos();
         } catch (err) { msg.textContent = 'Error: ' + err.message; msg.className = 'msg error'; }
     }
@@ -534,17 +488,18 @@
         if (!data.ok) { main.innerHTML = '<div class="empty">' + esc(data.error) + '</div>'; return; }
         S.categorias = data.categorias || [];
         main.innerHTML = `
-            <h3 style="margin-bottom:14px">Categorías</h3>
+            <h2 class="card-title" style="margin-bottom:14px">Categorías</h2>
             <div class="card">
                 <div style="display:flex;gap:10px;flex-wrap:wrap">
                     <input id="cat-nombre" placeholder="Nueva categoría (ej. Relojes)" style="flex:1;min-width:180px;padding:9px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text)">
-                    <button class="btn btn-green" onclick="guardarCategoria()">+ Agregar</button>
+                    <button class="btn-main btn-green" onclick="guardarCategoria()"><i class="fas fa-plus"></i> Agregar</button>
                 </div>
             </div>
             ${S.categorias.length ? S.categorias.map(c => `
                 <div style="display:flex;align-items:center;gap:10px;background:var(--bg2);border:1px solid var(--border);border-radius:9px;padding:9px 12px;margin-bottom:6px">
+                    <i class="fas fa-tags" style="color:var(--accent)"></i>
                     <span style="font-weight:700;flex:1">${esc(c.nombre)}</span>
-                    <button class="btn btn-sm btn-danger" onclick="eliminarCategoria('${c.id}','${esc(c.nombre)}')">🗑</button>
+                    <button class="btn-small danger" onclick="eliminarCategoria('${c.id}','${esc(c.nombre)}')"><i class="fas fa-trash"></i></button>
                 </div>`).join('') : '<div class="card"><div class="empty">Sin categorías. Agrega la primera.</div></div>'}
         `;
     }
@@ -553,7 +508,7 @@
         if (!nombre) return toast('Escribe el nombre', true);
         const data = await api('guardar_categoria', { proyecto_id: ctx.proyecto_id, nombre });
         if (!data.ok) return toast('Error: ' + data.error, true);
-        toast('Categoría agregada ✅'); renderCategorias();
+        toast('Categoría agregada'); renderCategorias();
     }
     async function eliminarCategoria(id, nombre) {
         if (!confirm('Eliminar la categoría "' + nombre + '"?')) return;
@@ -570,20 +525,21 @@
         if (!data.ok) { main.innerHTML = '<div class="empty">' + esc(data.error) + '</div>'; return; }
         S.atributos = data.atributos || [];
         main.innerHTML = `
-            <h3 style="margin-bottom:14px">Atributos (reutilizables entre productos)</h3>
+            <h2 class="card-title" style="margin-bottom:14px">Atributos (reutilizables entre productos)</h2>
             <div class="card">
                 <div style="display:flex;gap:10px;flex-wrap:wrap">
                     <input id="a-nombre" placeholder="Atributo (ej. Color)" style="flex:1;min-width:140px;padding:9px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text)">
                     <input id="a-valores" placeholder="Valores separados por coma (ej. Azul, Rojo, Negro)" style="flex:2;min-width:220px;padding:9px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text)">
-                    <button class="btn btn-green" onclick="guardarAtributo()">+ Agregar</button>
+                    <button class="btn-main btn-green" onclick="guardarAtributo()"><i class="fas fa-plus"></i> Agregar</button>
                 </div>
             </div>
             ${S.atributos.length ? S.atributos.map(a => `
                 <div style="display:flex;align-items:center;gap:10px;background:var(--bg2);border:1px solid var(--border);border-radius:9px;padding:9px 12px;margin-bottom:6px;flex-wrap:wrap">
+                    <i class="fas fa-sliders-h" style="color:var(--accent)"></i>
                     <span style="font-weight:700">${esc(a.nombre)}</span>
                     <span style="font-size:.8rem;color:var(--dim)">${(a.valores || []).map(v => esc(String(v))).join(' · ')}</span>
                     <span style="flex:1"></span>
-                    <button class="btn btn-sm btn-danger" onclick="eliminarAtributo('${a.id}','${esc(a.nombre)}')">🗑</button>
+                    <button class="btn-small danger" onclick="eliminarAtributo('${a.id}','${esc(a.nombre)}')"><i class="fas fa-trash"></i></button>
                 </div>`).join('') : '<div class="card"><div class="empty">Sin atributos. Crea uno (ej. Color, Talla) para los productos variables.</div></div>'}
         `;
     }
@@ -593,7 +549,7 @@
         if (!nombre) return toast('Escribe el nombre', true);
         const data = await api('guardar_atributo', { proyecto_id: ctx.proyecto_id, nombre, valores });
         if (!data.ok) return toast('Error: ' + data.error, true);
-        toast('Atributo guardado ✅'); renderAtributos();
+        toast('Atributo guardado'); renderAtributos();
     }
     async function eliminarAtributo(id, nombre) {
         if (!confirm('Eliminar el atributo "' + nombre + '"? Se quitará de los productos y se regenerarán sus variaciones.')) return;
@@ -610,7 +566,7 @@
         if (!data.ok) { main.innerHTML = '<div class="empty">' + esc(data.error) + '</div>'; return; }
         S.ordenes = data.ordenes || [];
         main.innerHTML = `
-            <h3 style="margin-bottom:14px">Órdenes</h3>
+            <h2 class="card-title" style="margin-bottom:14px">Órdenes</h2>
             ${S.ordenes.length ? `<div class="card"><div class="table-wrap"><table>
                 <thead><tr><th>N°</th><th>Fecha</th><th>Cliente</th><th>Items</th><th>Total</th><th>Pago</th><th>Acciones</th></tr></thead>
                 <tbody>
@@ -639,7 +595,7 @@
     async function cambiarEstado(id, estado) {
         const data = await api('cambiar_estado_orden', { id, estado });
         if (!data.ok) return toast('Error: ' + data.error, true);
-        toast('Estado actualizado ✅'); renderOrdenes();
+        toast('Estado actualizado'); renderOrdenes();
     }
 
     // ── CLIENTES ──
@@ -650,7 +606,7 @@
         if (!data.ok) { main.innerHTML = '<div class="empty">' + esc(data.error) + '</div>'; return; }
         S.clientes = data.clientes || [];
         main.innerHTML = `
-            <h3 style="margin-bottom:14px">Clientes</h3>
+            <h2 class="card-title" style="margin-bottom:14px">Clientes</h2>
             ${S.clientes.length ? `<div class="card"><div class="table-wrap"><table>
                 <thead><tr><th>Cliente</th><th>Email</th><th>Teléfono</th><th>Pedidos</th><th>Total comprado</th></tr></thead>
                 <tbody>
@@ -673,7 +629,7 @@
         const data = await api('estado_pasarela', { proyecto_id: ctx.proyecto_id });
         if (!data.ok) { main.innerHTML = '<div class="empty">' + esc(data.error) + '</div>'; return; }
         main.innerHTML = `
-            <h3 style="margin-bottom:14px">Pasarela de pago (Wompi del cliente)</h3>
+            <h2 class="card-title" style="margin-bottom:14px">Pasarela de pago (Wompi del cliente)</h2>
             <div class="card">
                 <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">
                     <span class="badge ${data.configurada ? 'badge-green' : 'badge-yellow'}">${data.configurada ? 'Configurada' : 'Sin configurar'}</span>
@@ -688,7 +644,7 @@
                 <div class="field"><label>Private key (prv_)</label><input type="password" id="pg-priv" placeholder="${data.privada_guardada ? 'Guardada. Escribe una nueva para reemplazar' : 'prv_...'}"></div>
                 <div class="field"><label>Events secret</label><input type="password" id="pg-secret" placeholder="${data.secret_guardado ? 'Guardado. Escribe uno nuevo' : 'events secret...'}"></div>
                 <label style="display:flex;align-items:center;gap:8px;font-size:.84rem;margin-bottom:10px"><input type="checkbox" id="pg-sandbox" ${data.sandbox ? 'checked' : ''}> Usar entorno de pruebas (sandbox)</label>
-                <button class="btn btn-green" onclick="guardarPasarela()">💾 Guardar pasarela</button>
+                <button class="btn-main btn-green" onclick="guardarPasarela()"><i class="fas fa-save"></i> Guardar pasarela</button>
                 <div class="msg" id="pg-msg"></div>
             </div>
         `;
@@ -699,7 +655,7 @@
         try {
             const data = await api('configurar_pasarela', { proyecto_id: ctx.proyecto_id, wompi_private_key: $('pg-priv').value.trim(), wompi_events_secret: $('pg-secret').value.trim(), wompi_sandbox: $('pg-sandbox').checked });
             if (!data.ok) throw new Error(data.error || 'Error');
-            toast('Pasarela guardada ✅'); renderPasarela();
+            toast('Pasarela guardada'); renderPasarela();
         } catch (err) { msg.textContent = 'Error: ' + err.message; msg.className = 'msg error'; }
     }
 
@@ -713,15 +669,15 @@
             ? '<option value="">— Sin WhatsApp —</option>' + data.agentes.map(a => `<option value="${a.id}"${String(data.whatsapp_agente_id) === String(a.id) ? ' selected' : ''}>${esc(a.nombre_agente)}</option>`).join('')
             : '<option value="">— No tienes agentes —</option>';
         main.innerHTML = `
-            <h3 style="margin-bottom:14px">Notificaciones</h3>
+            <h2 class="card-title" style="margin-bottom:14px">Notificaciones</h2>
             <div class="card">
                 <div style="font-weight:700;font-size:.9rem;margin-bottom:6px">Gmail de la tienda (correo del cliente)</div>
                 <p style="font-size:.8rem;color:var(--muted);margin-bottom:10px">Conecta el Gmail del dueño de la tienda: cuando alguien haga un pedido o pague, el aviso saldrá desde ese correo. El dueño autoriza con su cuenta de Google.</p>
                 <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
                     ${data.gmail_conectado
-                        ? `<span class="badge badge-green">✅ ${esc(data.gmail_email || 'Gmail conectado')}</span>
-                           <button class="btn btn-sm btn-danger" onclick="desconectarGmail()">Desconectar</button>`
-                        : `<button class="btn btn-green" onclick="conectarGmail()">📧 Conectar Gmail de la tienda</button>`}
+                        ? `<span class="badge badge-green"><i class="fas fa-check-circle"></i> ${esc(data.gmail_email || 'Gmail conectado')}</span>
+                           <button class="btn-small danger" onclick="desconectarGmail()"><i class="fas fa-unlink"></i> Desconectar</button>`
+                        : `<button class="btn-main btn-green" onclick="conectarGmail()"><i class="fas fa-envelope"></i> Conectar Gmail de la tienda</button>`}
                 </div>
                 <div class="msg" id="n-msg"></div>
             </div>
@@ -730,11 +686,11 @@
                 <label style="display:flex;align-items:center;gap:8px;font-size:.86rem;margin-bottom:8px"><input type="checkbox" id="n-new" ${data.notify_on_new_order ? 'checked' : ''}> Avisar en cada <b>nuevo pedido</b></label>
                 <label style="display:flex;align-items:center;gap:8px;font-size:.86rem;margin-bottom:12px"><input type="checkbox" id="n-pay" ${data.notify_on_payment ? 'checked' : ''}> Avisar al <b>confirmar el pago</b></label>
                 <div class="field"><label>Correos de aviso (separados por coma)</label><input id="n-emails" value="${esc((data.notify_emails || []).join(', '))}" placeholder="correo@cliente.com, copia@agencia.com"></div>
-                <div class="row">
-                    <div><div class="field"><label>WhatsApp de aviso (agente)</label><select id="n-wa-agente">${waOpts}</select></div></div>
-                    <div><div class="field"><label>Número WhatsApp (código país, ej 57300...)</label><input id="n-wa-numero" value="${esc(data.whatsapp_numero || '')}" placeholder="57300..."></div></div>
+                <div style="display:flex;gap:10px;flex-wrap:wrap">
+                    <div style="flex:1;min-width:180px"><div class="field"><label>WhatsApp de aviso (agente)</label><select id="n-wa-agente">${waOpts}</select></div></div>
+                    <div style="flex:1;min-width:180px"><div class="field"><label>Número WhatsApp (código país, ej 57300...)</label><input id="n-wa-numero" value="${esc(data.whatsapp_numero || '')}" placeholder="57300..."></div></div>
                 </div>
-                <button class="btn btn-green" onclick="guardarNotif()">💾 Guardar notificaciones</button>
+                <button class="btn-main btn-green" onclick="guardarNotif()"><i class="fas fa-save"></i> Guardar notificaciones</button>
                 <div class="msg" id="n-save"></div>
             </div>
         `;
@@ -773,20 +729,21 @@
                 notify_whatsapp_numero: $('n-wa-numero').value
             });
             if (!data.ok) throw new Error(data.error || 'Error');
-            toast('Notificaciones guardadas ✅'); renderNotificaciones();
+            toast('Notificaciones guardadas'); renderNotificaciones();
         } catch (err) { msg.textContent = 'Error: ' + err.message; msg.className = 'msg error'; }
     }
 
-    // Exponer funciones globales para onclick
     Object.assign(window, {
-        ir, salir, formProducto, nuevoProducto, editarProducto, eliminarProducto, syncTipo, renderSelector, renderImgs,
+        nav, salir, formProducto, nuevoProducto, editarProducto, eliminarProducto, syncTipo, renderSelector, renderImgs,
         addImg, quitImg, imgSubir, leerArchivo, guardarProducto, formVariaciones, guardarVariaciones,
         renderCategorias, guardarCategoria, eliminarCategoria,
         renderAtributos, guardarAtributo, eliminarAtributo,
         renderOrdenes, cambiarEstado, renderClientes,
-        renderPasarela, guardarPasarela, renderNotificaciones, conectarGmail, desconectarGmail, guardarNotif
+        renderPasarela, guardarPasarela, renderNotificaciones, conectarGmail, desconectarGmail, guardarNotif,
+        toggleTheme, actualizarBotonTema
     });
 
+    actualizarBotonTema();
     init();
 })();
     </script>

@@ -1082,6 +1082,10 @@ El botón **"Gestionar tienda"** del panel ya no abre un modal: redirige a **`ti
 - El modal antiguo en `dashboard.html` queda inactivo (no se elimina para no tocar código compartido), pero el botón redirige a la página.
 - **Validado en producción** (deploy `6a823703c5eb6af31f22583d`): `tienda-admin.html` se sirve (HTTP 200, 52 KB) y las acciones que usa la página (`info`, listar productos/categorías/atributos/órdenes/clientes, estado pasarela/notificaciones) responden OK con un admin de prueba; recursos de prueba limpiados.
 
+## 17 Ago 2026 — Estilos compartidos del panel (dashboard.css)
+
+Los estilos del panel AUVRO se extrajeron del `<style>` inline de `dashboard.html` a **`dashboard.css`** (misma fuente única). `dashboard.html` y `tienda-admin.html` enlazan el mismo CSS → el módulo de gestión de tienda usa **exactamente el mismo diseño** (variables, sidebar, botones `btn-main`/`btn-small`, cards, tablas, badges, modo claro/oscuro con toggle persistente) que el panel. Deploy `6a8239109a55fb90f0b883a7`.
+
 ## 16 Ago 2026 — Fix: el create de Web Factory fallaba en silencio (background functions)
 
 **Bug:** las background functions de Netlify (`web-factory-background`) responden **siempre `202 Accepted` con body vacío** (el resultado real se descarta y solo vive en los logs). `dashboard.html` `crearProyectoWeb()` leía ese body (`data.ok`/`data.error`) → **siempre parecía éxito** ("Sitio en creacion. El estado se actualiza solo.") aunque la función fallara (token vencido, error en Supabase, etc.). Resultado: al crear "storecase" no aparecía ninguna fila ni error.
