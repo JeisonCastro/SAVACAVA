@@ -6091,12 +6091,11 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
 
         mostrarOverlayCarga('Creando sitio web...');
         try {
-            const res = await fetch('/.netlify/functions/web-factory', {
+            const res = await fetch('/.netlify/functions/web-factory-background', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${currentSession?.access_token || ''}`,
-                    'X-NF-Background': 'true'
+                    'Authorization': `Bearer ${currentSession?.access_token || ''}`
                 },
                 body: JSON.stringify({ action: 'create', cliente, nombre, slug, plantilla, dominio, descripcion, slogan, logo, whatsapp, agente_id: agenteId || null, accent_color: accentColor, fuente })
             });
@@ -6143,12 +6142,11 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
         }
         mostrarOverlayCarga(apagar ? 'Apagando sitio...' : 'Reactivando sitio...');
         try {
-            const res = await fetch('/.netlify/functions/web-factory', {
+            const res = await fetch('/.netlify/functions/web-factory-background', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${currentSession?.access_token || ''}`,
-                    'X-NF-Background': 'true'
+                    'Authorization': `Bearer ${currentSession?.access_token || ''}`
                 },
                 body: JSON.stringify({ action: 'set_activo', id, activo: !activoActual })
             });

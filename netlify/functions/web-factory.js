@@ -5,10 +5,11 @@
 // Validación de admin: mismo patrón que admin-data.js (token del usuario + perfiles.is_admin).
 // Los secretos (GITHUB_TOKEN, NETLIFY_AUTH_TOKEN) se leen SOLO de variables de entorno.
 //
-// El action `create` está pensado para ejecutarse como background function de Netlify
-// (el cliente envía el header "X-NF-Background: true"): responde 202 al instante y la
-// función termina el pipeline en segundo plano (hasta 15 min). El dashboard hace polling
-// de `refresh_status` / `get` hasta ver el estado final.
+// El action `create` (y `set_activo`) se ejecuta como **background function real**
+// en web-factory-background.js (sufijo -background): hasta 15 min sin timeout síncrono.
+// Aquí quedan las acciones interactivas (list, get, refresh_status, delete) que deben
+// responder rápido. El dashboard hace polling de `refresh_status` / `get` para ver el
+// estado final de los sitios mientras se crean o se apagan.
 
 const fs = require('fs');
 const path = require('path');
@@ -450,12 +451,17 @@ async function publicarSuspension(siteId, html) {
     }
     const deploy = await res.json();
 
-    const pendientes = (deploy.required && deploy.required.length) ? deploy.required : Object.keys(files);
-    for (const rel of pendientes) {
-        const ruta = String(rel).replace(/^\//, '');
-        const contenido = files['/' + ruta];
-        if (contenido === undefined) continue;
-        const up = await fetch(`https://api.netlify.com/api/v1/deploys/${deploy.id}/files/${ruta}`, {
+    // IMPORTANTE: deploy.required contiene los SHA1 (digest) de los archivos que
+    // Netlify aún no tiene, NO las rutas. Sin mapear digest -> ruta el archivo
+    // nunca se sube y el deploy se queda en "uploading" hasta el timeout.
+    const porDigest = {};
+    for (const [ruta, contenido] of Object.entries(files)) porDigest[sha1hex(contenido)] = ruta;
+    const pendientes = (deploy.required && deploy.required.length)
+        ? deploy.required.map(d => porDigest[d]).filter(Boolean)
+        : Object.keys(files);
+    for (const ruta of pendientes) {
+        const contenido = files[ruta];
+        const up = await fetch(`https://api.netlify.com/api/v1/deploys/${deploy.id}/files/${ruta.replace(/^\//, '')}`, {
             method: 'PUT',
             headers: { ...headers, 'Content-Type': 'text/html' },
             body: contenido
@@ -490,8 +496,9 @@ function mapearEstadoDeploy(state) {
 
 async function registrarDominio(siteId, dominio) {
     const reintentos = 3;
+    let res = null;
     for (let i = 1; i <= reintentos; i++) {
-        const res = await fetch(`https://api.netlify.com/api/v1/sites/${siteId}/domains`, {
+        res = await fetch(`https://api.netlify.com/api/v1/sites/${siteId}/domains`, {
             method: 'POST',
             headers: netlifyHeaders(),
             body: JSON.stringify({ hostname: dominio })
@@ -804,62 +811,16 @@ exports.handler = async (event) => {
             return { statusCode: 200, body: JSON.stringify({ ok: true, proyecto: actualizado }) };
         }
 
-        // ── CREATE: pipeline completo (background) ──
-        if (action === 'create') {
-            const { cliente, nombre, slug, plantilla, dominio, descripcion, accent_color } = body;
-            if (!cliente || !String(cliente).trim()) return { statusCode: 400, body: JSON.stringify({ error: 'Falta el cliente' }) };
-            if (!nombre || !String(nombre).trim()) return { statusCode: 400, body: JSON.stringify({ error: 'Falta el nombre' }) };
-            if (!validarSlug(slug)) return { statusCode: 400, body: JSON.stringify({ error: 'Slug inválido (solo minusculas, numeros y guiones)' }) };
-            if (!validarDominio(dominio)) return { statusCode: 400, body: JSON.stringify({ error: 'Dominio inválido' }) };
-            if (accent_color !== undefined && accent_color !== null && accent_color !== '' && validarAccent(accent_color) === null) {
-                return { statusCode: 400, body: JSON.stringify({ error: 'Color principal inválido (usa #RRGGBB)' }) };
-            }
-            if (!process.env.GITHUB_TOKEN) return { statusCode: 500, body: JSON.stringify({ error: 'Falta GITHUB_TOKEN en las variables de entorno' }) };
-            if (!process.env.NETLIFY_AUTH_TOKEN) return { statusCode: 500, body: JSON.stringify({ error: 'Falta NETLIFY_AUTH_TOKEN en las variables de entorno' }) };
-
-            const resultado = await pipelineCrear(body, adminId);
-            return { statusCode: 200, body: JSON.stringify(resultado) };
-        }
-
-        // ── SET_ACTIVO: apagar (suspender) o reactivar un sitio ──
-        // Apagar: publica un deploy directo con la pagina de "suspendido" (instantáneo).
-        // Reactivar: dispara un build desde el repo (el sitio real sigue en GitHub).
-        if (action === 'set_activo') {
-            const { id, activo } = body;
-            if (!id) return { statusCode: 400, body: JSON.stringify({ error: 'Falta id' }) };
-            if (typeof activo !== 'boolean') return { statusCode: 400, body: JSON.stringify({ error: 'activo debe ser true o false' }) };
-
-            const { data: proyecto, error: getErr } = await supabase.from('web_projects').select('*').eq('id', id).single();
-            if (getErr) return { statusCode: 404, body: JSON.stringify({ error: getErr.message }) };
-            if (!proyecto.netlify_site_id) return { statusCode: 400, body: JSON.stringify({ error: 'El sitio aún no tiene un sitio de Netlify asociado' }) };
-
-            const errMigracion = 'Supabase: la tabla web_projects no tiene la columna "activo". Ejecuta la migración 20260816_web_factory_activo en el SQL Editor de Supabase.';
-
-            if (activo === false) {
-                // Apagar: primero marcar en DB, luego publicar la página de suspensión.
-                await actualizarProyecto(id, { activo: false, estado: 'suspending', error: null })
-                    .catch(e => {
-                        if (String(e.message).includes('42703') || String(e.message).includes('"activo"')) throw new Error(errMigracion);
-                        throw e;
-                    });
-                try {
-                    await publicarSuspension(proyecto.netlify_site_id, paginaSuspension(proyecto.nombre));
-                    await actualizarProyecto(id, { estado: 'inactivo', estado_deploy: 'ready', deploy_error: null });
-                } catch (err) {
-                    await actualizarProyecto(id, { activo: true, estado: 'publicado' }).catch(() => {});
-                    throw err;
-                }
-                return { statusCode: 200, body: JSON.stringify({ ok: true, activo: false }) };
-            }
-
-            // Reactivar: dispara el build desde GitHub y marca como desplegando.
-            await actualizarProyecto(id, { activo: true, estado: 'deploying', error: null })
-                .catch(e => {
-                    if (String(e.message).includes('42703') || String(e.message).includes('"activo"')) throw new Error(errMigracion);
-                    throw e;
-                });
-            await dispararBuild(proyecto.netlify_site_id);
-            return { statusCode: 200, body: JSON.stringify({ ok: true, activo: true }) };
+        // ── CREATE / SET_ACTIVO ──
+        // Estas acciones son largas (pipeline GitHub+Netlify, suspensión por deploy).
+        // Viven en web-factory-background.js (background function, hasta 15 min).
+        // Aquí solo se indican como no disponibles para evitar el kill por timeout
+        // síncrono (10s) si alguien las llama a este endpoint.
+        if (action === 'create' || action === 'set_activo') {
+            return {
+                statusCode: 400,
+                body: JSON.stringify({ error: 'Esta acción corre como background function: usa /.netlify/functions/web-factory-background' })
+            };
         }
 
         // ── DELETE: elimina el registro de AUVRO (no borra repo/site en GitHub/Netlify) ──
@@ -898,6 +859,8 @@ module.exports.helpers = {
     hostnameDeUrl,
     hostnamesParaSitio,
     pipelineCrear,
+    actualizarProyecto,
+    dispararBuild,
     paginaSuspension,
     sha1hex,
     publicarSuspension,
