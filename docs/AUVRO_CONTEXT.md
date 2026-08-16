@@ -1086,6 +1086,10 @@ El botón **"Gestionar tienda"** del panel ya no abre un modal: redirige a **`ti
 
 Los estilos del panel AUVRO se extrajeron del `<style>` inline de `dashboard.html` a **`dashboard.css`** (misma fuente única). `dashboard.html` y `tienda-admin.html` enlazan el mismo CSS → el módulo de gestión de tienda usa **exactamente el mismo diseño** (variables, sidebar, botones `btn-main`/`btn-small`, cards, tablas, badges, modo claro/oscuro con toggle persistente) que el panel. Deploy `6a8239109a55fb90f0b883a7`.
 
+## 17 Ago 2026 — Categorías preestablecidas por defecto (seeding)
+
+Las categorías vuelven a venir **preestablecidas** (el set original: Tecnología y Electrónica, Moda y Accesorios, Hogar y Decoración, Electrodomésticos, Belleza y Cuidado Personal, Salud y Bienestar, Deportes y Aire Libre, Bebés y Juguetería, Mascotas, Papelería y Oficina, Otros). `tienda.js` las **siembra la primera vez** (`sembrarCategoriasSiVacio`, upsert idempotente por `(proyecto_id, nombre)`) tanto al listar categorías (admin) como en el catálogo público; el admin sigue pudiendo **crear/eliminar** categorías desde el módulo. Validado E2E en producción: 11 categorías sembradas y devueltas por `listar_categorias` y `catalogo`. Deploy `6a823ad7ee2b64245928ae1e`.
+
 ## 16 Ago 2026 — Fix: el create de Web Factory fallaba en silencio (background functions)
 
 **Bug:** las background functions de Netlify (`web-factory-background`) responden **siempre `202 Accepted` con body vacío** (el resultado real se descarta y solo vive en los logs). `dashboard.html` `crearProyectoWeb()` leía ese body (`data.ok`/`data.error`) → **siempre parecía éxito** ("Sitio en creacion. El estado se actualiza solo.") aunque la función fallara (token vencido, error en Supabase, etc.). Resultado: al crear "storecase" no aparecía ninguna fila ni error.

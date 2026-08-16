@@ -179,6 +179,8 @@ async function accionCatalogo(params) {
     const { data: proyecto } = await supabase.from('web_projects').select('id').eq('slug', slug).maybeSingle();
     if (!proyecto) return ok({ ok: false, error: 'Sitio no encontrado' }, 404);
 
+    await sembrarCategoriasSiVacio(proyecto.id);
+
     const { data: categorias } = await supabase
         .from('tienda_categorias')
         .select('id, nombre')
@@ -736,6 +738,7 @@ async function accionListarCategorias(adminId, params) {
     const { proyecto_id } = params;
     const acceso = await validarAcceso(proyecto_id, adminId);
     if (acceso) return acceso;
+    await sembrarCategoriasSiVacio(proyecto_id);
     const { data: categorias, error } = await supabase
         .from('tienda_categorias')
         .select('*')
@@ -745,12 +748,27 @@ async function accionListarCategorias(adminId, params) {
     return ok({ ok: true, categorias: categorias || [] });
 }
 
+// Categorías preestablecidas (mismo set definido desde el inicio); el admin
+// puede crear/eliminar más. Se siembran la primera vez (idempotente, upsert).
 const CATEGORIAS_PRESET = [
     'Tecnología y Electrónica', 'Moda y Accesorios', 'Hogar y Decoración',
     'Electrodomésticos', 'Belleza y Cuidado Personal', 'Salud y Bienestar',
     'Deportes y Aire Libre', 'Bebés y Juguetería', 'Mascotas',
     'Papelería y Oficina', 'Otros'
 ];
+
+async function sembrarCategoriasSiVacio(proyectoId) {
+    const { data: existentes } = await supabase
+        .from('tienda_categorias')
+        .select('id')
+        .eq('proyecto_id', proyectoId)
+        .limit(1);
+    if (existentes && existentes.length) return;
+    const presets = CATEGORIAS_PRESET.map((nombre, i) => ({ proyecto_id: proyectoId, nombre, orden: i }));
+    try {
+        await supabase.from('tienda_categorias').upsert(presets, { onConflict: 'proyecto_id,nombre' });
+    } catch (_) {}
+}
 
 async function accionGuardarCategoria(adminId, body) {
     const { proyecto_id, id, nombre, orden } = body;
