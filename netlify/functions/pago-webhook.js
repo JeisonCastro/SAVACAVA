@@ -75,6 +75,7 @@ exports.handler = async (event) => {
         }
 
         // Para ventas CRM la firma usa el events secret DEL AGENTE (pasarela del vendedor).
+        // Para pagos de tienda usa el events secret DEL CLIENTE (tienda_pasarela del sitio).
         let secret = process.env.WOMPI_EVENTS_SECRET;
         if (pago.tipo === 'venta') {
             const { data: lead } = pago.lead_id
@@ -87,6 +88,20 @@ exports.handler = async (event) => {
                     .eq('agente_id', lead.agente_id)
                     .maybeSingle();
                 if (config?.wompi_events_secret) secret = config.wompi_events_secret;
+            }
+        } else if (pago.tipo === 'tienda' && pago.orden_id) {
+            const { data: orden } = await supabase
+                .from('tienda_ordenes')
+                .select('proyecto_id')
+                .eq('id', pago.orden_id)
+                .maybeSingle();
+            if (orden?.proyecto_id) {
+                const { data: pasarela } = await supabase
+                    .from('tienda_pasarela')
+                    .select('wompi_events_secret')
+                    .eq('proyecto_id', orden.proyecto_id)
+                    .maybeSingle();
+                if (pasarela?.wompi_events_secret) secret = pasarela.wompi_events_secret;
             }
         }
 
@@ -138,6 +153,98 @@ exports.handler = async (event) => {
                     p_valor_cents: pago.monto_cents
                 });
                 if (leadErr) throw new Error('Error cerrando lead: ' + leadErr.message);
+            }
+        } else if (pago.tipo === 'tienda') {
+            // Compra en una tienda de Web Factory: marcar la orden como pagada,
+            // descontar stock y notificar (in-app al dueño + email best-effort).
+            if (pago.orden_id) {
+                const { data: orden } = await supabase
+                    .from('tienda_ordenes')
+                    .select('*')
+                    .eq('id', pago.orden_id)
+                    .maybeSingle();
+
+                if (orden) {
+                    const { error: ordErr } = await supabase
+                        .from('tienda_ordenes')
+                        .update({ estado: 'pagada', transaction_id: transaction.id, updated_at: new Date().toISOString() })
+                        .eq('id', orden.id);
+                    if (ordErr) throw new Error('Error marcando orden pagada: ' + ordErr.message);
+
+                    // Descontar stock de productos físicos
+                    const { data: lineas } = await supabase
+                        .from('tienda_orden_items')
+                        .select('producto_id, cantidad')
+                        .eq('orden_id', orden.id);
+                    for (const l of lineas || []) {
+                        if (!l.producto_id) continue;
+                        const { data: prod } = await supabase
+                            .from('tienda_productos')
+                            .select('tipo, stock')
+                            .eq('id', l.producto_id)
+                            .maybeSingle();
+                        if (prod && prod.tipo === 'fisico' && prod.stock !== null) {
+                            await supabase
+                                .from('tienda_productos')
+                                .update({ stock: Math.max(0, prod.stock - l.cantidad), updated_at: new Date().toISOString() })
+                                .eq('id', l.producto_id)
+                                .catch(() => {});
+                        }
+                    }
+
+                    // Notificaciones (best-effort: dependen de conexiones del dueño)
+                    try {
+                        const { data: proyecto } = await supabase
+                            .from('web_projects')
+                            .select('created_by, nombre')
+                            .eq('id', orden.proyecto_id)
+                            .maybeSingle();
+                        if (proyecto?.created_by) {
+                            const { registrarNotificacion, sendEmail } = require('./notifications');
+                            await registrarNotificacion({
+                                userId: proyecto.created_by,
+                                eventType: 'tienda_venta',
+                                channel: 'app',
+                                recipient: proyecto.created_by,
+                                subject: `Venta en ${proyecto.nombre}: ${Math.round(transaction.amount_in_cents / 100).toLocaleString('es-CO')} COP (ref ${transaction.id})`,
+                                status: 'sent'
+                            });
+                            if (orden.cliente_email) {
+                                sendEmail({
+                                    userId: proyecto.created_by,
+                                    to: orden.cliente_email,
+                                    subject: `Confirmación de compra en ${proyecto.nombre}`,
+                                    text: `¡Gracias por tu compra en ${proyecto.nombre}!\nReferencia: ${transaction.id}\nTotal: ${Math.round(transaction.amount_in_cents / 100).toLocaleString('es-CO')} COP\n\nTu pedido ya fue procesado.`
+                                }).catch(err => console.error('tienda post-pago email err:', err.message));
+                            }
+
+                            // Aviso al dueño de la tienda: pago confirmado (correo/WhatsApp según config)
+                            try {
+                                const { data: cfg } = await supabase
+                                    .from('tienda_pasarela')
+                                    .select('*')
+                                    .eq('proyecto_id', orden.proyecto_id)
+                                    .maybeSingle();
+                                if (cfg?.notify_on_payment) {
+                                    const { notificarTienda } = require('./notifications');
+                                    const montoStr = '$' + (Math.round(transaction.amount_in_cents) / 100).toLocaleString('es-CO');
+                                    const detalle = (lineas || []).map(l => l.nombre).join(', ');
+                                    await notificarTienda({
+                                        proyectoId: orden.proyecto_id,
+                                        createdBy: proyecto.created_by,
+                                        config: cfg,
+                                        subject: `Pago confirmado en ${proyecto.nombre}: ${montoStr}`,
+                                        text: `Pago confirmado ✅\nTienda: ${proyecto.nombre}\nProductos: ${detalle || '—'}\nMonto: ${montoStr}\nReferencia: ${transaction.id}\nCliente: ${orden.cliente_nombre || ''}${orden.cliente_email ? ' · ' + orden.cliente_email : ''}`
+                                    });
+                                }
+                            } catch (cfgErr) {
+                                console.error('Error avisando pago de tienda:', cfgErr.message);
+                            }
+                        }
+                    } catch (notifErr) {
+                        console.error('Error notificando venta de tienda:', notifErr.message);
+                    }
+                }
             }
         }
 

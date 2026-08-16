@@ -4920,6 +4920,31 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
                         <div id="wf-modal-body"></div>
                     </div>
                 </div>
+
+                <!-- MODAL: Gestionar tienda (e-commerce) -->
+                <div id="tienda-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;align-items:center;justify-content:center">
+                    <div style="background:var(--surface);border:1px solid var(--border2);border-radius:14px;padding:1.5rem;width:92%;max-width:920px;max-height:92vh;overflow-y:auto;box-shadow:var(--shadow-soft)">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.3rem">
+                            <h3 style="font-family:'Inter',sans-serif;font-weight:700;font-size:1rem"><i class="fas fa-store" style="margin-right:.35rem;color:var(--accent)"></i>Tienda: <span id="tienda-nombre"></span></h3>
+                            <button onclick="cerrarTiendaModal()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1.1rem"><i class="fas fa-times"></i></button>
+                        </div>
+                        <p style="font-size:.74rem;color:var(--muted);margin-bottom:.8rem">
+                            Productos y ventas de la tienda
+                            <a id="tienda-url" href="#" target="_blank" rel="noopener" style="color:var(--accent)">ver tienda</a>.
+                            Cada tienda cobra con la pasarela Wompi de su propio cliente (configúrala en la pestaña Pasarela).
+                        </p>
+                        <div style="display:flex;gap:.5rem;margin-bottom:1rem;flex-wrap:wrap">
+                            <button class="btn-main" style="padding:.45rem .9rem;font-size:.78rem" id="tienda-tab-productos" onclick="tiendaTab('productos')"><i class="fas fa-box" style="margin-right:.25rem"></i>Productos</button>
+                            <button class="btn-main" style="padding:.45rem .9rem;font-size:.78rem" id="tienda-tab-ordenes" onclick="tiendaTab('ordenes')"><i class="fas fa-receipt" style="margin-right:.25rem"></i>Órdenes</button>
+                            <button class="btn-main" style="padding:.45rem .9rem;font-size:.78rem" id="tienda-tab-pasarela" onclick="tiendaTab('pasarela')"><i class="fas fa-credit-card" style="margin-right:.25rem"></i>Pasarela</button>
+                            <button class="btn-main" style="padding:.45rem .9rem;font-size:.78rem" id="tienda-tab-notif" onclick="tiendaTab('notificaciones')"><i class="fas fa-bell" style="margin-right:.25rem"></i>Notificaciones</button>
+                        </div>
+                        <div id="tienda-panel-productos"></div>
+                        <div id="tienda-panel-ordenes" style="display:none"></div>
+                        <div id="tienda-panel-pasarela" style="display:none"></div>
+                        <div id="tienda-panel-notificaciones" style="display:none"></div>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -5996,6 +6021,7 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
                             ${p.netlify_url ? `<button class="btn-small" onclick="window.open('${wfEscapeHtml(p.netlify_url)}','_blank')" style="font-size:.72rem;padding:4px 8px" title="Abrir sitio"><i class="fas fa-external-link"></i></button>` : ''}
                             ${p.github_url ? `<button class="btn-small" onclick="window.open('${wfEscapeHtml(p.github_url)}','_blank')" style="font-size:.72rem;padding:4px 8px" title="Abrir repo en GitHub"><i class="fab fa-github"></i></button>` : ''}
                             ${p.clone_url ? `<button class="btn-small" onclick="copiarClone('${wfEscapeHtml(p.clone_url)}', '${wfEscapeHtml(p.slug)}')" style="font-size:.72rem;padding:4px 8px" title="Copiar comando clone"><i class="fas fa-copy"></i></button>` : ''}
+                            ${p.plantilla === 'tienda' ? `<button class="btn-small" onclick="abrirTiendaModal('${p.id}','${wfEscapeHtml(p.nombre)}','${wfEscapeHtml(p.slug)}')" style="font-size:.72rem;padding:4px 8px" title="Gestionar tienda (productos y órdenes)"><i class="fas fa-store"></i></button>` : ''}
                             <button class="btn-small" onclick="actualizarEstadoWeb('${p.id}')" style="font-size:.72rem;padding:4px 8px" title="Actualizar estado"><i class="fas fa-rotate"></i></button>
                             ${p.netlify_site_id ? (inactivo
                                 ? `<button class="btn-small green" onclick="toggleActivoWeb('${p.id}', false, '${wfEscapeHtml(p.nombre)}')" style="font-size:.72rem;padding:4px 8px" title="Reactivar sitio (redesplegar desde GitHub)"><i class="fas fa-play"></i></button>`
@@ -6099,13 +6125,42 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
                 },
                 body: JSON.stringify({ action: 'create', cliente, nombre, slug, plantilla, dominio, descripcion, slogan, logo, whatsapp, agente_id: agenteId || null, accent_color: accentColor, fuente })
             });
-            const data = await res.json().catch(() => ({}));
-            if (!res.ok || data.ok === false) {
+            // Las background functions de Netlify responden SIEMPRE 202 con body vacío,
+            // así que aquí no se puede leer el resultado de la respuesta. El resultado real
+            // queda en la fila de Supabase (pipelineCrear la inserta en el paso 1): hacemos
+            // polling con get_by_slug hasta que aparezca y mostramos su estado real.
+            const inicio = Date.now();
+            const limiteMs = 210000; // 3.5 min (GitHub repo + Netlify site + build)
+            let fila = null;
+            let fallo = null;
+            while (Date.now() - inicio < limiteMs) {
+                await new Promise(r => setTimeout(r, 4000));
+                const r = await fetch('/.netlify/functions/web-factory', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${currentSession?.access_token || ''}`
+                    },
+                    body: JSON.stringify({ action: 'get_by_slug', slug })
+                });
+                const p = await r.json().catch(() => ({}));
+                if (!r.ok) { fallo = (p.error || ('HTTP ' + r.status)); break; }
+                if (p.ok && p.proyecto) { fila = p.proyecto; break; }
+            }
+            if (fallo) {
                 ocultarOverlayCarga();
-                return showToast('Error: ' + (data.error || 'No se pudo crear el sitio'), 'error');
+                return showToast('Error al crear "' + slug + '": ' + fallo + '. Cierra sesión y vuelve a entrar, y reintenta.', 'error');
+            }
+            if (!fila) {
+                ocultarOverlayCarga();
+                return showToast('El sitio no se registró: la función de creación no respondió. Cierra sesión y vuelve a entrar, y reintenta. Si persiste, revisa los logs de web-factory-background (Netlify → Functions → Logs).', 'error');
+            }
+            if (fila.estado === 'error') {
+                ocultarOverlayCarga();
+                return showToast('Error al crear el sitio "' + slug + '": ' + (fila.error || 'error desconocido'), 'error');
             }
             ocultarOverlayCarga();
-            showToast('Sitio en creacion. El estado se actualiza solo.');
+            showToast('Sitio "' + fila.slug + '" creado. El estado se actualiza solo.');
             cerrarWfModal();
             cargarWebFactory();
         } catch (err) {
@@ -6190,6 +6245,453 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
         }
     }
 
+    // ── TIENDA (e-commerce en Web Factory) ──
+    let _tiendaCtx = { proyecto_id: '', slug: '', nombre: '' };
+    let _tiendaProductos = [];
+    let _tiendaOrdenes = [];
+    let _tiendaEditandoId = null;
+    let _tiendaImagenData = null;
+    let _tiendaArchivoDigital = null;
+
+    function fmtCOP(cents) {
+        return '$' + (Math.round(Number(cents) || 0) / 100).toLocaleString('es-CO');
+    }
+
+    function tiendaTipoLabel(t) {
+        return { fisico: 'Físico', digital: 'Digital', servicio: 'Servicio' }[t] || t || '—';
+    }
+
+    function tiendaEstadoBadge(e) {
+        if (e === 'pagada') return { cls: 'badge-green', label: 'Pagada' };
+        if (e === 'pendiente') return { cls: 'badge-yellow', label: 'Pendiente' };
+        return { cls: 'badge-red', label: 'Cancelada' };
+    }
+
+    async function tiendaApi(action, body = {}) {
+        const res = await fetch('/.netlify/functions/tienda', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${currentSession?.access_token || ''}` },
+            body: JSON.stringify({ action, ...body })
+        });
+        return res.json();
+    }
+
+    function abrirTiendaModal(proyectoId, nombre, slug) {
+        _tiendaCtx = { proyecto_id: proyectoId, slug: slug || '', nombre: nombre || '' };
+        document.getElementById('tienda-nombre').textContent = nombre || '';
+        const u = document.getElementById('tienda-url');
+        if (slug) {
+            u.href = 'https://' + slug + '.netlify.app';
+            u.textContent = 'https://' + slug + '.netlify.app';
+            u.style.display = '';
+        } else {
+            u.style.display = 'none';
+        }
+        document.getElementById('tienda-modal').style.display = 'flex';
+        tiendaTab('productos');
+    }
+
+    function cerrarTiendaModal() {
+        document.getElementById('tienda-modal').style.display = 'none';
+    }
+
+    function tiendaTab(tab) {
+        const p = document.getElementById('tienda-panel-productos');
+        const o = document.getElementById('tienda-panel-ordenes');
+        const pa = document.getElementById('tienda-panel-pasarela');
+        const n = document.getElementById('tienda-panel-notificaciones');
+        const bp = document.getElementById('tienda-tab-productos');
+        const bo = document.getElementById('tienda-tab-ordenes');
+        const bpa = document.getElementById('tienda-tab-pasarela');
+        const bn = document.getElementById('tienda-tab-notif');
+        const activo = (el) => { el.style.background = 'var(--accent)'; el.style.color = '#fff'; };
+        const normal = (el) => { el.style.background = 'var(--bg2)'; el.style.color = 'var(--text)'; };
+        [bp, bo, bpa, bn].forEach(normal);
+        if (tab === 'productos') {
+            p.style.display = ''; o.style.display = 'none'; pa.style.display = 'none'; n.style.display = 'none';
+            activo(bp);
+            cargarTiendaProductos();
+        } else if (tab === 'ordenes') {
+            p.style.display = 'none'; o.style.display = ''; pa.style.display = 'none'; n.style.display = 'none';
+            activo(bo);
+            cargarTiendaOrdenes();
+        } else if (tab === 'pasarela') {
+            p.style.display = 'none'; o.style.display = 'none'; pa.style.display = ''; n.style.display = 'none';
+            activo(bpa);
+            cargarPasarelaTienda();
+        } else {
+            p.style.display = 'none'; o.style.display = 'none'; pa.style.display = 'none'; n.style.display = '';
+            activo(bn);
+            cargarNotificacionesTienda();
+        }
+    }
+
+    async function cargarTiendaProductos() {
+        const cont = document.getElementById('tienda-panel-productos');
+        cont.innerHTML = '<div style="text-align:center;color:var(--dim);padding:1.5rem">Cargando...</div>';
+        try {
+            const data = await tiendaApi('listar_productos', { proyecto_id: _tiendaCtx.proyecto_id });
+            if (!data.ok) throw new Error(data.error || 'Error cargando productos');
+            _tiendaProductos = data.productos || [];
+            tiendaRenderProductos();
+        } catch (err) {
+            cont.innerHTML = '<div style="text-align:center;color:var(--red);padding:1.5rem">' + wfEscapeHtml(err.message || 'Error') + '</div>';
+        }
+    }
+
+    function tiendaRenderProductos() {
+        const cont = document.getElementById('tienda-panel-productos');
+        cont.innerHTML = `
+            <div style="margin-bottom:.8rem">
+                <button class="btn-main" style="padding:.45rem .9rem;font-size:.78rem" onclick="tiendaFormProducto(null)"><i class="fas fa-plus" style="margin-right:.25rem"></i>Nuevo producto</button>
+            </div>
+            ${_tiendaProductos.length ? _tiendaProductos.map(p => `
+                <div style="display:flex;gap:.8rem;align-items:center;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:.7rem;margin-bottom:.6rem">
+                    ${p.imagen
+                        ? `<img src="${wfEscapeHtml(p.imagen)}" alt="" style="width:48px;height:48px;border-radius:8px;object-fit:cover;border:1px solid var(--border2)">
+                            <div style="width:48px;height:48px;border-radius:8px;background:var(--bg);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;color:var(--dim)"><i class="fas fa-box"></i></div>`
+                        : ''}
+                    <div style="flex:1;min-width:0">
+                        <div style="font-weight:600;font-size:.9rem">${wfEscapeHtml(p.nombre)}</div>
+                        <div style="font-size:.74rem;color:var(--dim)">${tiendaTipoLabel(p.tipo)} · ${fmtCOP(p.precio_cents)}${p.tipo === 'fisico' && p.stock !== null ? ' · Stock: ' + p.stock : ''}${p.activo ? '' : ' · <span style="color:var(--red)">oculto</span>'}</div>
+                    </div>
+                    <button class="btn-small" onclick="tiendaEditarProducto('${p.id}')" style="font-size:.72rem;padding:4px 8px" title="Editar"><i class="fas fa-pen"></i></button>
+                    <button class="btn-small danger" onclick="tiendaEliminarProducto('${p.id}','${wfEscapeHtml(p.nombre)}')" style="font-size:.72rem;padding:4px 8px" title="Eliminar"><i class="fas fa-trash"></i></button>
+                </div>`).join('')
+                : '<div style="text-align:center;color:var(--dim);padding:2rem">No hay productos todavia. Crea el primero.</div>'}
+        `;
+    }
+
+    function tiendaEditarProducto(id) {
+        const prod = _tiendaProductos.find(x => x.id === id);
+        tiendaFormProducto(prod || null);
+    }
+
+    function tiendaFormProducto(prod) {
+        _tiendaEditandoId = prod?.id || null;
+        _tiendaImagenData = null;
+        _tiendaArchivoDigital = null;
+        const tipo = prod?.tipo || 'fisico';
+        const cont = document.getElementById('tienda-panel-productos');
+        cont.innerHTML = `
+            <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:.8rem;margin-bottom:1rem">
+                <div style="font-weight:700;font-size:.85rem;margin-bottom:.6rem">${prod ? 'Editar producto' : 'Nuevo producto'}</div>
+                <div style="display:flex;gap:.6rem;flex-wrap:wrap">
+                    <div style="flex:2;min-width:180px"><label style="font-size:.74rem;font-weight:600;color:var(--dim)">Nombre</label><input id="tp-nombre" value="${wfEscapeHtml(prod?.nombre || '')}" placeholder="Ej: Kit facial vitamina C" style="width:100%;padding:7px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text)"></div>
+                    <div style="flex:1;min-width:110px"><label style="font-size:.74rem;font-weight:600;color:var(--dim)">Tipo</label>
+                        <select id="tp-tipo" onchange="tiendaSyncTipo()" style="width:100%;padding:7px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text)">
+                            <option value="fisico"${tipo === 'fisico' ? ' selected' : ''}>Físico</option>
+                            <option value="digital"${tipo === 'digital' ? ' selected' : ''}>Digital</option>
+                            <option value="servicio"${tipo === 'servicio' ? ' selected' : ''}>Servicio</option>
+                        </select>
+                    </div>
+                    <div style="flex:1;min-width:110px"><label style="font-size:.74rem;font-weight:600;color:var(--dim)">Precio (COP)</label><input id="tp-precio" type="number" min="0" value="${Math.round((prod?.precio_cents || 0) / 100)}" placeholder="Ej: 99000" style="width:100%;padding:7px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text)"></div>
+                    <div style="flex:1;min-width:90px" id="tp-stock-wrap"><label style="font-size:.74rem;font-weight:600;color:var(--dim)">Stock</label><input id="tp-stock" type="number" min="0" value="${prod?.tipo === 'fisico' && prod?.stock !== null ? prod.stock : ''}" placeholder="Vacío = ilimitado" style="width:100%;padding:7px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text)"></div>
+                </div>
+                <div style="margin-top:.6rem"><label style="font-size:.74rem;font-weight:600;color:var(--dim)">Descripcion</label><input id="tp-descripcion" value="${wfEscapeHtml(prod?.descripcion || '')}" placeholder="Breve descripcion que vera el cliente" style="width:100%;padding:7px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text)"></div>
+                <div style="display:flex;gap:.6rem;flex-wrap:wrap;margin-top:.6rem;align-items:flex-end">
+                    <div style="flex:2;min-width:200px"><label style="font-size:.74rem;font-weight:600;color:var(--dim)">Imagen (URL)</label><input id="tp-imagen-url" value="${wfEscapeHtml(prod?.imagen || '')}" placeholder="https://... o sube un archivo" style="width:100%;padding:7px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text)"></div>
+                    <input type="file" id="tp-imagen-file" accept="image/*" style="display:none" onchange="tiendaLeerImagen(this)">
+                    <button type="button" class="btn-main" style="padding:.45rem .7rem;font-size:.74rem" onclick="document.getElementById('tp-imagen-file').click()"><i class="fas fa-upload" style="margin-right:.25rem"></i>Subir imagen</button>
+                    <div style="flex:2;min-width:200px" id="tp-digital-wrap"><label style="font-size:.74rem;font-weight:600;color:var(--dim)">Archivo para entrega digital</label>
+                        <input type="file" id="tp-archivo-file" style="width:100%;padding:5px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text)" onchange="tiendaLeerArchivo(this)">
+                    </div>
+                </div>
+                <div id="tp-file-note" style="font-size:.72rem;color:var(--accent);margin-top:.4rem"></div>
+                <div style="display:flex;gap:.5rem;align-items:center;margin-top:.7rem;flex-wrap:wrap">
+                    <label style="display:flex;align-items:center;gap:.4rem;font-size:.78rem;cursor:pointer"><input type="checkbox" id="tp-activo" ${prod?.activo === false ? '' : 'checked'}> Disponible en la tienda</label>
+                    <span style="flex:1"></span>
+                    <button class="btn-main btn-green" style="padding:.45rem .9rem;font-size:.78rem" onclick="tiendaGuardarProducto()"><i class="fas fa-save" style="margin-right:.25rem"></i>Guardar producto</button>
+                    <button class="btn-main" style="padding:.45rem .9rem;font-size:.78rem" onclick="cargarTiendaProductos()">Cancelar</button>
+                </div>
+                <div class="msg" id="tp-msg"></div>
+            </div>
+        `;
+        tiendaSyncTipo();
+    }
+
+    function tiendaSyncTipo() {
+        const t = document.getElementById('tp-tipo')?.value;
+        const sw = document.getElementById('tp-stock-wrap');
+        const dw = document.getElementById('tp-digital-wrap');
+        if (sw) sw.style.display = t === 'fisico' ? '' : 'none';
+        if (dw) dw.style.display = t === 'digital' ? '' : 'none';
+    }
+
+    function tiendaLeerImagen(input) {
+        const file = input.files && input.files[0];
+        if (!file) return;
+        if (file.size > 7 * 1024 * 1024) { showToast('La imagen supera 7 MB', 'error'); input.value = ''; return; }
+        const reader = new FileReader();
+        reader.onload = () => {
+            _tiendaImagenData = String(reader.result);
+            document.getElementById('tp-imagen-url').value = '';
+            document.getElementById('tp-file-note').textContent = 'Imagen seleccionada: ' + file.name + ' (se subira al guardar)';
+        };
+        reader.readAsDataURL(file);
+    }
+
+    function tiendaLeerArchivo(input) {
+        const file = input.files && input.files[0];
+        if (!file) return;
+        if (file.size > 7 * 1024 * 1024) { showToast('El archivo supera 7 MB', 'error'); input.value = ''; return; }
+        const reader = new FileReader();
+        reader.onload = () => {
+            _tiendaArchivoDigital = { dataUrl: String(reader.result), name: file.name };
+            document.getElementById('tp-file-note').textContent = 'Archivo digital seleccionado: ' + file.name;
+        };
+        reader.readAsDataURL(file);
+    }
+
+    async function tiendaGuardarProducto() {
+        const msg = document.getElementById('tp-msg');
+        const nombre = document.getElementById('tp-nombre').value.trim();
+        const tipo = document.getElementById('tp-tipo').value;
+        const precio = Math.round(Number(document.getElementById('tp-precio').value) || 0) * 100;
+        if (!nombre) { if (msg) { msg.textContent = 'Escribe el nombre del producto'; msg.className = 'msg error'; } return; }
+        if (precio <= 0) { if (msg) { msg.textContent = 'El precio debe ser mayor a 0'; msg.className = 'msg error'; } return; }
+        let stock = null;
+        if (tipo === 'fisico') {
+            const sv = document.getElementById('tp-stock').value.trim();
+            stock = sv === '' ? null : Math.max(0, Math.floor(Number(sv) || 0));
+        }
+        const descripcion = document.getElementById('tp-descripcion').value.trim();
+        const imagen = _tiendaImagenData || document.getElementById('tp-imagen-url').value.trim();
+        const activo = document.getElementById('tp-activo').checked;
+        if (msg) { msg.textContent = 'Guardando...'; msg.className = 'msg'; }
+        try {
+            const data = await tiendaApi('guardar_producto', {
+                proyecto_id: _tiendaCtx.proyecto_id,
+                id: _tiendaEditandoId || null,
+                nombre, descripcion, precio_cents: precio, tipo, activo, stock, imagen,
+                archivo_data_url: _tiendaArchivoDigital ? _tiendaArchivoDigital.dataUrl : null,
+                filename: _tiendaArchivoDigital ? _tiendaArchivoDigital.name : 'archivo'
+            });
+            if (!data.ok) throw new Error(data.error || 'No se pudo guardar');
+            showToast('Producto guardado', 'success');
+            cargarTiendaProductos();
+        } catch (err) {
+            if (msg) { msg.textContent = 'Error: ' + err.message; msg.className = 'msg error'; }
+        }
+    }
+
+    async function tiendaEliminarProducto(id, nombre) {
+        if (!confirm(`Eliminar el producto "${nombre}"?\n\nSe quita del catalogo (y de futuras ventas).`)) return;
+        const data = await tiendaApi('eliminar_producto', { id });
+        if (!data.ok) return showToast('Error: ' + (data.error || 'No se pudo eliminar'), 'error');
+        showToast('Producto eliminado', 'success');
+        cargarTiendaProductos();
+    }
+
+    async function cargarTiendaOrdenes() {
+        const cont = document.getElementById('tienda-panel-ordenes');
+        cont.innerHTML = '<div style="text-align:center;color:var(--dim);padding:1.5rem">Cargando...</div>';
+        try {
+            const data = await tiendaApi('listar_ordenes', { proyecto_id: _tiendaCtx.proyecto_id });
+            if (!data.ok) throw new Error(data.error || 'Error cargando órdenes');
+            _tiendaOrdenes = data.ordenes || [];
+            tiendaRenderOrdenes();
+        } catch (err) {
+            cont.innerHTML = '<div style="text-align:center;color:var(--red);padding:1.5rem">' + wfEscapeHtml(err.message || 'Error') + '</div>';
+        }
+    }
+
+    function tiendaRenderOrdenes() {
+        const cont = document.getElementById('tienda-panel-ordenes');
+        if (!_tiendaOrdenes.length) {
+            cont.innerHTML = '<div style="text-align:center;color:var(--dim);padding:2rem">Aun no hay ordenes. Cuando un cliente pague desde la tienda, apareceran aqui.</div>';
+            return;
+        }
+        cont.innerHTML = `
+            <div class="table-wrap"><table>
+                <thead><tr><th>Fecha</th><th>Cliente</th><th>Items</th><th>Total</th><th>Estado</th><th>Acciones</th></tr></thead>
+                <tbody>
+                ${_tiendaOrdenes.map(o => {
+                    const b = tiendaEstadoBadge(o.estado);
+                    const items = (o.items && o.items.length) ? o.items.map(i => i.nombre + (i.cantidad > 1 ? ' x' + i.cantidad : '')).join(', ') : '—';
+                    return `<tr>
+                        <td style="font-size:.8rem;white-space:nowrap">${wfEscapeHtml((o.created_at || '').slice(0, 10))}</td>
+                        <td><div style="font-weight:600;font-size:.85rem">${wfEscapeHtml(o.cliente_nombre || '')}</div><div style="font-size:.72rem;color:var(--dim)">${wfEscapeHtml(o.cliente_email || '')}${o.cliente_telefono ? ' · ' + wfEscapeHtml(o.cliente_telefono) : ''}</div></td>
+                        <td style="font-size:.78rem;max-width:220px">${wfEscapeHtml(items)}</td>
+                        <td style="font-weight:600;font-size:.85rem;white-space:nowrap">${fmtCOP(o.total_cents)}</td>
+                        <td><span class="badge ${b.cls}">${b.label}</span>${o.transaction_id ? '<div style="font-size:.65rem;color:var(--dim);margin-top:.15rem">ref ' + wfEscapeHtml(o.transaction_id) + '</div>' : ''}</td>
+                        <td style="white-space:nowrap">
+                            <select onchange="tiendaCambiarEstado('${o.id}',this.value)" style="padding:4px 6px;border:1px solid var(--border2);border-radius:6px;background:var(--bg);color:var(--text);font-size:.74rem">
+                                <option value="pendiente"${o.estado === 'pendiente' ? ' selected' : ''}>Pendiente</option>
+                                <option value="pagada"${o.estado === 'pagada' ? ' selected' : ''}>Pagada</option>
+                                <option value="cancelada"${o.estado === 'cancelada' ? ' selected' : ''}>Cancelada</option>
+                            </select>
+                        </td>
+                    </tr>`;
+                }).join('')}
+                </tbody>
+            </table></div>
+        `;
+    }
+
+    async function tiendaCambiarEstado(id, estado) {
+        const data = await tiendaApi('cambiar_estado_orden', { id, estado });
+        if (!data.ok) return showToast('Error: ' + (data.error || 'No se pudo cambiar el estado'), 'error');
+        showToast('Estado actualizado', 'success');
+        cargarTiendaOrdenes();
+    }
+
+    async function cargarPasarelaTienda() {
+        const cont = document.getElementById('tienda-panel-pasarela');
+        cont.innerHTML = '<div style="text-align:center;color:var(--dim);padding:1.5rem">Cargando...</div>';
+        try {
+            const data = await tiendaApi('estado_pasarela', { proyecto_id: _tiendaCtx.proyecto_id });
+            if (!data.ok) throw new Error(data.error || 'Error cargando la pasarela');
+            cont.innerHTML = `
+                <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:.8rem">
+                    <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.6rem;flex-wrap:wrap">
+                        <span style="font-weight:700;font-size:.85rem">Pasarela Wompi de esta tienda</span>
+                        <span class="badge ${data.configurada ? 'badge-green' : 'badge-yellow'}">${data.configurada ? 'Configurada' : 'Sin configurar'}</span>
+                        ${data.sandbox ? '<span class="badge badge-yellow">sandbox</span>' : '<span class="badge badge-green">producción</span>'}
+                    </div>
+                    <p style="font-size:.72rem;color:var(--muted);margin-bottom:.7rem">
+                        Conecta la cuenta Wompi <b>del cliente</b>: sus cobros van a su propia pasarela (igual que en el CRM por agente).
+                        Deja en blanco para no cambiar la llave actual. Configura el webhook de eventos de Wompi hacia
+                        <code style="background:var(--bg);padding:.1rem .35rem;border-radius:4px;font-size:.7rem">https://auvro.netlify.app/.netlify/functions/pago-webhook</code>
+                        con el events secret del cliente para que la orden se marque pagada automáticamente.
+                    </p>
+                    <div class="field"><label>Private key de la tienda (prv_)</label><input type="password" id="tp-pasarela-priv" placeholder="${data.privada_guardada ? 'Guardada. Escribe una nueva para reemplazar' : 'prv_...'}" autocomplete="off"></div>
+                    <div class="field"><label>Events secret de la tienda</label><input type="password" id="tp-pasarela-secret" placeholder="${data.secret_guardado ? 'Guardado. Escribe uno nuevo para reemplazar' : 'events secret...'}" autocomplete="off"></div>
+                    <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;font-size:.78rem;color:var(--muted);margin-top:.4rem;">
+                        <input type="checkbox" id="tp-pasarela-sandbox" ${data.sandbox ? 'checked' : ''}> Usar entorno de pruebas (sandbox)
+                    </label>
+                    <div style="display:flex;gap:.5rem;margin-top:.8rem;flex-wrap:wrap">
+                        <button class="btn-main btn-green" style="padding:.45rem .9rem;font-size:.78rem" onclick="guardarPasarelaTienda()"><i class="fas fa-save" style="margin-right:.25rem"></i>Guardar pasarela</button>
+                    </div>
+                    <div class="msg" id="tp-pasarela-msg"></div>
+                </div>
+            `;
+        } catch (err) {
+            cont.innerHTML = '<div style="text-align:center;color:var(--red);padding:1.5rem">' + wfEscapeHtml(err.message || 'Error') + '</div>';
+        }
+    }
+
+    async function guardarPasarelaTienda() {
+        const msg = document.getElementById('tp-pasarela-msg');
+        const wompi_private_key = document.getElementById('tp-pasarela-priv').value.trim();
+        const wompi_events_secret = document.getElementById('tp-pasarela-secret').value.trim();
+        const wompi_sandbox = document.getElementById('tp-pasarela-sandbox').checked;
+        if (msg) { msg.textContent = 'Guardando...'; msg.className = 'msg'; }
+        try {
+            const data = await tiendaApi('configurar_pasarela', { proyecto_id: _tiendaCtx.proyecto_id, wompi_private_key, wompi_events_secret, wompi_sandbox });
+            if (!data.ok) throw new Error(data.error || 'No se pudo guardar');
+            showToast('Pasarela guardada', 'success');
+            cargarPasarelaTienda();
+        } catch (err) {
+            if (msg) { msg.textContent = 'Error: ' + err.message; msg.className = 'msg error'; }
+        }
+    }
+
+    // ── NOTIFICACIONES DE LA TIENDA (Gmail del cliente + avisos de ventas) ──
+    async function cargarNotificacionesTienda() {
+        const cont = document.getElementById('tienda-panel-notificaciones');
+        cont.innerHTML = '<div style="text-align:center;color:var(--dim);padding:1.5rem">Cargando...</div>';
+        try {
+            const data = await tiendaApi('estado_notificaciones', { proyecto_id: _tiendaCtx.proyecto_id });
+            if (!data.ok) throw new Error(data.error || 'Error cargando notificaciones');
+            const agentesOpts = (data.agentes && data.agentes.length)
+                ? '<option value="">— Sin WhatsApp —</option>' + data.agentes.map(a => `<option value="${a.id}"${String(data.whatsapp_agente_id) === String(a.id) ? ' selected' : ''}>${wfEscapeHtml(a.nombre_agente)}</option>`).join('')
+                : '<option value="">— No tienes agentes —</option>';
+            cont.innerHTML = `
+                <div style="display:flex;flex-direction:column;gap:.9rem">
+                    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:.8rem">
+                        <div style="font-weight:700;font-size:.85rem;margin-bottom:.5rem">Gmail de la tienda (correo del cliente)</div>
+                        <p style="font-size:.72rem;color:var(--muted);margin-bottom:.7rem">
+                            Conecta el Gmail <b>del dueño de la tienda</b>. Cuando un cliente haga un pedido o pague, el aviso llegará desde ese correo (igual que el "Conectar" de las integraciones del agente). El dueño autoriza con su cuenta de Google.
+                        </p>
+                        <div style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap">
+                            ${data.gmail_conectado
+                                ? `<span class="badge badge-green"><i class="fas fa-check-circle" style="margin-right:.25rem"></i>${wfEscapeHtml(data.gmail_email || 'Gmail conectado')}</span>
+                                   <button class="btn-small danger" onclick="desconectarGmailTienda()" style="font-size:.72rem"><i class="fas fa-unlink" style="margin-right:.25rem"></i>Desconectar</button>`
+                                : `<button class="btn-main btn-green" style="padding:.45rem .9rem;font-size:.78rem" onclick="conectarGmailTienda()"><i class="fas fa-envelope" style="margin-right:.25rem"></i>Conectar Gmail de la tienda</button>`}
+                        </div>
+                        <div class="msg" id="tp-gmail-msg"></div>
+                    </div>
+                    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:.8rem">
+                        <div style="font-weight:700;font-size:.85rem;margin-bottom:.5rem">Avisos de ventas</div>
+                        <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;font-size:.8rem;margin-bottom:.4rem">
+                            <input type="checkbox" id="tn-notify-new" ${data.notify_on_new_order ? 'checked' : ''}> Avisar cuando hagan un <b>nuevo pedido</b>
+                        </label>
+                        <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;font-size:.8rem;margin-bottom:.6rem">
+                            <input type="checkbox" id="tn-notify-pay" ${data.notify_on_payment ? 'checked' : ''}> Avisar cuando se <b>confirme el pago</b>
+                        </label>
+                        <div class="field"><label>Correos de aviso (separados por coma)</label><input type="text" id="tn-emails" value="${wfEscapeHtml((data.notify_emails || []).join(', '))}" placeholder="correo@cliente.com, copia@agencia.com"></div>
+                        <div style="display:flex;gap:.6rem;flex-wrap:wrap">
+                            <div style="flex:1;min-width:180px"><div class="field"><label>WhatsApp de aviso (agente)</label><select id="tn-wa-agente">${agentesOpts}</select></div></div>
+                            <div style="flex:1;min-width:180px"><div class="field"><label>Número WhatsApp (código país, ej 57300...)</label><input type="text" id="tn-wa-numero" value="${wfEscapeHtml(data.whatsapp_numero || '')}" placeholder="57300..."></div></div>
+                        </div>
+                        <div style="display:flex;gap:.5rem;margin-top:.6rem">
+                            <button class="btn-main btn-green" style="padding:.45rem .9rem;font-size:.78rem" onclick="guardarNotificacionesTienda()"><i class="fas fa-save" style="margin-right:.25rem"></i>Guardar notificaciones</button>
+                        </div>
+                        <div class="msg" id="tn-msg"></div>
+                    </div>
+                </div>
+            `;
+        } catch (err) {
+            cont.innerHTML = '<div style="text-align:center;color:var(--red);padding:1.5rem">' + wfEscapeHtml(err.message || 'Error') + '</div>';
+        }
+    }
+
+    async function guardarNotificacionesTienda() {
+        const msg = document.getElementById('tn-msg');
+        const notify_on_new_order = document.getElementById('tn-notify-new').checked;
+        const notify_on_payment = document.getElementById('tn-notify-pay').checked;
+        const notify_emails = document.getElementById('tn-emails').value;
+        const notify_whatsapp_agente_id = document.getElementById('tn-wa-agente').value;
+        const notify_whatsapp_numero = document.getElementById('tn-wa-numero').value;
+        if (msg) { msg.textContent = 'Guardando...'; msg.className = 'msg'; }
+        try {
+            const data = await tiendaApi('configurar_notificaciones', {
+                proyecto_id: _tiendaCtx.proyecto_id,
+                notify_on_new_order, notify_on_payment, notify_emails,
+                notify_whatsapp_agente_id, notify_whatsapp_numero
+            });
+            if (!data.ok) throw new Error(data.error || 'No se pudo guardar');
+            showToast('Notificaciones guardadas', 'success');
+            cargarNotificacionesTienda();
+        } catch (err) {
+            if (msg) { msg.textContent = 'Error: ' + err.message; msg.className = 'msg error'; }
+        }
+    }
+
+    async function conectarGmailTienda() {
+        const msg = document.getElementById('tp-gmail-msg');
+        if (msg) { msg.textContent = 'Generando enlace de conexión...'; msg.className = 'msg'; }
+        try {
+            const res = await fetch('/.netlify/functions/conectar-gmail-tienda', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${currentSession?.access_token || ''}` },
+                body: JSON.stringify({ action: 'link', proyecto_id: _tiendaCtx.proyecto_id })
+            });
+            const data = await res.json();
+            if (!data.ok || !data.redirectUrl) throw new Error(data.error || 'No se generó el enlace');
+            showToast('Autoriza el acceso con la cuenta de Google del cliente', 'success');
+            window.location.href = data.redirectUrl;
+        } catch (err) {
+            if (msg) { msg.textContent = 'Error: ' + err.message; msg.className = 'msg error'; }
+            showToast('Error al conectar Gmail: ' + err.message, 'error');
+        }
+    }
+
+    async function desconectarGmailTienda() {
+        const msg = document.getElementById('tp-gmail-msg');
+        if (!confirm('Desconectar el Gmail de la tienda? Los avisos dejarán de enviarse por correo.')) return;
+        if (msg) { msg.textContent = 'Desconectando...'; msg.className = 'msg'; }
+        try {
+            const data = await tiendaApi('desconectar_gmail', { proyecto_id: _tiendaCtx.proyecto_id });
+            if (!data.ok) throw new Error(data.error || 'No se pudo desconectar');
+            showToast('Gmail desconectado', 'success');
+            cargarNotificacionesTienda();
+        } catch (err) {
+            if (msg) { msg.textContent = 'Error: ' + err.message; msg.className = 'msg error'; }
+        }
+    }
+
     function toggleSidebarDesktop() {
         const collapsed = document.body.classList.toggle('sidebar-collapsed');
         try { localStorage.setItem('auvrouter_sidebar_collapsed', collapsed ? '1' : '0'); } catch (_) {}
@@ -6243,6 +6745,22 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
         if (vistasValidas.includes(vistaHash)) mostrarVista(vistaHash);
         if (new URLSearchParams(window.location.search).has('pago')) {
             showToast('Pago registrado. Tu saldo se actualizo.', 'success');
+            history.replaceState({}, '', window.location.pathname);
+        }
+        const tiendaGmail = new URLSearchParams(window.location.search).get('tienda_gmail');
+        if (tiendaGmail) {
+            try {
+                const res = await fetch('/.netlify/functions/conectar-gmail-tienda', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${currentSession?.access_token || ''}` },
+                    body: JSON.stringify({ action: 'guardar', proyecto_id: tiendaGmail })
+                });
+                const d = await res.json();
+                if (d.ok) showToast('Gmail de la tienda conectado correctamente', 'success');
+                else showToast('Error conectando Gmail de la tienda: ' + (d.error || 'intenta de nuevo'), 'error');
+            } catch (_) {
+                showToast('Error conectando Gmail de la tienda', 'error');
+            }
             history.replaceState({}, '', window.location.pathname);
         }
         verificarPlanEstado();

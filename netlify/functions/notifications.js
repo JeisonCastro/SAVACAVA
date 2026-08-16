@@ -63,27 +63,33 @@ async function registrarNotificacion({ userId, agenteId, leadId, conversationId,
   }
 }
 
-async function sendEmail({ to, subject, text, html, cc, bcc, agente = null, userId = null, agenteId = null, leadId = null, conversationId = null, eventType = 'email' }) {
+async function sendEmail({ to, subject, text, html, cc, bcc, agente = null, userId = null, agenteId = null, leadId = null, conversationId = null, eventType = 'email', composioEntityId = null, composioUserId = null }) {
   try {
     const ownerUserId = userId || agente?.user_id;
-    if (!ownerUserId) {
-      return { ok: false, error: 'missing_user_id' };
-    }
+    let gmailConn = null;
 
-    const { data: gmailConn, error } = await supabase
-      .from('composio_connections')
-      .select('toolkit, composio_entity_id')
-      .eq('user_id', ownerUserId)
-      .eq('toolkit', 'gmail')
-      .limit(1)
-      .maybeSingle();
-
-    if (error) {
-      return { ok: false, error: error.message };
+    // Conexión explícita de tienda (entity propio por tienda) o la del usuario.
+    if (composioEntityId) {
+      gmailConn = { composio_entity_id: composioEntityId };
+    } else {
+      if (!ownerUserId) {
+        return { ok: false, error: 'missing_user_id' };
+      }
+      const { data, error } = await supabase
+        .from('composio_connections')
+        .select('toolkit, composio_entity_id')
+        .eq('user_id', ownerUserId)
+        .eq('toolkit', 'gmail')
+        .limit(1)
+        .maybeSingle();
+      if (error) {
+        return { ok: false, error: error.message };
+      }
+      gmailConn = data;
     }
 
     if (!gmailConn?.composio_entity_id) {
-      console.warn('Gmail not connected for user', ownerUserId);
+      console.warn('Gmail not connected', ownerUserId ? 'for user ' + ownerUserId : 'for store connection');
       await registrarNotificacion({
         userId: ownerUserId, agenteId, leadId, conversationId,
         eventType, channel: 'email', recipient: to, subject,
@@ -95,7 +101,7 @@ async function sendEmail({ to, subject, text, html, cc, bcc, agente = null, user
     const resultado = await ejecutarToolComposio(
       'GMAIL_SEND_EMAIL',
       gmailConn.composio_entity_id,
-      ownerUserId,
+      composioUserId || ownerUserId || 'auvro',
       {
         to,
         subject,
@@ -149,4 +155,52 @@ async function sendWhatsAppText({ agentId, toPhone, text }) {
   }
 }
 
-module.exports = { sendEmail, sendWhatsAppText, registrarNotificacion };
+// ── Notificaciones de tienda (Web Factory) ───────────────────────────────────
+// La tienda puede tener su propia conexión Gmail (entity de Composio con
+// namespace "tienda:<proyecto_id>"), conectada por el botón "Conectar Gmail de
+// la tienda". Si no está conectada, cae al Gmail del dueño (created_by).
+
+function parseNotifyEmails(valor) {
+  const lista = [];
+  if (Array.isArray(valor)) lista.push(...valor);
+  else if (typeof valor === 'string' && valor.trim()) lista.push(...valor.split(','));
+  return [...new Set(lista
+    .map(v => typeof v === 'string' ? v.trim() : '')
+    .filter(v => v && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)))];
+}
+
+async function sendTiendaEmail({ proyectoId, createdBy, to, subject, text }) {
+  const { data: cfg } = await supabase
+    .from('tienda_pasarela')
+    .select('composio_gmail_entity_id')
+    .eq('proyecto_id', proyectoId)
+    .maybeSingle();
+  if (cfg?.composio_gmail_entity_id) {
+    return sendEmail({
+      to, subject, text,
+      composioEntityId: cfg.composio_gmail_entity_id,
+      composioUserId: 'tienda:' + proyectoId,
+      eventType: 'tienda_notif'
+    });
+  }
+  if (createdBy) return sendEmail({ to, subject, text, userId: createdBy, eventType: 'tienda_notif' });
+  return { ok: false, error: 'no_gmail_connection' };
+}
+
+// Envía los avisos de la tienda según la config (correos + WhatsApp opcional).
+async function notificarTienda({ proyectoId, createdBy, config, subject, text }) {
+  const emails = parseNotifyEmails(config?.notify_emails);
+  for (const to of emails) {
+    await sendTiendaEmail({ proyectoId, createdBy, to, subject, text })
+      .catch(err => console.error('notificarTienda email err:', err?.message));
+  }
+  const agenteId = config?.notify_whatsapp_agente_id;
+  const numero = String(config?.notify_whatsapp_numero || '').replace(/\D/g, '');
+  if (agenteId && numero) {
+    await sendWhatsAppText({ agentId: agenteId, toPhone: numero, text })
+      .catch(err => console.error('notificarTienda whatsapp err:', err?.message));
+  }
+  return emails.length > 0 || (!!agenteId && !!numero);
+}
+
+module.exports = { sendEmail, sendWhatsAppText, registrarNotificacion, sendTiendaEmail, notificarTienda, parseNotifyEmails };

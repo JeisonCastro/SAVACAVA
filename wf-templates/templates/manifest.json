@@ -49,6 +49,11 @@
       "slug": "turismo",
       "nombre": "Turismo / Agencia de viajes",
       "descripcion": "Destinos, experiencias, tours y paquetes con reserva por WhatsApp. Estilo fresco (turquesa + arena). Tokens: {{EMPRESA}}, {{DESCRIPCION}}, {{SLOGAN}}, {{LOGO}}, {{WHATSAPP}}."
+    },
+    {
+      "slug": "tienda",
+      "nombre": "Tienda / E-commerce",
+      "descripcion": "Catálogo con carrito y pago seguro por Wompi (PSE, tarjeta, Nequi). Productos físicos, digitales y servicios. Se administra desde el dashboard. Tokens: {{EMPRESA}}, {{DESCRIPCION}}, {{SLOGAN}}, {{LOGO}}, {{WHATSAPP}}, {{SLUG}}."
     }
   ]
 }

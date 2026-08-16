@@ -9,7 +9,7 @@
 
 const { supabase } = require('./supabase-admin');
 const { createClient } = require('@supabase/supabase-js');
-const wf = require('./web-factory.js');
+const wf = require('./web-factory.js').helpers;
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
@@ -19,6 +19,7 @@ exports.handler = async (event) => {
         // ── Auth: mismo patrón que web-factory.js (token del usuario + perfiles.is_admin) ──
         const authHeader = event.headers.authorization || event.headers.Authorization;
         if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            console.error('web-factory-background: token no enviado');
             return { statusCode: 401, body: JSON.stringify({ error: 'Token no enviado' }) };
         }
 
@@ -29,6 +30,7 @@ exports.handler = async (event) => {
 
         const { data: userData, error: userError } = await supabaseUser.auth.getUser();
         if (userError || !userData?.user) {
+            console.error('web-factory-background: sesión inválida', userError?.message || 'sin usuario');
             return { statusCode: 401, body: JSON.stringify({ error: 'No autenticado' }) };
         }
 
@@ -38,6 +40,7 @@ exports.handler = async (event) => {
             .eq('id', userData.user.id)
             .single();
         if (!miPerfil?.is_admin) {
+            console.error('web-factory-background: usuario sin permisos de admin', userData.user.id);
             return { statusCode: 403, body: JSON.stringify({ error: 'No eres admin' }) };
         }
 
@@ -58,13 +61,16 @@ exports.handler = async (event) => {
             if (!process.env.GITHUB_TOKEN) return { statusCode: 500, body: JSON.stringify({ error: 'Falta GITHUB_TOKEN en las variables de entorno' }) };
             if (!process.env.NETLIFY_AUTH_TOKEN) return { statusCode: 500, body: JSON.stringify({ error: 'Falta NETLIFY_AUTH_TOKEN en las variables de entorno' }) };
 
+            console.log('web-factory-background: create inicio', JSON.stringify({ adminId, slug, plantilla }));
             const resultado = await wf.pipelineCrear(body, adminId);
+            console.log('web-factory-background: create ok', JSON.stringify(resultado));
             return { statusCode: 200, body: JSON.stringify(resultado) };
         }
 
         return { statusCode: 400, body: JSON.stringify({ error: 'Acción no válida' }) };
 
     } catch (err) {
+        console.error('web-factory-background: error', err && err.stack ? err.stack : err);
         return { statusCode: 500, body: JSON.stringify({ error: err.message || 'Error interno' }) };
     }
 };

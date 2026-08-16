@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{EMPRESA}} — Tienda</title>
+    <meta name="description" content="{{DESCRIPCION}}">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body data-slug="{{SLUG}}" data-wa="{{WHATSAPP}}" data-empresa="{{EMPRESA}}">
+    <header class="site-header">
+        <div class="container header-inner">
+            <a href="#" class="brand">
+                <img class="brand-logo" src="{{LOGO}}" alt="{{EMPRESA}}">
+                <span>{{EMPRESA}}</span>
+            </a>
+            <nav class="site-nav">
+                <a href="#productos">Productos</a>
+                <a href="#contacto">Contacto</a>
+                <button class="btn btn-cart" id="btn-cart" aria-label="Abrir carrito">
+                    <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+                    <span id="cart-count" class="cart-count">0</span>
+                </button>
+            </nav>
+        </div>
+    </header>
+
+    <section class="hero">
+        <div class="container">
+            <img class="hero-logo" src="{{LOGO}}" alt="{{EMPRESA}}">
+            <h1>{{EMPRESA}}</h1>
+            <p class="hero-slogan">{{SLOGAN}}</p>
+            <p class="hero-sub">{{DESCRIPCION}}</p>
+            <div class="hero-actions">
+                <a href="#productos" class="btn btn-primary">Ver productos</a>
+                <a class="btn btn-wa js-wa" data-num="{{WHATSAPP}}" href="https://wa.me/{{WHATSAPP}}" target="_blank" rel="noopener">
+                    <span>WhatsApp</span>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <section id="productos" class="section">
+        <div class="container">
+            <h2 class="section-title">Nuestra tienda</h2>
+            <p class="section-sub">Elige tus productos y paga de forma segura con PSE, tarjeta o Nequi.</p>
+            <div id="grid-productos" class="grid">
+                <div class="loading">Cargando productos…</div>
+            </div>
+        </div>
+    </section>
+
+    <section id="contacto" class="section section-alt">
+        <div class="container">
+            <h2 class="section-title">¿Necesitas ayuda?</h2>
+            <p class="section-sub">Escríbenos por WhatsApp y te atendemos.</p>
+            <div class="cta-center">
+                <a class="btn btn-wa-lg js-wa" data-num="{{WHATSAPP}}" href="https://wa.me/{{WHATSAPP}}" target="_blank" rel="noopener">
+                    <span>Contactar por WhatsApp</span>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <footer class="site-footer">
+        <div class="container footer-inner">
+            <span>{{EMPRESA}} · {{DESCRIPCION}}</span>
+            <span>Tienda con pagos seguros · AUVRO</span>
+        </div>
+    </footer>
+
+    <div id="cart-overlay" class="drawer-overlay" hidden></div>
+    <aside id="cart-drawer" class="cart-drawer" aria-hidden="true">
+        <div class="drawer-head">
+            <h3>Tu carrito</h3>
+            <button class="drawer-close" id="cart-close" aria-label="Cerrar carrito">&times;</button>
+        </div>
+        <div id="cart-items" class="drawer-items"></div>
+        <div class="drawer-foot">
+            <div class="cart-total">Total: <strong id="cart-total">$0</strong></div>
+            <button class="btn btn-primary btn-block" id="btn-checkout">Pagar</button>
+        </div>
+    </aside>
+
+    <div id="checkout-modal" class="modal" hidden>
+        <div class="modal-card">
+            <div class="drawer-head">
+                <h3>Finalizar compra</h3>
+                <button class="drawer-close" id="checkout-close" aria-label="Cerrar">&times;</button>
+            </div>
+            <form id="checkout-form">
+                <label>Nombre *<input type="text" id="co-nombre" required></label>
+                <label>Email *<input type="email" id="co-email" required placeholder="Para tu comprobante y descargas"></label>
+                <label>Teléfono <input type="tel" id="co-telefono" placeholder="Para contactarte por WhatsApp"></label>
+                <div id="co-direccion-wrap" hidden>
+                    <label>Dirección de envío *<input type="text" id="co-direccion" placeholder="Ciudad, barrio, dirección"></label>
+                </div>
+                <div class="cart-total">Total a pagar: <strong id="co-total">$0</strong></div>
+                <p class="pay-note">Al continuar serás redirigido al pasarela de pago (PSE, tarjeta o Nequi).</p>
+                <button type="submit" class="btn btn-primary btn-block" id="btn-pay">Pagar ahora</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="orden-modal" class="modal" hidden>
+        <div class="modal-card">
+            <div class="drawer-head"><h3 id="orden-titulo">Estado de tu pedido</h3><button class="drawer-close" id="orden-close" aria-label="Cerrar">&times;</button></div>
+            <div id="orden-body" class="orden-body"></div>
+        </div>
+    </div>
+
+    <script>
+(function () {
+    var API = 'https://auvro.netlify.app/.netlify/functions/tienda';
+    var SLUG = (document.body.getAttribute('data-slug') || '').trim();
+    var WA = (document.body.getAttribute('data-wa') || '').trim();
+    var CART_KEY = 'tienda_cart_' + SLUG;
+    var carrito = [];
+    try { carrito = JSON.parse(localStorage.getItem(CART_KEY)) || []; } catch (e) { carrito = []; }
+
+    var fmt = function (cents) {
+        return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format((cents || 0) / 100);
+    };
+
+    function qs(s) { return document.querySelector(s); }
+
+    function guardar() {
+        localStorage.setItem(CART_KEY, JSON.stringify(carrito));
+        actualizarCarritoUI();
+    }
+
+    function actualizarCarritoUI() {
+        var n = carrito.reduce(function (a, i) { return a + i.cantidad; }, 0);
+        qs('#cart-count').textContent = n;
+        var total = carrito.reduce(function (a, i) { return a + i.precio_cents * i.cantidad; }, 0);
+        qs('#cart-total').textContent = fmt(total);
+        var items = qs('#cart-items');
+        if (!carrito.length) { items.innerHTML = '<p class="empty">Tu carrito está vacío.</p>'; return; }
+        items.innerHTML = carrito.map(function (i) {
+            return '<div class="cart-item">' +
+                '<div class="cart-item-info"><strong>' + i.nombre + '</strong>' +
+                '<span>' + fmt(i.precio_cents) + ' × ' + i.cantidad + '</span></div>' +
+                '<button class="qty-btn" data-id="' + i.producto_id + '" data-d="-1">−</button>' +
+                '<button class="qty-btn" data-id="' + i.producto_id + '" data-d="1">+</button>' +
+                '</div>';
+        }).join('');
+    }
+
+    function abrirCarrito() { qs('#cart-drawer').setAttribute('aria-hidden', 'false'); qs('#cart-overlay').hidden = false; document.body.classList.add('modal-open'); }
+    function cerrarCarrito() { qs('#cart-drawer').setAttribute('aria-hidden', 'true'); qs('#cart-overlay').hidden = true; document.body.classList.remove('modal-open'); }
+
+    function cargarCatalogo() {
+        fetch(API + '?action=catalogo&slug=' + encodeURIComponent(SLUG))
+            .then(function (r) { return r.json(); })
+            .then(function (res) {
+                var grid = qs('#grid-productos');
+                if (!res.ok || !res.productos || !res.productos.length) {
+                    grid.innerHTML = '<div class="empty">Aún no hay productos publicados.</div>';
+                    return;
+                }
+                grid.innerHTML = res.productos.map(function (p) {
+                    var tipo = p.tipo === 'digital' ? 'Digital' : (p.tipo === 'servicio' ? 'Servicio' : 'Físico');
+                    var img = p.imagen ? '<img class="prod-img" src="' + p.imagen + '" alt="' + p.nombre + '" loading="lazy">' : '<div class="prod-img placeholder">' + (p.nombre || '?').charAt(0).toUpperCase() + '</div>';
+                    var stockBadge = p.tipo === 'fisico' && p.stock !== null && p.stock <= 0 ? '<span class="badge badge-agotado">Agotado</span>' : '';
+                    var btn;
+                    if (p.tipo === 'servicio') {
+                        var msg = encodeURIComponent('Hola, quiero solicitar el servicio: ' + p.nombre);
+                        btn = '<a class="btn btn-outline btn-block" href="https://wa.me/' + WA + '?text=' + msg + '" target="_blank" rel="noopener">Solicitar por WhatsApp</a>';
+                    } else {
+                        btn = (p.stock !== null && p.stock <= 0 && p.tipo === 'fisico')
+                            ? '<button class="btn btn-outline btn-block" disabled>Agotado</button>'
+                            : '<button class="btn btn-primary btn-block" data-add="' + p.id + '">Agregar al carrito</button>';
+                    }
+                    return '<div class="card">' + img +
+                        '<div class="card-body"><div class="card-badges"><span class="badge">' + tipo + '</span>' + stockBadge + '</div>' +
+                        '<h3>' + p.nombre + '</h3>' +
+                        '<p class="prod-desc">' + (p.descripcion || '') + '</p>' +
+                        '<div class="prod-precio">' + fmt(p.precio_cents) + '</div>' +
+                        btn + '</div></div>';
+                }).join('');
+                grid.querySelectorAll('[data-add]').forEach(function (b) {
+                    b.addEventListener('click', function () {
+                        var prod = res.productos.find(function (p) { return p.id === b.getAttribute('data-add'); });
+                        if (!prod) return;
+                        var exist = carrito.find(function (i) { return i.producto_id === prod.id; });
+                        if (exist) exist.cantidad += 1; else carrito.push({ producto_id: prod.id, nombre: prod.nombre, precio_cents: prod.precio_cents, tipo: prod.tipo, cantidad: 1 });
+                        guardar();
+                        abrirCarrito();
+                    });
+                });
+            })
+            .catch(function () { qs('#grid-productos').innerHTML = '<div class="empty">No se pudo cargar la tienda.</div>'; });
+    }
+
+    qs('#btn-cart').addEventListener('click', abrirCarrito);
+    qs('#cart-close').addEventListener('click', cerrarCarrito);
+    qs('#cart-overlay').addEventListener('click', cerrarCarrito);
+    qs('#cart-items').addEventListener('click', function (e) {
+        var btn = e.target.closest('.qty-btn'); if (!btn) return;
+        var item = carrito.find(function (i) { return i.producto_id === btn.getAttribute('data-id'); });
+        if (!item) return;
+        item.cantidad += Number(btn.getAttribute('data-d'));
+        if (item.cantidad <= 0) carrito = carrito.filter(function (i) { return i.producto_id !== item.producto_id; });
+        guardar();
+    });
+
+    qs('#btn-checkout').addEventListener('click', function () {
+        if (!carrito.length) return;
+        qs('#co-total').textContent = fmt(carrito.reduce(function (a, i) { return a + i.precio_cents * i.cantidad; }, 0));
+        var tieneFisico = carrito.some(function (i) { return i.tipo === 'fisico'; });
+        qs('#co-direccion-wrap').hidden = !tieneFisico;
+        if (!tieneFisico) qs('#co-direccion').removeAttribute('required'); else qs('#co-direccion').setAttribute('required', '');
+        qs('#checkout-modal').hidden = false;
+        document.body.classList.add('modal-open');
+    });
+    qs('#checkout-close').addEventListener('click', function () { qs('#checkout-modal').hidden = true; document.body.classList.remove('modal-open'); });
+
+    qs('#checkout-form').addEventListener('submit', function (e) {
+        e.preventDefault();
+        var btn = qs('#btn-pay'); btn.disabled = true; btn.textContent = 'Generando pago…';
+        var tieneFisico = carrito.some(function (i) { return i.tipo === 'fisico'; });
+        var body = {
+            action: 'checkout',
+            slug: SLUG,
+            items: carrito.map(function (i) { return { producto_id: i.producto_id, cantidad: i.cantidad }; }),
+            cliente: {
+                nombre: qs('#co-nombre').value.trim(),
+                email: qs('#co-email').value.trim(),
+                telefono: qs('#co-telefono').value.trim()
+            },
+            direccion: tieneFisico ? qs('#co-direccion').value.trim() : ''
+        };
+        fetch(API, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        })
+            .then(function (r) { return r.json(); })
+            .then(function (res) {
+                if (!res.ok || !res.url) { alert(res.error || 'No se pudo generar el pago.'); btn.disabled = false; btn.textContent = 'Pagar ahora'; return; }
+                try { localStorage.setItem('tienda_orden_' + SLUG, JSON.stringify({ orden_id: res.orden_id, email: qs('#co-email').value.trim() })); } catch (err) {}
+                window.location.href = res.url;
+            })
+            .catch(function () { alert('Error de conexión.'); btn.disabled = false; btn.textContent = 'Pagar ahora'; });
+    });
+
+    function mostrarOrden(orden) {
+        qs('#orden-titulo').textContent = orden.estado === 'pagada' ? '¡Pago confirmado!' : 'Estado de tu pedido';
+        var txt = orden.estado === 'pagada' ? 'Tu pago fue aprobado. Referencia: <strong>' + (orden.transaction_id || '—') + '</strong>.' : 'Tu pedido está <strong>' + orden.estado + '</strong>.';
+        var items = orden.items.map(function (i) { return '<div>• ' + i.nombre + ' × ' + i.cantidad + ' — ' + fmt(i.precio_cents * i.cantidad) + '</div>'; }).join('');
+        var descargas = '';
+        if (orden.estado === 'pagada' && orden.digitales && orden.digitales.length) {
+            descargas = '<h4>Descarga tu producto digital</h4>' + orden.digitales.map(function (d) {
+                return '<a class="btn btn-primary btn-block" href="' + d.url + '" target="_blank" rel="noopener">Descargar ' + d.nombre + '</a>';
+            }).join('');
+        }
+        qs('#orden-body').innerHTML = '<div class="cart-total">Total: <strong>' + fmt(orden.total_cents) + '</strong></div>' +
+            '<div class="orden-items">' + items + '</div>' + txt + descargas;
+        qs('#orden-modal').hidden = false;
+        document.body.classList.add('modal-open');
+    }
+
+    function verificarOrdenPendiente() {
+        var saved = null;
+        try { saved = JSON.parse(localStorage.getItem('tienda_orden_' + SLUG)); } catch (e) {}
+        if (!saved || !saved.orden_id) return;
+        fetch(API + '?action=get_orden&orden_id=' + encodeURIComponent(saved.orden_id) + '&email=' + encodeURIComponent(saved.email || ''))
+            .then(function (r) { return r.json(); })
+            .then(function (res) {
+                if (res.ok && res.orden && res.orden.estado === 'pagada') {
+                    try { localStorage.removeItem('tienda_orden_' + SLUG); } catch (e) {}
+                    cargarCatalogo();
+                    mostrarOrden(res.orden);
+                }
+            })
+            .catch(function () {});
+    }
+
+    var params = new URLSearchParams(window.location.search);
+    if (params.get('orden')) {
+        try { localStorage.setItem('tienda_orden_' + SLUG, JSON.stringify({ orden_id: params.get('orden'), email: '' })); } catch (e) {}
+        history.replaceState(null, '', window.location.pathname);
+    }
+    qs('#orden-close').addEventListener('click', function () { qs('#orden-modal').hidden = true; document.body.classList.remove('modal-open'); });
+
+    actualizarCarritoUI();
+    cargarCatalogo();
+    verificarOrdenPendiente();
+})();
+    </script>
+</body>
+</html>

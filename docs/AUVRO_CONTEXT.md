@@ -770,12 +770,15 @@ Deploy.
 ✅ CRM: embudo de ventas por estados + filtros por fecha/origen/agente (14 Ago 2026).
 ✅ Widget: catálogo de productos y fix de respuestas duplicadas (14 Ago 2026).
 ✅ Landing hub (`index.html`) + `paginas-web.html` + `agentes.html` rediseñadas (14 Ago 2026).
+✅ **E-commerce en Web Factory (16 Ago 2026)**: plantilla `tienda` (catálogo/carrito/checkout serverless), `tienda.js` (checkout con recálculo de total en servidor + payment links Wompi con la **pasarela del cliente** por proyecto, `tienda_pasarela`), `pago-webhook.js` tipo `tienda` (marca orden pagada, descuenta stock, notificaciones), gestión de tienda en el dashboard (botón 🏪 + modal Productos/Órdenes/**Pasarela**). Desplegado en producción. Falta aplicar la migración de `tienda_pasarela` y el PoC demo.
 
 ### Pendientes del Proyecto
 
 #### Migraciones por aplicar en Supabase (SQL Editor)
 - ✅ `20260816_web_factory_activo.sql` — columna `activo` en web_projects — **APLICADA** (verificada: `select id,activo` responde).
 - ⏳ `supabase/migrations/20260814_crm_embudo.sql` — índices de `crm_leads` para el embudo/filtros por fecha.
+- ⏳ `supabase/migrations/20260816_web_factory_tienda.sql` — tablas de tienda (`tienda_productos`, `tienda_ordenes`, `tienda_orden_items`) + `pagos.orden_id`. **APLICADA por el usuario (16 Ago)** y verificada.
+- ⏳ `supabase/migrations/20260816_web_factory_tienda_pasarela.sql` — tabla `tienda_pasarela` (claves Wompi del cliente por proyecto). **Sin aplicar, el checkout de tienda devolverá "pasarela no configurada".**
 - ✅ `20260815_web_factory_color_fuente.sql` — APLICADA (columnas accent_color/fuente existen).
 - ✅ Migraciones previas de web_projects — APLICADAS.
 
@@ -1006,7 +1009,60 @@ Multiusuario.
 
 # Changelog de Cambios Técnicos
 
-## 16 Ago 2026 — Fix v3: el apagar/reactivar pasó de background a SÍNCRONO (set_activo es rápido)
+## 16 Ago 2026 — E-commerce en Web Factory (plantilla "tienda"): Ruta A serverless
+
+**Decisión:** e-commerce **propio y modular** sobre el stack actual (Supabase + Netlify Functions + Wompi). Descartados los motores externos (WooCommerce/Medusa/Magento) porque Netlify Functions son efímeras/sin estado y **no corren PHP ni servicios persistentes**; el costo es ~$0 (pay-as-you-go de Netlify + Supabase ya pagados) y el modelo de negocio es pago único por implementación (no suscripción). No compite con WooCommerce/Magento: es un módulo vertical igual que el CRM.
+
+**Archivos nuevos:**
+- `supabase/migrations/20260816_web_factory_tienda.sql` (**APLICADA** por el usuario en SQL Editor): tablas `tienda_productos` (proyecto_id FK `web_projects` on delete cascade; nombre, descripcion, `precio_cents`, `tipo` check `fisico|digital|servicio`, imagen, archivo_url, stock, activo), `tienda_ordenes` (cliente_*, direccion, `total_cents`, `estado` check `pendiente|pagada|cancelada`, payment_link_id, transaction_id), `tienda_orden_items` (orden_id FK, producto_id, nombre, precio_cents, cantidad), `alter table pagos add column if not exists orden_id uuid`, índices. Patrón idempotente, RLS desactivada (service role).
+- `supabase/migrations/20260816_web_factory_tienda_pasarela.sql` (**NUEVO — PENDIENTE DE APLICAR en Supabase SQL Editor**): tabla `tienda_pasarela` (proyecto_id PK FK `web_projects` on delete cascade, `wompi_private_key`, `wompi_events_secret`, `wompi_sandbox` default false). **Claves del cliente por proyecto, NUNCA devueltas al frontend.**
+- `wf-templates/templates/tienda/` (`index.html`, `styles.css`, `README.md`, `netlify.toml`, `robots.txt`): tienda estática generada por Web Factory que habla con `https://auvro.netlify.app/.netlify/functions/tienda` (CORS *). Catálogo + carrito (localStorage) + checkout (modal cliente/dirección) + pantalla post-pago vía `?orden=` (`get_orden`). Tipos físico/digital/servicio; **servicio = CTA "Solicitar por WhatsApp"** (sin pago en línea); **digital = descarga con enlace firmado (600s)** al confirmar pago. Tokens: `{{EMPRESA}}`, `{{DESCRIPCION}}`, `{{SLOGAN}}`, `{{LOGO}}`, `{{WHATSAPP}}`, `{{SLUG}}` (nuevo token SLUG). Usa `--accent`/`--accent-dark` para `inyectarTema`.
+- `netlify/functions/tienda.js`: pública `catalogo` (GET, productos activos por slug, marca `agotado`), `checkout` (POST: valida items, **recalcula el total en el servidor** — nunca confía en el front —, valida la **pasarela del cliente** ANTES de crear la orden, crea orden+items, crea payment link Wompi con la **pasarela DEL CLIENTE** de `tienda_pasarela` (`wompi_sandbox` → base sandbox/production, Bearer `wompi_private_key`; si no hay pasarela devuelve 402 "no tiene configurada su pasarela" sin crear orden huérfana), inserta `pagos` tipo `'tienda'` con `orden_id` y `user_id=proyecto.created_by`, redirige a `checkout.wompi.co/l/<id>`), `get_orden` (GET, verifica email, devuelve items + enlaces firmados si `pagada`). Admin (Bearer + `perfiles.is_admin` + ownership `proyecto.created_by === adminId`, mismo patrón que web-factory): `guardar_producto` (imagen data URL → bucket público `productos`; archivo digital data URL → bucket **privado** `tienda-digital`), `eliminar_producto`, `listar_productos`, `listar_ordenes` (incluye items por orden), `cambiar_estado_orden`, **`configurar_pasarela`** (upsert por proyecto; key/secret solo se reemplazan si `length > 5`; `wompi_sandbox` bool) y **`estado_pasarela`** (estado enmascarado: `configurada`, `sandbox`, `privada_guardada`, `secret_guardado`). Las acciones admin leen parámetros de query O body (merged). `TAMANO_MAX = 8MB`.
+- `dashboard.html`: **botón 🏪 "Gestionar tienda"** en cada fila con plantilla `tienda` + **modal** con pestañas **Productos** (CRUD con subida de imagen/archivo, stock, activo), **Órdenes** (estado pendiente/pagada/cancelada + ref de transacción) y **Pasarela** (private key + events secret del cliente, toggle sandbox, badges de estado enmascarado, instrucciones del webhook Wompi → `pago-webhook`). Integrado en la vista Web Factory (no pestaña separada).
+- `netlify/functions/pago-webhook.js`: **rama `pago.tipo === 'tienda'`** → marca `tienda_ordenes.estado='pagada'` + `transaction_id`, descuenta stock de productos físicos, notifica in-app al dueño (`notifications`, best-effort) y envía email de confirmación al comprador si el dueño tiene Gmail conectado. **La firma se verifica con el events secret DEL CLIENTE** (`tienda_pasarela.wompi_events_secret` vía `pagos.orden_id → tienda_ordenes.proyecto_id`); el fallback a `WOMPI_EVENTS_SECRET` de env solo aplica si no existe fila de pasarela.
+
+**Cambio de diseño (directiva del usuario, 16 Ago):** cada tienda usa la **pasarela Wompi de su propio cliente** (como el CRM usa las claves de cada agente), NO las de la plataforma. Por eso las claves viven en `tienda_pasarela` (tabla aparte) y no en `web_projects` (que se lee con `select('*')` en `web-factory.js`). Nota webhook: en cada cuenta Wompi del cliente el webhook de eventos debe apuntar a `https://auvro.netlify.app/.netlify/functions/pago-webhook` con su events secret.
+
+**Token nuevo:** `web-factory.js` → `valores.SLUG = slug` en `pipelineCrear` (se pasa a todas las plantillas). Manifest actualizado con `{slug:"tienda", nombre:"Tienda / E-commerce"}` (aparece solo en el select de la modal). `netlify.toml` ya tenía `included_files=["wf-templates/**"]`, así que la plantilla se empaqueta sin cambios de config.
+
+**Bug corregido en ruta:** `generarDescargas()` no traía `tipo` en el `select` de `tienda_productos` (nunca generaba descargas digitales) — corregido añadiendo `tipo`.
+
+**Desplegado en producción (16 Ago):** `netlify deploy --prod` OK (29 funciones + plantilla). Verificado en vivo: `catalogo` 404 correcto y `checkout` con slug inválido → "Carrito vacío o slug inválido". Migración de tienda aplicada y verificada (tablas vacías). Wompi del entorno es **producción** (`prv_`, sin `WOMPI_SANDBOX`); el modo sandbox depende del flag `wompi_sandbox` de cada proyecto.
+
+**Pendiente para producción:** crear la tienda demo desde el dashboard (plantilla "Tienda / E-commerce", slug nuevo — `esteticalcolombia` ya existe como belleza, no reutilizar; `techsoacha` ya existe como tienda de prueba), configurar 🏪→Pasarela con las keys del cliente, 🏪→Notificaciones (conectar el Gmail del cliente + correos/WhatsApp de aviso) y cargar productos (físico/digital/servicio). Migraciones aplicadas a la fecha: tienda (tablas), pasarela, `pagos_tipo_tienda` (fix checkout) y `tienda_notificaciones` (columnas de avisos). PoC scratch: proyecto `tienda-poc` (id `98e9a58e-7b6f-4807-adcf-ea502deaf362`) + JSON de 3 productos para insertar por API (o SQL).
+
+## 16 Ago 2026 — Notificaciones de tienda (Gmail del cliente + avisos de ventas)
+
+**Objetivo:** que el DUEÑO de cada tienda (el cliente de la agencia) reciba aviso por correo (y opcional WhatsApp) cuando alguien hace un pedido y cuando se confirma el pago, usando el **Gmail del propio cliente** conectado vía Composio (espejo del "Conectar" de las integraciones del agente).
+
+**Diseño (validado E2E en producción, deploy `6a82139a32cefe4267de904b`):**
+- **Migración `20260816_tienda_notificaciones.sql`** (+ se repite el fix `pagos_tipo_check` por idempotencia): columnas en `tienda_pasarela` → `composio_gmail_entity_id`, `gmail_conectado_email`, `notify_on_new_order boolean default true`, `notify_on_payment boolean default true`, `notify_emails jsonb`, `notify_whatsapp_agente_id`, `notify_whatsapp_numero`.
+- **`conectar-gmail-tienda.js`** (nueva función): acciones `link` (crea OAuth de Google con namespace Composio `tienda:<proyecto_id>`, aisla el Gmail de cada cliente) y `guardar` (tras el callback, guarda el entity en `tienda_pasarela`). El OAuth vuelve a `dashboard.html?tienda_gmail=<id>` y el dashboard llama a `guardar` solo.
+- **`notifications.js`**: `sendEmail` acepta `composioEntityId`/`composioUserId` (conexión de tienda); helpers `sendTiendaEmail` (usa el Gmail de la tienda y cae al del dueño `created_by` si no hay) y `notificarTienda` (envía a `notify_emails` + WhatsApp del agente si hay). `parseNotifyEmails` separa por comas.
+- **`tienda.js`**: en `checkout`, tras registrar el pago, aviso de **nuevo pedido** si `notify_on_new_order` (productos, total, cliente). Acciones admin `estado_notificaciones` (devuelve config + agentes del dueño para el select de WhatsApp), `configurar_notificaciones` (upsert) y `desconectar_gmail`.
+- **`pago-webhook.js`**: en `tipo==='tienda'`, tras marcar pagada + stock + in-app + confirmación al comprador, aviso al dueño si `notify_on_payment` (monto, productos, ref). Best-effort: si falla la notificación no rompe el pago.
+- **`dashboard.html`**: pestaña **Notificaciones** en el modal 🏪 (estado del Gmail de la tienda + botón Conectar/Desconectar, checkboxes de eventos, correos de aviso, selector de agente WhatsApp + número).
+
+**Verificado E2E en producción** con admin de prueba + proyecto tienda de prueba (creado y eliminado): `estado_notificaciones` defaults (newOrder/pay ON, gmail off, agentes), `configurar_notificaciones` guarda y se lee (toggles + emails), `conectar-gmail-tienda link` devuelve `redirectUrl` real (`connect.composio.dev/link/lk_...`). Sin efectos colaterales sobre `techsoacha`/otros sitios.
+
+## 16 Ago 2026 — Fix: el create de Web Factory fallaba en silencio (background functions)
+
+**Bug:** las background functions de Netlify (`web-factory-background`) responden **siempre `202 Accepted` con body vacío** (el resultado real se descarta y solo vive en los logs). `dashboard.html` `crearProyectoWeb()` leía ese body (`data.ok`/`data.error`) → **siempre parecía éxito** ("Sitio en creacion. El estado se actualiza solo.") aunque la función fallara (token vencido, error en Supabase, etc.). Resultado: al crear "storecase" no aparecía ninguna fila ni error.
+
+**Fix:**
+- `dashboard.html` `crearProyectoWeb()`: ya no confía en el body del 202. Hace **polling con la nueva acción `get_by_slug`** cada 4s (máx. 3.5 min) hasta que la fila exista (pipelineCrear la inserta en paso 1) y muestra el estado real: `estado==='error'` → toast con el `error` del backend; sin fila al agotar → mensaje de no-respuesta; si `get_by_slug` devuelve 401 (token vencido) → corta de inmediato pidiendo re-login.
+- `web-factory.js`: nueva acción admin `get_by_slug` (consulta por slug, sin reconciliación de dominios).
+- `web-factory-background.js`: `console.log/error` en inicio, éxito y fallos (auth incluida) para que Netlify → Functions → Logs muestre el motivo real.
+
+**Conclusión del incidente (CAUSA RAÍZ ENCONTRADA y CORREGIDA):** el create background era el primer sitio creado desde el cambio a background functions (16 Ago). Al probarlo se encontró el error real con un E2E controlado (usuario admin de prueba + invocación a producción):
+
+- **Causa raíz:** `web-factory-background.js` hacía `const wf = require('./web-factory.js')` y llamaba `wf.validarSlug / wf.validarDominio / wf.validarAccent / wf.pipelineCrear`, pero esas funciones viven en `module.exports.helpers`, no al nivel raíz → la primera llamada (`wf.validarSlug(slug)`) lanzaba `TypeError: wf.validarSlug is not a function` → el handler devolvía 500 → **Netlify descarta el error en silencio** (el 202 ya se envió al cliente) → nunca se insertaba la fila.
+- **Fix:** `const wf = require('./web-factory.js').helpers;` en `web-factory-background.js`, y `Object.assign(module.exports, module.exports.helpers)` al final de `web-factory.js` (expone los helpers también al nivel raíz, a prueba de balas).
+- **Segundo bug UX (dashboard):** el polling chequeaba `p.ok === false`, pero una respuesta 401/403/500 viene como `{error}` SIN campo `ok` → seguía esperando los 3.5 min en vez de cortar. Corregido a `if (!r.ok) { fallo = ...; break; }`.
+- **Verificado en producción (deploy `6a81d20211767fea5535f6d4`):** usuario admin de prueba → `POST web-factory-background` → 202 → **12 s después la fila existía** (`estado: "deploying"`, `github_repo` + `netlify_site_id` creados, plantilla `tienda`). Recursos de prueba eliminados después.
+- **Lección:** el bundle de esbuild enlaza correctamente `web-factory.js`; el error era puramente de exportación (`require` vs `.helpers`). Los errores de las background functions solo viven en Netlify → Functions → Logs.
+
+
 
 **Síntoma reportado por el usuario:** "el botón de apagado no ejecuta el apagado ni cambia estados ni apaga el sitio". El usuario espera: clic en ⚡ → se apaga de verdad → el overlay de espera se mantiene mientras apaga → al terminar el botón queda ▶ (play) para reactivar.
 

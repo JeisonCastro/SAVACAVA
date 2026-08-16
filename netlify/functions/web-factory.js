@@ -616,6 +616,7 @@ async function pipelineCrear(body, adminId) {
     const valores = {
         EMPRESA: nombre,
         DESCRIPCION: descripcion || nombre,
+        SLUG: slug,
         SLOGAN: sanearTexto(slogan),
         LOGO: sanearUrlLogo(logo),
         WHATSAPP: normalizarWhatsapp(whatsapp),
@@ -789,6 +790,21 @@ exports.handler = async (event) => {
             }) };
         }
 
+        // ── GET_BY_SLUG: buscar proyecto por slug ──
+        // Lo usa el dashboard tras el create background (que responde 202 vacío)
+        // para hacer polling hasta que la fila exista y leer el estado real.
+        if (action === 'get_by_slug') {
+            const { slug } = body;
+            if (!slug) return { statusCode: 400, body: JSON.stringify({ error: 'Falta slug' }) };
+            const { data: proyecto, error } = await supabase
+                .from('web_projects')
+                .select('*')
+                .eq('slug', String(slug).trim().toLowerCase())
+                .maybeSingle();
+            if (error) return { statusCode: 500, body: JSON.stringify({ error: error.message }) };
+            return { statusCode: 200, body: JSON.stringify({ ok: true, proyecto: proyecto || null }) };
+        }
+
         // ── GET: proyecto por id (y refresco si está en curso) ──
         if (action === 'get') {
             const { id } = body;
@@ -882,7 +898,7 @@ exports.handler = async (event) => {
 };
 
 module.exports.handler = exports.handler;
-module.exports.helpers = {
+module.exports.helpers = Object.freeze({
     templatesDir,
     leerPlantillas,
     leerArchivosPlantilla,
@@ -909,4 +925,5 @@ module.exports.helpers = {
     mapearEstadoDominio,
     mapearEstadoDeploy,
     estadoGeneral
-};
+});
+Object.assign(module.exports, module.exports.helpers);
