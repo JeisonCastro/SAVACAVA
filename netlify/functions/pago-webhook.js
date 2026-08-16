@@ -167,27 +167,61 @@ exports.handler = async (event) => {
                 if (orden) {
                     const { error: ordErr } = await supabase
                         .from('tienda_ordenes')
-                        .update({ estado: 'pagada', transaction_id: transaction.id, updated_at: new Date().toISOString() })
+                        .update({ estado: 'pagada', estado_pago: 'pagado', transaction_id: transaction.id, updated_at: new Date().toISOString() })
                         .eq('id', orden.id);
                     if (ordErr) throw new Error('Error marcando orden pagada: ' + ordErr.message);
 
-                    // Descontar stock de productos físicos
+                    // Descontar stock (variación para productos variables; producto para simples)
                     const { data: lineas } = await supabase
                         .from('tienda_orden_items')
-                        .select('producto_id, cantidad')
+                        .select('producto_id, cantidad, variacion_id')
                         .eq('orden_id', orden.id);
                     for (const l of lineas || []) {
-                        if (!l.producto_id) continue;
-                        const { data: prod } = await supabase
-                            .from('tienda_productos')
-                            .select('tipo, stock')
-                            .eq('id', l.producto_id)
-                            .maybeSingle();
-                        if (prod && prod.tipo === 'fisico' && prod.stock !== null) {
-                            await supabase
+                        if (l.variacion_id) {
+                            const { data: varRow } = await supabase
+                                .from('tienda_variaciones')
+                                .select('stock')
+                                .eq('id', l.variacion_id)
+                                .maybeSingle();
+                            if (varRow && varRow.stock !== null) {
+                                await supabase
+                                    .from('tienda_variaciones')
+                                    .update({ stock: Math.max(0, varRow.stock - l.cantidad) })
+                                    .eq('id', l.variacion_id)
+                                    .catch(() => {});
+                            }
+                        } else if (l.producto_id) {
+                            const { data: prod } = await supabase
                                 .from('tienda_productos')
-                                .update({ stock: Math.max(0, prod.stock - l.cantidad), updated_at: new Date().toISOString() })
+                                .select('tipo, stock')
                                 .eq('id', l.producto_id)
+                                .maybeSingle();
+                            if (prod && (prod.tipo === 'simple' || prod.tipo === 'fisico') && prod.stock !== null) {
+                                await supabase
+                                    .from('tienda_productos')
+                                    .update({ stock: Math.max(0, prod.stock - l.cantidad), updated_at: new Date().toISOString() })
+                                    .eq('id', l.producto_id)
+                                    .catch(() => {});
+                            }
+                        }
+                    }
+
+                    // Actualizar cliente (pedidos y total)
+                    if (orden.cliente_id) {
+                        const { data: cli } = await supabase
+                            .from('tienda_clientes')
+                            .select('pedidos, total_cents')
+                            .eq('id', orden.cliente_id)
+                            .maybeSingle();
+                        if (cli) {
+                            await supabase
+                                .from('tienda_clientes')
+                                .update({
+                                    pedidos: (cli.pedidos || 0) + 1,
+                                    total_cents: (Number(cli.total_cents) || 0) + orden.total_cents,
+                                    updated_at: new Date().toISOString()
+                                })
+                                .eq('id', orden.cliente_id)
                                 .catch(() => {});
                         }
                     }
@@ -228,13 +262,13 @@ exports.handler = async (event) => {
                                 if (cfg?.notify_on_payment) {
                                     const { notificarTienda } = require('./notifications');
                                     const montoStr = '$' + (Math.round(transaction.amount_in_cents) / 100).toLocaleString('es-CO');
-                                    const detalle = (lineas || []).map(l => l.nombre).join(', ');
+                                    const detalle = (lineas || []).map(l => `• ${l.nombre} x${l.cantidad} — $${((l.precio_cents * l.cantidad) / 100).toLocaleString('es-CO')}`).join('\n');
                                     await notificarTienda({
                                         proyectoId: orden.proyecto_id,
                                         createdBy: proyecto.created_by,
                                         config: cfg,
                                         subject: `Pago confirmado en ${proyecto.nombre}: ${montoStr}`,
-                                        text: `Pago confirmado ✅\nTienda: ${proyecto.nombre}\nProductos: ${detalle || '—'}\nMonto: ${montoStr}\nReferencia: ${transaction.id}\nCliente: ${orden.cliente_nombre || ''}${orden.cliente_email ? ' · ' + orden.cliente_email : ''}`
+                                        text: `Pago confirmado ✅\nTienda: ${proyecto.nombre}\n\n${detalle || '—'}\n\nMonto: ${montoStr}\nReferencia: ${transaction.id}\nCliente: ${orden.cliente_nombre || ''}${orden.cliente_email ? ' · ' + orden.cliente_email : ''}`
                                     });
                                 }
                             } catch (cfgErr) {

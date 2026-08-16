@@ -4935,12 +4935,18 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
                         </p>
                         <div style="display:flex;gap:.5rem;margin-bottom:1rem;flex-wrap:wrap">
                             <button class="btn-main" style="padding:.45rem .9rem;font-size:.78rem" id="tienda-tab-productos" onclick="tiendaTab('productos')"><i class="fas fa-box" style="margin-right:.25rem"></i>Productos</button>
+                            <button class="btn-main" style="padding:.45rem .9rem;font-size:.78rem" id="tienda-tab-categorias" onclick="tiendaTab('categorias')"><i class="fas fa-tags" style="margin-right:.25rem"></i>Categorías</button>
+                            <button class="btn-main" style="padding:.45rem .9rem;font-size:.78rem" id="tienda-tab-atributos" onclick="tiendaTab('atributos')"><i class="fas fa-sliders-h" style="margin-right:.25rem"></i>Atributos</button>
                             <button class="btn-main" style="padding:.45rem .9rem;font-size:.78rem" id="tienda-tab-ordenes" onclick="tiendaTab('ordenes')"><i class="fas fa-receipt" style="margin-right:.25rem"></i>Órdenes</button>
+                            <button class="btn-main" style="padding:.45rem .9rem;font-size:.78rem" id="tienda-tab-clientes" onclick="tiendaTab('clientes')"><i class="fas fa-users" style="margin-right:.25rem"></i>Clientes</button>
                             <button class="btn-main" style="padding:.45rem .9rem;font-size:.78rem" id="tienda-tab-pasarela" onclick="tiendaTab('pasarela')"><i class="fas fa-credit-card" style="margin-right:.25rem"></i>Pasarela</button>
                             <button class="btn-main" style="padding:.45rem .9rem;font-size:.78rem" id="tienda-tab-notif" onclick="tiendaTab('notificaciones')"><i class="fas fa-bell" style="margin-right:.25rem"></i>Notificaciones</button>
                         </div>
                         <div id="tienda-panel-productos"></div>
+                        <div id="tienda-panel-categorias" style="display:none"></div>
+                        <div id="tienda-panel-atributos" style="display:none"></div>
                         <div id="tienda-panel-ordenes" style="display:none"></div>
+                        <div id="tienda-panel-clientes" style="display:none"></div>
                         <div id="tienda-panel-pasarela" style="display:none"></div>
                         <div id="tienda-panel-notificaciones" style="display:none"></div>
                     </div>
@@ -6249,37 +6255,26 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
     let _tiendaCtx = { proyecto_id: '', slug: '', nombre: '' };
     let _tiendaProductos = [];
     let _tiendaOrdenes = [];
+    let _tiendaCategorias = [];
+    let _tiendaAtributos = [];
+    let _tiendaVariaciones = [];
     let _tiendaEditandoId = null;
-    let _tiendaImagenData = null;
+    let _tiendaImagenesBorrador = [];
     let _tiendaArchivoDigital = null;
     let _tiendaVariantesBorrador = [];
-
-    const CATEGORIAS_TIENDA = [
-        'Tecnología y Electrónica',
-        'Moda y Accesorios',
-        'Hogar y Decoración',
-        'Electrodomésticos',
-        'Belleza y Cuidado Personal',
-        'Salud y Bienestar',
-        'Deportes y Aire Libre',
-        'Bebés y Juguetería',
-        'Mascotas',
-        'Papelería y Oficina',
-        'Otros'
-    ];
 
     function fmtCOP(cents) {
         return '$' + (Math.round(Number(cents) || 0) / 100).toLocaleString('es-CO');
     }
 
     function tiendaTipoLabel(t) {
-        return { fisico: 'Físico', digital: 'Digital', servicio: 'Servicio' }[t] || t || '—';
+        return { simple: 'Simple', fisico: 'Simple', variable: 'Variable', digital: 'Digital', servicio: 'Servicio' }[t] || t || '—';
     }
 
     function tiendaEstadoBadge(e) {
-        if (e === 'pagada') return { cls: 'badge-green', label: 'Pagada' };
+        if (e === 'pagada' || e === 'pagado') return { cls: 'badge-green', label: e === 'pagada' ? 'Pagada' : 'Pagado' };
         if (e === 'pendiente') return { cls: 'badge-yellow', label: 'Pendiente' };
-        return { cls: 'badge-red', label: 'Cancelada' };
+        return { cls: 'badge-red', label: e === 'cancelado' ? 'Cancelado' : 'Cancelada' };
     }
 
     async function tiendaApi(action, body = {}) {
@@ -6311,43 +6306,43 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
     }
 
     function tiendaTab(tab) {
-        const p = document.getElementById('tienda-panel-productos');
-        const o = document.getElementById('tienda-panel-ordenes');
-        const pa = document.getElementById('tienda-panel-pasarela');
-        const n = document.getElementById('tienda-panel-notificaciones');
-        const bp = document.getElementById('tienda-tab-productos');
-        const bo = document.getElementById('tienda-tab-ordenes');
-        const bpa = document.getElementById('tienda-tab-pasarela');
-        const bn = document.getElementById('tienda-tab-notif');
-        const activo = (el) => { el.style.background = 'var(--accent)'; el.style.color = '#fff'; };
-        const normal = (el) => { el.style.background = 'var(--bg2)'; el.style.color = 'var(--text)'; };
-        [bp, bo, bpa, bn].forEach(normal);
-        if (tab === 'productos') {
-            p.style.display = ''; o.style.display = 'none'; pa.style.display = 'none'; n.style.display = 'none';
-            activo(bp);
-            cargarTiendaProductos();
-        } else if (tab === 'ordenes') {
-            p.style.display = 'none'; o.style.display = ''; pa.style.display = 'none'; n.style.display = 'none';
-            activo(bo);
-            cargarTiendaOrdenes();
-        } else if (tab === 'pasarela') {
-            p.style.display = 'none'; o.style.display = 'none'; pa.style.display = ''; n.style.display = 'none';
-            activo(bpa);
-            cargarPasarelaTienda();
-        } else {
-            p.style.display = 'none'; o.style.display = 'none'; pa.style.display = 'none'; n.style.display = '';
-            activo(bn);
-            cargarNotificacionesTienda();
-        }
+        const ids = ['productos', 'categorias', 'atributos', 'ordenes', 'clientes', 'pasarela', 'notificaciones'];
+        const loaders = {
+            productos: cargarTiendaProductos,
+            categorias: cargarTiendaCategorias,
+            atributos: cargarTiendaAtributos,
+            ordenes: cargarTiendaOrdenes,
+            clientes: cargarTiendaClientes,
+            pasarela: cargarPasarelaTienda,
+            notificaciones: cargarNotificacionesTienda
+        };
+        ids.forEach(function (id) {
+            const p = document.getElementById('tienda-panel-' + id);
+            const b = document.getElementById('tienda-tab-' + id);
+            if (id === tab) {
+                if (p) p.style.display = '';
+                if (b) { b.style.background = 'var(--accent)'; b.style.color = '#fff'; }
+                if (loaders[id]) loaders[id]();
+            } else {
+                if (p) p.style.display = 'none';
+                if (b) { b.style.background = 'var(--bg2)'; b.style.color = 'var(--text)'; }
+            }
+        });
     }
 
     async function cargarTiendaProductos() {
         const cont = document.getElementById('tienda-panel-productos');
         cont.innerHTML = '<div style="text-align:center;color:var(--dim);padding:1.5rem">Cargando...</div>';
         try {
-            const data = await tiendaApi('listar_productos', { proyecto_id: _tiendaCtx.proyecto_id });
+            const [data, cats, attrs] = await Promise.all([
+                tiendaApi('listar_productos', { proyecto_id: _tiendaCtx.proyecto_id }),
+                tiendaApi('listar_categorias', { proyecto_id: _tiendaCtx.proyecto_id }),
+                tiendaApi('listar_atributos', { proyecto_id: _tiendaCtx.proyecto_id })
+            ]);
             if (!data.ok) throw new Error(data.error || 'Error cargando productos');
             _tiendaProductos = data.productos || [];
+            _tiendaCategorias = (cats.ok && cats.categorias) || [];
+            _tiendaAtributos = (attrs.ok && attrs.atributos) || [];
             tiendaRenderProductos();
         } catch (err) {
             cont.innerHTML = '<div style="text-align:center;color:var(--red);padding:1.5rem">' + wfEscapeHtml(err.message || 'Error') + '</div>';
@@ -6368,7 +6363,7 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
                         : ''}
                     <div style="flex:1;min-width:0">
                         <div style="font-weight:600;font-size:.9rem">${wfEscapeHtml(p.nombre)}</div>
-                        <div style="font-size:.74rem;color:var(--dim)">${tiendaTipoLabel(p.tipo)} · ${fmtCOP(p.precio_cents)}${p.categoria ? ' · <span style="color:var(--accent)">' + wfEscapeHtml(p.categoria) + '</span>' : ''}${p.variantes && p.variantes.length ? ' · ' + p.variantes.length + ' opc' : ''}${p.tipo === 'fisico' && p.stock !== null ? ' · Stock: ' + p.stock : ''}${p.activo ? '' : ' · <span style="color:var(--red)">oculto</span>'}</div>
+                        <div style="font-size:.74rem;color:var(--dim)">${tiendaTipoLabel(p.tipo)} · ${fmtCOP(p.precio_cents)}${p.categoria ? ' · <span style="color:var(--accent)">' + wfEscapeHtml(p.categoria) + '</span>' : ''}${p.tipo === 'variable' ? ' · ' + (p.variaciones || []).length + ' variaciones' : ''}${p.tipo === 'simple' && p.stock !== null ? ' · Stock: ' + p.stock : ''}${p.activo ? '' : ' · <span style="color:var(--red)">oculto</span>'}</div>
                     </div>
                     <button class="btn-small" onclick="tiendaEditarProducto('${p.id}')" style="font-size:.72rem;padding:4px 8px" title="Editar"><i class="fas fa-pen"></i></button>
                     <button class="btn-small danger" onclick="tiendaEliminarProducto('${p.id}','${wfEscapeHtml(p.nombre)}')" style="font-size:.72rem;padding:4px 8px" title="Eliminar"><i class="fas fa-trash"></i></button>
@@ -6384,51 +6379,55 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
 
     function tiendaFormProducto(prod) {
         _tiendaEditandoId = prod?.id || null;
-        _tiendaImagenData = null;
+        _tiendaImagenesBorrador = (Array.isArray(prod?.imagenes) && prod.imagenes.length ? prod.imagenes : (prod?.imagen ? [prod.imagen] : [])).map(u => ({ url: String(u || '') }));
         _tiendaArchivoDigital = null;
-        _tiendaVariantesBorrador = Array.isArray(prod?.variantes) && prod.variantes.length
-            ? prod.variantes.map(v => ({ id: v.id || 'v' + Math.random().toString(36).slice(2, 8), nombre: v.nombre || '', precio_cents: Number(v.precio_cents) || 0, stock: (v.stock === null || v.stock === undefined) ? null : Number(v.stock) }))
-            : [];
-        const tipo = prod?.tipo || 'fisico';
-        const catActual = (prod?.categoria || '').trim();
-        const catsOpts = CATEGORIAS_TIENDA.map(c => `<option value="${wfEscapeHtml(c)}"${catActual === c ? ' selected' : ''}>${wfEscapeHtml(c)}</option>`).join('') +
-            (catActual && !CATEGORIAS_TIENDA.includes(catActual) ? `<option value="${wfEscapeHtml(catActual)}" selected>${wfEscapeHtml(catActual)} (personalizada)</option>` : '');
+        _tiendaVariantesBorrador = [];
+        const tipo = (prod?.tipo === 'fisico' ? 'simple' : prod?.tipo) || 'simple';
+        const catIdActual = prod?.categoria_id || '';
+        const catsOpts = _tiendaCategorias.map(c => `<option value="${c.id}"${String(catIdActual) === String(c.id) ? ' selected' : ''}>${wfEscapeHtml(c.nombre)}</option>`).join('');
         const attrTxt = Object.entries(prod?.atributos || {}).map(([k, v]) => k + ': ' + v).join('\n');
+        const selector = Array.isArray(prod?.atributos_selector) ? prod.atributos_selector : [];
         const cont = document.getElementById('tienda-panel-productos');
         cont.innerHTML = `
             <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:.8rem;margin-bottom:1rem">
                 <div style="font-weight:700;font-size:.85rem;margin-bottom:.6rem">${prod ? 'Editar producto' : 'Nuevo producto'}</div>
                 <div style="display:flex;gap:.6rem;flex-wrap:wrap">
-                    <div style="flex:2;min-width:180px"><label style="font-size:.74rem;font-weight:600;color:var(--dim)">Nombre</label><input id="tp-nombre" value="${wfEscapeHtml(prod?.nombre || '')}" placeholder="Ej: Kit facial vitamina C" style="width:100%;padding:7px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text)"></div>
+                    <div style="flex:2;min-width:180px"><label style="font-size:.74rem;font-weight:600;color:var(--dim)">Nombre</label><input id="tp-nombre" value="${wfEscapeHtml(prod?.nombre || '')}" placeholder="Ej: Reloj PEPITO" style="width:100%;padding:7px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text)"></div>
                     <div style="flex:1;min-width:110px"><label style="font-size:.74rem;font-weight:600;color:var(--dim)">Tipo</label>
                         <select id="tp-tipo" onchange="tiendaSyncTipo()" style="width:100%;padding:7px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text)">
-                            <option value="fisico"${tipo === 'fisico' ? ' selected' : ''}>Físico</option>
+                            <option value="simple"${tipo === 'simple' ? ' selected' : ''}>Simple (físico)</option>
+                            <option value="variable"${tipo === 'variable' ? ' selected' : ''}>Variable (atributos)</option>
                             <option value="digital"${tipo === 'digital' ? ' selected' : ''}>Digital</option>
                             <option value="servicio"${tipo === 'servicio' ? ' selected' : ''}>Servicio</option>
                         </select>
                     </div>
-                    <div style="flex:1;min-width:110px"><label style="font-size:.74rem;font-weight:600;color:var(--dim)">Precio (COP)</label><input id="tp-precio" type="number" min="0" value="${Math.round((prod?.precio_cents || 0) / 100)}" placeholder="Ej: 99000" style="width:100%;padding:7px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text)"></div>
-                    <div style="flex:1;min-width:90px" id="tp-stock-wrap"><label style="font-size:.74rem;font-weight:600;color:var(--dim)">Stock</label><input id="tp-stock" type="number" min="0" value="${prod?.tipo === 'fisico' && prod?.stock !== null ? prod.stock : ''}" placeholder="Vacío = ilimitado" style="width:100%;padding:7px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text)"></div>
+                    <div style="flex:1;min-width:110px"><label style="font-size:.74rem;font-weight:600;color:var(--dim)">Precio base (COP)${tipo === 'variable' ? ' — desde' : ''}</label><input id="tp-precio" type="number" min="0" value="${Math.round((prod?.precio_cents || 0) / 100)}" placeholder="Ej: 95000" style="width:100%;padding:7px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text)"></div>
+                    <div style="flex:1;min-width:90px" id="tp-stock-wrap"><label style="font-size:.74rem;font-weight:600;color:var(--dim)">Stock</label><input id="tp-stock" type="number" min="0" value="${tipo === 'simple' && prod?.stock !== null ? prod.stock : ''}" placeholder="Vacío = ilimitado" style="width:100%;padding:7px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text)"></div>
+                    <div style="flex:1;min-width:110px"><label style="font-size:.74rem;font-weight:600;color:var(--dim)">SKU (opcional)</label><input id="tp-sku" value="${wfEscapeHtml(prod?.sku || '')}" placeholder="PEPITO-01" style="width:100%;padding:7px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text)"></div>
                 </div>
                 <div style="margin-top:.6rem"><label style="font-size:.74rem;font-weight:600;color:var(--dim)">Descripcion</label><input id="tp-descripcion" value="${wfEscapeHtml(prod?.descripcion || '')}" placeholder="Breve descripcion que vera el cliente" style="width:100%;padding:7px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text)"></div>
-                <div style="display:flex;gap:.6rem;flex-wrap:wrap;margin-top:.6rem">
-                    <div style="flex:1;min-width:180px"><label style="font-size:.74rem;font-weight:600;color:var(--dim)">Categoría</label>
-                        <select id="tp-categoria" style="width:100%;padding:7px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text)">
-                            <option value="" disabled ${catActual ? '' : 'selected'}>Selecciona una categoría</option>
+                <div style="margin-top:.6rem">
+                    <label style="font-size:.74rem;font-weight:600;color:var(--dim)">Categoría</label>
+                    <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
+                        <select id="tp-categoria" style="flex:1;min-width:180px;padding:7px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text)">
+                            <option value="" ${catIdActual ? '' : 'selected'}>Sin categoría</option>
                             ${catsOpts}
                         </select>
+                        <span style="font-size:.72rem;color:var(--dim)">Gestiona las categorías en la pestaña <b>Categorías</b></span>
                     </div>
                 </div>
-                <div style="margin-top:.6rem"><label style="font-size:.74rem;font-weight:600;color:var(--dim)">Atributos (clave: valor, una por línea)</label><textarea id="tp-atributos" rows="3" placeholder="Color: Rojo&#10;Material: Algodón&#10;Incluye: Desayuno" style="width:100%;padding:7px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text);resize:vertical">${wfEscapeHtml(attrTxt)}</textarea></div>
+                <div id="tp-var-block" style="margin-top:.6rem;display:none">
+                    <label style="font-size:.74rem;font-weight:600;color:var(--dim)">Atributos de variación (marca atributo y sus valores; se generarán todas las combinaciones)</label>
+                    <div id="tp-selector-atributos" style="margin-top:.35rem"></div>
+                    <div style="font-size:.72rem;color:var(--muted);margin-top:.35rem">Ej: Color (Negro, Blanco) + Talla (S, M, L) genera 6 variaciones. Crea atributos en la pestaña <b>Atributos</b>.</div>
+                </div>
+                <div style="margin-top:.6rem"><label style="font-size:.74rem;font-weight:600;color:var(--dim)">Ficha técnica (clave: valor, una por línea)</label><textarea id="tp-atributos" rows="3" placeholder="Material: Acero&#10;Garantía: 1 año&#10;Incluye: Desayuno" style="width:100%;padding:7px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text);resize:vertical">${wfEscapeHtml(attrTxt)}</textarea></div>
                 <div style="margin-top:.6rem">
-                    <label style="font-size:.74rem;font-weight:600;color:var(--dim)">Variantes / opciones (color, talla, tipo de paquete...)</label>
-                    <div id="tp-variantes-list" style="margin-top:.35rem"></div>
-                    <button type="button" class="btn-main" style="padding:.35rem .7rem;font-size:.72rem" onclick="tiendaAgregarVariante()"><i class="fas fa-plus" style="margin-right:.25rem"></i>Agregar opción</button>
+                    <label style="font-size:.74rem;font-weight:600;color:var(--dim)">Imágenes del producto (puedes subir varias, ej. para distintos colores)</label>
+                    <div id="tp-imagenes-list" style="margin-top:.35rem"></div>
+                    <button type="button" class="btn-main" style="padding:.35rem .7rem;font-size:.72rem" onclick="tiendaAgregarImagen()"><i class="fas fa-plus" style="margin-right:.25rem"></i>Agregar imagen</button>
                 </div>
                 <div style="display:flex;gap:.6rem;flex-wrap:wrap;margin-top:.6rem;align-items:flex-end">
-                    <div style="flex:2;min-width:200px"><label style="font-size:.74rem;font-weight:600;color:var(--dim)">Imagen (URL)</label><input id="tp-imagen-url" value="${wfEscapeHtml(prod?.imagen || '')}" placeholder="https://... o sube un archivo" style="width:100%;padding:7px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text)"></div>
-                    <input type="file" id="tp-imagen-file" accept="image/*" style="display:none" onchange="tiendaLeerImagen(this)">
-                    <button type="button" class="btn-main" style="padding:.45rem .7rem;font-size:.74rem" onclick="document.getElementById('tp-imagen-file').click()"><i class="fas fa-upload" style="margin-right:.25rem"></i>Subir imagen</button>
                     <div style="flex:2;min-width:200px" id="tp-digital-wrap"><label style="font-size:.74rem;font-weight:600;color:var(--dim)">Archivo para entrega digital</label>
                         <input type="file" id="tp-archivo-file" style="width:100%;padding:5px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text)" onchange="tiendaLeerArchivo(this)">
                     </div>
@@ -6444,52 +6443,78 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
             </div>
         `;
         tiendaSyncTipo();
-        tiendaRenderVariantes();
+        tiendaRenderSelectorAtributos(selector);
+        tiendaRenderImagenes();
     }
 
-    function tiendaRenderVariantes() {
-        const cont = document.getElementById('tp-variantes-list');
+    function tiendaRenderSelectorAtributos(selector) {
+        const cont = document.getElementById('tp-selector-atributos');
         if (!cont) return;
-        if (!_tiendaVariantesBorrador.length) {
-            cont.innerHTML = '<div style="font-size:.72rem;color:var(--dim);padding:.3rem 0">Sin opciones. Si el producto tiene colores/tallas/paquetes, agrégalas aquí (el precio adicional es opcional y se suma al precio base).</div>';
+        if (!_tiendaAtributos.length) {
+            cont.innerHTML = '<div style="font-size:.72rem;color:var(--dim)">Aún no hay atributos creados. Ve a la pestaña <b>Atributos</b> y crea uno (ej. Color, Talla).</div>';
             return;
         }
-        cont.innerHTML = _tiendaVariantesBorrador.map((v, i) => `
-            <div style="display:flex;gap:.5rem;align-items:flex-end;margin-bottom:.4rem;flex-wrap:wrap">
-                <input id="tv-n-${i}" value="${wfEscapeHtml(v.nombre)}" placeholder="Nombre (Ej: Rojo, M, Premium)" style="flex:2;min-width:130px;padding:6px;border:1px solid var(--border2);border-radius:7px;background:var(--bg);color:var(--text);font-size:.78rem">
-                <input id="tv-p-${i}" type="number" min="0" value="${Math.round((v.precio_cents || 0) / 100)}" placeholder="Precio adicional COP" style="flex:1;min-width:110px;padding:6px;border:1px solid var(--border2);border-radius:7px;background:var(--bg);color:var(--text);font-size:.78rem">
-                <input id="tv-s-${i}" type="number" min="0" value="${v.stock === null ? '' : v.stock}" placeholder="Stock (vacío = ilimitado)" style="flex:1;min-width:110px;padding:6px;border:1px solid var(--border2);border-radius:7px;background:var(--bg);color:var(--text);font-size:.78rem">
-                <button type="button" class="btn-small danger" onclick="tiendaQuitarVariante(${i})" style="font-size:.7rem;padding:4px 8px" title="Quitar"><i class="fas fa-trash"></i></button>
+        const mapa = {};
+        (selector || []).forEach(a => { mapa[a.atributo_id] = a.valores || []; });
+        cont.innerHTML = _tiendaAtributos.map(attr => `
+            <div style="border:1px solid var(--border);border-radius:8px;padding:.5rem;margin-bottom:.5rem">
+                <label style="display:flex;align-items:center;gap:.4rem;font-size:.8rem;font-weight:600;cursor:pointer">
+                    <input type="checkbox" class="tva-check" data-aid="${attr.id}" ${mapa[attr.id] ? 'checked' : ''}> ${wfEscapeHtml(attr.nombre)}
+                </label>
+                <div style="display:flex;flex-wrap:wrap;gap:.4rem;margin-top:.4rem">
+                    ${(attr.valores || []).map(v => `
+                        <label style="display:flex;align-items:center;gap:.25rem;font-size:.76rem;cursor:pointer">
+                            <input type="checkbox" class="tva-val" data-aid="${attr.id}" data-val="${wfEscapeHtml(String(v))}" ${(mapa[attr.id] || []).includes(String(v)) ? 'checked' : ''}> ${wfEscapeHtml(String(v))}
+                        </label>`).join('')}
+                </div>
             </div>`).join('');
-    }
-
-    function tiendaAgregarVariante() {
-        _tiendaVariantesBorrador.push({ id: 'v' + Date.now() + Math.floor(Math.random() * 1000), nombre: '', precio_cents: 0, stock: null });
-        tiendaRenderVariantes();
-    }
-
-    function tiendaQuitarVariante(i) {
-        _tiendaVariantesBorrador.splice(i, 1);
-        tiendaRenderVariantes();
     }
 
     function tiendaSyncTipo() {
         const t = document.getElementById('tp-tipo')?.value;
         const sw = document.getElementById('tp-stock-wrap');
         const dw = document.getElementById('tp-digital-wrap');
-        if (sw) sw.style.display = t === 'fisico' ? '' : 'none';
+        const vb = document.getElementById('tp-var-block');
+        if (sw) sw.style.display = t === 'simple' ? '' : 'none';
         if (dw) dw.style.display = t === 'digital' ? '' : 'none';
+        if (vb) vb.style.display = t === 'variable' ? '' : 'none';
     }
 
-    function tiendaLeerImagen(input) {
+    function tiendaRenderImagenes() {
+        const cont = document.getElementById('tp-imagenes-list');
+        if (!cont) return;
+        if (!_tiendaImagenesBorrador.length) {
+            cont.innerHTML = '<div style="font-size:.72rem;color:var(--dim);padding:.3rem 0">Sin imágenes. Agrega una o varias (la primera es la portada).</div>';
+            return;
+        }
+        cont.innerHTML = _tiendaImagenesBorrador.map((_, i) => `
+            <div style="display:flex;gap:.4rem;align-items:center;margin-bottom:.4rem;flex-wrap:wrap">
+                <input id="tp-img-${i}" value="${wfEscapeHtml(_tiendaImagenesBorrador[i].url)}" placeholder="https://... o sube una imagen" style="flex:1;min-width:150px;padding:6px;border:1px solid var(--border2);border-radius:7px;background:var(--bg);color:var(--text);font-size:.78rem">
+                <input type="file" accept="image/*" style="display:none" id="tp-img-file-${i}" onchange="tiendaImagenSubir(${i}, this)">
+                <button type="button" class="btn-main" style="padding:.3rem .6rem;font-size:.72rem" onclick="document.getElementById('tp-img-file-${i}').click()" title="Subir archivo"><i class="fas fa-upload"></i></button>
+                <button type="button" class="btn-small danger" style="font-size:.7rem;padding:4px 8px" onclick="tiendaQuitarImagen(${i})" title="Quitar"><i class="fas fa-trash"></i></button>
+            </div>`).join('');
+    }
+
+    function tiendaAgregarImagen() {
+        _tiendaImagenesBorrador.push({ url: '' });
+        tiendaRenderImagenes();
+    }
+
+    function tiendaQuitarImagen(i) {
+        _tiendaImagenesBorrador.splice(i, 1);
+        tiendaRenderImagenes();
+    }
+
+    function tiendaImagenSubir(i, input) {
         const file = input.files && input.files[0];
         if (!file) return;
         if (file.size > 7 * 1024 * 1024) { showToast('La imagen supera 7 MB', 'error'); input.value = ''; return; }
         const reader = new FileReader();
         reader.onload = () => {
-            _tiendaImagenData = String(reader.result);
-            document.getElementById('tp-imagen-url').value = '';
-            document.getElementById('tp-file-note').textContent = 'Imagen seleccionada: ' + file.name + ' (se subira al guardar)';
+            _tiendaImagenesBorrador[i].url = String(reader.result);
+            const inp = document.getElementById('tp-img-' + i);
+            if (inp) inp.value = String(reader.result);
         };
         reader.readAsDataURL(file);
     }
@@ -6512,45 +6537,119 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
         const tipo = document.getElementById('tp-tipo').value;
         const precio = Math.round(Number(document.getElementById('tp-precio').value) || 0) * 100;
         if (!nombre) { if (msg) { msg.textContent = 'Escribe el nombre del producto'; msg.className = 'msg error'; } return; }
-        if (precio <= 0) { if (msg) { msg.textContent = 'El precio debe ser mayor a 0'; msg.className = 'msg error'; } return; }
+        if (tipo !== 'variable' && precio <= 0) { if (msg) { msg.textContent = 'El precio debe ser mayor a 0'; msg.className = 'msg error'; } return; }
         let stock = null;
-        if (tipo === 'fisico') {
+        if (tipo === 'simple') {
             const sv = document.getElementById('tp-stock').value.trim();
             stock = sv === '' ? null : Math.max(0, Math.floor(Number(sv) || 0));
         }
         const descripcion = document.getElementById('tp-descripcion').value.trim();
-        const categoria = document.getElementById('tp-categoria').value.trim();
+        const categoria_id = document.getElementById('tp-categoria').value || null;
+        const sku = document.getElementById('tp-sku').value.trim() || null;
         const atributos = {};
         (document.getElementById('tp-atributos').value || '').split('\n').map(s => s.trim()).filter(Boolean).forEach(linea => {
             const idx = linea.indexOf(':');
             if (idx > -1) atributos[linea.slice(0, idx).trim()] = linea.slice(idx + 1).trim();
         });
-        const variantes = _tiendaVariantesBorrador.map((v, i) => ({
-            id: v.id,
-            nombre: (document.getElementById('tv-n-' + i) ? document.getElementById('tv-n-' + i).value.trim() : '') || v.nombre,
-            precio_cents: Math.max(0, Math.round(Number(document.getElementById('tv-p-' + i) ? document.getElementById('tv-p-' + i).value : 0) || 0)) * 100,
-            stock: (function () {
-                const el = document.getElementById('tv-s-' + i);
-                if (!el) return null;
-                const sv = el.value.trim();
-                return sv === '' ? null : Math.max(0, Math.floor(Number(sv) || 0));
-            })()
-        })).filter(v => v.nombre);
-        const imagen = _tiendaImagenData || document.getElementById('tp-imagen-url').value.trim();
+        const atributos_selector = [];
+        if (tipo === 'variable') {
+            document.querySelectorAll('.tva-check:checked').forEach(chk => {
+                const aid = chk.getAttribute('data-aid');
+                const attr = _tiendaAtributos.find(a => String(a.id) === aid);
+                if (!attr) return;
+                const valores = [];
+                document.querySelectorAll('.tva-val[data-aid="' + aid + '"]:checked').forEach(v => valores.push(v.getAttribute('data-val')));
+                if (valores.length) atributos_selector.push({ atributo_id: aid, nombre: attr.nombre, valores });
+            });
+        }
+        const imagenes = _tiendaImagenesBorrador.map((_, i) => {
+            const el = document.getElementById('tp-img-' + i);
+            return el ? el.value.trim() : '';
+        }).filter(Boolean);
+        const imagen = imagenes[0] || '';
         const activo = document.getElementById('tp-activo').checked;
         if (msg) { msg.textContent = 'Guardando...'; msg.className = 'msg'; }
         try {
             const data = await tiendaApi('guardar_producto', {
                 proyecto_id: _tiendaCtx.proyecto_id,
                 id: _tiendaEditandoId || null,
-                nombre, descripcion, precio_cents: precio, tipo, activo, stock, imagen,
-                categoria, atributos: Object.keys(atributos).length ? atributos : null,
-                variantes: variantes.length ? variantes : null,
+                nombre, descripcion, precio_cents: precio, tipo, activo, stock, imagen, imagenes,
+                categoria_id, categoria: null, sku,
+                atributos: Object.keys(atributos).length ? atributos : null,
+                atributos_selector: atributos_selector.length ? atributos_selector : null,
                 archivo_data_url: _tiendaArchivoDigital ? _tiendaArchivoDigital.dataUrl : null,
                 filename: _tiendaArchivoDigital ? _tiendaArchivoDigital.name : 'archivo'
             });
             if (!data.ok) throw new Error(data.error || 'No se pudo guardar');
             showToast('Producto guardado', 'success');
+            if (data.producto && data.producto.tipo === 'variable' && Array.isArray(data.producto.variaciones)) {
+                tiendaFormVariaciones(data.producto);
+            } else {
+                cargarTiendaProductos();
+            }
+        } catch (err) {
+            if (msg) { msg.textContent = 'Error: ' + err.message; msg.className = 'msg error'; }
+        }
+    }
+
+    // Editor de variaciones (producto variable) — cada variación: SKU, precio, promo, stock, imagen, activo
+    function tiendaFormVariaciones(producto) {
+        _tiendaVariaciones = (producto.variaciones || []).slice();
+        const cont = document.getElementById('tienda-panel-productos');
+        cont.innerHTML = `
+            <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.6rem;flex-wrap:wrap">
+                <button class="btn-main" style="padding:.4rem .8rem;font-size:.76rem" onclick="cargarTiendaProductos()"><i class="fas fa-arrow-left" style="margin-right:.25rem"></i>Volver a productos</button>
+                <span style="font-weight:700;font-size:.85rem">Variaciones de ${wfEscapeHtml(producto.nombre)}</span>
+                <span style="font-size:.72rem;color:var(--muted)">Ajusta precio, precio promocional, stock, SKU e imagen por cada combinación.</span>
+            </div>
+            ${_tiendaVariaciones.length ? `<div class="table-wrap"><table>
+                <thead><tr><th>Combinación</th><th>Precio</th><th>Promo</th><th>Stock</th><th>SKU</th><th>Imagen (URL)</th><th>Activo</th></tr></thead>
+                <tbody>
+                ${_tiendaVariaciones.map((v, i) => `
+                    <tr>
+                        <td style="font-weight:600;font-size:.82rem;white-space:nowrap">${wfEscapeHtml(v.nombre)}</td>
+                        <td><input id="tvx-p-${i}" type="number" min="0" value="${v.precio_cents != null ? Math.round(v.precio_cents / 100) : ''}" placeholder="Usa base" style="width:90px;padding:5px;border:1px solid var(--border2);border-radius:6px;background:var(--bg);color:var(--text);font-size:.76rem"></td>
+                        <td><input id="tvx-pr-${i}" type="number" min="0" value="${v.precio_promo_cents != null ? Math.round(v.precio_promo_cents / 100) : ''}" placeholder="—" style="width:90px;padding:5px;border:1px solid var(--border2);border-radius:6px;background:var(--bg);color:var(--text);font-size:.76rem"></td>
+                        <td><input id="tvx-s-${i}" type="number" min="0" value="${v.stock == null ? '' : v.stock}" placeholder="Ilimitado" style="width:80px;padding:5px;border:1px solid var(--border2);border-radius:6px;background:var(--bg);color:var(--text);font-size:.76rem"></td>
+                        <td><input id="tvx-k-${i}" value="${wfEscapeHtml(v.sku || '')}" placeholder="SKU" style="width:110px;padding:5px;border:1px solid var(--border2);border-radius:6px;background:var(--bg);color:var(--text);font-size:.76rem"></td>
+                        <td><input id="tvx-i-${i}" value="${wfEscapeHtml(v.imagen || '')}" placeholder="https://..." style="width:160px;padding:5px;border:1px solid var(--border2);border-radius:6px;background:var(--bg);color:var(--text);font-size:.76rem"></td>
+                        <td style="text-align:center"><input type="checkbox" id="tvx-a-${i}" ${v.activo === false ? '' : 'checked'}></td>
+                    </tr>`).join('')}
+                </tbody>
+            </table></div>
+            <div style="display:flex;gap:.5rem;margin-top:.7rem">
+                <button class="btn-main btn-green" style="padding:.45rem .9rem;font-size:.78rem" onclick="tiendaGuardarVariaciones('${producto.id}')"><i class="fas fa-save" style="margin-right:.25rem"></i>Guardar variaciones</button>
+                <button class="btn-main" style="padding:.45rem .9rem;font-size:.78rem" onclick="cargarTiendaProductos()">Cancelar</button>
+            </div>
+            <div class="msg" id="tvx-msg"></div>`
+            : '<div style="text-align:center;color:var(--dim);padding:2rem">Este producto no tiene combinaciones. Agrega atributos y valores en el formulario del producto.</div>'}
+        `;
+    }
+
+    async function tiendaGuardarVariaciones(productoId) {
+        const msg = document.getElementById('tvx-msg');
+        const variaciones = _tiendaVariaciones.map((v, i) => {
+            const p = document.getElementById('tvx-p-' + i);
+            const pr = document.getElementById('tvx-pr-' + i);
+            const s = document.getElementById('tvx-s-' + i);
+            const k = document.getElementById('tvx-k-' + i);
+            const im = document.getElementById('tvx-i-' + i);
+            const a = document.getElementById('tvx-a-' + i);
+            return {
+                id: v.id,
+                precio_cents: p && p.value !== '' ? Math.round(Number(p.value) || 0) * 100 : null,
+                precio_promo_cents: pr && pr.value !== '' ? Math.round(Number(pr.value) || 0) * 100 : null,
+                stock: s && s.value !== '' ? Math.max(0, Math.floor(Number(s.value) || 0)) : null,
+                sku: k ? k.value.trim() : '',
+                imagen: im ? im.value.trim() : '',
+                activo: a ? a.checked : true
+            };
+        });
+        if (msg) { msg.textContent = 'Guardando...'; msg.className = 'msg'; }
+        try {
+            const data = await tiendaApi('guardar_variaciones', { producto_id: productoId, variaciones });
+            if (!data.ok) throw new Error(data.error || 'No se pudo guardar');
+            showToast('Variaciones guardadas', 'success');
             cargarTiendaProductos();
         } catch (err) {
             if (msg) { msg.textContent = 'Error: ' + err.message; msg.className = 'msg error'; }
@@ -6563,6 +6662,124 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
         if (!data.ok) return showToast('Error: ' + (data.error || 'No se pudo eliminar'), 'error');
         showToast('Producto eliminado', 'success');
         cargarTiendaProductos();
+    }
+
+    // ── CATEGORÍAS (admin) ──
+    async function cargarTiendaCategorias() {
+        const cont = document.getElementById('tienda-panel-categorias');
+        cont.innerHTML = '<div style="text-align:center;color:var(--dim);padding:1.5rem">Cargando...</div>';
+        try {
+            const data = await tiendaApi('listar_categorias', { proyecto_id: _tiendaCtx.proyecto_id });
+            if (!data.ok) throw new Error(data.error || 'Error cargando categorías');
+            _tiendaCategorias = data.categorias || [];
+            cont.innerHTML = `
+                <div style="display:flex;gap:.5rem;align-items:center;margin-bottom:.8rem;flex-wrap:wrap">
+                    <input id="cat-nombre" placeholder="Nueva categoría (ej. Relojes)" style="flex:1;min-width:200px;padding:7px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text)">
+                    <button class="btn-main btn-green" style="padding:.45rem .9rem;font-size:.78rem" onclick="tiendaGuardarCategoria()"><i class="fas fa-plus" style="margin-right:.25rem"></i>Agregar</button>
+                </div>
+                ${_tiendaCategorias.length ? _tiendaCategorias.map(c => `
+                    <div style="display:flex;align-items:center;gap:.6rem;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:.5rem .7rem;margin-bottom:.4rem">
+                        <i class="fas fa-tags" style="color:var(--accent)"></i>
+                        <span style="flex:1;font-weight:600;font-size:.84rem">${wfEscapeHtml(c.nombre)}</span>
+                        <button class="btn-small danger" onclick="tiendaEliminarCategoria('${c.id}','${wfEscapeHtml(c.nombre)}')" style="font-size:.7rem;padding:4px 8px"><i class="fas fa-trash"></i></button>
+                    </div>`).join('')
+                : '<div style="text-align:center;color:var(--dim);padding:1.5rem">Sin categorías. Agrega la primera.</div>'}
+            `;
+        } catch (err) {
+            cont.innerHTML = '<div style="text-align:center;color:var(--red);padding:1.5rem">' + wfEscapeHtml(err.message || 'Error') + '</div>';
+        }
+    }
+
+    async function tiendaGuardarCategoria() {
+        const nombre = document.getElementById('cat-nombre').value.trim();
+        if (!nombre) return showToast('Escribe el nombre de la categoría', 'error');
+        const data = await tiendaApi('guardar_categoria', { proyecto_id: _tiendaCtx.proyecto_id, nombre });
+        if (!data.ok) return showToast('Error: ' + (data.error || 'No se pudo guardar'), 'error');
+        showToast('Categoría agregada', 'success');
+        cargarTiendaCategorias();
+    }
+
+    async function tiendaEliminarCategoria(id, nombre) {
+        if (!confirm(`Eliminar la categoría "${nombre}"?\n\nLos productos quedan sin categoría.`)) return;
+        const data = await tiendaApi('eliminar_categoria', { id });
+        if (!data.ok) return showToast('Error: ' + (data.error || 'No se pudo eliminar'), 'error');
+        showToast('Categoría eliminada', 'success');
+        cargarTiendaCategorias();
+    }
+
+    // ── ATRIBUTOS (admin, reutilizables) ──
+    async function cargarTiendaAtributos() {
+        const cont = document.getElementById('tienda-panel-atributos');
+        cont.innerHTML = '<div style="text-align:center;color:var(--dim);padding:1.5rem">Cargando...</div>';
+        try {
+            const data = await tiendaApi('listar_atributos', { proyecto_id: _tiendaCtx.proyecto_id });
+            if (!data.ok) throw new Error(data.error || 'Error cargando atributos');
+            _tiendaAtributos = data.atributos || [];
+            cont.innerHTML = `
+                <div style="display:flex;gap:.5rem;align-items:center;margin-bottom:.8rem;flex-wrap:wrap">
+                    <input id="attr-nombre" placeholder="Atributo (ej. Color)" style="flex:1;min-width:140px;padding:7px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text)">
+                    <input id="attr-valores" placeholder="Valores separados por coma (ej. Azul, Rojo, Negro)" style="flex:2;min-width:220px;padding:7px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text)">
+                    <button class="btn-main btn-green" style="padding:.45rem .9rem;font-size:.78rem" onclick="tiendaGuardarAtributo()"><i class="fas fa-plus" style="margin-right:.25rem"></i>Agregar</button>
+                </div>
+                ${_tiendaAtributos.length ? _tiendaAtributos.map(a => `
+                    <div style="display:flex;align-items:center;gap:.6rem;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:.5rem .7rem;margin-bottom:.4rem;flex-wrap:wrap">
+                        <i class="fas fa-sliders-h" style="color:var(--accent)"></i>
+                        <span style="font-weight:600;font-size:.84rem">${wfEscapeHtml(a.nombre)}</span>
+                        <span style="font-size:.74rem;color:var(--dim)">${(a.valores || []).map(v => wfEscapeHtml(String(v))).join(' · ')}</span>
+                        <span style="flex:1"></span>
+                        <button class="btn-small danger" onclick="tiendaEliminarAtributo('${a.id}','${wfEscapeHtml(a.nombre)}')" style="font-size:.7rem;padding:4px 8px"><i class="fas fa-trash"></i></button>
+                    </div>`).join('')
+                : '<div style="text-align:center;color:var(--dim);padding:1.5rem">Sin atributos. Crea uno (ej. Color, Talla) para usarlo en los productos variables.</div>'}
+            `;
+        } catch (err) {
+            cont.innerHTML = '<div style="text-align:center;color:var(--red);padding:1.5rem">' + wfEscapeHtml(err.message || 'Error') + '</div>';
+        }
+    }
+
+    async function tiendaGuardarAtributo() {
+        const nombre = document.getElementById('attr-nombre').value.trim();
+        const valores = document.getElementById('attr-valores').value.trim();
+        if (!nombre) return showToast('Escribe el nombre del atributo', 'error');
+        const data = await tiendaApi('guardar_atributo', { proyecto_id: _tiendaCtx.proyecto_id, nombre, valores });
+        if (!data.ok) return showToast('Error: ' + (data.error || 'No se pudo guardar'), 'error');
+        showToast('Atributo guardado', 'success');
+        cargarTiendaAtributos();
+    }
+
+    async function tiendaEliminarAtributo(id, nombre) {
+        if (!confirm(`Eliminar el atributo "${nombre}"?\n\nSe quitará de los productos variables y sus variaciones se regenerarán.`)) return;
+        const data = await tiendaApi('eliminar_atributo', { id });
+        if (!data.ok) return showToast('Error: ' + (data.error || 'No se pudo eliminar'), 'error');
+        showToast('Atributo eliminado', 'success');
+        cargarTiendaAtributos();
+    }
+
+    // ── CLIENTES (admin) ──
+    async function cargarTiendaClientes() {
+        const cont = document.getElementById('tienda-panel-clientes');
+        cont.innerHTML = '<div style="text-align:center;color:var(--dim);padding:1.5rem">Cargando...</div>';
+        try {
+            const data = await tiendaApi('listar_clientes', { proyecto_id: _tiendaCtx.proyecto_id });
+            if (!data.ok) throw new Error(data.error || 'Error cargando clientes');
+            const clientes = data.clientes || [];
+            cont.innerHTML = clientes.length
+                ? `<div class="table-wrap"><table>
+                    <thead><tr><th>Cliente</th><th>Email</th><th>Teléfono</th><th>Pedidos</th><th>Total comprado</th></tr></thead>
+                    <tbody>
+                    ${clientes.map(c => `
+                        <tr>
+                            <td style="font-weight:600;font-size:.85rem">${wfEscapeHtml(c.nombre || '—')}</td>
+                            <td style="font-size:.8rem">${wfEscapeHtml(c.email || '')}</td>
+                            <td style="font-size:.8rem">${wfEscapeHtml(c.telefono || '—')}</td>
+                            <td style="text-align:center">${c.pedidos || 0}</td>
+                            <td style="font-weight:600;font-size:.85rem;white-space:nowrap">${fmtCOP(c.total_cents || 0)}</td>
+                        </tr>`).join('')}
+                    </tbody>
+                </table></div>`
+                : '<div style="text-align:center;color:var(--dim);padding:2rem">Aún no hay clientes. Cuando alguien compre, aparecerá aquí.</div>';
+        } catch (err) {
+            cont.innerHTML = '<div style="text-align:center;color:var(--red);padding:1.5rem">' + wfEscapeHtml(err.message || 'Error') + '</div>';
+        }
     }
 
     async function cargarTiendaOrdenes() {
@@ -6586,17 +6803,18 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
         }
         cont.innerHTML = `
             <div class="table-wrap"><table>
-                <thead><tr><th>Fecha</th><th>Cliente</th><th>Items</th><th>Total</th><th>Estado</th><th>Acciones</th></tr></thead>
+                <thead><tr><th>N°</th><th>Fecha</th><th>Cliente</th><th>Items</th><th>Total</th><th>Pago</th><th>Acciones</th></tr></thead>
                 <tbody>
                 ${_tiendaOrdenes.map(o => {
-                    const b = tiendaEstadoBadge(o.estado);
+                    const b = tiendaEstadoBadge(o.estado_pago || o.estado);
                     const items = (o.items && o.items.length) ? o.items.map(i => i.nombre + (i.cantidad > 1 ? ' x' + i.cantidad : '')).join(', ') : '—';
                     return `<tr>
+                        <td style="font-weight:700;font-size:.8rem;white-space:nowrap">#${wfEscapeHtml(o.numero || o.id.slice(0, 8))}</td>
                         <td style="font-size:.8rem;white-space:nowrap">${wfEscapeHtml((o.created_at || '').slice(0, 10))}</td>
                         <td><div style="font-weight:600;font-size:.85rem">${wfEscapeHtml(o.cliente_nombre || '')}</div><div style="font-size:.72rem;color:var(--dim)">${wfEscapeHtml(o.cliente_email || '')}${o.cliente_telefono ? ' · ' + wfEscapeHtml(o.cliente_telefono) : ''}</div></td>
                         <td style="font-size:.78rem;max-width:220px">${wfEscapeHtml(items)}</td>
                         <td style="font-weight:600;font-size:.85rem;white-space:nowrap">${fmtCOP(o.total_cents)}</td>
-                        <td><span class="badge ${b.cls}">${b.label}</span>${o.transaction_id ? '<div style="font-size:.65rem;color:var(--dim);margin-top:.15rem">ref ' + wfEscapeHtml(o.transaction_id) + '</div>' : ''}</td>
+                        <td><span class="badge ${b.cls}">${b.label}</span>${o.metodo_pago ? '<div style="font-size:.65rem;color:var(--dim);margin-top:.15rem">' + wfEscapeHtml(o.metodo_pago) + '</div>' : ''}${o.transaction_id ? '<div style="font-size:.65rem;color:var(--dim);margin-top:.15rem">ref ' + wfEscapeHtml(o.transaction_id) + '</div>' : ''}</td>
                         <td style="white-space:nowrap">
                             <select onchange="tiendaCambiarEstado('${o.id}',this.value)" style="padding:4px 6px;border:1px solid var(--border2);border-radius:6px;background:var(--bg);color:var(--text);font-size:.74rem">
                                 <option value="pendiente"${o.estado === 'pendiente' ? ' selected' : ''}>Pendiente</option>
