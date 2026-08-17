@@ -2061,6 +2061,23 @@
         }
     }
 
+    async function wfAsignarAgente(proyectoId, agenteId) {
+        try {
+            const res = await fetch('/.netlify/functions/web-factory', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + supabase.auth.session?.access_token },
+                body: JSON.stringify({ action: 'update_agente', proyecto_id: proyectoId, agente_id: agenteId || null })
+            });
+            const data = await res.json();
+            if (!data.ok) throw new Error(data.error || 'Error al asignar agente');
+            showToast(data.agente_id ? `Agente "${data.agente_nombre}" asignado` : 'Agente desasignado');
+            cargarWebFactory();
+            cargarAgentes();
+        } catch (err) {
+            showToast(err.message || 'Error al asignar agente', 'error');
+        }
+    }
+
     function wfEstadoBadge(estado) {
         switch (estado) {
             case 'publicado': return { cls: 'badge-green', label: 'Publicado' };
@@ -2176,8 +2193,15 @@
 
                     // Acciones: admin ve todo; usuario tienda solo "Editar tienda"
                     let acciones = '';
+                    // Dropdown de agente (disponible para admin y usuarios con permisos)
+                    const opcionesAgente = `<option value=""${!p.agente_id ? ' selected' : ''}>Sin agente</option>` +
+                        agentes.map(a => `<option value="${a.id}"${p.agente_id == a.id ? ' selected' : ''}>${wfEscapeHtml(a.name)}</option>`).join('');
+                    const agenteDropdown = p.plantilla === 'tienda'
+                        ? `<select onchange="wfAsignarAgente('${p.id}', this.value)" style="font-size:.72rem;padding:3px 6px;border:1px solid var(--border2);border-radius:6px;background:var(--bg1);color:var(--text1);max-width:130px" title="Asignar agente de IA a esta tienda">${opcionesAgente}</select>`
+                        : '';
                     if (esAdmin()) {
                         acciones = `
+                            ${agenteDropdown}
                             ${p.netlify_url ? `<button class="btn-small" onclick="window.open('${wfEscapeHtml(p.netlify_url)}','_blank')" style="font-size:.72rem;padding:4px 8px" title="Abrir sitio"><i class="fas fa-external-link"></i></button>` : ''}
                             ${p.github_url ? `<button class="btn-small" onclick="window.open('${wfEscapeHtml(p.github_url)}','_blank')" style="font-size:.72rem;padding:4px 8px" title="Abrir repo en GitHub"><i class="fab fa-github"></i></button>` : ''}
                             ${p.clone_url ? `<button class="btn-small" onclick="copiarClone('${wfEscapeHtml(p.clone_url)}', '${wfEscapeHtml(p.slug)}')" style="font-size:.72rem;padding:4px 8px" title="Copiar comando clone"><i class="fas fa-copy"></i></button>` : ''}
@@ -2189,8 +2213,9 @@
                             <button class="btn-small danger" onclick="eliminarProyectoWeb('${p.id}', '${wfEscapeHtml(p.nombre)}')" style="font-size:.72rem;padding:4px 8px" title="Eliminar registro"><i class="fas fa-trash"></i></button>
                         `;
                     } else {
-                        // Usuario tienda: solo ver tienda + editar tienda
+                        // Usuario tienda: ver tienda + dropdown agente + editar tienda
                         acciones = `
+                            ${agenteDropdown}
                             ${p.netlify_url ? `<button class="btn-small" onclick="window.open('${wfEscapeHtml(p.netlify_url)}','_blank')" style="font-size:.72rem;padding:4px 8px" title="Ver tienda"><i class="fas fa-external-link"></i></button>` : ''}
                             ${p.plantilla === 'tienda' ? `<button class="btn-main" onclick="abrirTiendaModal('${p.id}','${wfEscapeHtml(p.nombre)}','${wfEscapeHtml(p.slug)}')" style="font-size:.72rem;padding:5px 10px" title="Editar tienda"><i class="fas fa-store" style="margin-right:.25rem"></i> Editar tienda</button>` : ''}
                         `;
@@ -2202,7 +2227,7 @@
                             <div style="font-weight:600">${wfEscapeHtml(p.nombre)}</div>
                             <div style="color:var(--dim);font-size:.75rem">${wfEscapeHtml(p.slug)}</div>
                         </td>
-                        <td><span class="badge badge-accent">${wfEscapeHtml(p.plantilla || 'landing')}</span>${p.accent_color ? '<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:' + wfEscapeHtml(p.accent_color) + ';border:1px solid var(--border2);vertical-align:middle;margin-left:.35rem" title="' + wfEscapeHtml(p.accent_color) + '"></span>' : ''}${p.agente_id ? ' <span class="badge" title="Chat de IA embebido en el sitio">🤖 IA</span>' : ''}</td>
+                        <td><span class="badge badge-accent">${wfEscapeHtml(p.plantilla || 'landing')}</span>${p.accent_color ? '<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:' + wfEscapeHtml(p.accent_color) + ';border:1px solid var(--border2);vertical-align:middle;margin-left:.35rem" title="' + wfEscapeHtml(p.accent_color) + '"></span>' : ''}</td>
                         <td><span class="badge ${b.cls}"${badgeError}>${b.label}</span>${estadoDeploy}${errorInfo}</td>
                         <td>${p.netlify_url ? `<a href="${wfEscapeHtml(p.netlify_url)}" target="_blank" rel="noopener" style="color:${inactivo ? 'var(--red)' : 'var(--accent)'}">${inactivo ? 'offline' : 'ver sitio'}</a>` : '—'}</td>
                         <td>
@@ -3397,6 +3422,17 @@
                 return;
             }
             if (!res.ok) { showMsg('create-msg', data.error || 'Error al crear el agente', 'error'); return; }
+            // Sincronizar web_projects.agente_id si se creó con tienda vinculada
+            const tiendaId = document.getElementById('create-tienda-select').value || null;
+            if (tiendaId && data.agente?.id) {
+                try {
+                    await fetch('/.netlify/functions/web-factory', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+                        body: JSON.stringify({ action: 'update_agente', proyecto_id: tiendaId, agente_id: data.agente.id })
+                    });
+                } catch (_) {}
+            }
             showMsg('create-msg', `Agente "${name}" creado. Quedan ${data.agentes_restantes} espacio(s) en tu plan.`, 'success');
             document.getElementById('create-name').value = '';
             document.getElementById('create-prompt').value = '';
@@ -4893,6 +4929,29 @@
         btn.disabled = false; btn.innerText = orig;
         ocultarOverlayCarga();
         if (error) { showToast('Error: ' + error.message, 'error'); return; }
+        // Sincronizar web_projects.agente_id si la tienda cambió
+        const nuevaTiendaId = document.getElementById('edit-tienda-select').value || null;
+        const agenteAnterior = agentes.find(a => a.id === id);
+        const tiendaAnteriorId = agenteAnterior?.tienda_id || null;
+        try {
+            const token = supabase.auth.session?.access_token;
+            // Si había tienda anterior y es diferente a la nueva: desasignar de la anterior
+            if (tiendaAnteriorId && tiendaAnteriorId !== nuevaTiendaId) {
+                await fetch('/.netlify/functions/web-factory', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+                    body: JSON.stringify({ action: 'update_agente', proyecto_id: tiendaAnteriorId, agente_id: null })
+                });
+            }
+            // Asignar agente a la nueva tienda
+            if (nuevaTiendaId) {
+                await fetch('/.netlify/functions/web-factory', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+                    body: JSON.stringify({ action: 'update_agente', proyecto_id: nuevaTiendaId, agente_id: id })
+                });
+            }
+        } catch (_) {}
         if (crmActivo) {
             try {
                 await llamarCRM('sembrar_estados', {});

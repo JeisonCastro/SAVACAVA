@@ -1,9 +1,10 @@
 (() => {
   const script = document.currentScript || Array.from(document.scripts).find(s => s.src && s.src.includes('widget.js'));
-  const agenteId = script?.getAttribute('data-id') || script?.dataset?.id;
+  const storeSlug = script?.getAttribute('data-store') || script?.dataset?.store;
+  const agenteIdDirecto = script?.getAttribute('data-id') || script?.dataset?.id;
 
-  if (!agenteId) {
-    console.error('[AUVRO Widget] Falta data-id.');
+  if (!storeSlug && !agenteIdDirecto) {
+    console.error('[AUVRO Widget] Falta data-store o data-id.');
     return;
   }
 
@@ -14,6 +15,33 @@
       return 'https://auvro.netlify.app';
     }
   })();
+
+  // Resolución dinámica: si data-store está presente, resolver agente desde el servidor
+  async function resolverAgente() {
+    if (agenteIdDirecto && !storeSlug) return agenteIdDirecto;
+    if (!storeSlug) return agenteIdDirecto || null;
+    try {
+      const res = await fetch(`${baseUrl}/.netlify/functions/web-chat-resolve?slug=${encodeURIComponent(storeSlug)}`, {
+        method: 'GET'
+      });
+      const data = await res.json();
+      if (data.ok && data.agente_id) return String(data.agente_id);
+      return agenteIdDirecto || null;
+    } catch (_) {
+      return agenteIdDirecto || null;
+    }
+  }
+
+  // Iniciar widget con resolución async
+  resolverAgente().then(agenteId => {
+    if (!agenteId) {
+      console.warn('[AUVRO Widget] Sin agente asignado para esta tienda. Widget no se carga.');
+      return;
+    }
+    inicializarWidget(agenteId);
+  });
+
+  function inicializarWidget(agenteId) {
 
   const DEFAULTS = {
     primary: '#2563eb',
@@ -1217,4 +1245,6 @@
   }
 
   render(localMessages);
+
+  } // fin inicializarWidget
 })();

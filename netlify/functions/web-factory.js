@@ -105,10 +105,14 @@ function escaparAttr(v) {
     return String(v ?? '').replace(/["'<>&]/g, '');
 }
 
-function crearSnippetAgente(agenteId, agente) {
+function crearSnippetAgente(agenteId, agente, slug) {
     const id = String(agenteId ?? '').trim();
-    if (!id) return '';
-    let attrs = `data-id="${escaparAttr(id)}"`;
+    const slugStr = String(slug ?? '').trim();
+    if (!id && !slugStr) return '';
+    let attrs = '';
+    // data-store para resolución dinámica (prioritario); data-id como fallback
+    if (slugStr) attrs += `data-store="${escaparAttr(slugStr)}"`;
+    if (id) attrs += ` data-id="${escaparAttr(id)}"`;
     const nombre = (agente && agente.nombre_agente) || (agente && agente.name);
     if (nombre) attrs += ` data-name="${escaparAttr(nombre)}"`;
     return `<script src="https://auvro.netlify.app/widget.js" ${attrs}><\/script>`;
@@ -611,7 +615,7 @@ async function pipelineCrear(body, adminId) {
         if (!ag) throw new Error('El agente de IA seleccionado no existe o no es tuyo');
         agenteRow = ag;
     }
-    const snippetAgente = crearSnippetAgente(agente_id, agenteRow);
+    const snippetAgente = crearSnippetAgente(agente_id, agenteRow, slug);
 
     const valores = {
         EMPRESA: nombre,
@@ -768,6 +772,85 @@ exports.handler = async (event) => {
             let plantillas = [];
             try { plantillas = leerPlantillas(); } catch (_) {}
             return { statusCode: 200, body: JSON.stringify({ ok: true, proyectos: proyectos || [], plantillas, esAdmin: false }) };
+        }
+
+        // ── LIST_AGENTES: retorna los agentes del usuario (para selects de asignación) ──
+        if (action === 'list_agentes') {
+            const { data: agentes } = await supabase
+                .from('agentes_ia')
+                .select('id, nombre_agente, tienda_id')
+                .eq('user_id', userId)
+                .order('id', { ascending: true });
+            return { statusCode: 200, body: JSON.stringify({ ok: true, agentes: agentes || [] }) };
+        }
+
+        // ── UPDATE_AGENTE: asignar/desasignar agente de IA a una tienda ──
+        // Actualiza web_projects.agente_id y sincroniza agentes_ia.tienda_id bidireccionalmente.
+        // Accesible para admin Y para usuarios con permiso en tienda_permisos.
+        if (action === 'update_agente') {
+            const { proyecto_id, agente_id } = body;
+            if (!proyecto_id) return { statusCode: 400, body: JSON.stringify({ error: 'Falta proyecto_id' }) };
+
+            // Validar que el proyecto existe
+            const { data: proyecto } = await supabase
+                .from('web_projects')
+                .select('id, agente_id, plantilla, created_by')
+                .eq('id', proyecto_id)
+                .maybeSingle();
+            if (!proyecto) return { statusCode: 404, body: JSON.stringify({ error: 'Proyecto no encontrado' }) };
+
+            // Validar permisos: admin o usuario con permiso en tienda_permisos
+            const tieneAcceso = isAdmin ||
+                (await supabase.from('tienda_permisos').select('proyecto_id').eq('user_id', userId).eq('proyecto_id', proyecto_id).maybeSingle()).data;
+            if (!tieneAcceso) return { statusCode: 403, body: JSON.stringify({ error: 'Sin acceso a esta tienda' }) };
+
+            const nuevoAgenteId = agente_id ? Number(agente_id) : null;
+            const agenteAnteriorId = proyecto.agente_id ? Number(proyecto.agente_id) : null;
+
+            // Si se asigna un agente, validar que existe y pertenece al admin (creador de la tienda)
+            let agenteRow = null;
+            if (nuevoAgenteId) {
+                const { data: ag } = await supabase
+                    .from('agentes_ia')
+                    .select('id, nombre_agente, dominios_permitidos')
+                    .eq('id', nuevoAgenteId)
+                    .eq('user_id', userId)
+                    .maybeSingle();
+                if (!ag) return { statusCode: 404, body: JSON.stringify({ error: 'Agente no encontrado o no pertenece a tu cuenta' }) };
+                agenteRow = ag;
+            }
+
+            // 1. Actualizar web_projects.agente_id
+            const { error: upErr } = await supabase
+                .from('web_projects')
+                .update({ agente_id: nuevoAgenteId, updated_at: new Date().toISOString() })
+                .eq('id', proyecto_id);
+            if (upErr) return { statusCode: 500, body: JSON.stringify({ error: upErr.message }) };
+
+            // 2. Sincronizar agentes_ia.tienda_id (bidireccional)
+            if (nuevoAgenteId && agenteRow) {
+                // Setear tienda_id en el agente nuevo
+                await supabase.from('agentes_ia').update({ tienda_id: proyecto_id }).eq('id', nuevoAgenteId);
+                // Autorizar dominios del sitio en el agente
+                const { data: sitio } = await supabase.from('web_projects').select('netlify_url, dominio').eq('id', proyecto_id).maybeSingle();
+                if (sitio) {
+                    await garantizarDominiosAgente(nuevoAgenteId, hostnamesParaSitio(sitio.netlify_url, sitio.dominio));
+                }
+            }
+
+            // Si el agente anterior es diferente al nuevo: limpiar tienda_id del agente anterior
+            if (agenteAnteriorId && agenteAnteriorId !== nuevoAgenteId) {
+                await supabase.from('agentes_ia').update({ tienda_id: null }).eq('id', agenteAnteriorId);
+            }
+
+            return {
+                statusCode: 200,
+                body: JSON.stringify({
+                    ok: true,
+                    agente_id: nuevoAgenteId,
+                    agente_nombre: agenteRow?.nombre_agente || null
+                })
+            };
         }
 
         // ── Todas las demás acciones requieren admin ──

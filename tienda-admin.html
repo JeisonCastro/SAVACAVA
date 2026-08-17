@@ -42,6 +42,7 @@
             <a href="#" data-sec="clientes" onclick="return nav('clientes')"><i class="fas fa-users"></i> Clientes</a>
             <a href="#" data-sec="pasarela" onclick="return nav('pasarela')"><i class="fas fa-credit-card"></i> Pasarela</a>
             <a href="#" data-sec="notificaciones" onclick="return nav('notificaciones')"><i class="fas fa-bell"></i> Notificaciones</a>
+            <a href="#" data-sec="agentes" onclick="return nav('agentes')"><i class="fas fa-robot"></i> Agente IA</a>
         </nav>
         <div class="sidebar-bottom">
             <a href="dashboard.html"><i class="fas fa-arrow-left"></i> Panel AUVRO</a>
@@ -73,6 +74,7 @@
     const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     let session = null;
+    let isAdmin = false;
     const ctx = { proyecto_id: '', slug: '' };
     const S = { productos: [], categorias: [], atributos: [], ordenes: [], clientes: [], editandoId: null, imagenes: [], archivoDigital: null, _varsIds: [] };
 
@@ -119,6 +121,12 @@
         if (!session) { window.location.href = 'login.html'; return; }
         $('tb-email').textContent = session.user.email;
 
+        // Detectar si es admin
+        try {
+            const { data: perfil } = await _supabase.from('perfiles').select('is_admin').eq('id', session.user.id).maybeSingle();
+            isAdmin = perfil?.is_admin === true;
+        } catch (_) {}
+
         const params = new URLSearchParams(window.location.search);
         const proyecto = params.get('proyecto');
         const slug = params.get('slug');
@@ -162,7 +170,7 @@
         document.querySelectorAll('.sidebar nav a').forEach(a => a.classList.toggle('active', a.getAttribute('data-sec') === sec));
         ({ dashboard: renderDashboard, productos: renderProductos, categorias: renderCategorias,
             atributos: renderAtributos, ordenes: renderOrdenes, clientes: renderClientes,
-            pasarela: renderPasarela, notificaciones: renderNotificaciones })[sec]();
+            pasarela: renderPasarela, notificaciones: renderNotificaciones, agentes: renderAgentesTienda })[sec]();
         return false;
     }
 
@@ -733,6 +741,74 @@
         } catch (err) { msg.textContent = 'Error: ' + err.message; msg.className = 'msg error'; }
     }
 
+    async function wfApi(action, body) {
+        const res = await fetch('/.netlify/functions/web-factory', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + (session ? session.access_token : '') },
+            body: JSON.stringify({ action, ...body })
+        });
+        return res.json();
+    }
+
+    async function renderAgentesTienda() {
+        const main = $('main');
+        main.innerHTML = '<div class="empty">Cargando…</div>';
+        try {
+            const [agentesData, proyectosData] = await Promise.all([
+                wfApi('list_agentes', {}),
+                wfApi('list_tienda_para_usuario', {})
+            ]);
+            const agentes = (agentesData.ok && agentesData.agentes) || [];
+            const proyectos = (proyectosData.ok && proyectosData.proyectos) || [];
+            const proyecto = proyectos.find(p => p.id === ctx.proyecto_id);
+            const agenteActualId = proyecto?.agente_id || null;
+            const agenteActual = agentes.find(a => a.id === agenteActualId);
+            const opciones = `<option value="">Sin agente IA</option>` +
+                agentes.map(a => `<option value="${a.id}"${agenteActualId == a.id ? ' selected' : ''}>${esc(a.nombre_agente)}</option>`).join('');
+            main.innerHTML = `
+                <h2 class="card-title" style="margin-bottom:14px">Agente IA</h2>
+                <div class="card">
+                    <div style="font-weight:700;font-size:.9rem;margin-bottom:6px">Agente asignado a esta tienda</div>
+                    <p style="font-size:.8rem;color:var(--muted);margin-bottom:12px">${isAdmin
+                        ? 'Selecciona qué agente de IA responderá a los visitantes de esta tienda. El widget del chat se activará automáticamente en el sitio.'
+                        : 'El agente de IA que responde a los visitantes de esta tienda.'}</p>
+                    ${agenteActual
+                        ? `<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;padding:10px 14px;background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.2);border-radius:10px">
+                            <i class="fas fa-robot" style="color:var(--green);font-size:1.1rem"></i>
+                            <div><div style="font-weight:600;font-size:.9rem">${esc(agenteActual.nombre_agente)}</div><div style="font-size:.75rem;color:var(--muted)">Chat activo en el sitio</div></div>
+                           </div>`
+                        : `<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;padding:10px 14px;background:rgba(100,116,139,.08);border:1px solid var(--border);border-radius:10px">
+                            <i class="fas fa-robot" style="color:var(--muted);font-size:1.1rem"></i>
+                            <div><div style="font-weight:600;font-size:.9rem;color:var(--muted)">Sin agente asignado</div><div style="font-size:.75rem;color:var(--muted)">El chat no está visible en el sitio</div></div>
+                           </div>`
+                    }
+                    ${isAdmin ? `
+                    <div class="field">
+                        <label>Asignar agente</label>
+                        <select id="agente-tienda-select" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:.86rem">${opciones}</select>
+                    </div>
+                    <button class="btn-main" onclick="guardarAgenteTienda()" style="margin-top:10px"><i class="fas fa-save"></i> Guardar</button>
+                    <div class="msg" id="at-msg"></div>
+                    ` : ''}
+                </div>
+            `;
+        } catch (err) {
+            main.innerHTML = '<div class="empty">Error: ' + esc(err.message) + '</div>';
+        }
+    }
+
+    async function guardarAgenteTienda() {
+        const msg = $('at-msg');
+        msg.textContent = 'Guardando…'; msg.className = 'msg';
+        try {
+            const agenteId = $('agente-tienda-select').value || null;
+            const data = await wfApi('update_agente', { proyecto_id: ctx.proyecto_id, agente_id: agenteId });
+            if (!data.ok) throw new Error(data.error || 'Error');
+            toast(data.agente_id ? `Agente "${data.agente_nombre}" asignado` : 'Agente desasignado');
+            renderAgentesTienda();
+        } catch (err) { msg.textContent = 'Error: ' + err.message; msg.className = 'msg error'; }
+    }
+
     Object.assign(window, {
         nav, salir, formProducto, nuevoProducto, editarProducto, eliminarProducto, syncTipo, renderSelector, renderImgs,
         addImg, quitImg, imgSubir, leerArchivo, guardarProducto, formVariaciones, guardarVariaciones,
@@ -740,6 +816,7 @@
         renderAtributos, guardarAtributo, eliminarAtributo,
         renderOrdenes, cambiarEstado, renderClientes,
         renderPasarela, guardarPasarela, renderNotificaciones, conectarGmail, desconectarGmail, guardarNotif,
+        renderAgentesTienda, guardarAgenteTienda,
         toggleTheme, actualizarBotonTema
     });
 
