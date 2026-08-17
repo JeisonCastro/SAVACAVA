@@ -754,13 +754,12 @@
         const main = $('main');
         main.innerHTML = '<div class="empty">Cargando…</div>';
         try {
-            const [agentesData, proyectosData] = await Promise.all([
+            const [agentesData, proyectoData] = await Promise.all([
                 wfApi('list_agentes', {}),
-                wfApi('list_tienda_para_usuario', {})
+                _supabase.from('web_projects').select('id, agente_id, nombre').eq('id', ctx.proyecto_id).maybeSingle()
             ]);
             const agentes = (agentesData.ok && agentesData.agentes) || [];
-            const proyectos = (proyectosData.ok && proyectosData.proyectos) || [];
-            const proyecto = proyectos.find(p => p.id === ctx.proyecto_id);
+            const proyecto = proyectoData.data;
             const agenteActualId = proyecto?.agente_id || null;
             const agenteActual = agentes.find(a => a.id === agenteActualId);
             const opciones = `<option value="">Sin agente IA</option>` +

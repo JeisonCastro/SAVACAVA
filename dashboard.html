@@ -2063,9 +2063,11 @@
 
     async function wfAsignarAgente(proyectoId, agenteId) {
         try {
+            const { data: { session } } = await _supabase.auth.getSession();
+            if (!session) { showToast('Sesión expirada', 'error'); return; }
             const res = await fetch('/.netlify/functions/web-factory', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + supabase.auth.session?.access_token },
+                headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + session.access_token },
                 body: JSON.stringify({ action: 'update_agente', proyecto_id: proyectoId, agente_id: agenteId || null })
             });
             const data = await res.json();
@@ -4934,24 +4936,28 @@
         const agenteAnterior = agentes.find(a => a.id === id);
         const tiendaAnteriorId = agenteAnterior?.tienda_id || null;
         try {
-            const token = supabase.auth.session?.access_token;
+            const { data: { session } } = await _supabase.auth.getSession();
+            if (!session) { showToast('Sesión expirada', 'error'); return; }
+            const token = session.access_token;
             // Si había tienda anterior y es diferente a la nueva: desasignar de la anterior
             if (tiendaAnteriorId && tiendaAnteriorId !== nuevaTiendaId) {
-                await fetch('/.netlify/functions/web-factory', {
+                const r1 = await fetch('/.netlify/functions/web-factory', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
                     body: JSON.stringify({ action: 'update_agente', proyecto_id: tiendaAnteriorId, agente_id: null })
                 });
+                if (!r1.ok) console.error('Error desasignando agente de tienda anterior:', await r1.text());
             }
             // Asignar agente a la nueva tienda
             if (nuevaTiendaId) {
-                await fetch('/.netlify/functions/web-factory', {
+                const r2 = await fetch('/.netlify/functions/web-factory', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
                     body: JSON.stringify({ action: 'update_agente', proyecto_id: nuevaTiendaId, agente_id: id })
                 });
+                if (!r2.ok) console.error('Error asignando agente a nueva tienda:', await r2.text());
             }
-        } catch (_) {}
+        } catch (e) { console.error('Error sincronizando agente-tienda:', e); }
         if (crmActivo) {
             try {
                 await llamarCRM('sembrar_estados', {});

@@ -239,6 +239,72 @@ async function esperarRepoListo(owner, slug, headers, maxMs = 10000) {
     }
 }
 
+// ── Inyectar widget en repo existente (cuando se asigna agente a tienda sin widget) ──
+async function inyectarWidgetEnRepo(proyecto) {
+    const token = process.env.GITHUB_TOKEN;
+    if (!token) return;
+    if (!proyecto.github_owner || !proyecto.github_repo) return;
+
+    const owner = proyecto.github_owner;
+    const repo = proyecto.github_repo;
+    const branch = proyecto.default_branch || 'main';
+    const base = `https://api.github.com/repos/${owner}/${repo}`;
+    const headers = { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json', 'Content-Type': 'application/json' };
+
+    // Leer index.html del repo
+    const fileRes = await fetchGitHub(`${base}/contents/index.html?ref=${branch}`, { headers });
+    if (!fileRes || !fileRes.ok) return;
+    const fileData = await fileRes.json();
+    const html = Buffer.from(fileData.content, 'base64').toString('utf8');
+
+    // Verificar si ya tiene el widget
+    if (html.includes('widget.js')) return;
+
+    // Generar snippet
+    const snippet = crearSnippetAgente(proyecto.agente_id, null, proyecto.slug);
+    if (!snippet) return;
+
+    // Inyectar antes de </body>
+    const updatedHtml = html.replace(/<\/body>/i, snippet + '\n</body>');
+    if (updatedHtml === html) return;
+
+    // Commit y push
+    const blobRes = await fetchGitHub(`${base}/git/blobs`, {
+        method: 'POST', headers,
+        body: JSON.stringify({ content: Buffer.from(updatedHtml, 'utf8').toString('base64'), encoding: 'base64' })
+    });
+    if (!blobRes || !blobRes.ok) return;
+    const blob = await blobRes.json();
+
+    const refRes = await fetchGitHub(`${base}/git/ref/heads/${branch}`, { headers });
+    if (!refRes || !refRes.ok) return;
+    const refData = await refRes.json();
+
+    const treeRes = await fetchGitHub(`${base}/git/trees`, {
+        method: 'POST', headers,
+        body: JSON.stringify({ tree: [{ path: 'index.html', mode: '100644', type: 'blob', sha: blob.sha }], base_tree: refData.object.sha })
+    });
+    if (!treeRes || !treeRes.ok) return;
+    const treeData = await treeRes.json();
+
+    const commitRes = await fetchGitHub(`${base}/git/commits`, {
+        method: 'POST', headers,
+        body: JSON.stringify({ message: 'feat: inyectar widget de IA (asignación de agente)', tree: treeData.sha, parents: [refData.object.sha] })
+    });
+    if (!commitRes || !commitRes.ok) return;
+    const commitData = await commitRes.json();
+
+    await fetchGitHub(`${base}/git/refs/heads/${branch}`, {
+        method: 'PATCH', headers,
+        body: JSON.stringify({ sha: commitData.sha, force: true })
+    });
+
+    // Trigger rebuild
+    if (proyecto.netlify_site_id) {
+        await dispararBuild(proyecto.netlify_site_id);
+    }
+}
+
 async function fetchGitHub(uri, opciones, reintentos = 3) {
     let res = null;
     for (let i = 1; i <= reintentos; i++) {
@@ -841,6 +907,22 @@ exports.handler = async (event) => {
             // Si el agente anterior es diferente al nuevo: limpiar tienda_id del agente anterior
             if (agenteAnteriorId && agenteAnteriorId !== nuevoAgenteId) {
                 await supabase.from('agentes_ia').update({ tienda_id: null }).eq('id', agenteAnteriorId);
+            }
+
+            // 3. Si se asignó un agente, inyectar widget en el repo si falta y trigger rebuild
+            if (nuevoAgenteId) {
+                try {
+                    const { data: projCompleto } = await supabase
+                        .from('web_projects')
+                        .select('github_owner, github_repo, default_branch, netlify_site_id, slug')
+                        .eq('id', proyecto_id)
+                        .maybeSingle();
+                    if (projCompleto) {
+                        await inyectarWidgetEnRepo({ ...projCompleto, agente_id: nuevoAgenteId });
+                    }
+                } catch (e) {
+                    console.error('web-factory: inyectar widget en repo falló:', e.message);
+                }
             }
 
             return {
