@@ -737,18 +737,43 @@ exports.handler = async (event) => {
             return { statusCode: 401, body: JSON.stringify({ error: 'No autenticado' }) };
         }
 
+        const body = JSON.parse(event.body || '{}');
+        const { action } = body;
+        const userId = userData.user.id;
+
         const { data: miPerfil } = await supabase
             .from('perfiles')
             .select('is_admin')
-            .eq('id', userData.user.id)
+            .eq('id', userId)
             .single();
-        if (!miPerfil?.is_admin) {
-            return { statusCode: 403, body: JSON.stringify({ error: 'No eres admin' }) };
+        const isAdmin = miPerfil?.is_admin === true;
+
+        // ── LIST_TIENDA_PARA_USUARIO: usuario no-admin ve solo sus tiendas asignadas ──
+        if (action === 'list_tienda_para_usuario') {
+            const { data: permisos } = await supabase
+                .from('tienda_permisos')
+                .select('proyecto_id, rol')
+                .eq('user_id', userId);
+            if (!permisos || !permisos.length) {
+                return { statusCode: 200, body: JSON.stringify({ ok: true, proyectos: [], plantillas: [], esAdmin: false }) };
+            }
+            const proyectoIds = permisos.map(p => p.proyecto_id);
+            const { data: proyectos, error } = await supabase
+                .from('web_projects')
+                .select('*')
+                .in('id', proyectoIds)
+                .eq('plantilla', 'tienda')
+                .order('created_at', { ascending: false });
+            if (error) return { statusCode: 500, body: JSON.stringify({ error: error.message }) };
+            let plantillas = [];
+            try { plantillas = leerPlantillas(); } catch (_) {}
+            return { statusCode: 200, body: JSON.stringify({ ok: true, proyectos: proyectos || [], plantillas, esAdmin: false }) };
         }
 
-        const body = JSON.parse(event.body || '{}');
-        const { action } = body;
-        const adminId = userData.user.id;
+        // ── Todas las demás acciones requieren admin ──
+        if (!isAdmin) {
+            return { statusCode: 403, body: JSON.stringify({ error: 'No eres admin' }) };
+        }
 
         // ── LIST: proyectos + plantillas ──
         if (!action || action === 'list') {

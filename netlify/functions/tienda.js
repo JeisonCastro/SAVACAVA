@@ -52,8 +52,8 @@ function ok(body, status = 200) {
     return { statusCode: status, headers, body: JSON.stringify(body) };
 }
 
-// ── Auth de admin (mismo patrón que web-factory.js) ──
-async function autenticarAdmin(event) {
+// ── Auth de admin (admite admin o usuario con permiso de tienda) ──
+async function autenticarAdmin(event, proyectoId) {
     const authHeader = event.headers.authorization || event.headers.Authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) throw new Error('Token no enviado');
     const token = authHeader.replace('Bearer ', '');
@@ -62,13 +62,24 @@ async function autenticarAdmin(event) {
     });
     const { data: userData, error: userError } = await supabaseUser.auth.getUser();
     if (userError || !userData?.user) throw new Error('No autenticado');
+    const userId = userData.user.id;
     const { data: miPerfil } = await supabase
         .from('perfiles')
         .select('is_admin')
-        .eq('id', userData.user.id)
+        .eq('id', userId)
         .single();
-    if (!miPerfil?.is_admin) throw new Error('No eres admin');
-    return userData.user.id;
+    if (miPerfil?.is_admin) return userId;
+    // Si no es admin, verificar permiso de tienda para el proyecto específico
+    if (proyectoId) {
+        const { data: permiso } = await supabase
+            .from('tienda_permisos')
+            .select('id')
+            .eq('proyecto_id', proyectoId)
+            .eq('user_id', userId)
+            .maybeSingle();
+        if (permiso) return userId;
+    }
+    throw new Error('No eres admin');
 }
 
 // ── Modelo ──
@@ -533,12 +544,15 @@ async function accionGetOrden(params) {
 }
 
 // ── Acciones de admin ──
-async function validarAcceso(proyectoId, adminId) {
+async function validarAcceso(proyectoId, userId) {
     if (!proyectoId) return ok({ ok: false, error: 'Falta proyecto_id' }, 400);
     const { data: proyecto } = await supabase.from('web_projects').select('id, created_by').eq('id', proyectoId).maybeSingle();
     if (!proyecto) return ok({ ok: false, error: 'Sitio no encontrado' }, 404);
-    if (proyecto.created_by !== adminId) return ok({ ok: false, error: 'No tienes acceso a este sitio' }, 403);
-    return null;
+    // Acceso: es el dueño del proyecto O tiene permiso de tienda asignado
+    if (proyecto.created_by === userId) return null;
+    const { data: permiso } = await supabase.from('tienda_permisos').select('id').eq('proyecto_id', proyectoId).eq('user_id', userId).maybeSingle();
+    if (permiso) return null;
+    return ok({ ok: false, error: 'No tienes acceso a este sitio' }, 403);
 }
 
 async function accionGuardarProducto(adminId, body) {
@@ -1066,8 +1080,9 @@ exports.handler = async (event) => {
         if (action === 'checkout') return await accionCheckout(body);
         if (action === 'get_orden') return await accionGetOrden(query);
 
-        // Acciones de admin
-        const adminId = await autenticarAdmin(event);
+        // Acciones de admin (admite admin o permiso de tienda específico)
+        const proyectoIdBody = body.proyecto_id || query.proyecto_id || '';
+        const adminId = await autenticarAdmin(event, proyectoIdBody);
         const params = { ...query, ...body };
         if (action === 'guardar_producto') return await accionGuardarProducto(adminId, body);
         if (action === 'guardar_variaciones') return await accionGuardarVariaciones(adminId, body);

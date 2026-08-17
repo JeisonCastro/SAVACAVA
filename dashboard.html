@@ -765,7 +765,7 @@
                 </div>
 
                 <!-- TAB: Planes -->
-                <div class="card">
+                <div class="card" style="margin-bottom:1.5rem">
                     <div class="card-header">
                         <div class="card-icon"><i class="fas fa-crown"></i></div>
                         <span class="card-title">Planes</span>
@@ -784,6 +784,33 @@
                                 </tr>
                             </thead>
                             <tbody id="admin-plans-body">
+                                <tr><td colspan="4" style="text-align:center;color:var(--dim);padding:2rem">Cargando...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- TAB: Permisos de Tienda -->
+                <div class="card" style="margin-bottom:1.5rem">
+                    <div class="card-header">
+                        <div class="card-icon"><i class="fas fa-store"></i></div>
+                        <span class="card-title">Permisos de Tienda</span>
+                        <button class="btn-main" style="margin-left:auto;font-size:.8rem;padding:6px 12px" onclick="abrirModalPermisoTienda()">
+                            <i class="fas fa-plus" style="margin-right:.3rem"></i> Asignar permiso
+                        </button>
+                    </div>
+                    <p style="font-size:.82rem;color:var(--muted);margin-bottom:1rem;line-height:1.5">Asigna acceso de administracion de tienda a usuarios especificos. El usuario verá Web Factory con sus tiendas asignadas y podra editar productos, categorias, ordenes y configuracion.</p>
+                    <div class="table-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Proyecto</th>
+                                    <th>Usuario</th>
+                                    <th>Rol</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="admin-tienda-permisos-body">
                                 <tr><td colspan="4" style="text-align:center;color:var(--dim);padding:2rem">Cargando...</td></tr>
                             </tbody>
                         </table>
@@ -1404,6 +1431,7 @@
 
     // ── PANEL ADMIN ──
     let _isAdmin = false;
+    let _tiendaPermisos = [];
 
     function esAdmin() { return _isAdmin; }
 
@@ -1421,8 +1449,30 @@
             _isAdmin = !!data.isAdmin;
             document.getElementById('nav-admin').style.display = _isAdmin ? '' : 'none';
             document.getElementById('nav-webfactory').style.display = _isAdmin ? '' : 'none';
+
+            // Si no es admin, verificar permisos de tienda para mostrar Web Factory
+            if (!_isAdmin) {
+                try {
+                    const resPermisos = await fetch('/.netlify/functions/tienda-permisos', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${currentSession?.access_token || ''}`
+                        },
+                        body: JSON.stringify({ action: 'my' })
+                    });
+                    const dataPermisos = await resPermisos.json();
+                    _tiendaPermisos = dataPermisos.permisos || [];
+                    if (_tiendaPermisos.length > 0) {
+                        document.getElementById('nav-webfactory').style.display = '';
+                    }
+                } catch (_) {
+                    _tiendaPermisos = [];
+                }
+            }
         } catch (_) {
             _isAdmin = false;
+            _tiendaPermisos = [];
             document.getElementById('nav-admin').style.display = 'none';
             document.getElementById('nav-webfactory').style.display = 'none';
         }
@@ -1564,6 +1614,7 @@
             document.getElementById('admin-users-body').innerHTML =
                 '<tr><td colspan="6" style="text-align:center;color:var(--red);padding:1.5rem">Error de conexion</td></tr>';
         }
+        cargarAdminTiendaPermisos();
     }
 
     function abrirModalTokens(userId, nombre, current) {
@@ -1782,6 +1833,116 @@
         document.getElementById('admin-modal').style.display = 'none';
     }
 
+    // ── PERMISOS DE TIENDA (admin) ──
+    let _adminTiendaProyectos = [];
+
+    async function cargarAdminTiendaPermisos() {
+        if (!esAdmin()) return;
+        try {
+            const res = await fetch('/.netlify/functions/web-factory', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${currentSession?.access_token || ''}` },
+                body: JSON.stringify({ action: 'list' })
+            });
+            const data = await res.json();
+            const tiendas = (data.proyectos || []).filter(p => p.plantilla === 'tienda');
+            _adminTiendaProyectos = tiendas;
+
+            // Cargar todos los permisos de tienda
+            const container = document.getElementById('admin-tienda-permisos-body');
+            if (!tiendas.length) {
+                container.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--dim);padding:1.5rem">No hay tiendas creadas todavia.</td></tr>';
+                return;
+            }
+
+            let todosPermisos = [];
+            for (const t of tiendas) {
+                const resP = await fetch('/.netlify/functions/tienda-permisos', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${currentSession?.access_token || ''}` },
+                    body: JSON.stringify({ action: 'list', proyecto_id: t.id })
+                });
+                const dataP = await resP.json();
+                for (const p of (dataP.permisos || [])) {
+                    todosPermisos.push({ ...p, proyecto_nombre: t.nombre, proyecto_slug: t.slug });
+                }
+            }
+
+            if (!todosPermisos.length) {
+                container.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--dim);padding:1.5rem">No hay permisos asignados. Usa "Asignar permiso" para dar acceso a un usuario.</td></tr>';
+                return;
+            }
+
+            container.innerHTML = todosPermisos.map(p => `
+                <tr>
+                    <td><div style="font-weight:600">${escapeHtml(p.proyecto_nombre)}</div><div style="font-size:.72rem;color:var(--dim)">${escapeHtml(p.proyecto_slug)}</div></td>
+                    <td><span style="font-size:.82rem">${escapeHtml(p.user_id.slice(0, 8))}…</span></td>
+                    <td><span class="badge badge-accent">${escapeHtml(p.rol)}</span></td>
+                    <td><button class="btn-small danger" onclick="revocarPermisoTienda('${p.proyecto_id}','${p.user_id}')" style="font-size:.72rem;padding:4px 8px" title="Revocar permiso"><i class="fas fa-trash"></i></button></td>
+                </tr>
+            `).join('');
+        } catch (err) {
+            document.getElementById('admin-tienda-permisos-body').innerHTML =
+                '<tr><td colspan="4" style="text-align:center;color:var(--red);padding:1.5rem">Error cargando permisos</td></tr>';
+        }
+    }
+
+    function abrirModalPermisoTienda() {
+        const opciones = _adminTiendaProyectos.map(t => `<option value="${t.id}">${escapeHtml(t.nombre)} (${escapeHtml(t.slug)})</option>`).join('');
+        document.getElementById('admin-modal-title').textContent = 'Asignar Permiso de Tienda';
+        document.getElementById('admin-modal-body').innerHTML = `
+            <div class="field" style="margin-bottom:.8rem"><label>Email del usuario</label><input type="email" id="permiso-tienda-email" placeholder="usuario@ejemplo.com" style="width:100%;padding:8px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text)"></div>
+            <div class="field" style="margin-bottom:.8rem"><label>Tienda (proyecto)</label><select id="permiso-tienda-proyecto" style="width:100%;padding:8px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text)">${opciones}</select></div>
+            <div class="field" style="margin-bottom:1rem"><label>Rol</label><select id="permiso-tienda-rol" style="width:100%;padding:8px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text)">
+                <option value="admin_tienda">Admin tienda (acceso completo)</option>
+                <option value="editor_tienda">Editor tienda (solo productos)</option>
+                <option value="visor_tienda">Visor tienda (solo lectura)</option>
+            </select></div>
+            <button class="btn-main" style="width:100%" onclick="guardarPermisoTienda()"><i class="fas fa-check" style="margin-right:.3rem"></i> Asignar</button>
+        `;
+        document.getElementById('admin-modal').style.display = 'flex';
+    }
+
+    async function guardarPermisoTienda() {
+        const email = document.getElementById('permiso-tienda-email').value.trim();
+        const proyecto_id = document.getElementById('permiso-tienda-proyecto').value;
+        const rol = document.getElementById('permiso-tienda-rol').value;
+        if (!email || !proyecto_id) return showToast('Completa email y tienda', 'error');
+        mostrarOverlayCarga('Asignando permiso...');
+        try {
+            const res = await fetch('/.netlify/functions/tienda-permisos', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${currentSession?.access_token || ''}` },
+                body: JSON.stringify({ action: 'grant', proyecto_id, email, rol })
+            });
+            const data = await res.json();
+            if (!data.ok) return showToast('Error: ' + (data.error || 'Desconocido'), 'error');
+            showToast('Permiso asignado correctamente');
+            cerrarAdminModal();
+            cargarAdminTiendaPermisos();
+        } finally {
+            ocultarOverlayCarga();
+        }
+    }
+
+    async function revocarPermisoTienda(proyecto_id, user_id) {
+        if (!confirm('¿Revocar este permiso de tienda?')) return;
+        mostrarOverlayCarga('Revocando permiso...');
+        try {
+            const res = await fetch('/.netlify/functions/tienda-permisos', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${currentSession?.access_token || ''}` },
+                body: JSON.stringify({ action: 'revoke', proyecto_id, user_id })
+            });
+            const data = await res.json();
+            if (!data.ok) return showToast('Error: ' + (data.error || 'Desconocido'), 'error');
+            showToast('Permiso revocado');
+            cargarAdminTiendaPermisos();
+        } finally {
+            ocultarOverlayCarga();
+        }
+    }
+
     // ── WEB FACTORY ──
     let _wfPlantillas = [];
     let _wfEnv = {};
@@ -1875,18 +2036,25 @@
     }
 
     async function cargarWebFactory() {
-        if (!esAdmin()) { mostrarVista('agentes'); return; }
         const activa = document.getElementById('view-webfactory').classList.contains('active');
         if (!activa) return;
 
+        // No admin y sin permisos de tienda → redirigir
+        if (!esAdmin() && (!_tiendaPermisos || !_tiendaPermisos.length)) {
+            mostrarVista('agentes');
+            return;
+        }
+
         try {
+            // Admin carga todo; usuario tienda carga solo sus tiendas asignadas
+            const action = esAdmin() ? 'list' : 'list_tienda_para_usuario';
             const res = await fetch('/.netlify/functions/web-factory', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${currentSession?.access_token || ''}`
                 },
-                body: JSON.stringify({ action: 'list' })
+                body: JSON.stringify({ action })
             });
             const data = await res.json();
             if (!data.ok) throw new Error(data.error || 'Error cargando proyectos');
@@ -1894,42 +2062,58 @@
             _wfPlantillas = data.plantillas || [];
             _wfEnv = data.env || {};
 
+            // Ocultar alerta de env y botón crear para usuarios tienda
             const wfEnvAlert = document.getElementById('wf-env-alert');
-            if (wfEnvAlert) {
+            const btnCrear = document.querySelector('#view-webfactory .topbar-right .btn-main');
+            if (!esAdmin()) {
+                if (wfEnvAlert) wfEnvAlert.style.display = 'none';
+                if (btnCrear) btnCrear.style.display = 'none';
+                // Actualizar subtítulo
+                const sub = document.querySelector('#view-webfactory .page-sub');
+                if (sub) sub.textContent = 'Gestiona la tienda de tu sitio';
+            } else {
                 const faltan = [];
                 if (!_wfEnv.github) faltan.push('GITHUB_TOKEN');
                 if (!_wfEnv.netlify) faltan.push('NETLIFY_AUTH_TOKEN');
                 if (_wfEnv.github && _wfEnv.netlify && !_wfEnv.github_installation) faltan.push('NETLIFY_GITHUB_INSTALLATION_ID');
-                wfEnvAlert.style.display = faltan.length ? 'flex' : 'none';
-                if (faltan.length) wfEnvAlert.querySelector('#wf-env-alert-msg').textContent =
-                    'Faltan variables de entorno: ' + faltan.join(', ') + '. Agrega los tokens en Netlify → Site configuration → Environment variables.';
+                if (wfEnvAlert) {
+                    wfEnvAlert.style.display = faltan.length ? 'flex' : 'none';
+                    if (faltan.length) wfEnvAlert.querySelector('#wf-env-alert-msg').textContent =
+                        'Faltan variables de entorno: ' + faltan.join(', ') + '. Agrega los tokens en Netlify → Site configuration → Environment variables.';
+                }
             }
 
             const proyectos = data.proyectos || [];
             const enCurso = proyectos.filter(p => ['creando', 'configurando', 'deploying', 'suspending'].includes(p.estado));
 
-            document.getElementById('wf-stats').innerHTML = `
-                <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:1rem">
-                    <div style="font-size:.75rem;color:var(--dim);margin-bottom:.3rem">Sitios</div>
-                    <div style="font-size:1.6rem;font-weight:800;font-family:'Inter',sans-serif;color:var(--accent)">${proyectos.length}</div>
-                </div>
-                <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:1rem">
-                    <div style="font-size:.75rem;color:var(--dim);margin-bottom:.3rem">Publicados</div>
-                    <div style="font-size:1.6rem;font-weight:800;font-family:'Inter',sans-serif;color:var(--green)">${proyectos.filter(p => p.estado === 'publicado').length}</div>
-                </div>
-                <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:1rem">
-                    <div style="font-size:.75rem;color:var(--dim);margin-bottom:.3rem">En proceso</div>
-                    <div style="font-size:1.6rem;font-weight:800;font-family:'Inter',sans-serif;color:var(--yellow)">${enCurso.length}</div>
-                </div>
-                <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:1rem">
-                    <div style="font-size:.75rem;color:var(--dim);margin-bottom:.3rem">Errores</div>
-                    <div style="font-size:1.6rem;font-weight:800;font-family:'Inter',sans-serif;color:var(--red)">${proyectos.filter(p => p.estado === 'error').length}</div>
-                </div>
-            `;
+            // Stats (solo admin)
+            if (esAdmin()) {
+                document.getElementById('wf-stats').innerHTML = `
+                    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:1rem">
+                        <div style="font-size:.75rem;color:var(--dim);margin-bottom:.3rem">Sitios</div>
+                        <div style="font-size:1.6rem;font-weight:800;font-family:'Inter',sans-serif;color:var(--accent)">${proyectos.length}</div>
+                    </div>
+                    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:1rem">
+                        <div style="font-size:.75rem;color:var(--dim);margin-bottom:.3rem">Publicados</div>
+                        <div style="font-size:1.6rem;font-weight:800;font-family:'Inter',sans-serif;color:var(--green)">${proyectos.filter(p => p.estado === 'publicado').length}</div>
+                    </div>
+                    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:1rem">
+                        <div style="font-size:.75rem;color:var(--dim);margin-bottom:.3rem">En proceso</div>
+                        <div style="font-size:1.6rem;font-weight:800;font-family:'Inter',sans-serif;color:var(--yellow)">${enCurso.length}</div>
+                    </div>
+                    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:1rem">
+                        <div style="font-size:.75rem;color:var(--dim);margin-bottom:.3rem">Errores</div>
+                        <div style="font-size:1.6rem;font-weight:800;font-family:'Inter',sans-serif;color:var(--red)">${proyectos.filter(p => p.estado === 'error').length}</div>
+                    </div>
+                `;
+            } else {
+                document.getElementById('wf-stats').innerHTML = '';
+            }
 
             const body = document.getElementById('wf-body');
             if (!proyectos.length) {
-                body.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--dim);padding:2rem">No hay proyectos web todavia. Crea el primero.</td></tr>';
+                body.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--dim);padding:2rem">' +
+                    (esAdmin() ? 'No hay proyectos web todavia. Crea el primero.' : 'No tienes tiendas asignadas.') + '</td></tr>';
             } else {
                 body.innerHTML = proyectos.map(p => {
                     const b = wfEstadoBadge(p.estado);
@@ -1949,6 +2133,29 @@
                         ? `<span class="badge ${p.dominio_estado === 'verificado' ? 'badge-green' : 'badge-yellow'}">${p.dominio_estado === 'verificado' ? 'verificado' : 'pendiente'}</span>`
                         : '—';
                     const inactivo = p.activo === false;
+
+                    // Acciones: admin ve todo; usuario tienda solo "Editar tienda"
+                    let acciones = '';
+                    if (esAdmin()) {
+                        acciones = `
+                            ${p.netlify_url ? `<button class="btn-small" onclick="window.open('${wfEscapeHtml(p.netlify_url)}','_blank')" style="font-size:.72rem;padding:4px 8px" title="Abrir sitio"><i class="fas fa-external-link"></i></button>` : ''}
+                            ${p.github_url ? `<button class="btn-small" onclick="window.open('${wfEscapeHtml(p.github_url)}','_blank')" style="font-size:.72rem;padding:4px 8px" title="Abrir repo en GitHub"><i class="fab fa-github"></i></button>` : ''}
+                            ${p.clone_url ? `<button class="btn-small" onclick="copiarClone('${wfEscapeHtml(p.clone_url)}', '${wfEscapeHtml(p.slug)}')" style="font-size:.72rem;padding:4px 8px" title="Copiar comando clone"><i class="fas fa-copy"></i></button>` : ''}
+                            ${p.plantilla === 'tienda' ? `<button class="btn-small" onclick="abrirTiendaModal('${p.id}','${wfEscapeHtml(p.nombre)}','${wfEscapeHtml(p.slug)}')" style="font-size:.72rem;padding:4px 8px" title="Gestionar tienda (productos y órdenes)"><i class="fas fa-store"></i></button>` : ''}
+                            <button class="btn-small" onclick="actualizarEstadoWeb('${p.id}')" style="font-size:.72rem;padding:4px 8px" title="Actualizar estado"><i class="fas fa-rotate"></i></button>
+                            ${p.netlify_site_id ? (inactivo
+                                ? `<button class="btn-small green" onclick="toggleActivoWeb('${p.id}', false, '${wfEscapeHtml(p.nombre)}')" style="font-size:.72rem;padding:4px 8px" title="Reactivar sitio (redesplegar desde GitHub)"><i class="fas fa-play"></i></button>`
+                                : `<button class="btn-small danger" onclick="toggleActivoWeb('${p.id}', true, '${wfEscapeHtml(p.nombre)}')" style="font-size:.72rem;padding:4px 8px" title="Apagar sitio (mostrar página de suspendido)"><i class="fas fa-power-off"></i></button>`) : ''}
+                            <button class="btn-small danger" onclick="eliminarProyectoWeb('${p.id}', '${wfEscapeHtml(p.nombre)}')" style="font-size:.72rem;padding:4px 8px" title="Eliminar registro"><i class="fas fa-trash"></i></button>
+                        `;
+                    } else {
+                        // Usuario tienda: solo ver tienda + editar tienda
+                        acciones = `
+                            ${p.netlify_url ? `<button class="btn-small" onclick="window.open('${wfEscapeHtml(p.netlify_url)}','_blank')" style="font-size:.72rem;padding:4px 8px" title="Ver tienda"><i class="fas fa-external-link"></i></button>` : ''}
+                            ${p.plantilla === 'tienda' ? `<button class="btn-main" onclick="abrirTiendaModal('${p.id}','${wfEscapeHtml(p.nombre)}','${wfEscapeHtml(p.slug)}')" style="font-size:.72rem;padding:5px 10px" title="Editar tienda"><i class="fas fa-store" style="margin-right:.25rem"></i> Editar tienda</button>` : ''}
+                        `;
+                    }
+
                     return `<tr style="${inactivo ? 'opacity:.6' : ''}">
                         <td style="font-weight:600">${wfEscapeHtml(p.cliente)}</td>
                         <td>
@@ -1962,15 +2169,7 @@
                             ${p.dominio ? `<div style="font-size:.82rem">${wfEscapeHtml(p.dominio)}</div>${dominioBadge}${dominioErrorInfo}` : '—'}
                         </td>
                         <td style="white-space:nowrap">
-                            ${p.netlify_url ? `<button class="btn-small" onclick="window.open('${wfEscapeHtml(p.netlify_url)}','_blank')" style="font-size:.72rem;padding:4px 8px" title="Abrir sitio"><i class="fas fa-external-link"></i></button>` : ''}
-                            ${p.github_url ? `<button class="btn-small" onclick="window.open('${wfEscapeHtml(p.github_url)}','_blank')" style="font-size:.72rem;padding:4px 8px" title="Abrir repo en GitHub"><i class="fab fa-github"></i></button>` : ''}
-                            ${p.clone_url ? `<button class="btn-small" onclick="copiarClone('${wfEscapeHtml(p.clone_url)}', '${wfEscapeHtml(p.slug)}')" style="font-size:.72rem;padding:4px 8px" title="Copiar comando clone"><i class="fas fa-copy"></i></button>` : ''}
-                            ${p.plantilla === 'tienda' ? `<button class="btn-small" onclick="abrirTiendaModal('${p.id}','${wfEscapeHtml(p.nombre)}','${wfEscapeHtml(p.slug)}')" style="font-size:.72rem;padding:4px 8px" title="Gestionar tienda (productos y órdenes)"><i class="fas fa-store"></i></button>` : ''}
-                            <button class="btn-small" onclick="actualizarEstadoWeb('${p.id}')" style="font-size:.72rem;padding:4px 8px" title="Actualizar estado"><i class="fas fa-rotate"></i></button>
-                            ${p.netlify_site_id ? (inactivo
-                                ? `<button class="btn-small green" onclick="toggleActivoWeb('${p.id}', false, '${wfEscapeHtml(p.nombre)}')" style="font-size:.72rem;padding:4px 8px" title="Reactivar sitio (redesplegar desde GitHub)"><i class="fas fa-play"></i></button>`
-                                : `<button class="btn-small danger" onclick="toggleActivoWeb('${p.id}', true, '${wfEscapeHtml(p.nombre)}')" style="font-size:.72rem;padding:4px 8px" title="Apagar sitio (mostrar página de suspendido)"><i class="fas fa-power-off"></i></button>`) : ''}
-                            <button class="btn-small danger" onclick="eliminarProyectoWeb('${p.id}', '${wfEscapeHtml(p.nombre)}')" style="font-size:.72rem;padding:4px 8px" title="Eliminar registro"><i class="fas fa-trash"></i></button>
+                            ${acciones}
                         </td>
                     </tr>`;
                 }).join('');
