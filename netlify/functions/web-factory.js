@@ -737,7 +737,7 @@ async function pipelineCrear(body, adminId) {
                 if (/\.html$/i.test(f.path)) content = inyectarTema(content, accent, fuenteInfo);
                 return { ...f, content };
             });
-        datosRepo = await crearRepoGitHub(owner, slug, descripcion || plantillaElegida.nombre, archivos);
+        datosRepo = await crearRepoGitHub(owner, slug, (descripcion || plantillaElegida.nombre).slice(0, 350), archivos);
         await actualizarProyecto(id, {
             github_owner: datosRepo.owner,
             github_repo: slug,
