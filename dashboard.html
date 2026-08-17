@@ -223,7 +223,11 @@
                 <div id="crm-agent-filter" style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;margin-bottom:1rem;"></div>
 
                 <div id="crm-date-filter" style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;margin-bottom:1rem;background:var(--surface);border:1px solid var(--border2);border-radius:12px;padding:.6rem .8rem;">
-                    <span style="font-size:.78rem;color:var(--muted);"><i class="fas fa-calendar-days" style="margin-right:.35rem;"></i>Desde:</span>
+                    <span style="font-size:.78rem;color:var(--muted);"><i class="fas fa-store" style="margin-right:.35rem;"></i>Tienda:</span>
+                    <select id="crm-filtro-tienda" style="background:var(--bg2);border:1px solid var(--border2);border-radius:10px;padding:.4rem .6rem;font-size:.78rem;color:var(--text);">
+                        <option value="">Todas</option>
+                    </select>
+                    <span style="font-size:.78rem;color:var(--muted);margin-left:.5rem;"><i class="fas fa-calendar-days" style="margin-right:.35rem;"></i>Desde:</span>
                     <input type="date" id="crm-filtro-desde" style="color-scheme:dark;background:var(--bg2);border:1px solid var(--border2);border-radius:10px;padding:.4rem .6rem;font-size:.78rem;color:var(--text);">
                     <span style="font-size:.78rem;color:var(--muted);">Hasta:</span>
                     <input type="date" id="crm-filtro-hasta" style="color-scheme:dark;background:var(--bg2);border:1px solid var(--border2);border-radius:10px;padding:.4rem .6rem;font-size:.78rem;color:var(--text);">
@@ -974,6 +978,13 @@
                             <label style="display:flex;align-items:center;gap:.3rem;cursor:pointer"><input type="checkbox" class="crm-campo-edit-box" value="preferencias" checked> Preferencias</label>
                         </div>
                     </div>
+                    <div style="margin-top:.6rem;padding-top:.5rem;border-top:1px solid var(--border2);">
+                        <label style="display:block;font-size:.78rem;color:var(--muted);margin-bottom:.35rem;">Vincular a tienda (opcional):</label>
+                        <select id="edit-tienda-select" style="width:100%;background:var(--bg2);border:1px solid var(--border2);border-radius:10px;padding:.5rem .7rem;font-size:.82rem;color:var(--text);">
+                            <option value="">Sin tienda (catálogo CRM manual)</option>
+                        </select>
+                        <div style="font-size:.72rem;color:var(--muted);margin-top:.25rem;">Si seleccionas una tienda, el agente usará su catálogo automáticamente.</div>
+                    </div>
                 </div>
                 <div style="display:flex;gap:10px;margin-top:1rem;">
                     <button class="btn-main btn-green"
@@ -1010,6 +1021,13 @@
                             <label style="display:flex;align-items:center;gap:.3rem;cursor:pointer"><input type="checkbox" class="crm-campo-box" value="interes" checked> Interés</label>
                             <label style="display:flex;align-items:center;gap:.3rem;cursor:pointer"><input type="checkbox" class="crm-campo-box" value="preferencias" checked> Preferencias</label>
                         </div>
+                    </div>
+                    <div style="margin-top:.6rem;padding-top:.5rem;border-top:1px solid var(--border2);">
+                        <label style="display:block;font-size:.78rem;color:var(--muted);margin-bottom:.35rem;">Vincular a tienda (opcional):</label>
+                        <select id="create-tienda-select" style="width:100%;background:var(--bg2);border:1px solid var(--border2);border-radius:10px;padding:.5rem .7rem;font-size:.82rem;color:var(--text);">
+                            <option value="">Sin tienda (catálogo CRM manual)</option>
+                        </select>
+                        <div style="font-size:.72rem;color:var(--muted);margin-top:.25rem;">Si seleccionas una tienda, el agente usará su catálogo automáticamente.</div>
                     </div>
                 </div>
                 <div class="loading-dots" id="create-loading"><span
@@ -1293,6 +1311,28 @@
     let upgradePlanId = null;
     let upgradePrecio = null;
     let todosLosPlanes = [];
+    let _tiendas = [];
+
+    // Carga tiendas del usuario (web_projects con plantilla=tienda) para selects
+    async function cargarTiendasParaSelect() {
+        try {
+            const { data: { session } } = await _supabase.auth.getSession();
+            const res = await fetch('/.netlify/functions/web-factory', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token || ''}` },
+                body: JSON.stringify({ action: esAdmin() ? 'list' : 'list_tienda_para_usuario' })
+            });
+            const data = await res.json();
+            _tiendas = (data.proyectos || []).filter(p => p.plantilla === 'tienda');
+            // Poblar todos los selects de tienda
+            document.querySelectorAll('#create-tienda-select, #edit-tienda-select').forEach(sel => {
+                const actual = sel.value;
+                sel.innerHTML = '<option value="">Sin tienda (catálogo CRM manual)</option>' +
+                    _tiendas.map(t => `<option value="${t.id}">${t.nombre}</option>`).join('');
+                sel.value = actual;
+            });
+        } catch (e) { console.error('Error cargando tiendas:', e); }
+    }
 
     // Precio final = base + tarifa de procesamiento de Wompi (2,65% + $700 + IVA).
     // Debe coincidir exactamente con el calculo de crear-pago.js
@@ -3168,6 +3208,7 @@
         ]);
         verificarAdmin();
         cargarAgentes();
+        cargarTiendasParaSelect();
         const vistaHash = (window.location.hash || '').replace('#', '').toLowerCase();
         const vistasValidas = ['bandeja', 'agentes', 'crm', 'tokens', 'config', 'integraciones', 'webfactory'];
         if (vistasValidas.includes(vistaHash)) mostrarVista(vistaHash);
@@ -3315,6 +3356,7 @@
         document.getElementById('create-name').value = '';
         document.getElementById('create-prompt').value = '';
         document.getElementById('create-crm-activo').checked = false;
+        document.getElementById('create-tienda-select').value = '';
         toggleCreateCampos();
         document.querySelectorAll('.crm-campo-box').forEach(c => c.checked = true);
         document.getElementById('create-msg').className = 'msg';
@@ -3344,7 +3386,8 @@
                     nombre_agente: name,
                     prompt_sistema: prompt,
                     crm_activo: document.getElementById('create-crm-activo').checked,
-                    crm_campos: Array.from(document.querySelectorAll('.crm-campo-box:checked')).map(c => c.value)
+                    crm_campos: Array.from(document.querySelectorAll('.crm-campo-box:checked')).map(c => c.value),
+                    tienda_id: document.getElementById('create-tienda-select').value || null
                 })
             });
             const data = await res.json();
@@ -3372,7 +3415,7 @@
     let crmCatalogo = [];
     let crmLeadActual = null;
     let crmAgenteSeleccionado = null;
-    let crmFiltros = { desde: '', hasta: '', origen: '' };
+    let crmFiltros = { desde: '', hasta: '', origen: '', tienda_id: '' };
 
     function fmtPesos(cents) {
         const n = Number(cents) || 0;
@@ -3402,6 +3445,7 @@
                 p.set('hasta', new Date(y, m - 1, d, 23, 59, 59, 999).toISOString());
             }
             if (crmFiltros.origen) p.set('origen', crmFiltros.origen);
+            if (crmFiltros.tienda_id) p.set('tienda_id', crmFiltros.tienda_id);
             if (crmAgenteSeleccionado) p.set('agente_id', crmAgenteSeleccionado);
             const qs = p.toString();
             const res = await fetch('/.netlify/functions/crm' + (qs ? '?' + qs : ''), {
@@ -3447,7 +3491,8 @@
         return {
             desde: document.getElementById('crm-filtro-desde')?.value || '',
             hasta: document.getElementById('crm-filtro-hasta')?.value || '',
-            origen: document.getElementById('crm-filtro-origen')?.value || ''
+            origen: document.getElementById('crm-filtro-origen')?.value || '',
+            tienda_id: document.getElementById('crm-filtro-tienda')?.value || ''
         };
     }
 
@@ -3462,10 +3507,11 @@
     }
 
     function limpiarFiltrosCRM() {
-        crmFiltros = { desde: '', hasta: '', origen: '' };
+        crmFiltros = { desde: '', hasta: '', origen: '', tienda_id: '' };
         const d = document.getElementById('crm-filtro-desde'); if (d) d.value = '';
         const h = document.getElementById('crm-filtro-hasta'); if (h) h.value = '';
         const o = document.getElementById('crm-filtro-origen'); if (o) o.value = '';
+        const t = document.getElementById('crm-filtro-tienda'); if (t) t.value = '';
         cargarCRM();
     }
 
@@ -3486,6 +3532,14 @@
                 </select>
                 ${agenteSel && !agenteSel.crm_activo ? `<span style="font-size:.72rem;color:var(--yellow);"><i class="fas fa-triangle-exclamation" style="margin-right:.25rem;"></i>CRM desactivado en este agente</span>` : ''}
             `;
+        }
+
+        // Poblar select de tienda en filtros CRM
+        const tiendaSelect = document.getElementById('crm-filtro-tienda');
+        if (tiendaSelect && _tiendas.length) {
+            const actual = tiendaSelect.value;
+            tiendaSelect.innerHTML = '<option value="">Todas</option>' +
+                _tiendas.map(t => `<option value="${t.id}" ${t.id === actual ? 'selected' : ''}>${escapeHtml(t.nombre)}</option>`).join('');
         }
 
         let bannerHtml = '';
@@ -4233,7 +4287,7 @@
     async function cargarAgentes() {
         const { data } = await _supabase.from('agentes_ia').select('*').eq('user_id', currentUser.id);
         if (data) {
-            agentes = data.map(a => ({ id: a.id, name: a.nombre_agente, prompt: a.prompt_sistema, dominios: a.dominios_permitidos, crm_activo: !!a.crm_activo, crm_campos: Array.isArray(a.crm_campos) ? a.crm_campos : ['nombre','telefono','email','interes','preferencias'] }));
+            agentes = data.map(a => ({ id: a.id, name: a.nombre_agente, prompt: a.prompt_sistema, dominios: a.dominios_permitidos, crm_activo: !!a.crm_activo, crm_campos: Array.isArray(a.crm_campos) ? a.crm_campos : ['nombre','telefono','email','interes','preferencias'], tienda_id: a.tienda_id || null }));
             renderAgentes();
             actualizarIndicadorPlan(agentes.length);
             actualizarFiltroAgentesBandeja();
@@ -4243,10 +4297,12 @@
     function renderAgentes() {
         const container = document.getElementById('lista-agentes');
         if (agentes.length === 0) { container.innerHTML = '<div class="empty-state"><i class="fas fa-robot"></i>Aun no hay agentes.</div>'; return; }
-        container.innerHTML = agentes.map(a => `
+        container.innerHTML = agentes.map(a => {
+            const tienda = a.tienda_id ? _tiendas.find(t => t.id === a.tienda_id) : null;
+            return `
             <div class="agent-top-row">
                 <div style="min-width:0;flex:1;">
-                    <div class="agent-name">${a.name}</div>
+                    <div class="agent-name">${a.name}${tienda ? ` <span style="font-size:.65rem;background:rgba(14,165,233,.12);color:var(--accent);padding:.15rem .45rem;border-radius:6px;vertical-align:middle;margin-left:.35rem;"><i class="fas fa-store" style="margin-right:.2rem;"></i>${escapeHtml(tienda.nombre)}</span>` : ''}</div>
                     <div class="agent-prompt">${a.prompt}</div>
                 </div>
                 <div class="agent-actions">
@@ -4257,7 +4313,8 @@
                     <button class="icon-btn danger" onclick="eliminarAgente('${a.id}')" title="Borrar"><i class="fas fa-trash"></i></button>
                 </div>
             </div>
-        `).join('');
+        `;
+        }).join('');
     }
 
     function copiarCDN(id) {
@@ -4275,14 +4332,14 @@
     function abrirEdicion(id) {
         id = parseInt(id);
         const a = agentes.find(a => a.id === id);
-        if (!a) return;
+
         document.getElementById('edit-id').value = a.id;
         document.getElementById('edit-name').value = a.name;
         document.getElementById('edit-prompt').value = a.prompt;
         document.getElementById('edit-domains').value = Array.isArray(a.dominios) ? a.dominios.join(', ') : (a.dominios || '');
         document.getElementById('edit-crm-activo').checked = !!a.crm_activo;
         document.querySelectorAll('.crm-campo-edit-box').forEach(c => c.checked = a.crm_campos.includes(c.value));
-        toggleEditCampos();
+        document.getElementById('edit-tienda-select').value = a.tienda_id || '';
         document.getElementById('edit-modal').style.display = 'flex';
     }
 
@@ -4830,7 +4887,8 @@
             prompt_sistema: document.getElementById('edit-prompt').value,
             dominios_permitidos: document.getElementById('edit-domains').value.split(',').map(d => d.trim()).filter(d => d.length > 0),
             crm_activo: crmActivo,
-            crm_campos: crmCampos.length ? crmCampos : null
+            crm_campos: crmCampos.length ? crmCampos : null,
+            tienda_id: document.getElementById('edit-tienda-select').value || null
         }).eq('id', id);
         btn.disabled = false; btn.innerText = orig;
         ocultarOverlayCarga();

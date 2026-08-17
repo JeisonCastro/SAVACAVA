@@ -40,7 +40,7 @@ exports.handler = async (event) => {
             const [perfilesRes, planesRes, agentesRes, logsRes, pagosRes] = await Promise.all([
                 supabase.from('perfiles').select('id, nombre, apellido, token_balance, plan_id, is_admin, plan_inicio, plan_vencimiento'),
                 supabase.from('planes').select('*').order('precio'),
-                supabase.from('agentes_ia').select('id, user_id'),
+                supabase.from('agentes_ia').select('id, user_id, tienda_id'),
                 supabase.from('logs_consumo').select('user_id, tokens_usados'),
                 supabase.from('pagos').select('*').order('created_at', { ascending: false }).limit(50)
             ]);

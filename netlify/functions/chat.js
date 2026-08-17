@@ -15,6 +15,8 @@ const {
 const {
     obtenerConfigCRM,
     construirTextoCatalogo,
+    construirTextoCatalogoTienda,
+    obtenerCatalogoTienda,
     productosParaCliente,
     calcularPrecioProducto,
     obtenerOCrearLead,
@@ -1281,7 +1283,17 @@ exports.handler = async (event) => {
 
         const crmConfig = crmConfigResult || null;
         const crmActivo = agente.crm_activo && crmConfig?.crm_activo === true;
-        const catalogoCRM = crmActivo && Array.isArray(crmConfig.catalogo) ? crmConfig.catalogo : [];
+
+        // Catálogo dinámico: si el agente tiene tienda vinculada, usar catálogo
+        // de la tienda (tienda_productos); si no, usar catálogo CRM (configuración).
+        const tiendaId = agente.tienda_id || null;
+        let catalogoCRM = crmActivo && Array.isArray(crmConfig.catalogo) ? crmConfig.catalogo : [];
+        let catalogoTienda = [];
+
+        if (tiendaId && crmActivo) {
+            catalogoTienda = await obtenerCatalogoTienda(tiendaId);
+            if (catalogoTienda.length) catalogoCRM = catalogoTienda;
+        }
 
         console.log("Pending action:", pendingAction ? pendingAction.action : 'ninguno');
 
@@ -1318,7 +1330,8 @@ exports.handler = async (event) => {
                     respuesta: resultadoPending.respuesta,
                     tokens_consumidos: resultadoPending.tokens_consumidos,
                     conversation_id: conversationIdFinal,
-                    productos: crmActivo && catalogoCRM.length > 0 ? productosParaCliente(catalogoCRM) : []
+                    productos: crmActivo && catalogoCRM.length > 0 ? productosParaCliente(catalogoCRM) : [],
+                    tienda_id: tiendaId || null
                 })
             };
         }
@@ -1366,7 +1379,9 @@ Eres el primer punto de contacto del negocio y DEBES capturar datos del cliente 
 - No inventes datos ni presiones; sé natural y breve.
 `;
             if (catalogoCRM.length > 0) {
-                const textoCatalogo = truncarMensaje(construirTextoCatalogo(crmConfig), 4000);
+                const textoCatalogo = tiendaId && catalogoTienda.length
+                    ? truncarMensaje(construirTextoCatalogo({ catalogo: catalogoTienda }), 4000)
+                    : truncarMensaje(construirTextoCatalogo(crmConfig), 4000);
                 const tienePago = crmConfig.wompi_private_key;
                 systemFinal += `
 CATÁLOGO DE PRODUCTOS DEL VENDEDOR:
@@ -2259,6 +2274,7 @@ INSTRUCCIONES:
                 tokens_consumidos: tokensUsados,
                 conversation_id: conversationIdFinal,
                 productos: crmActivo && catalogoCRM.length > 0 ? productosParaCliente(catalogoCRM) : [],
+                tienda_id: tiendaId || null,
                 proveedor: proveedorIA
             })
         };

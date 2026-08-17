@@ -41,9 +41,28 @@ exports.handler = async (event) => {
 
         // ── GET: toda la data del panel ──
         if (event.httpMethod === 'GET') {
+            const qs = event.queryStringParameters || {};
+            const desde = qs.desde || null;
+            const hasta = qs.hasta || null;
+            const origen = qs.origen || null;
+            const agenteFiltro = qs.agente_id || null;
+            const tiendaFiltro = qs.tienda_id || null;
+
+            // Si se filtra por tienda, obtener los agentes vinculados a esa tienda
+            let agentesFiltroIds = null;
+            if (tiendaFiltro) {
+                const { data: agentesTienda } = await supabase
+                    .from('agentes_ia')
+                    .select('id')
+                    .eq('tienda_id', tiendaFiltro)
+                    .eq('user_id', user.id);
+                agentesFiltroIds = (agentesTienda || []).map(a => a.id);
+                if (!agentesFiltroIds.length) agentesFiltroIds = ['__none__'];
+            }
+
             const { data: agentes } = await supabase
                 .from('agentes_ia')
-                .select('id, nombre_agente, crm_activo')
+                .select('id, nombre_agente, crm_activo, tienda_id')
                 .eq('user_id', user.id)
                 .order('id', { ascending: true });
 
@@ -59,18 +78,13 @@ exports.handler = async (event) => {
                 .order('orden', { ascending: true });
 
             // Filtros por fecha de creación (desde/hasta ISO) y origen
-            const qs = event.queryStringParameters || {};
-            const desde = qs.desde || null;
-            const hasta = qs.hasta || null;
-            const origen = qs.origen || null;
-            const agenteFiltro = qs.agente_id || null;
-
             const filtros = (q) => {
                 let query = q.eq('user_id', user.id);
                 if (desde) query = query.gte('created_at', desde);
                 if (hasta) query = query.lte('created_at', hasta);
                 if (origen) query = query.eq('origen', origen);
                 if (agenteFiltro) query = query.eq('agente_id', agenteFiltro);
+                if (agentesFiltroIds) query = query.in('agente_id', agentesFiltroIds);
                 return query;
             };
 
@@ -142,7 +156,7 @@ exports.handler = async (event) => {
                 statusCode: 200,
                 headers,
                 body: JSON.stringify({
-                    agentes: (agentes || []).map(a => ({ id: a.id, nombre_agente: a.nombre_agente, crm_activo: a.crm_activo })),
+                    agentes: (agentes || []).map(a => ({ id: a.id, nombre_agente: a.nombre_agente, crm_activo: a.crm_activo, tienda_id: a.tienda_id || null })),
                     configs,
                     estados: estados || [],
                     leads: (leads || []).map(l => ({
@@ -323,19 +337,22 @@ exports.handler = async (event) => {
             const { id, agente_id, nombre, telefono, email, interes, notas, preferencias, estado_id } = body;
             const estadoInicial = await require('./crm-helper').obtenerEstadoInicial(user.id);
 
+            let proyectoId = null;
             if (!id && agente_id) {
                 const { data: agenteValido } = await supabase
                     .from('agentes_ia')
-                    .select('id')
+                    .select('id, tienda_id')
                     .eq('id', agente_id)
                     .eq('user_id', user.id)
                     .maybeSingle();
                 if (!agenteValido) return { statusCode: 404, headers, body: JSON.stringify({ error: 'Agente no encontrado.' }) };
+                proyectoId = agenteValido.tienda_id || null;
             }
 
             const data = {
                 user_id: user.id,
                 agente_id: id ? undefined : (agente_id || null),
+                proyecto_id: id ? undefined : proyectoId,
                 nombre: nombre || null,
                 telefono: telefono || null,
                 email: email || null,

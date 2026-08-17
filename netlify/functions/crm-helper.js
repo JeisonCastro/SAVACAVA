@@ -115,6 +115,65 @@ async function obtenerEstadoCerrada(userId) {
     return data?.id || null;
 }
 
+// ── Catálogo de tienda (e-commerce) ──────────────────────────────────────────
+// Carga productos de tienda_productos + variaciones de tienda_variaciones
+// y los adapta al mismo formato que el catálogo CRM para inyectar en el prompt.
+async function obtenerCatalogoTienda(tiendaId) {
+    if (!tiendaId) return [];
+    const { data: productos } = await supabase
+        .from('tienda_productos')
+        .select('*')
+        .eq('proyecto_id', tiendaId)
+        .eq('activo', true)
+        .order('created_at', { ascending: true });
+    if (!productos || !productos.length) return [];
+
+    const ids = productos.map(p => p.id);
+    const { data: variaciones } = await supabase
+        .from('tienda_variaciones')
+        .select('*')
+        .in('producto_id', ids)
+        .eq('activo', true);
+
+    const varMap = {};
+    for (const v of (variaciones || [])) {
+        if (!varMap[v.producto_id]) varMap[v.producto_id] = [];
+        varMap[v.producto_id].push(v);
+    }
+
+    return productos.map(p => ({
+        id: p.id,
+        nombre: p.nombre,
+        tipo: p.tipo || 'fisico',
+        categoria: p.categoria || 'General',
+        descripcion: p.descripcion || '',
+        precio_cents: Number(p.precio_cents) || 0,
+        disponible: p.activo !== false,
+        url_imagen: p.imagen_url || null,
+        variantes: (varMap[p.id] || []).map(v => ({
+            id: v.id,
+            nombre: [v.color, v.talla, v.material].filter(Boolean).join(' / ') || v.id,
+            precio_cents: Number(v.precio_cents) || Number(p.precio_cents) || 0,
+            stock: Number(v.stock) ?? null
+        })),
+        atributos: p.atributos || {},
+        categorias_pasajero: [],
+        escalas_cantidad: [],
+        extras: [],
+        requiere_adulto: false,
+        min_participantes: 1,
+        max_participantes: 0,
+        pricing_basis: 'por_unidad'
+    }));
+}
+
+// Construye texto del catálogo de tienda para inyectar en el prompt del agente.
+async function construirTextoCatalogoTienda(tiendaId) {
+    const catalogo = await obtenerCatalogoTienda(tiendaId);
+    if (!catalogo.length) return '';
+    return construirTextoCatalogo({ catalogo });
+}
+
 // Texto del catálogo para inyectar en el prompt del agente.
 // Agrupa por categoría y renderiza según el tipo (tarifas por pasajero,
 // variantes, escalas por cantidad, extras y atributos).
@@ -738,6 +797,8 @@ module.exports = {
     normalizarProducto,
     calcularPrecioProducto,
     construirTextoCatalogo,
+    construirTextoCatalogoTienda,
+    obtenerCatalogoTienda,
     productosParaCliente,
     deepseekJSON,
     extraerDatosLead,
