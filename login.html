@@ -377,33 +377,48 @@ const CONFIG = {
 const _supabase = supabase.createClient(CONFIG.URL, CONFIG.ANON_KEY);
 
 /* ─── CONFIRMACION / RECOVERY ────────────────────────────────────────────────
-   Al llegar a login con #access_token=... en el hash:
-   - type=recovery → mostrar formulario de nueva contraseña
-   - type=signup   → confirmar cuenta y redirigir al dashboard
-   - sin type      → intentar sesión (legacy) */
+   Supabase envía tokens de dos formas:
+   - Hash:   #access_token=...&type=recovery  (legacy)
+   - Query:  ?code=...&type=recovery          (flujo moderno PKCE)
+   Detectamos ambos y mostramos el form de nueva contraseña. */
 (async function procesarToken() {
-  if (!location.hash || !location.hash.includes('access_token')) return;
+  const hash = location.hash || '';
+  const qs   = location.search || '';
+  const hasHashToken = hash.includes('access_token');
+  const hasQueryCode  = qs.includes('code=');
+  if (!hasHashToken && !hasQueryCode) return;
+
   try {
     setLoading(true);
-    // Parsear fragmento como query string
-    const params = new URLSearchParams(location.hash.substring(1));
-    const type = params.get('type');
+
+    // Obtener type desde hash o query
+    let type = null;
+    if (hasHashToken) {
+      type = new URLSearchParams(hash.substring(1)).get('type');
+    } else if (hasQueryCode) {
+      type = new URLSearchParams(qs.substring(1)).get('type');
+    }
+
+    // getSession() procesa automáticamente tokens en hash Y en query (PKCE)
     const { data: { session }, error } = await _supabase.auth.getSession();
+
     if (error || !session) {
-      showMsg('El enlace no es válido o expiró. Inicia sesión con tu correo y contraseña.', 'error');
+      showMsg('El enlace no es válido o expiró. Solicita uno nuevo.', 'error');
       setLoading(false);
       return;
     }
+
     if (type === 'recovery') {
-      // Token de recuperación válido → mostrar formulario de nueva contraseña
       setLoading(false);
+      // Limpiar tokens del URL (evita que se reenvíen al recargar)
+      history.replaceState(null, '', location.pathname);
       mostrarResetForm();
     } else {
-      // Confirmación de cuenta u otro tipo → entrar al dashboard
+      history.replaceState(null, '', location.pathname);
       location.replace('dashboard.html');
     }
   } catch (_) {
-    showMsg('El enlace no es válido o expiró. Inicia sesión con tu correo y contraseña.', 'error');
+    showMsg('El enlace no es válido o expiró. Solicita uno nuevo.', 'error');
     setLoading(false);
   }
 })();
