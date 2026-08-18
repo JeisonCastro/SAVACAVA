@@ -255,6 +255,9 @@ body{
       <label>Contraseña</label>
       <input type="password" id="password" placeholder="••••••••" autocomplete="current-password">
     </div>
+    <div style="text-align:right;margin-top:-.4rem;margin-bottom:.2rem;">
+      <a href="#" onclick="mostrarResetPassword();return false;" style="font-size:.78rem;color:var(--accent);text-decoration:none;">¿Olvidaste tu contraseña?</a>
+    </div>
   </div>
 
   <div id="registro-fields" style="display:none">
@@ -305,6 +308,48 @@ body{
     <button class="btn-main" onclick="volverLogin()">Iniciar sesión</button>
     <button class="btn-ghost" onclick="setModo('registro')">Registrar otra cuenta</button>
   </div>
+
+  <!-- Reset password: formulario nueva contraseña -->
+  <div id="reset-form" style="display:none;padding-top:.3rem;">
+    <div style="width:64px;height:64px;margin:0 auto 1.1rem;border-radius:50%;background:rgba(14,165,233,.1);display:flex;align-items:center;justify-content:center;color:var(--accent);">
+      <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+    </div>
+    <h2 style="font-family:'DM Sans',sans-serif;font-size:1.2rem;font-weight:800;color:var(--text);margin-bottom:.3rem;">Nueva contraseña</h2>
+    <p style="font-size:.85rem;color:var(--muted);margin-bottom:1rem;">Ingresa tu nueva contraseña (mínimo 6 caracteres).</p>
+    <div class="field">
+      <label>Nueva contraseña</label>
+      <input type="password" id="reset-password" placeholder="Mínimo 6 caracteres" autocomplete="new-password">
+    </div>
+    <div class="field">
+      <label>Confirmar contraseña</label>
+      <input type="password" id="reset-password-confirm" placeholder="Repite la contraseña" autocomplete="new-password">
+    </div>
+    <button class="btn-main" id="btn-reset-submit" onclick="enviarResetPassword()">Guardar contraseña</button>
+    <div style="text-align:center;margin-top:.6rem;">
+      <a href="#" onclick="volverLogin();return false;" style="font-size:.82rem;color:var(--accent);text-decoration:none;">Volver al inicio de sesión</a>
+    </div>
+    <div class="loading" id="loading-reset" style="display:none">
+      <span class="loading-dot"></span><span class="loading-dot"></span><span class="loading-dot"></span>
+    </div>
+    <div class="msg" id="msg-reset"></div>
+  </div>
+
+  <!-- Reset password: formulario de envío de correo -->
+  <div id="reset-email-form" style="display:none;padding-top:.3rem;">
+    <div style="width:64px;height:64px;margin:0 auto 1.1rem;border-radius:50%;background:rgba(14,165,233,.1);display:flex;align-items:center;justify-content:center;color:var(--accent);">
+      <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="m3 7 9 6 9-6"></path></svg>
+    </div>
+    <h2 style="font-family:'DM Sans',sans-serif;font-size:1.2rem;font-weight:800;color:var(--text);margin-bottom:.3rem;">Restablecer contraseña</h2>
+    <p style="font-size:.85rem;color:var(--muted);margin-bottom:1rem;">Ingresa tu correo y te enviaremos un enlace para crear una nueva contraseña.</p>
+    <div class="field">
+      <label>Correo electrónico</label>
+      <input type="email" id="reset-email-input" placeholder="tu@correo.com" autocomplete="email" inputmode="email">
+    </div>
+    <button class="btn-main" onclick="enviarResetEmail()">Enviar enlace</button>
+    <div style="text-align:center;margin-top:.6rem;">
+      <a href="#" onclick="volverLogin();return false;" style="font-size:.82rem;color:var(--accent);text-decoration:none;">Volver al inicio de sesión</a>
+    </div>
+  </div>
 </div>
 
 <!-- PWA Install Banner -->
@@ -331,22 +376,34 @@ const CONFIG = {
 };
 const _supabase = supabase.createClient(CONFIG.URL, CONFIG.ANON_KEY);
 
-/* ─── CONFIRMACION POR CORREO ───────────────────────────────────────────────
-   Al llegar a este login con un token en el hash (p.ej. ...#access_token=..),
-   se procesa la sesión y se entra directo al dashboard. */
-(async function procesarConfirmacion() {
+/* ─── CONFIRMACION / RECOVERY ────────────────────────────────────────────────
+   Al llegar a login con #access_token=... en el hash:
+   - type=recovery → mostrar formulario de nueva contraseña
+   - type=signup   → confirmar cuenta y redirigir al dashboard
+   - sin type      → intentar sesión (legacy) */
+(async function procesarToken() {
   if (!location.hash || !location.hash.includes('access_token')) return;
   try {
     setLoading(true);
+    // Parsear fragmento como query string
+    const params = new URLSearchParams(location.hash.substring(1));
+    const type = params.get('type');
     const { data: { session }, error } = await _supabase.auth.getSession();
-    if (!error && session) {
-      location.replace('dashboard.html');
+    if (error || !session) {
+      showMsg('El enlace no es válido o expiró. Inicia sesión con tu correo y contraseña.', 'error');
+      setLoading(false);
       return;
     }
-    showMsg('El enlace de confirmación no es válido o expiró. Inicia sesión con tu correo y contraseña.', 'error');
+    if (type === 'recovery') {
+      // Token de recuperación válido → mostrar formulario de nueva contraseña
+      setLoading(false);
+      mostrarResetForm();
+    } else {
+      // Confirmación de cuenta u otro tipo → entrar al dashboard
+      location.replace('dashboard.html');
+    }
   } catch (_) {
-    showMsg('El enlace de confirmación no es válido o expiró. Inicia sesión con tu correo y contraseña.', 'error');
-  } finally {
+    showMsg('El enlace no es válido o expiró. Inicia sesión con tu correo y contraseña.', 'error');
     setLoading(false);
   }
 })();
@@ -411,7 +468,109 @@ function mostrarConfirmacion(email) {
 function volverLogin() {
   document.getElementById('email').value = ultimoEmail;
   document.getElementById('password').value = '';
+  // Ocultar formularios especiales y volver al login normal
+  document.getElementById('confirmacion').style.display = 'none';
+  document.getElementById('reset-form').style.display = 'none';
   setModo('login');
+  // Limpiar hash de la URL (tokens de recovery/confirmación)
+  if (location.hash) history.replaceState(null, '', location.pathname + location.search);
+}
+
+/* ─── PASSWORD RESET ──────────────────────────────────────────────────────── */
+function mostrarResetPassword() {
+  // Usuario hace clic en "¿Olvidaste tu contraseña?" → pedir correo
+  document.getElementById('card-title').style.display = 'none';
+  document.getElementById('card-sub').style.display = 'none';
+  document.getElementById('login-fields').style.display = 'none';
+  document.getElementById('registro-fields').style.display = 'none';
+  document.getElementById('btn-submit').style.display = 'none';
+  document.getElementById('btn-toggle').style.display = 'none';
+  document.getElementById('divider-text').parentElement.style.display = 'none';
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('confirmacion').style.display = 'none';
+  document.getElementById('reset-form').style.display = 'none';
+  document.getElementById('msg').className = 'msg';
+
+  // Mostrar formulario de email para reset
+  const resetEmail = document.getElementById('reset-email-form');
+  if (resetEmail) resetEmail.style.display = 'block';
+}
+
+function mostrarResetForm() {
+  // Token de recovery válido → ocultar todo y mostrar form de nueva contraseña
+  document.getElementById('card-title').style.display = 'none';
+  document.getElementById('card-sub').style.display = 'none';
+  document.getElementById('login-fields').style.display = 'none';
+  document.getElementById('registro-fields').style.display = 'none';
+  document.getElementById('btn-submit').style.display = 'none';
+  document.getElementById('btn-toggle').style.display = 'none';
+  document.getElementById('divider-text').parentElement.style.display = 'none';
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('confirmacion').style.display = 'none';
+  document.getElementById('msg').className = 'msg';
+  document.getElementById('reset-form').style.display = 'block';
+  document.getElementById('reset-password').focus();
+}
+
+async function enviarResetEmail() {
+  const email = document.getElementById('reset-email-input').value.trim();
+  if (!email) return showMsg('Ingresa tu correo electrónico', 'error');
+  setLoading(true);
+  const { error } = await _supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: window.location.origin + '/login.html'
+  });
+  setLoading(false);
+  if (error) {
+    showMsg('Error: ' + error.message, 'error');
+  } else {
+    // Mostrar confirmación de envío
+    document.getElementById('reset-email-form').style.display = 'none';
+    document.getElementById('confirmacion').style.display = 'block';
+    document.getElementById('card-title').style.display = 'none';
+    document.getElementById('card-sub').style.display = 'none';
+    document.getElementById('confirmacion-email').textContent = email;
+    document.getElementById('card-title').textContent = 'Revisa tu correo';
+    document.getElementById('card-sub').textContent = 'Te enviamos un enlace para restablecer tu contraseña';
+    document.getElementById('card-title').style.display = '';
+    document.getElementById('card-sub').style.display = '';
+  }
+}
+
+async function enviarResetPassword() {
+  const pw = document.getElementById('reset-password').value;
+  const pw2 = document.getElementById('reset-password-confirm').value;
+  if (!pw || !pw2) return showMsgReset('Completa ambos campos', 'error');
+  if (pw.length < 6) return showMsgReset('La contraseña debe tener al menos 6 caracteres', 'error');
+  if (pw !== pw2) return showMsgReset('Las contraseñas no coinciden', 'error');
+
+  const btn = document.getElementById('btn-reset-submit');
+  const loadingEl = document.getElementById('loading-reset');
+  btn.style.display = 'none';
+  loadingEl.style.display = 'block';
+
+  const { error } = await _supabase.auth.updatePassword({ password: pw });
+  loadingEl.style.display = 'none';
+
+  if (error) {
+    btn.style.display = '';
+    return showMsgReset('Error: ' + error.message, 'error');
+  }
+
+  // Éxito: mostrar mensaje y redirigir al login
+  document.getElementById('reset-form').innerHTML = `
+    <div style="width:64px;height:64px;margin:0 auto 1.1rem;border-radius:50%;background:rgba(5,150,105,.12);display:flex;align-items:center;justify-content:center;color:var(--green);">
+      <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg>
+    </div>
+    <h2 style="font-family:'DM Sans',sans-serif;font-size:1.2rem;font-weight:800;color:var(--text);margin-bottom:.5rem;">¡Contraseña actualizada!</h2>
+    <p style="font-size:.85rem;color:var(--muted);margin-bottom:1.2rem;">Ya puedes iniciar sesión con tu nueva contraseña.</p>
+    <button class="btn-main" onclick="volverLogin()">Iniciar sesión</button>
+  `;
+}
+
+function showMsgReset(text, type) {
+  const el = document.getElementById('msg-reset');
+  el.textContent = text;
+  el.className = 'msg ' + type;
 }
 
 function enviarForm() {
@@ -448,10 +607,15 @@ async function crearCuenta() {
   }
 
   // Guarda los datos del perfil (funciona incluso antes de confirmar el correo).
+  // Nota: después de signUp con email confirmation, la sesión aún no existe.
+  // El servidor valida que el token corresponda al user_id cuando hay sesión.
   try {
+    const { data: { session } } = await _supabase.auth.getSession();
+    const headers = { 'Content-Type': 'application/json' };
+    if (session?.access_token) headers['Authorization'] = 'Bearer ' + session.access_token;
     const res = await fetch('/.netlify/functions/registrar-perfil', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({ user_id: data.user.id, email, nombre, apellido, telefono })
     });
     if (!res.ok) console.error('[registrar-perfil]', res.status, await res.text());
@@ -481,7 +645,19 @@ async function entrar() {
   }
 }
 
-document.addEventListener('keydown', e => { if (e.key === 'Enter') enviarForm(); });
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    const resetForm = document.getElementById('reset-form');
+    const resetEmailForm = document.getElementById('reset-email-form');
+    if (resetForm && resetForm.style.display !== 'none') {
+      enviarResetPassword();
+    } else if (resetEmailForm && resetEmailForm.style.display !== 'none') {
+      enviarResetEmail();
+    } else {
+      enviarForm();
+    }
+  }
+});
 
 /* ─── SERVICE WORKER ─────────────────────────────────────────────────────── */
 if ('serviceWorker' in navigator) {

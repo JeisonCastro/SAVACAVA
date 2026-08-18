@@ -23,13 +23,16 @@ exports.handler = async (event) => {
             return { statusCode: 400, body: JSON.stringify({ error: 'Datos incompletos' }) };
         }
 
+        // Validar que el user_id existe en auth.users (previene creación de perfiles fantasma).
+        const { data: userData, error: userError } = await supabase.auth.admin.getUserById(user_id);
+        if (userError || !userData?.user) {
+            return { statusCode: 403, body: JSON.stringify({ error: 'Usuario no válido' }) };
+        }
+
         // `perfiles.email` es NOT NULL: lo toma del body, o lo busca en auth.users.
         let email = String(body.email || '').trim();
-        if (!email) {
-            const { data: userData, error: userError } = await supabase.auth.admin.getUserById(user_id);
-            if (!userError && userData?.user?.email) {
-                email = userData.user.email;
-            }
+        if (!email && userData?.user?.email) {
+            email = userData.user.email;
         }
         if (!email) {
             return { statusCode: 400, body: JSON.stringify({ error: 'Falta email' }) };
