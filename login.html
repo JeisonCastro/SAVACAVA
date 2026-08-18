@@ -378,9 +378,9 @@ const _supabase = supabase.createClient(CONFIG.URL, CONFIG.ANON_KEY);
 
 /* ─── CONFIRMACION / RECOVERY ────────────────────────────────────────────────
    Supabase envía tokens de dos formas:
-   - Hash:   #access_token=...&type=recovery  (legacy)
-   - Query:  ?code=...&type=recovery          (flujo moderno PKCE)
-   Detectamos ambos y mostramos el form de nueva contraseña. */
+   - Hash:   #access_token=...&type=recovery  (implicit grant)
+   - Query:  ?code=...&type=recovery          (PKCE flow)
+   Para PKCE DEBEMOS llamar exchangeCodeForSession() explícitamente. */
 (async function procesarToken() {
   const hash = location.hash || '';
   const qs   = location.search || '';
@@ -399,25 +399,48 @@ const _supabase = supabase.createClient(CONFIG.URL, CONFIG.ANON_KEY);
       type = new URLSearchParams(qs.substring(1)).get('type');
     }
 
-    // getSession() procesa automáticamente tokens en hash Y en query (PKCE)
-    const { data: { session }, error } = await _supabase.auth.getSession();
+    let session = null;
 
-    if (error || !session) {
+    if (hasQueryCode) {
+      // PKCE flow: intercambiar code por sesión explícitamente
+      const code = new URLSearchParams(qs.substring(1)).get('code');
+      if (code) {
+        console.log('[recovery] PKCE: exchangeCodeForSession');
+        const { data, error } = await _supabase.auth.exchangeCodeForSession(code);
+        if (error) {
+          console.error('[recovery] exchangeCodeForSession error:', error.message);
+        } else {
+          session = data?.session;
+        }
+      }
+    }
+
+    if (!session) {
+      // Fallback: intentar getSession() (funciona para implicit grant / hash tokens)
+      console.log('[recovery] fallback: getSession');
+      const { data: { session: s }, error } = await _supabase.auth.getSession();
+      if (!error && s) session = s;
+    }
+
+    if (!session) {
+      console.error('[recovery] No se pudo obtener sesión del token');
       showMsg('El enlace no es válido o expiró. Solicita uno nuevo.', 'error');
       setLoading(false);
       return;
     }
 
+    console.log('[recovery] Sesión obtenida OK, type:', type);
+
     if (type === 'recovery') {
       setLoading(false);
-      // Limpiar tokens del URL (evita que se reenvíen al recargar)
       history.replaceState(null, '', location.pathname);
       mostrarResetForm();
     } else {
       history.replaceState(null, '', location.pathname);
       location.replace('dashboard.html');
     }
-  } catch (_) {
+  } catch (e) {
+    console.error('[recovery] Exception:', e);
     showMsg('El enlace no es válido o expiró. Solicita uno nuevo.', 'error');
     setLoading(false);
   }
@@ -563,23 +586,41 @@ async function enviarResetPassword() {
   btn.style.display = 'none';
   loadingEl.style.display = 'block';
 
-  const { error } = await _supabase.auth.updatePassword({ password: pw });
-  loadingEl.style.display = 'none';
+  try {
+    // Verificar que hay sesión activa antes de intentar actualizar
+    const { data: { session } } = await _supabase.auth.getSession();
+    if (!session) {
+      console.error('[reset] No hay sesión activa para updatePassword');
+      loadingEl.style.display = 'none';
+      btn.style.display = '';
+      return showMsgReset('Sesión expirada. Solicita un nuevo enlace de restablecimiento.', 'error');
+    }
 
-  if (error) {
+    console.log('[reset] Llamando updatePassword...');
+    const { data, error } = await _supabase.auth.updatePassword({ password: pw });
+    console.log('[reset] updatePassword resultado:', error ? error.message : 'OK');
+    loadingEl.style.display = 'none';
+
+    if (error) {
+      btn.style.display = '';
+      return showMsgReset('Error: ' + error.message, 'error');
+    }
+
+    // Éxito: mostrar mensaje y redirigir al login
+    document.getElementById('reset-form').innerHTML = `
+      <div style="width:64px;height:64px;margin:0 auto 1.1rem;border-radius:50%;background:rgba(5,150,105,.12);display:flex;align-items:center;justify-content:center;color:var(--green);">
+        <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg>
+      </div>
+      <h2 style="font-family:'DM Sans',sans-serif;font-size:1.2rem;font-weight:800;color:var(--text);margin-bottom:.5rem;">¡Contraseña actualizada!</h2>
+      <p style="font-size:.85rem;color:var(--muted);margin-bottom:1.2rem;">Ya puedes iniciar sesión con tu nueva contraseña.</p>
+      <button class="btn-main" onclick="volverLogin()">Iniciar sesión</button>
+    `;
+  } catch (e) {
+    console.error('[reset] Exception:', e);
+    loadingEl.style.display = 'none';
     btn.style.display = '';
-    return showMsgReset('Error: ' + error.message, 'error');
+    showMsgReset('Error inesperado. Intenta de nuevo.', 'error');
   }
-
-  // Éxito: mostrar mensaje y redirigir al login
-  document.getElementById('reset-form').innerHTML = `
-    <div style="width:64px;height:64px;margin:0 auto 1.1rem;border-radius:50%;background:rgba(5,150,105,.12);display:flex;align-items:center;justify-content:center;color:var(--green);">
-      <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg>
-    </div>
-    <h2 style="font-family:'DM Sans',sans-serif;font-size:1.2rem;font-weight:800;color:var(--text);margin-bottom:.5rem;">¡Contraseña actualizada!</h2>
-    <p style="font-size:.85rem;color:var(--muted);margin-bottom:1.2rem;">Ya puedes iniciar sesión con tu nueva contraseña.</p>
-    <button class="btn-main" onclick="volverLogin()">Iniciar sesión</button>
-  `;
 }
 
 function showMsgReset(text, type) {
