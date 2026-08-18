@@ -590,15 +590,15 @@ async function enviarResetPassword() {
     // Verificar que hay sesión activa antes de intentar actualizar
     const { data: { session } } = await _supabase.auth.getSession();
     if (!session) {
-      console.error('[reset] No hay sesión activa para updatePassword');
+      console.error('[reset] No hay sesión activa para updateUser');
       loadingEl.style.display = 'none';
       btn.style.display = '';
       return showMsgReset('Sesión expirada. Solicita un nuevo enlace de restablecimiento.', 'error');
     }
 
-    console.log('[reset] Llamando updatePassword...');
-    const { data, error } = await _supabase.auth.updatePassword({ password: pw });
-    console.log('[reset] updatePassword resultado:', error ? error.message : 'OK');
+    console.log('[reset] Llamando updateUser...');
+    const { data, error } = await _supabase.auth.updateUser({ password: pw });
+    console.log('[reset] updateUser resultado:', error ? error.message : 'OK');
     loadingEl.style.display = 'none';
 
     if (error) {

@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head><title>Recovery Test</title></head>
+<body>
+<pre id="log"></pre>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const log = (msg) => {
+  document.getElementById('log').textContent += msg + '\n';
+  console.log(msg);
+};
+const _supabase = supabase.createClient(
+  "https://zsxkfqnalkfvwjrzuqip.supabase.co",
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzeGtmcW5hbGtmdndqcnp1cWlwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0NDgyODMsImV4cCI6MjA5MjAyNDI4M30.R4j23l3IHEL966VupeR-Sx_KtDQzB8NzfJtEVDGewGs"
+);
+(async () => {
+  const hash = location.hash || '';
+  const qs = location.search || '';
+  log('URL: ' + location.href);
+  log('Hash: ' + hash);
+  log('Query: ' + qs);
+  log('has access_token: ' + hash.includes('access_token'));
+  log('has code: ' + qs.includes('code='));
+  if (qs.includes('code=')) {
+    const code = new URLSearchParams(qs.substring(1)).get('code');
+    log('Code: ' + (code ? code.substring(0, 20) + '...' : 'null'));
+    log('Calling exchangeCodeForSession...');
+    try {
+      const { data, error } = await _supabase.auth.exchangeCodeForSession(code);
+      if (error) { log('ERROR: ' + error.message); return; }
+      log('Session OK: ' + JSON.stringify(!!data.session));
+      log('User: ' + data.session?.user?.id);
+      // Test updatePassword
+      log('Calling updateUser...');
+      const { data: upData, error: upErr } = await _supabase.auth.updateUser({ password: 'TestPassword123!' });
+      if (upErr) { log('updateUser ERROR: ' + upErr.message); }
+      else { log('updateUser OK!'); }
+    } catch(e) { log('EXCEPTION: ' + e.message); }
+  } else if (hash.includes('access_token')) {
+    log('Implicit grant detected');
+    const { data: { session }, error } = await _supabase.auth.getSession();
+    log('getSession: ' + (error ? 'ERROR ' + error.message : 'OK session=' + !!session));
+  } else {
+    log('No token in URL. Visit with ?code=...&type=recovery');
+  }
+})();
+</script>
+</body>
+</html>
