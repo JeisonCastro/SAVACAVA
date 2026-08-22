@@ -31,7 +31,7 @@ function ok(body, status = 200) {
   return { statusCode: status, headers, body: JSON.stringify(body) };
 }
 
-async function autenticar(event) {
+async function autenticar(event, proyectoId) {
   const authHeader = event.headers.authorization || event.headers.Authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) throw new Error('Token no enviado');
   const token = authHeader.replace('Bearer ', '');
@@ -40,16 +40,27 @@ async function autenticar(event) {
   });
   const { data: userData, error } = await supabaseUser.auth.getUser();
   if (error || !userData?.user) throw new Error('No autenticado');
+  const userId = userData.user.id;
   const { data: miPerfil } = await supabase
     .from('perfiles')
     .select('is_admin')
-    .eq('id', userData.user.id)
+    .eq('id', userId)
     .single();
-  if (!miPerfil?.is_admin) throw new Error('No eres admin');
-  return userData.user.id;
+  if (miPerfil?.is_admin) return userId;
+  // Si no es admin, verificar permiso de tienda para el proyecto específico
+  if (proyectoId) {
+    const { data: permiso } = await supabase
+      .from('tienda_permisos')
+      .select('id')
+      .eq('proyecto_id', proyectoId)
+      .eq('user_id', userId)
+      .maybeSingle();
+    if (permiso) return userId;
+  }
+  throw new Error('No eres admin');
 }
 
-async function validarPropietario(proyectoId, adminId) {
+async function validarPropietario(proyectoId, userId) {
   if (!proyectoId) throw new Error('Falta proyecto_id');
   const { data: proyecto } = await supabase
     .from('web_projects')
@@ -57,8 +68,16 @@ async function validarPropietario(proyectoId, adminId) {
     .eq('id', proyectoId)
     .maybeSingle();
   if (!proyecto) throw new Error('Sitio no encontrado');
-  if (proyecto.created_by !== adminId) throw new Error('No tienes acceso a este sitio');
-  return proyecto;
+  // Permitir si es el dueño O si tiene permisos de tienda
+  if (proyecto.created_by === userId) return proyecto;
+  const { data: permiso } = await supabase
+    .from('tienda_permisos')
+    .select('id')
+    .eq('proyecto_id', proyectoId)
+    .eq('user_id', userId)
+    .maybeSingle();
+  if (permiso) return proyecto;
+  throw new Error('No tienes acceso a este sitio');
 }
 
 function namespaceTienda(proyectoId) {
@@ -79,9 +98,9 @@ exports.handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') return ok({ ok: true });
   if (event.httpMethod !== 'POST') return ok({ ok: false, error: 'Method not allowed' }, 405);
   try {
-    const adminId = await autenticar(event);
     const body = JSON.parse(event.body || '{}');
     const { action, proyecto_id, redirectTo } = body;
+    const adminId = await autenticar(event, proyecto_id);
     await validarPropietario(proyecto_id, adminId);
 
     if (!composioApiKey) return ok({ ok: false, error: 'Falta COMPOSIO_API_KEY en las variables de entorno' }, 500);
