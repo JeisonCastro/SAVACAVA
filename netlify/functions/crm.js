@@ -83,8 +83,11 @@ exports.handler = async (event) => {
                 if (desde) query = query.gte('created_at', desde);
                 if (hasta) query = query.lte('created_at', hasta);
                 if (origen) query = query.eq('origen', origen);
-                if (agenteFiltro) query = query.eq('agente_id', agenteFiltro);
-                if (agentesFiltroIds) query = query.in('agente_id', agentesFiltroIds);
+                if (agenteFiltro) {
+                    query = query.eq('agente_id', agenteFiltro);
+                } else if (agentesFiltroIds) {
+                    query = query.in('agente_id', agentesFiltroIds);
+                }
                 return query;
             };
 

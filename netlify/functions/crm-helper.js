@@ -149,13 +149,22 @@ async function obtenerCatalogoTienda(tiendaId) {
         descripcion: p.descripcion || '',
         precio_cents: Number(p.precio_cents) || 0,
         disponible: p.activo !== false,
-        url_imagen: p.imagen_url || null,
-        variantes: (varMap[p.id] || []).map(v => ({
-            id: v.id,
-            nombre: [v.color, v.talla, v.material].filter(Boolean).join(' / ') || v.id,
-            precio_cents: Number(v.precio_cents) || Number(p.precio_cents) || 0,
-            stock: Number(v.stock) ?? null
-        })),
+        url_imagen: p.imagen || p.imagenes?.[0]?.url || null,
+        variantes: (varMap[p.id] || []).map(v => {
+            let nombreVariante = v.id;
+            try {
+                const comb = typeof v.combinacion === 'string' ? JSON.parse(v.combinacion) : v.combinacion;
+                if (comb && typeof comb === 'object') {
+                    nombreVariante = Object.values(comb).filter(Boolean).join(' / ');
+                }
+            } catch (_) {}
+            return {
+                id: v.id,
+                nombre: nombreVariante || v.id,
+                precio_cents: Number(v.precio_cents) || Number(p.precio_cents) || 0,
+                stock: Number(v.stock) ?? null
+            };
+        }),
         atributos: p.atributos || {},
         categorias_pasajero: [],
         escalas_cantidad: [],
@@ -385,6 +394,7 @@ Reglas:
             conversacion_id: conversacionId,
             external_user_id: externalUserId || null,
             origen: canal || 'web',
+            proyecto_id: agente.tienda_id || null,
             nombre: extraido.nombre || leadExistente?.nombre || null,
             telefono: extraido.telefono || leadExistente?.telefono || (canal === 'whatsapp' ? externalUserId : null),
             email: extraido.email || leadExistente?.email || null,

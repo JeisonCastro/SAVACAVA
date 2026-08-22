@@ -223,8 +223,12 @@
                 <div id="crm-agent-filter" style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;margin-bottom:1rem;"></div>
 
                 <div id="crm-date-filter" style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;margin-bottom:1rem;background:var(--surface);border:1px solid var(--border2);border-radius:12px;padding:.6rem .8rem;">
-                    <span style="font-size:.78rem;color:var(--muted);"><i class="fas fa-store" style="margin-right:.35rem;"></i>Tienda:</span>
-                    <select id="crm-filtro-tienda" style="background:var(--bg2);border:1px solid var(--border2);border-radius:10px;padding:.4rem .6rem;font-size:.78rem;color:var(--text);">
+                    <span style="font-size:.78rem;color:var(--muted);"><i class="fas fa-robot" style="margin-right:.35rem;"></i>Agente:</span>
+                    <select id="crm-filtro-agente" onchange="onFiltroAgenteChange()" style="background:var(--bg2);border:1px solid var(--border2);border-radius:10px;padding:.4rem .6rem;font-size:.78rem;color:var(--text);max-width:200px;">
+                        <option value="">Todos</option>
+                    </select>
+                    <span style="font-size:.78rem;color:var(--muted);margin-left:.5rem;"><i class="fas fa-store" style="margin-right:.35rem;"></i>Tienda:</span>
+                    <select id="crm-filtro-tienda" onchange="onFiltroTiendaChange()" style="background:var(--bg2);border:1px solid var(--border2);border-radius:10px;padding:.4rem .6rem;font-size:.78rem;color:var(--text);">
                         <option value="">Todas</option>
                     </select>
                     <span style="font-size:.78rem;color:var(--muted);margin-left:.5rem;"><i class="fas fa-calendar-days" style="margin-right:.35rem;"></i>Desde:</span>
@@ -3453,7 +3457,7 @@
     let crmCatalogo = [];
     let crmLeadActual = null;
     let crmAgenteSeleccionado = null;
-    let crmFiltros = { desde: '', hasta: '', origen: '', tienda_id: '' };
+    let crmFiltros = { desde: '', hasta: '', origen: '', tienda_id: '', agente_id: '' };
 
     function fmtPesos(cents) {
         const n = Number(cents) || 0;
@@ -3484,7 +3488,7 @@
             }
             if (crmFiltros.origen) p.set('origen', crmFiltros.origen);
             if (crmFiltros.tienda_id) p.set('tienda_id', crmFiltros.tienda_id);
-            if (crmAgenteSeleccionado) p.set('agente_id', crmAgenteSeleccionado);
+            if (crmFiltros.agente_id) p.set('agente_id', crmFiltros.agente_id);
             const qs = p.toString();
             const res = await fetch('/.netlify/functions/crm' + (qs ? '?' + qs : ''), {
                 method: 'GET',
@@ -3530,7 +3534,8 @@
             desde: document.getElementById('crm-filtro-desde')?.value || '',
             hasta: document.getElementById('crm-filtro-hasta')?.value || '',
             origen: document.getElementById('crm-filtro-origen')?.value || '',
-            tienda_id: document.getElementById('crm-filtro-tienda')?.value || ''
+            tienda_id: document.getElementById('crm-filtro-tienda')?.value || '',
+            agente_id: document.getElementById('crm-filtro-agente')?.value || ''
         };
     }
 
@@ -3545,12 +3550,39 @@
     }
 
     function limpiarFiltrosCRM() {
-        crmFiltros = { desde: '', hasta: '', origen: '', tienda_id: '' };
+        crmFiltros = { desde: '', hasta: '', origen: '', tienda_id: '', agente_id: '' };
         const d = document.getElementById('crm-filtro-desde'); if (d) d.value = '';
         const h = document.getElementById('crm-filtro-hasta'); if (h) h.value = '';
         const o = document.getElementById('crm-filtro-origen'); if (o) o.value = '';
         const t = document.getElementById('crm-filtro-tienda'); if (t) t.value = '';
+        const a = document.getElementById('crm-filtro-agente'); if (a) a.value = '';
         cargarCRM();
+    }
+
+    function onFiltroTiendaChange() {
+        const tiendaId = document.getElementById('crm-filtro-tienda')?.value || '';
+        const agenteSelect = document.getElementById('crm-filtro-agente');
+        if (!agenteSelect) return;
+        const agentes = crmData?.agentes || [];
+        const filtrados = tiendaId ? agentes.filter(a => String(a.tienda_id) === tiendaId) : agentes;
+        const actual = agenteSelect.value;
+        agenteSelect.innerHTML = '<option value="">Todos</option>' +
+            filtrados.map(a => `<option value="${a.id}" ${String(a.id) === actual ? 'selected' : ''}>${escapeHtml(a.nombre_agente)}${a.crm_activo ? ' · CRM' : ''}</option>`).join('');
+        if (filtrados.length && !filtrados.some(a => String(a.id) === actual)) {
+            agenteSelect.value = '';
+        }
+    }
+
+    function onFiltroAgenteChange() {
+        const agenteId = document.getElementById('crm-filtro-agente')?.value || '';
+        const tiendaSelect = document.getElementById('crm-filtro-tienda');
+        if (!tiendaSelect) return;
+        if (agenteId) {
+            const agente = (crmData?.agentes || []).find(a => String(a.id) === agenteId);
+            if (agente?.tienda_id) {
+                tiendaSelect.value = agente.tienda_id;
+            }
+        }
     }
 
     function renderCRM() {
@@ -3572,7 +3604,17 @@
             `;
         }
 
-        // Poblar select de tienda en filtros CRM
+        // Poblar selects de filtros CRM (agente y tienda)
+        const agenteFilterSelect = document.getElementById('crm-filtro-agente');
+        if (agenteFilterSelect) {
+            const agentes = crmData?.agentes || [];
+            const actualAg = agenteFilterSelect.value;
+            const tiendaSel = document.getElementById('crm-filtro-tienda')?.value || '';
+            const filtrados = tiendaSel ? agentes.filter(a => String(a.tienda_id) === tiendaSel) : agentes;
+            agenteFilterSelect.innerHTML = '<option value="">Todos</option>' +
+                filtrados.map(a => `<option value="${a.id}" ${String(a.id) === actualAg ? 'selected' : ''}>${escapeHtml(a.nombre_agente)}${a.crm_activo ? ' · CRM' : ''}</option>`).join('');
+        }
+
         const tiendaSelect = document.getElementById('crm-filtro-tienda');
         if (tiendaSelect && _tiendas.length) {
             const actual = tiendaSelect.value;

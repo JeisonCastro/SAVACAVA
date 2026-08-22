@@ -387,11 +387,24 @@ async function accionCheckout(body) {
         clienteId = ins?.id || null;
     }
 
+    // Buscar el agente vinculado a esta tienda (si existe)
+    let agenteId = null;
+    try {
+        const { data: agenteTienda } = await supabase
+            .from('agentes_ia')
+            .select('id')
+            .eq('tienda_id', proyecto.id)
+            .limit(1)
+            .maybeSingle();
+        agenteId = agenteTienda?.id || null;
+    } catch (_) {}
+
     // 1) Orden + líneas
     const { data: orden, error: ordenErr } = await supabase
         .from('tienda_ordenes')
         .insert({
             proyecto_id: proyecto.id,
+            agente_id: agenteId,
             cliente_id: clienteRow?.id || null,
             cliente_nombre: nombre,
             cliente_email: email,

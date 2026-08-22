@@ -1233,14 +1233,16 @@ exports.handler = async (event) => {
             agentToolsResult,
             userConnectionsResult,
             pendingActionResult,
-            crmConfigResult
+            crmConfigResult,
+            tiendaPasarelaResult
         ] = await Promise.all([
             cargarHistorialConversacion(conversationIdFinal, 6),
             supabase.from('perfiles').select('token_balance').eq('id', agente.user_id).single(),
             supabase.from('agente_tools').select('tool_key, toolkit, enabled').eq('agente_id', targetID).eq('enabled', true),
             supabase.from('composio_connections').select('toolkit, composio_entity_id, connected_at, shopify_store_url, access_token').eq('user_id', agente.user_id),
             supabase.from('pending_tool_actions').select('*').eq('user_id', agente.user_id).eq('agente_id', targetID).eq('conversation_id', conversationIdFinal).eq('status', 'pending').gte('expires_at', new Date().toISOString()).order('created_at', { ascending: false }).limit(1).maybeSingle(),
-            agente.crm_activo ? obtenerConfigCRM(agente.user_id, agente.id) : Promise.resolve(null)
+            agente.crm_activo ? obtenerConfigCRM(agente.user_id, agente.id) : Promise.resolve(null),
+            agente.tienda_id ? supabase.from('tienda_pasarela').select('*').eq('proyecto_id', agente.tienda_id).maybeSingle() : Promise.resolve({ data: null })
         ]);
 
         const historialSinDuplicado = (historialDB || []).filter(
@@ -1281,8 +1283,13 @@ exports.handler = async (event) => {
 
         const { data: pendingAction } = pendingActionResult;
 
+        const tiendaPasarela = tiendaPasarelaResult?.data || null;
         const crmConfig = crmConfigResult || null;
         const crmActivo = agente.crm_activo && crmConfig?.crm_activo === true;
+
+        // Si el agente tiene tienda vinculada, la pasarela Wompi de la tienda
+        // tiene prioridad sobre la configuración CRM del agente para los pagos.
+        const wompiConfig = tiendaPasarela || crmConfig || null;
 
         // Catálogo dinámico: si el agente tiene tienda vinculada, usar catálogo
         // de la tienda (tienda_productos); si no, usar catálogo CRM (configuración).
@@ -1290,7 +1297,7 @@ exports.handler = async (event) => {
         let catalogoCRM = crmActivo && Array.isArray(crmConfig.catalogo) ? crmConfig.catalogo : [];
         let catalogoTienda = [];
 
-        if (tiendaId && crmActivo) {
+        if (tiendaId) {
             catalogoTienda = await obtenerCatalogoTienda(tiendaId);
             if (catalogoTienda.length) catalogoCRM = catalogoTienda;
         }
@@ -1655,7 +1662,7 @@ INSTRUCCIONES:
                         conversacionId: conversationIdFinal
                     });
                     const resultado = await crearPaymentLinkVenta({
-                        config: crmConfig,
+                        config: wompiConfig,
                         agente,
                         leadId,
                         conversacionId: conversationIdFinal,
