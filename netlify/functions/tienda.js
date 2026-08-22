@@ -423,7 +423,7 @@ async function accionCheckout(body) {
         lineas.map(l => ({ orden_id: orden.id, ...l }))
     );
     if (itemsErr) {
-        await supabase.from('tienda_ordenes').delete().eq('id', orden.id).catch(() => {});
+        try { await supabase.from('tienda_ordenes').delete().eq('id', orden.id); } catch (_) {}
         return ok({ ok: false, error: 'No se pudo guardar las líneas de la orden' }, 500);
     }
 
@@ -449,7 +449,7 @@ async function accionCheckout(body) {
     const wompi = await wompiRes.json();
     if (!wompiRes.ok || !wompi?.data?.id) {
         console.error('Wompi error al crear link de tienda:', JSON.stringify(wompi));
-        await supabase.from('tienda_ordenes').delete().eq('id', orden.id).catch(() => {});
+        try { await supabase.from('tienda_ordenes').delete().eq('id', orden.id); } catch (_) {}
         return ok({ ok: false, error: wompi?.error?.message || 'Error creando el pago en Wompi.' }, 502);
     }
     const paymentLinkId = wompi.data.id;
@@ -821,7 +821,7 @@ async function accionEliminarCategoria(adminId, body) {
     if (!cat) return ok({ ok: false, error: 'Categoría no encontrada' }, 404);
     const { data: proyecto } = await supabase.from('web_projects').select('created_by').eq('id', cat.proyecto_id).maybeSingle();
     if (!proyecto || proyecto.created_by !== adminId) return ok({ ok: false, error: 'No tienes acceso a este sitio' }, 403);
-    await supabase.from('tienda_productos').update({ categoria_id: null, categoria: null }).eq('categoria_id', id).catch(() => {});
+    await supabase.from('tienda_productos').update({ categoria_id: null, categoria: null }).eq('categoria_id', id).select();
     const { error } = await supabase.from('tienda_categorias').delete().eq('id', id);
     if (error) return ok({ ok: false, error: error.message }, 500);
     return ok({ ok: true });
@@ -877,7 +877,7 @@ async function accionEliminarAtributo(adminId, body) {
         .contains('atributos_selector', [{ atributo_id: id }]);
     for (const p of productos || []) {
         const restante = (p.atributos_selector || []).filter(a => String(a.atributo_id) !== String(id));
-        await supabase.from('tienda_productos').update({ atributos_selector: restante.length ? restante : null }).eq('id', p.id).catch(() => {});
+        await supabase.from('tienda_productos').update({ atributos_selector: restante.length ? restante : null }).eq('id', p.id).select();
         if (restante.length) {
             const { data: existentes } = await supabase.from('tienda_variaciones').select('*').eq('producto_id', p.id);
             const porClave = {};
@@ -889,13 +889,13 @@ async function accionEliminarAtributo(adminId, body) {
                 return { producto_id: p.id, clave: g.clave, combinacion: g.combinacion, nombre: g.nombre, sku: prev?.sku ?? null, precio_cents: prev?.precio_cents ?? null, precio_promo_cents: prev?.precio_promo_cents ?? null, stock: prev?.stock ?? null, imagen: prev?.imagen ?? null, activo: prev ? prev.activo : true };
             });
             if (upserts.length) {
-                await supabase.from('tienda_variaciones').upsert(upserts, { onConflict: 'producto_id,clave' }).catch(() => {});
-                await supabase.from('tienda_variaciones').delete().eq('producto_id', p.id).not('clave', 'in', [...nuevasClaves]).catch(() => {});
+                try { await supabase.from('tienda_variaciones').upsert(upserts, { onConflict: 'producto_id,clave' }); } catch (_) {}
+                try { await supabase.from('tienda_variaciones').delete().eq('producto_id', p.id).not('clave', 'in', [...nuevasClaves]); } catch (_) {}
             } else {
-                await supabase.from('tienda_variaciones').delete().eq('producto_id', p.id).catch(() => {});
+                try { await supabase.from('tienda_variaciones').delete().eq('producto_id', p.id); } catch (_) {}
             }
         } else {
-            await supabase.from('tienda_variaciones').delete().eq('producto_id', p.id).catch(() => {});
+            try { await supabase.from('tienda_variaciones').delete().eq('producto_id', p.id); } catch (_) {}
         }
     }
     const { error } = await supabase.from('tienda_atributos').delete().eq('id', id);

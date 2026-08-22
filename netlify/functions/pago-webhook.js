@@ -188,7 +188,7 @@ exports.handler = async (event) => {
                                     .from('tienda_variaciones')
                                     .update({ stock: Math.max(0, varRow.stock - l.cantidad) })
                                     .eq('id', l.variacion_id)
-                                    .catch(() => {});
+                                    .select();
                             }
                         } else if (l.producto_id) {
                             const { data: prod } = await supabase
@@ -201,7 +201,7 @@ exports.handler = async (event) => {
                                     .from('tienda_productos')
                                     .update({ stock: Math.max(0, prod.stock - l.cantidad), updated_at: new Date().toISOString() })
                                     .eq('id', l.producto_id)
-                                    .catch(() => {});
+                                    .select();
                             }
                         }
                     }
@@ -222,7 +222,7 @@ exports.handler = async (event) => {
                                     updated_at: new Date().toISOString()
                                 })
                                 .eq('id', orden.cliente_id)
-                                .catch(() => {});
+                                .select();
                         }
                     }
 
