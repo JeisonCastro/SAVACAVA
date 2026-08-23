@@ -2203,29 +2203,29 @@
                         agentes.map(a => `<option value="${a.id}"${p.agente_id == a.id ? ' selected' : ''}>${wfEscapeHtml(a.name)}</option>`).join('');
                     const agenteTd = `<select onchange="wfAsignarAgente('${p.id}', this.value)" style="font-size:.72rem;padding:4px 6px;border:1px solid var(--border2);border-radius:6px;background:var(--bg1);color:var(--text1);max-width:140px" title="Asignar agente IA a este proyecto">${opcionesAgente}</select>`;
 
-                    // Botón de acción individual (estilo largo horizontal, apilado verticalmente)
-                    const wfBtn = (icon, label, onclick, extra = '') =>
-                        `<button class="btn-small" onclick="${onclick}" style="display:flex;align-items:center;gap:.4rem;width:100%;text-align:left;font-size:.72rem;padding:5px 8px;justify-content:flex-start;border-radius:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;${extra}" title="${wfEscapeHtml(label)}"><i class="${icon}" style="width:14px;text-align:center;flex-shrink:0"></i> ${wfEscapeHtml(label)}</button>`;
+                    // Botón de acción individual (solo icono, apilado verticalmente)
+                    const wfBtn = (icon, onclick, extra = '') =>
+                        `<button class="btn-small" onclick="${onclick}" style="display:flex;align-items:center;justify-content:center;width:100%;padding:5px;border-radius:6px;${extra}"><i class="${icon}" style="font-size:.82rem"></i></button>`;
 
                     // Acciones: admin ve todo; usuario tienda solo ver/editar
                     let acciones = '';
                     if (esAdmin()) {
                         const btns = [
-                            p.netlify_url ? wfBtn('fas fa-external-link', 'Abrir sitio', `window.open('${wfEscapeHtml(p.netlify_url)}','_blank')`) : '',
-                            p.github_url ? wfBtn('fab fa-github', 'GitHub', `window.open('${wfEscapeHtml(p.github_url)}','_blank')`) : '',
-                            p.clone_url ? wfBtn('fas fa-copy', 'Copiar clone', `copiarClone('${wfEscapeHtml(p.clone_url)}', '${wfEscapeHtml(p.slug)}')`) : '',
-                            p.plantilla === 'tienda' ? wfBtn('fas fa-store', 'Tienda', `abrirTiendaModal('${p.id}','${wfEscapeHtml(p.nombre)}','${wfEscapeHtml(p.slug)}')`) : '',
-                            wfBtn('fas fa-rotate', 'Actualizar', `actualizarEstadoWeb('${p.id}')`),
+                            p.netlify_url ? wfBtn('fas fa-external-link', `window.open('${wfEscapeHtml(p.netlify_url)}','_blank')`) : '',
+                            p.github_url ? wfBtn('fab fa-github', `window.open('${wfEscapeHtml(p.github_url)}','_blank')`) : '',
+                            p.clone_url ? wfBtn('fas fa-copy', `copiarClone('${wfEscapeHtml(p.clone_url)}', '${wfEscapeHtml(p.slug)}')`) : '',
+                            p.plantilla === 'tienda' ? wfBtn('fas fa-store', `abrirTiendaModal('${p.id}','${wfEscapeHtml(p.nombre)}','${wfEscapeHtml(p.slug)}')`) : '',
+                            wfBtn('fas fa-rotate', `actualizarEstadoWeb('${p.id}')`),
                             p.netlify_site_id ? (inactivo
-                                ? wfBtn('fas fa-play', 'Reactivar', `toggleActivoWeb('${p.id}', false, '${wfEscapeHtml(p.nombre)}')`, 'color:var(--green)')
-                                : wfBtn('fas fa-power-off', 'Apagar', `toggleActivoWeb('${p.id}', true, '${wfEscapeHtml(p.nombre)}')`, 'color:var(--red)')) : '',
-                            wfBtn('fas fa-trash', 'Eliminar', `eliminarProyectoWeb('${p.id}', '${wfEscapeHtml(p.nombre)}')`, 'color:var(--red)')
+                                ? wfBtn('fas fa-play', `toggleActivoWeb('${p.id}', false, '${wfEscapeHtml(p.nombre)}')`, 'color:var(--green)')
+                                : wfBtn('fas fa-power-off', `toggleActivoWeb('${p.id}', true, '${wfEscapeHtml(p.nombre)}')`, 'color:var(--red)')) : '',
+                            wfBtn('fas fa-trash', `eliminarProyectoWeb('${p.id}', '${wfEscapeHtml(p.nombre)}')`, 'color:var(--red)')
                         ].filter(Boolean);
                         acciones = `<div style="display:flex;flex-direction:column;gap:3px;min-width:130px">${btns.join('')}</div>`;
                     } else {
                         acciones = `<div style="display:flex;flex-direction:column;gap:3px;min-width:130px">
-                            ${p.netlify_url ? wfBtn('fas fa-external-link', 'Ver tienda', `window.open('${wfEscapeHtml(p.netlify_url)}','_blank')`) : ''}
-                            ${p.plantilla === 'tienda' ? wfBtn('fas fa-store', 'Editar tienda', `abrirTiendaModal('${p.id}','${wfEscapeHtml(p.nombre)}','${wfEscapeHtml(p.slug)}')`, 'color:var(--accent)') : ''}
+                            ${p.netlify_url ? wfBtn('fas fa-external-link', `window.open('${wfEscapeHtml(p.netlify_url)}','_blank')`) : ''}
+                            ${p.plantilla === 'tienda' ? wfBtn('fas fa-store', `abrirTiendaModal('${p.id}','${wfEscapeHtml(p.nombre)}','${wfEscapeHtml(p.slug)}')`, 'color:var(--accent)') : ''}
                         </div>`;
                     }
 
