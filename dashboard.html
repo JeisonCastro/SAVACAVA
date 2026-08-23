@@ -900,6 +900,62 @@
                     </div>
                 </div>
 
+                <!-- MODAL: Editor AI de Contenido -->
+                <div id="editor-sitio-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;align-items:center;justify-content:center">
+                    <div style="background:var(--surface);border:1px solid var(--border2);border-radius:14px;width:95%;max-width:1100px;max-height:92vh;display:flex;flex-direction:column;box-shadow:var(--shadow-soft)">
+                        <!-- Header -->
+                        <div style="display:flex;justify-content:space-between;align-items:center;padding:1rem 1.2rem;border-bottom:1px solid var(--border);flex-shrink:0">
+                            <div style="display:flex;align-items:center;gap:.6rem">
+                                <i class="fas fa-wand-magic-sparkles" style="color:var(--accent);font-size:1.1rem"></i>
+                                <div>
+                                    <div style="font-weight:700;font-size:.95rem" id="editor-sitio-nombre">Sitio</div>
+                                    <div style="font-size:.72rem;color:var(--dim)" id="editor-sitio-slug">slug</div>
+                                </div>
+                            </div>
+                            <div style="display:flex;align-items:center;gap:.8rem">
+                                <div id="editor-tokens-badge" style="display:flex;align-items:center;gap:.4rem;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:4px 10px;font-size:.75rem">
+                                    <i class="fas fa-bolt" style="color:var(--yellow)"></i>
+                                    <span id="editor-tokens-count">10,000</span>
+                                    <span style="color:var(--dim)">tokens</span>
+                                </div>
+                                <a id="editor-sitio-link" href="#" target="_blank" style="font-size:.75rem;color:var(--accent);text-decoration:none"><i class="fas fa-external-link" style="margin-right:.2rem"></i>Ver sitio</a>
+                                <button onclick="cerrarEditorSitio()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1.1rem"><i class="fas fa-times"></i></button>
+                            </div>
+                        </div>
+                        <!-- Body: 2 columnas -->
+                        <div style="display:flex;flex:1;min-height:0;overflow:hidden">
+                            <!-- Izquierda: Secciones -->
+                            <div style="width:280px;border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0">
+                                <div style="padding:.6rem 1rem;border-bottom:1px solid var(--border);font-size:.75rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">
+                                    <i class="fas fa-layer-group" style="margin-right:.3rem"></i>Secciones del Sitio
+                                </div>
+                                <div id="editor-secciones-list" style="flex:1;overflow-y:auto;padding:.5rem">
+                                    <div style="text-align:center;color:var(--dim);padding:1.5rem;font-size:.8rem">Cargando contenido...</div>
+                                </div>
+                            </div>
+                            <!-- Derecha: Chat AI -->
+                            <div style="flex:1;display:flex;flex-direction:column;min-width:0">
+                                <div id="editor-chat-messages" style="flex:1;overflow-y:auto;padding:1rem;display:flex;flex-direction:column;gap:.6rem">
+                                    <div style="background:var(--bg2);border-radius:10px;padding:.7rem .9rem;font-size:.82rem;color:var(--muted);max-width:90%">
+                                        <i class="fas fa-robot" style="margin-right:.3rem;color:var(--accent)"></i> Hola! Soy tu asistente de edicion. Puedo cambiar textos, telefonos, direcciones, colores, imagenes y mas. Escribe lo que quieres cambiar en tu sitio.
+                                    </div>
+                                </div>
+                                <!-- Token warning -->
+                                <div id="editor-token-warning" style="display:none;padding:.5rem 1rem;background:rgba(251,191,36,.1);border-top:1px solid rgba(251,191,36,.2);font-size:.75rem;color:var(--yellow);text-align:center">
+                                    <i class="fas fa-exclamation-triangle" style="margin-right:.3rem"></i>
+                                    <span id="editor-token-warning-text">Te quedan pocos tokens</span>
+                                    <button onclick="abrirRecargaTokens()" style="background:var(--yellow);color:#000;border:none;border-radius:6px;padding:3px 8px;font-size:.72rem;font-weight:600;margin-left:.5rem;cursor:pointer">Recargar</button>
+                                </div>
+                                <!-- Input -->
+                                <div style="padding:.7rem 1rem;border-top:1px solid var(--border);display:flex;gap:.5rem;flex-shrink:0">
+                                    <input type="text" id="editor-chat-input" placeholder="Ej: Cambia el telefono a 310-123-4567" style="flex:1;padding:.55rem .8rem;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text);font-size:.85rem" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();enviarEdicionAI()}" />
+                                    <button id="editor-send-btn" onclick="enviarEdicionAI()" class="btn-main" style="padding:.55rem .9rem;font-size:.82rem;white-space:nowrap"><i class="fas fa-paper-plane" style="margin-right:.3rem"></i>Enviar</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- MODAL: Gestionar tienda (e-commerce) -->
                 <div id="tienda-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;align-items:center;justify-content:center">
                     <div style="background:var(--surface);border:1px solid var(--border2);border-radius:14px;padding:1.5rem;width:92%;max-width:920px;max-height:92vh;overflow-y:auto;box-shadow:var(--shadow-soft)">
@@ -2114,6 +2170,161 @@
         document.getElementById('wf-modal').style.display = 'none';
     }
 
+    // ── EDITOR AI DE CONTENIDO ──
+    let _editorState = { proyectoId: null, nombre: '', slug: '', tokens: 0, sections: [], chatHistory: [] };
+
+    async function abrirEditorSitio(proyectoId, nombre, slug) {
+        _editorState = { proyectoId, nombre, slug, tokens: 0, sections: [], chatHistory: [] };
+        document.getElementById('editor-sitio-nombre').textContent = nombre;
+        document.getElementById('editor-sitio-slug').textContent = slug;
+        document.getElementById('editor-tokens-count').textContent = '...';
+        document.getElementById('editor-secciones-list').innerHTML = '<div style="text-align:center;color:var(--dim);padding:1.5rem;font-size:.8rem"><i class="fas fa-spinner fa-spin"></i> Cargando contenido...</div>';
+        document.getElementById('editor-chat-messages').innerHTML = '<div style="background:var(--bg2);border-radius:10px;padding:.7rem .9rem;font-size:.82rem;color:var(--muted);max-width:90%"><i class="fas fa-robot" style="margin-right:.3rem;color:var(--accent)"></i> Hola! Soy tu asistente de edicion. Puedo cambiar textos, telefonos, direcciones, colores, imagenes y mas. Escribe lo que quieres cambiar en tu sitio.</div>';
+        document.getElementById('editor-token-warning').style.display = 'none';
+        document.getElementById('editor-chat-input').value = '';
+        document.getElementById('editor-sitio-modal').style.display = 'flex';
+
+        try {
+            const res = await fetch('/.netlify/functions/site-editor', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${currentSession?.access_token || ''}` },
+                body: JSON.stringify({ action: 'get_content', proyecto_id: proyectoId })
+            });
+            const data = await res.json();
+            if (!data.ok) {
+                document.getElementById('editor-secciones-list').innerHTML = '<div style="text-align:center;color:var(--red);padding:1.5rem;font-size:.8rem"><i class="fas fa-exclamation-triangle"></i> ' + wfEscapeHtml(data.error || 'Error cargando') + '</div>';
+                return;
+            }
+            _editorState.sections = data.sections || [];
+            _editorState.tokens = data.tokens || 0;
+            document.getElementById('editor-sitio-link').href = data.site_url || '#';
+            document.getElementById('editor-tokens-count').textContent = Number(data.tokens || 0).toLocaleString();
+            actualizarWarningTokens();
+            renderEditorSecciones();
+        } catch (err) {
+            document.getElementById('editor-secciones-list').innerHTML = '<div style="text-align:center;color:var(--red);padding:1.5rem;font-size:.8rem"><i class="fas fa-exclamation-triangle"></i> Error de conexion</div>';
+        }
+    }
+
+    function cerrarEditorSitio() {
+        document.getElementById('editor-sitio-modal').style.display = 'none';
+    }
+
+    function renderEditorSecciones() {
+        const container = document.getElementById('editor-secciones-list');
+        if (!_editorState.sections.length) {
+            container.innerHTML = '<div style="text-align:center;color:var(--dim);padding:1.5rem;font-size:.8rem">No se encontraron secciones</div>';
+            return;
+        }
+        container.innerHTML = _editorState.sections.map(function(s, i) {
+            var icon = s.tag === 'header' ? 'fa-heading' : s.tag === 'footer' ? 'fa-shoe-prints' : s.tag === 'section' ? 'fa-layer-group' : 'fa-square';
+            return '<div class="editor-seccion-item" onclick="seleccionarSeccion(' + i + ')" style="padding:.6rem .8rem;border-radius:8px;cursor:pointer;margin-bottom:.3rem;border:1px solid transparent;transition:all .15s" onmouseover="this.style.background=\'var(--bg2)\';this.style.borderColor=\'var(--border)\'" onmouseout="this.style.background=\'\';this.style.borderColor=\'transparent\'">' +
+                '<div style="display:flex;align-items:center;gap:.5rem"><i class="fas ' + icon + '" style="color:var(--accent);font-size:.7rem"></i><div><div style="font-size:.8rem;font-weight:600">' + wfEscapeHtml(s.title) + '</div><div style="font-size:.68rem;color:var(--dim)">' + wfEscapeHtml(s.tag) + ' &middot; ' + wfEscapeHtml(s.id) + '</div></div></div></div>';
+        }).join('');
+    }
+
+    function seleccionarSeccion(idx) {
+        var s = _editorState.sections[idx];
+        if (!s) return;
+        document.getElementById('editor-chat-input').value = 'Quiero editar la seccion "' + s.title + '". ';
+        document.getElementById('editor-chat-input').focus();
+    }
+
+    function actualizarWarningTokens() {
+        var warn = document.getElementById('editor-token-warning');
+        var warnText = document.getElementById('editor-token-warning-text');
+        var tokens = _editorState.tokens;
+        if (tokens <= 0) {
+            warn.style.display = 'block';
+            warnText.textContent = 'Sin tokens disponibles. Recarga para seguir editando.';
+            warn.style.background = 'rgba(239,68,68,.1)';
+            warn.style.borderColor = 'rgba(239,68,68,.2)';
+            warn.style.color = 'var(--red)';
+        } else if (tokens < 1000) {
+            warn.style.display = 'block';
+            warnText.textContent = 'Te quedan ' + tokens.toLocaleString() + ' tokens.';
+            warn.style.background = 'rgba(251,191,36,.1)';
+            warn.style.borderColor = 'rgba(251,191,36,.2)';
+            warn.style.color = 'var(--yellow)';
+        } else {
+            warn.style.display = 'none';
+        }
+    }
+
+    async function enviarEdicionAI() {
+        var input = document.getElementById('editor-chat-input');
+        var instruction = input.value.trim();
+        if (!instruction) return;
+        if (_editorState.tokens <= 0) return showToast('Sin tokens disponibles. Recarga para continuar.', 'error');
+
+        var btn = document.getElementById('editor-send-btn');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Procesando...';
+        input.value = '';
+
+        agregarMensajeChat('user', instruction);
+
+        try {
+            var res = await fetch('/.netlify/functions/site-editor', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${currentSession?.access_token || ''}` },
+                body: JSON.stringify({ action: 'edit_content', proyecto_id: _editorState.proyectoId, instruction: instruction })
+            });
+            var data = await res.json();
+
+            if (data.ok) {
+                _editorState.tokens = data.tokens_remaining;
+                document.getElementById('editor-tokens-count').textContent = Number(data.tokens_remaining || 0).toLocaleString();
+                actualizarWarningTokens();
+                agregarMensajeChat('assistant', 'Edicion aplicada! ' + (data.tokens_used || 0) + ' tokens consumidos. ' + (data.tokens_remaining || 0) + ' tokens restantes. El sitio se esta actualizando...');
+                showToast('Edicion aplicada correctamente');
+            } else {
+                agregarMensajeChat('assistant', 'Error: ' + (data.error || 'No se pudo aplicar la edicion'));
+            }
+        } catch (err) {
+            agregarMensajeChat('assistant', 'Error de conexion: ' + err.message);
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-paper-plane" style="margin-right:.3rem"></i>Enviar';
+        }
+    }
+
+    function agregarMensajeChat(role, text) {
+        var container = document.getElementById('editor-chat-messages');
+        var isUser = role === 'user';
+        var bg = isUser ? 'var(--accent)' : 'var(--bg2)';
+        var color = isUser ? '#fff' : 'var(--text)';
+        var align = isUser ? 'margin-left:auto' : '';
+        var icon = isUser ? '' : '<i class="fas fa-robot" style="margin-right:.3rem;color:var(--accent)"></i> ';
+        var div = document.createElement('div');
+        div.style.cssText = 'background:' + bg + ';color:' + color + ';border-radius:10px;padding:.7rem .9rem;font-size:.82rem;max-width:85%;' + align + ';word-wrap:break-word';
+        div.innerHTML = icon + wfEscapeHtml(text);
+        container.appendChild(div);
+        container.scrollTop = container.scrollHeight;
+    }
+
+    function abrirRecargaTokens() {
+        var planes = [
+            { id: 'basico', name: 'Basico', tokens: 10000, price: '$9.900 COP' },
+            { id: 'profesional', name: 'Profesional', tokens: 30000, price: '$24.900 COP' },
+            { id: 'premium', name: 'Premium', tokens: 75000, price: '$49.900 COP' }
+        ];
+        document.getElementById('admin-modal-title').textContent = 'Recargar Tokens de Edicion';
+        document.getElementById('admin-modal-body').innerHTML =
+            '<p style="font-size:.82rem;color:var(--muted);margin-bottom:1rem">Tokens actuales: <strong style="color:var(--yellow)">' + Number(_editorState.tokens || 0).toLocaleString() + '</strong></p>' +
+            planes.map(function(p) {
+                return '<div style="display:flex;align-items:center;justify-content:space-between;padding:.7rem;border:1px solid var(--border2);border-radius:8px;margin-bottom:.5rem;cursor:pointer;transition:all .15s" onmouseover="this.style.borderColor=\'var(--accent)\'" onmouseout="this.style.borderColor=\'var(--border2)\'" onclick="recargarTokens(\'' + _editorState.proyectoId + '\',' + p.tokens + ',\'' + p.id + '\')">' +
+                    '<div><div style="font-weight:600;font-size:.85rem">' + p.name + '</div><div style="font-size:.72rem;color:var(--dim)">' + Number(p.tokens).toLocaleString() + ' tokens</div></div>' +
+                    '<div style="font-weight:700;font-size:.9rem;color:var(--accent)">' + p.price + '</div></div>';
+            }).join('');
+        document.getElementById('admin-modal').style.display = 'flex';
+    }
+
+    async function recargarTokens(proyectoId, tokens, planId) {
+        showToast('Funcionalidad de pago en desarrollo. Contacta al administrador para recargar tokens.');
+        cerrarAdminModal();
+    }
+
     function wfEscapeHtml(str) {
         return String(str ?? '').replace(/[&<>"']/g, c => ({
             '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
@@ -2326,6 +2537,7 @@
                     if (p.clone_url) secBtns.push('<button class="icon-btn" onclick="copiarClone(\'' + wfEscapeHtml(p.clone_url) + '\',\'' + wfEscapeHtml(p.slug) + '\')" title="Copiar clone URL"><i class="fas fa-copy"></i></button>');
                     secBtns.push('<button class="icon-btn" onclick="actualizarEstadoWeb(\'' + p.id + '\')" title="Actualizar estado"><i class="fas fa-rotate"></i></button>');
                     if (esTienda) secBtns.push('<button class="icon-btn" onclick="abrirTiendaModal(\'' + p.id + '\',\'' + wfEscapeHtml(p.nombre) + '\',\'' + wfEscapeHtml(p.slug) + '\')" title="Gestionar tienda"><i class="fas fa-store"></i></button>');
+                    if (p.netlify_url) secBtns.push('<button class="icon-btn" onclick="abrirEditorSitio(\'' + p.id + '\',\'' + wfEscapeHtml(p.nombre) + '\',\'' + wfEscapeHtml(p.slug) + '\')" title="Editar contenido AI" style="color:var(--accent)"><i class="fas fa-wand-magic-sparkles"></i></button>');
 
                     // Danger / toggle actions (admin only)
                     var dangerBtns = '';
