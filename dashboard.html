@@ -873,11 +873,12 @@
                                     <th>Estado</th>
                                     <th>URL</th>
                                     <th>Dominio</th>
+                                    <th>Agente</th>
                                     <th>Acciones</th>
                                 </tr>
                             </thead>
                             <tbody id="wf-body">
-                                <tr><td colspan="7" style="text-align:center;color:var(--dim);padding:2rem">Cargando...</td></tr>
+                                <tr><td colspan="8" style="text-align:center;color:var(--dim);padding:2rem">Cargando...</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -2175,7 +2176,7 @@
 
             const body = document.getElementById('wf-body');
             if (!proyectos.length) {
-                body.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--dim);padding:2rem">' +
+                body.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--dim);padding:2rem">' +
                     (esAdmin() ? 'No hay proyectos web todavia. Crea el primero.' : 'No tienes tiendas asignadas.') + '</td></tr>';
             } else {
                 body.innerHTML = proyectos.map(p => {
@@ -2197,20 +2198,18 @@
                         : '—';
                     const inactivo = p.activo === false;
 
-                    // Acciones: admin ve todo; usuario tienda solo "Editar tienda"
-                    let acciones = '';
-                    // Dropdown de agente (disponible para admin y usuarios con permisos)
+                    // Dropdown de agente — columna separada, disponible para todos los proyectos
                     const opcionesAgente = `<option value=""${!p.agente_id ? ' selected' : ''}>Sin agente</option>` +
                         agentes.map(a => `<option value="${a.id}"${p.agente_id == a.id ? ' selected' : ''}>${wfEscapeHtml(a.name)}</option>`).join('');
-                    const agenteDropdown = p.plantilla === 'tienda'
-                        ? `<select onchange="wfAsignarAgente('${p.id}', this.value)" style="font-size:.72rem;padding:3px 6px;border:1px solid var(--border2);border-radius:6px;background:var(--bg1);color:var(--text1);max-width:130px" title="Asignar agente de IA a esta tienda">${opcionesAgente}</select>`
-                        : '';
+                    const agenteTd = `<select onchange="wfAsignarAgente('${p.id}', this.value)" style="font-size:.72rem;padding:4px 6px;border:1px solid var(--border2);border-radius:6px;background:var(--bg1);color:var(--text1);max-width:140px" title="Asignar agente IA a este proyecto">${opcionesAgente}</select>`;
+
+                    // Acciones: admin ve todo; usuario tienda solo ver/editar
+                    let acciones = '';
                     if (esAdmin()) {
                         const btns = [
                             p.netlify_url ? `<button class="icon-btn" onclick="window.open('${wfEscapeHtml(p.netlify_url)}','_blank')" title="Abrir sitio"><i class="fas fa-external-link"></i></button>` : '',
                             p.github_url ? `<button class="icon-btn" onclick="window.open('${wfEscapeHtml(p.github_url)}','_blank')" title="Repo GitHub"><i class="fab fa-github"></i></button>` : '',
                             p.clone_url ? `<button class="icon-btn" onclick="copiarClone('${wfEscapeHtml(p.clone_url)}', '${wfEscapeHtml(p.slug)}')" title="Copiar clone"><i class="fas fa-copy"></i></button>` : '',
-                            agenteDropdown,
                             p.plantilla === 'tienda' ? `<button class="icon-btn" onclick="abrirTiendaModal('${p.id}','${wfEscapeHtml(p.nombre)}','${wfEscapeHtml(p.slug)}')" title="Gestionar tienda"><i class="fas fa-store"></i></button>` : '',
                             `<button class="icon-btn" onclick="actualizarEstadoWeb('${p.id}')" title="Actualizar estado"><i class="fas fa-rotate"></i></button>`,
                             p.netlify_site_id ? (inactivo
@@ -2220,9 +2219,7 @@
                         ].filter(Boolean);
                         acciones = `<div class="agent-actions">${btns.join('')}</div>`;
                     } else {
-                        // Usuario tienda: dropdown agente + ver + editar tienda
                         acciones = `<div class="agent-actions">
-                            ${agenteDropdown}
                             ${p.netlify_url ? `<button class="icon-btn" onclick="window.open('${wfEscapeHtml(p.netlify_url)}','_blank')" title="Ver tienda"><i class="fas fa-external-link"></i></button>` : ''}
                             ${p.plantilla === 'tienda' ? `<button class="icon-btn primary" onclick="abrirTiendaModal('${p.id}','${wfEscapeHtml(p.nombre)}','${wfEscapeHtml(p.slug)}')" title="Editar tienda"><i class="fas fa-store"></i></button>` : ''}
                         </div>`;
@@ -2240,6 +2237,7 @@
                         <td>
                             ${p.dominio ? `<div style="font-size:.82rem">${wfEscapeHtml(p.dominio)}</div>${dominioBadge}${dominioErrorInfo}` : '—'}
                         </td>
+                        <td>${agenteTd}</td>
                         <td>
                             ${acciones}
                         </td>
