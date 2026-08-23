@@ -858,14 +858,8 @@
                 </div>
                 <div class="stats-row" id="wf-stats" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem;margin-bottom:1.5rem"></div>
 
-                <!-- TAB: Proyectos -->
-                <div class="card">
-                    <div class="card-header">
-                        <div class="card-icon"><i class="fas fa-globe"></i></div>
-                        <span class="card-title">Proyectos Web</span>
-                    </div>
-                    <div id="wf-body"><div class="empty-state"><i class="fas fa-spinner fa-spin"></i> Cargando...</div></div>
-                </div>
+                <!-- TAB: Proyectos Web -->
+                <div id="wf-body"><div class="empty-state"><i class="fas fa-spinner fa-spin"></i> Cargando...</div></div>
 
                 <!-- MODAL: Crear sitio web -->
                 <div id="wf-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;align-items:center;justify-content:center">
@@ -2160,76 +2154,103 @@
             const body = document.getElementById('wf-body');
             if (!proyectos.length) {
                 body.innerHTML = '<div class="empty-state">' +
-                    (esAdmin() ? '<i class="fas fa-globe"></i> No hay proyectos web todavia. Crea el primero.' : '<i class="fas fa-store"></i> No tienes tiendas asignadas.') + '</div>';
+                    '<i class="fas fa-globe" style="font-size:2.5rem;margin-bottom:.8rem;color:var(--border2)"></i>' +
+                    '<div style="font-size:.95rem;font-weight:500;margin-bottom:.3rem">' +
+                    (esAdmin() ? 'No hay proyectos web todavia' : 'No tienes tiendas asignadas') + '</div>' +
+                    '<div style="font-size:.8rem;color:var(--dim)">' +
+                    (esAdmin() ? 'Crea el primero haciendo clic en "Crear sitio" arriba.' : 'Cuando se te asigne una tienda, aparecera aqui.') + '</div>' +
+                    '</div>';
             } else {
                 body.innerHTML = proyectos.map(p => {
                     const b = wfEstadoBadge(p.estado);
-                    const badgeError = b.cls === ''
-                        ? ' style="background:rgba(248,113,113,.1);color:var(--red);border:1px solid rgba(248,113,113,.22)"'
-                        : '';
-                    const estadoDeploy = p.estado_deploy === 'error'
-                        ? '<span style="font-size:.65rem;color:var(--red);margin-left:.3rem">&middot; deploy error</span>'
-                        : (p.estado_deploy === 'building' ? '<span style="font-size:.65rem;color:var(--dim);margin-left:.3rem">&middot; building</span>' : '');
-                    const errorInfo = p.error
-                        ? '<div title="' + wfEscapeHtml(p.error) + '" style="font-size:.65rem;color:var(--red);margin-top:.15rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:help">' + wfEscapeHtml(p.error) + '</div>'
-                        : '';
-                    const dominioErrorInfo = p.dominio_error
-                        ? '<div title="' + wfEscapeHtml(p.dominio_error) + '" style="font-size:.65rem;color:var(--yellow);margin-top:.15rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:help">dominio: ' + wfEscapeHtml(p.dominio_error) + '</div>'
+                    const badgeInline = b.cls === ''
+                        ? ' style="background:rgba(239,68,68,.1);color:var(--red);border:1px solid rgba(239,68,68,.18)"'
                         : '';
                     const inactivo = p.activo === false;
+                    const esTienda = p.plantilla === 'tienda';
+                    const icono = esTienda ? 'fas fa-store' : 'fas fa-globe';
+                    const plantillaLabel = (p.plantilla || 'landing');
 
-                    // Agente asignado — dropdown inline
-                    const opcionesAgente = '<option value=""' + (!p.agente_id ? ' selected' : '') + '>Sin agente</option>' +
-                        agentes.map(a => '<option value="' + a.id + '"' + (p.agente_id == a.id ? ' selected' : '') + '>' + wfEscapeHtml(a.name) + '</option>').join('');
-                    const agenteSelect = '<select onchange="wfAsignarAgente(\'' + p.id + '\', this.value)" style="font-size:.72rem;padding:3px 6px;border:1px solid var(--border2);border-radius:6px;background:var(--bg1);color:var(--text1);max-width:130px" title="Asignar agente IA">' + opcionesAgente + '</select>';
+                    // Agente dropdown
+                    var optsAgente = '<option value=""' + (!p.agente_id ? ' selected' : '') + '>Sin agente</option>' +
+                        agentes.map(function(a) { return '<option value="' + a.id + '"' + (p.agente_id == a.id ? ' selected' : '') + '>' + wfEscapeHtml(a.name) + '</option>'; }).join('');
 
-                    // Boton de accion individual (solo icono, apilado verticalmente, angosto)
-                    const wfBtn = (icon, onclick) =>
-                        '<button class="icon-btn" onclick="' + onclick + '"><i class="' + icon + '" style="font-size:.78rem"></i></button>';
+                    // Primary button
+                    var primaryBtn = p.netlify_url
+                        ? '<a href="' + wfEscapeHtml(p.netlify_url) + '" target="_blank" rel="noopener" class="wf-btn-primary' + (inactivo ? ' offline' : '') + '" title="Ver sitio web"><i class="fas fa-external-link" style="font-size:.7rem"></i> Ver sitio</a>'
+                        : '<span class="wf-btn-primary offline" style="opacity:.4;cursor:default" title="Sin URL disponible"><i class="fas fa-link" style="font-size:.7rem"></i> Sin URL</span>';
 
-                    // Acciones: admin ve todo; usuario tienda solo ver/editar
-                    let acciones = '';
+                    // Secondary action buttons
+                    var secBtns = [];
+                    if (p.github_url) secBtns.push('<button class="icon-btn" onclick="window.open(\'' + wfEscapeHtml(p.github_url) + '\',\'_blank\')" title="Ver repositorio"><i class="fab fa-github"></i></button>');
+                    if (p.clone_url) secBtns.push('<button class="icon-btn" onclick="copiarClone(\'' + wfEscapeHtml(p.clone_url) + '\',\'' + wfEscapeHtml(p.slug) + '\')" title="Copiar clone URL"><i class="fas fa-copy"></i></button>');
+                    secBtns.push('<button class="icon-btn" onclick="actualizarEstadoWeb(\'' + p.id + '\')" title="Actualizar estado"><i class="fas fa-rotate"></i></button>');
+                    if (esTienda) secBtns.push('<button class="icon-btn" onclick="abrirTiendaModal(\'' + p.id + '\',\'' + wfEscapeHtml(p.nombre) + '\',\'' + wfEscapeHtml(p.slug) + '\')" title="Gestionar tienda"><i class="fas fa-store"></i></button>');
+
+                    // Danger / toggle actions (admin only)
+                    var dangerBtns = '';
+                    if (esAdmin() && p.netlify_site_id) {
+                        if (inactivo) {
+                            dangerBtns += '<button class="icon-btn toggle-active" onclick="toggleActivoWeb(\'' + p.id + '\',false,\'' + wfEscapeHtml(p.nombre) + '\')" title="Activar sitio"><i class="fas fa-play"></i></button>';
+                        } else {
+                            dangerBtns += '<button class="icon-btn toggle-inactive" onclick="toggleActivoWeb(\'' + p.id + '\',true,\'' + wfEscapeHtml(p.nombre) + '\')" title="Desactivar sitio"><i class="fas fa-power-off"></i></button>';
+                        }
+                    }
                     if (esAdmin()) {
-                        const btns = [
-                            p.netlify_url ? wfBtn('fas fa-external-link', "window.open('" + wfEscapeHtml(p.netlify_url) + "','_blank')") : '',
-                            p.github_url ? wfBtn('fab fa-github', "window.open('" + wfEscapeHtml(p.github_url) + "','_blank')") : '',
-                            p.clone_url ? wfBtn('fas fa-copy', "copiarClone('" + wfEscapeHtml(p.clone_url) + "', '" + wfEscapeHtml(p.slug) + "')") : '',
-                            p.plantilla === 'tienda' ? wfBtn('fas fa-store', "abrirTiendaModal('" + p.id + "','" + wfEscapeHtml(p.nombre) + "','" + wfEscapeHtml(p.slug) + "')") : '',
-                            wfBtn('fas fa-rotate', "actualizarEstadoWeb('" + p.id + "')"),
-                            p.netlify_site_id ? (inactivo
-                                ? wfBtn('fas fa-play', "toggleActivoWeb('" + p.id + "', false, '" + wfEscapeHtml(p.nombre) + "')")
-                                : wfBtn('fas fa-power-off', "toggleActivoWeb('" + p.id + "', true, '" + wfEscapeHtml(p.nombre) + "')")) : '',
-                            wfBtn('fas fa-trash', "eliminarProyectoWeb('" + p.id + "', '" + wfEscapeHtml(p.nombre) + "')")
-                        ].filter(Boolean);
-                        acciones = '<div class="wf-actions-col">' + btns.join('') + '</div>';
-                    } else {
-                        acciones = '<div class="wf-actions-col">' +
-                            (p.netlify_url ? wfBtn('fas fa-external-link', "window.open('" + wfEscapeHtml(p.netlify_url) + "','_blank')") : '') +
-                            (p.plantilla === 'tienda' ? wfBtn('fas fa-store', "abrirTiendaModal('" + p.id + "','" + wfEscapeHtml(p.nombre) + "','" + wfEscapeHtml(p.slug) + "')") : '') +
-                        '</div>';
+                        dangerBtns += '<button class="icon-btn danger" onclick="eliminarProyectoWeb(\'' + p.id + '\',\'' + wfEscapeHtml(p.nombre) + '\')" title="Eliminar proyecto"><i class="fas fa-trash"></i></button>';
                     }
 
-                    return '<div class="wf-project-card' + (inactivo ? ' inactive' : '') + '">' +
-                        '<div class="wf-project-info">' +
-                            '<div class="wf-project-name">' +
-                                '<i class="' + (p.plantilla === 'tienda' ? 'fas fa-store' : 'fas fa-globe') + '" style="color:var(--accent);margin-right:.4rem;font-size:.85rem;opacity:.6"></i>' +
-                                wfEscapeHtml(p.nombre) +
-                                ' <span class="badge badge-accent" style="margin-left:.4rem">' + wfEscapeHtml(p.plantilla || 'landing') + '</span>' +
-                                ' <span class="badge ' + b.cls + '"' + badgeError + '>' + b.label + '</span>' + estadoDeploy +
-                            '</div>' +
-                            '<div class="wf-project-meta">' +
-                                wfEscapeHtml(p.cliente) + ' &middot; ' + wfEscapeHtml(p.slug) +
-                                (p.dominio ? ' &middot; ' + wfEscapeHtml(p.dominio) + (p.dominio_estado === 'verificado' ? ' &#10003;' : ' &#9203;') : '') +
-                                (p.netlify_url ? ' &middot; <a href="' + wfEscapeHtml(p.netlify_url) + '" target="_blank" rel="noopener" style="color:var(--accent)">' + (inactivo ? 'offline' : 'ver sitio') + '</a>' : '') +
-                            '</div>' +
-                            errorInfo + dominioErrorInfo +
-                            '<div class="wf-project-agent">' +
-                                '<i class="fas fa-robot" style="font-size:.65rem;color:var(--dim);margin-right:.25rem"></i>' +
-                                '<span style="font-size:.75rem;color:var(--dim)">Agente:</span> ' +
-                                agenteSelect +
+                    // Error block
+                    var errorBlock = '';
+                    if (p.error) {
+                        errorBlock = '<div class="wf-card-error" title="' + wfEscapeHtml(p.error) + '"><i class="fas fa-triangle-exclamation"></i> ' + wfEscapeHtml(p.error.length > 80 ? p.error.substring(0, 80) + '...' : p.error) + '</div>';
+                    }
+                    if (p.dominio_error) {
+                        errorBlock += '<div class="wf-card-error" style="color:var(--yellow);background:rgba(251,191,36,.08);border-color:rgba(251,191,36,.15)" title="' + wfEscapeHtml(p.dominio_error) + '"><i class="fas fa-triangle-exclamation"></i> ' + wfEscapeHtml(p.dominio_error.length > 80 ? p.dominio_error.substring(0, 80) + '...' : p.dominio_error) + '</div>';
+                    }
+
+                    // Domain section
+                    var domainSection = '';
+                    if (p.dominio) {
+                        var dominioIcon = p.dominio_estado === 'verificado' ? '<span class="wf-check"><i class="fas fa-check-circle"></i></span>' : '<span class="wf-pending"><i class="fas fa-clock"></i></span>';
+                        domainSection = '<div class="wf-card-section">' +
+                            '<div class="wf-card-section-label"><i class="fas fa-globe"></i> Dominio</div>' +
+                            '<div class="wf-card-domain">' + dominioIcon + ' ' + wfEscapeHtml(p.dominio) + '</div>' +
+                            errorBlock +
+                            '</div>';
+                    } else if (errorBlock) {
+                        domainSection = '<div class="wf-card-section">' + errorBlock + '</div>';
+                    }
+
+                    return '<div class="wf-card' + (inactivo ? ' inactive' : '') + '">' +
+                        '<div class="wf-card-head">' +
+                            '<div class="wf-card-icon"><i class="' + icono + '"></i></div>' +
+                            '<div class="wf-card-head-info">' +
+                                '<div class="wf-card-title" title="' + wfEscapeHtml(p.nombre) + '">' + wfEscapeHtml(p.nombre) + '</div>' +
+                                '<div class="wf-card-subtitle">' +
+                                    '<span class="badge ' + b.cls + '"' + badgeInline + '>' + b.label + '</span>' +
+                                    '<span class="wf-card-dot"></span>' +
+                                    '<span class="wf-card-type">' + wfEscapeHtml(plantillaLabel) + '</span>' +
+                                '</div>' +
                             '</div>' +
                         '</div>' +
-                        acciones +
+                        '<div class="wf-card-section">' +
+                            '<div class="wf-card-section-label"><i class="fas fa-hashtag"></i> Identificador</div>' +
+                            '<div class="wf-card-slug">' + wfEscapeHtml(p.slug) + '</div>' +
+                            (p.cliente ? '<div style="font-size:.72rem;color:var(--dim);margin-top:.1rem">' + wfEscapeHtml(p.cliente) + '</div>' : '') +
+                        '</div>' +
+                        domainSection +
+                        '<div class="wf-card-section">' +
+                            '<div class="wf-card-section-label"><i class="fas fa-robot"></i> Agente</div>' +
+                            '<select class="wf-card-agent-select" onchange="wfAsignarAgente(\'' + p.id + '\', this.value)" title="Asignar agente IA a este proyecto">' + optsAgente + '</select>' +
+                        '</div>' +
+                        '<div class="wf-card-actions">' +
+                            primaryBtn +
+                            '<div style="display:flex;align-items:center;gap:3px;margin-left:auto">' +
+                                secBtns.join('') +
+                                dangerBtns +
+                            '</div>' +
+                        '</div>' +
                     '</div>';
                 }).join('');
             }
@@ -2239,7 +2260,7 @@
             }
         } catch (err) {
             document.getElementById('wf-body').innerHTML =
-                '<div class="empty-state" style="color:var(--red)">' + wfEscapeHtml(err.message || 'Error') + '</div>';
+                '<div class="empty-state" style="color:var(--red)"><i class="fas fa-exclamation-triangle"></i><div>' + wfEscapeHtml(err.message || 'Error cargando proyectos') + '</div></div>';
         }
     }
 
