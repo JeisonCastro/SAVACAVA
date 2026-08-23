@@ -1943,6 +1943,69 @@ INSTRUCCIONES:
             }
         }
 
+        // ── SITE EDIT: Editar contenido de sitio web con IA ──
+        if (actionPayload?.action === 'SITE_EDIT_CONTENT') {
+            try {
+                if (!toolDisponible(toolsDisponibles, 'SITE_EDIT_CONTENT')) {
+                    respuestaIA = "La edición de contenido web no está habilitada para este agente.";
+                } else {
+                    const accData = actionPayload.data || {};
+                    const instruction = String(accData.instruction || '').trim();
+                    const proyectoId = accData.proyecto_id || null;
+
+                    if (!instruction) {
+                        respuestaIA = "¿Qué quieres cambiar en tu sitio web? Describe el cambio que necesitas (ej: cambiar el teléfono, actualizar la dirección, etc.).";
+                    } else {
+                        // Buscar el proyecto: usar el proporcionado o el primero del usuario
+                        let pid = proyectoId;
+                        if (!pid) {
+                            const { data: proyectos } = await supabase
+                                .from('web_projects')
+                                .select('id')
+                                .eq('created_by', user.id)
+                                .limit(1);
+                            pid = proyectos?.[0]?.id;
+                        }
+
+                        if (!pid) {
+                            respuestaIA = "No encontré un sitio web asociado a tu cuenta. Primero crea uno con Web Factory.";
+                        } else {
+                            // Llamar a site-editor
+                            const siteRes = await fetch(`${process.env.URL || 'https://savacava.com'}/.netlify/functions/site-editor`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${event.headers.authorization?.replace('Bearer ', '') || ''}` },
+                                body: JSON.stringify({ action: 'edit_content', proyecto_id: pid, instruction: instruction })
+                            });
+                            const siteData = await siteRes.json();
+
+                            if (siteData.ok) {
+                                respuestaIA = `Edición aplicada. ${siteData.tokens_used} tokens consumidos. ${siteData.tokens_remaining} tokens restantes. Tu sitio se está actualizando.`;
+                            } else {
+                                respuestaIA = `No pude aplicar la edición: ${siteData.error || 'Error desconocido'}`;
+                            }
+                        }
+                    }
+
+                    await guardarMensajeConversacion({
+                        conversacionId: conversationIdFinal,
+                        agenteId: targetID,
+                        role: 'assistant',
+                        content: respuestaIA,
+                        metadata: { canal, action: 'SITE_EDIT_CONTENT', origen: 'ia' }
+                    });
+                    await actualizarResumenConversacion({ conversacionId: conversationIdFinal, ultimoMensaje: respuestaIA, ultimoRole: 'assistant', requiereAtencion: false });
+                    return {
+                        statusCode: 200,
+                        headers,
+                        body: JSON.stringify({ respuesta: respuestaIA, conversation_id: conversationIdFinal })
+                    };
+                }
+            } catch (e) {
+                console.error('SITE_EDIT_CONTENT error:', e.message);
+                respuestaIA = "Error al procesar la edición. Intenta de nuevo.";
+            }
+        }
+
         const esToolShopify = actionPayload?.action?.startsWith('SHOPIFY_');
         let premiumTokens = 0;
 

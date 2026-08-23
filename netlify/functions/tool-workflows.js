@@ -143,6 +143,14 @@ GMAIL_LIST_LABELS: {
     requiredFields: ['nombre', 'cliente'],
     optionalFields: ['slug', 'plantilla', 'descripcion', 'logo', 'slogan', 'whatsapp', 'dominio'],
     confirmationRequired: true
+  },
+  SITE_EDIT_CONTENT: {
+    toolkit: 'webfactory',
+    label: 'Editar el contenido de un sitio web existente del usuario con IA',
+    workflow: 'collect_confirm_execute',
+    requiredFields: ['instruction'],
+    optionalFields: ['proyecto_id'],
+    confirmationRequired: false
   }
 };
 
@@ -863,6 +871,21 @@ Responde ÚNICAMENTE con este JSON (sin texto adicional, sin markdown):
     "plantilla": "restaurante",
     "descripcion": "Helados artesanales y batidos",
     "whatsapp": "+573001234567"
+  }
+}
+
+### Para SITE_EDIT_CONTENT:
+- Úsala cuando el usuario quiera cambiar el contenido de su sitio web existente (textos, teléfonos, direcciones, colores, imágenes, etc.)
+- "instruction": instrucción clara en lenguaje natural de qué cambiar (ej: "Cambia el teléfono a 310-123-4567", "Actualiza la dirección a Calle 123")
+- "proyecto_id": ID del proyecto web (opcional; si hay uno activo se usa automáticamente)
+- Primero confirma con el usuario qué va a cambiar antes de ejecutar
+- Esta herramienta consume tokens de edición (1 token ≈ 4 caracteres). Si no hay tokens, informa al usuario que necesita recargar.
+- Ejemplo:
+{
+  "action": "SITE_EDIT_CONTENT",
+  "data": {
+    "instruction": "Cambia el número de teléfono en el footer a +57 310-123-4567",
+    "proyecto_id": "abc123"
   }
 }
 
