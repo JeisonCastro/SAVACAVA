@@ -116,7 +116,7 @@ exports.handler = async (event) => {
 
             const { data: proyecto } = await supabase
                 .from('web_projects')
-                .select('edit_tokens, edit_tokens_used')
+                .select('*')
                 .eq('id', proyecto_id)
                 .maybeSingle();
             return {
@@ -137,7 +137,7 @@ exports.handler = async (event) => {
 
             const { data: proyecto } = await supabase
                 .from('web_projects')
-                .select('github_owner, github_repo, default_branch, slug, netlify_url, edit_tokens, edit_tokens_used')
+                .select('*')
                 .eq('id', proyecto_id)
                 .maybeSingle();
             if (!proyecto) return { statusCode: 404, body: JSON.stringify({ error: 'Proyecto no encontrado' }) };
@@ -182,7 +182,7 @@ exports.handler = async (event) => {
             // Verificar tokens
             const { data: proyecto } = await supabase
                 .from('web_projects')
-                .select('github_owner, github_repo, default_branch, slug, netlify_url, netlify_site_id, edit_tokens, edit_tokens_used')
+                .select('*')
                 .eq('id', proyecto_id)
                 .maybeSingle();
             if (!proyecto) return { statusCode: 404, body: JSON.stringify({ error: 'Proyecto no encontrado' }) };
@@ -310,7 +310,7 @@ HTML modificado:`;
 
             const { data: proyecto } = await supabase
                 .from('web_projects')
-                .select('edit_tokens, edit_tokens_used')
+                .select('*')
                 .eq('id', proyecto_id)
                 .maybeSingle();
             if (!proyecto) return { statusCode: 404, body: JSON.stringify({ error: 'Proyecto no encontrado' }) };
