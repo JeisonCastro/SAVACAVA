@@ -124,6 +124,7 @@
         <div id="loading-overlay" style="display:none;position:fixed;inset:0;background:rgba(2,6,23,.6);backdrop-filter:blur(2px);z-index:100000;align-items:center;justify-content:center;flex-direction:column;gap:.9rem">
             <div style="width:46px;height:46px;border:4px solid rgba(255,255,255,.25);border-top-color:#2563eb;border-radius:50%;animation:auvroSpin .8s linear infinite"></div>
             <div id="loading-overlay-msg" style="color:#fff;font-family:'Inter',sans-serif;font-weight:600;font-size:.9rem;text-align:center;max-width:80%">Procesando...</div>
+            <button onclick="ocultarOverlayCarga()" style="margin-top:.5rem;background:none;border:1px solid rgba(255,255,255,.3);color:#fff;font-size:.75rem;padding:6px 14px;border-radius:8px;cursor:pointer;font-family:'Inter',sans-serif">Cancelar</button>
         </div>
 
         <div class="media-lightbox" id="media-lightbox"
@@ -2334,29 +2335,51 @@
 
         mostrarOverlayCarga('Creando sitio web...');
         try {
+            // Refrescar token antes de llamar a la background function
+            try {
+                const { data: refreshed } = await _supabase.auth.getSession();
+                if (refreshed?.session) {
+                    currentSession = refreshed.session;
+                }
+            } catch (_) {}
+            const token = currentSession?.access_token || '';
+            if (!token) {
+                ocultarOverlayCarga();
+                return showToast('Sesión no válida. Cierra sesión y vuelve a entrar.', 'error');
+            }
+
             const res = await fetch('/.netlify/functions/web-factory-background', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${currentSession?.access_token || ''}`
+                    'Authorization': `Bearer ${token}`
                 },
                 body: JSON.stringify({ action: 'create', cliente, nombre, slug, plantilla, dominio, descripcion, slogan, logo, whatsapp, agente_id: agenteId || null, accent_color: accentColor, fuente })
             });
-            // Las background functions de Netlify responden SIEMPRE 202 con body vacío,
-            // así que aquí no se puede leer el resultado de la respuesta. El resultado real
-            // queda en la fila de Supabase (pipelineCrear la inserta en el paso 1): hacemos
-            // polling con get_by_slug hasta que aparezca y mostramos su estado real.
+            // Verificar si la background function rechazó inmediatamente (4xx/5xx antes del 202)
+            if (res.status >= 400) {
+                const errBody = await res.json().catch(() => ({}));
+                ocultarOverlayCarga();
+                return showToast('Error al crear "' + slug + '": ' + (errBody.error || 'HTTP ' + res.status), 'error');
+            }
+
+            // Las background functions de Netlify responden SIEMPRE 202 con body vacío.
+            // Hacemos polling con get_by_slug hasta que aparezca la fila en Supabase.
             const inicio = Date.now();
             const limiteMs = 210000; // 3.5 min (GitHub repo + Netlify site + build)
             let fila = null;
             let fallo = null;
+            let intentos = 0;
             while (Date.now() - inicio < limiteMs) {
                 await new Promise(r => setTimeout(r, 4000));
+                intentos++;
+                const el = document.getElementById('loading-overlay-msg');
+                if (el) el.textContent = 'Creando sitio web... (' + intentos * 4 + 's)';
                 const r = await fetch('/.netlify/functions/web-factory', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${currentSession?.access_token || ''}`
+                        'Authorization': `Bearer ${token}`
                     },
                     body: JSON.stringify({ action: 'get_by_slug', slug })
                 });
@@ -2370,7 +2393,7 @@
             }
             if (!fila) {
                 ocultarOverlayCarga();
-                return showToast('El sitio no se registró: la función de creación no respondió. Cierra sesión y vuelve a entrar, y reintenta. Si persiste, revisa los logs de web-factory-background (Netlify → Functions → Logs).', 'error');
+                return showToast('El sitio no se registró: la función de creación no respondió. Revisa los logs de web-factory-background en Netlify → Functions → Logs.', 'error');
             }
             if (fila.estado === 'error') {
                 ocultarOverlayCarga();
