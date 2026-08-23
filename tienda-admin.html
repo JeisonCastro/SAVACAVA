@@ -2,8 +2,46 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Gestión de Tienda · AUVRO</title>
+
+    <!-- PWA Core -->
+    <meta name="application-name" content="AUVRO">
+    <meta name="description" content="Gestión de tienda AUVRO">
+    <meta name="theme-color" content="#0f1115" media="(prefers-color-scheme: dark)">
+    <meta name="theme-color" content="#f8fafc" media="(prefers-color-scheme: light)">
+    <meta name="color-scheme" content="dark light">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="AUVRO">
+    <meta name="msapplication-TileColor" content="#0f1115">
+    <meta name="msapplication-tap-highlight" content="no">
+    <meta name="format-detection" content="telephone=no">
+
+    <!-- Manifest -->
+    <link rel="manifest" href="/manifest.json">
+
+    <!-- Favicons -->
+    <link rel="icon" href="/favicon.ico">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+    <link rel="icon" type="image/svg+xml" href="/icon-192.svg">
+
+    <!-- Apple Touch Icons -->
+    <link rel="apple-touch-icon" href="/icon-180.png">
+    <link rel="apple-touch-icon" sizes="152x152" href="/icon-152.png">
+    <link rel="apple-touch-icon" sizes="167x167" href="/icon-167.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/icon-180.png">
+
+    <!-- Apple Splash Screens -->
+    <link rel="apple-touch-startup-image" media="screen and (device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="/splash/splash-430x932.png">
+    <link rel="apple-touch-startup-image" media="screen and (device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="/splash/splash-393x852.png">
+    <link rel="apple-touch-startup-image" media="screen and (device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="/splash/splash-428x926.png">
+    <link rel="apple-touch-startup-image" media="screen and (device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="/splash/splash-390x844.png">
+    <link rel="apple-touch-startup-image" media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" href="/splash/splash-375x667.png">
+    <link rel="apple-touch-startup-image" media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" href="/splash/splash-1024x1366.png">
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -28,6 +66,14 @@
     </style>
 </head>
 <body>
+    <!-- Mobile overlay -->
+    <div class="mobile-menu-overlay" id="mobile-menu-overlay" onclick="toggleMobileMenu(false)"></div>
+
+    <!-- Mobile hamburger -->
+    <button class="mob-toggle" onclick="toggleMobileMenu()" aria-label="Abrir menu">
+        <i class="fas fa-bars" style="font-size:.85rem"></i>
+    </button>
+
     <aside class="sidebar">
         <div class="sidebar-logo">
             <i class="fas fa-store" style="color:var(--accent);font-size:1.1rem"></i>
@@ -65,6 +111,26 @@
             <div id="main"></div>
         </div>
     </div>
+
+    <!-- Mobile bottom nav -->
+    <nav class="mobile-bottom-nav" aria-label="Navegacion movil">
+        <button type="button" class="mobile-bottom-item active" id="bottom-dashboard" onclick="nav('dashboard')">
+            <i class="fas fa-chart-pie"></i><span>Resumen</span>
+        </button>
+        <button type="button" class="mobile-bottom-item" id="bottom-productos" onclick="nav('productos')">
+            <i class="fas fa-box"></i><span>Productos</span>
+        </button>
+        <button type="button" class="mobile-bottom-item" id="bottom-ordenes" onclick="nav('ordenes')">
+            <i class="fas fa-receipt"></i><span>Ordenes</span>
+        </button>
+        <button type="button" class="mobile-bottom-item" id="bottom-notificaciones" onclick="nav('notificaciones')">
+            <i class="fas fa-bell"></i><span>Notifs</span>
+        </button>
+        <button type="button" class="mobile-bottom-item" id="bottom-agentes" onclick="nav('agentes')">
+            <i class="fas fa-robot"></i><span>Agente</span>
+        </button>
+    </nav>
+
     <div class="toast" id="toast"></div>
 
     <script>
@@ -168,6 +234,12 @@
 
     function nav(sec) {
         document.querySelectorAll('.sidebar nav a').forEach(a => a.classList.toggle('active', a.getAttribute('data-sec') === sec));
+        // Sync mobile bottom nav
+        document.querySelectorAll('.mobile-bottom-item').forEach(btn => btn.classList.remove('active'));
+        const activeBtn = document.getElementById('bottom-' + sec);
+        if (activeBtn) activeBtn.classList.add('active');
+        // Close mobile menu
+        toggleMobileMenu(false);
         ({ dashboard: renderDashboard, productos: renderProductos, categorias: renderCategorias,
             atributos: renderAtributos, ordenes: renderOrdenes, clientes: renderClientes,
             pasarela: renderPasarela, notificaciones: renderNotificaciones, agentes: renderAgentesTienda })[sec]();
@@ -808,8 +880,43 @@
         } catch (err) { msg.textContent = 'Error: ' + err.message; msg.className = 'msg error'; }
     }
 
+    // ── Mobile menu toggle ──
+    function toggleMobileMenu(force) {
+        const sidebar = document.querySelector('.sidebar');
+        const open = typeof force === 'boolean' ? force : !document.body.classList.contains('mobile-menu-open');
+        document.body.classList.toggle('mobile-menu-open', open);
+        if (sidebar) sidebar.classList.toggle('open', open);
+    }
+
+    // Close sidebar on Escape or nav click (mobile)
+    document.addEventListener('click', function(e) {
+        const navItem = e.target.closest && e.target.closest('.sidebar nav a');
+        if (navItem && window.innerWidth <= 768) toggleMobileMenu(false);
+    }, true);
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') toggleMobileMenu(false);
+    });
+
+    // ── PWA Service Worker ──
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('/sw.js', { scope: '/' })
+                .then(reg => {
+                    reg.addEventListener('updatefound', () => {
+                        const w = reg.installing;
+                        w?.addEventListener('statechange', () => {
+                            if (w.state === 'installed' && navigator.serviceWorker.controller) {
+                                toast('Nueva version disponible — Recarga para actualizar');
+                            }
+                        });
+                    });
+                })
+                .catch(err => console.warn('[AUVRO SW] Error:', err));
+        });
+    }
+
     Object.assign(window, {
-        nav, salir, formProducto, nuevoProducto, editarProducto, eliminarProducto, syncTipo, renderSelector, renderImgs,
+        nav, salir, toggleMobileMenu, formProducto, nuevoProducto, editarProducto, eliminarProducto, syncTipo, renderSelector, renderImgs,
         addImg, quitImg, imgSubir, leerArchivo, guardarProducto, formVariaciones, guardarVariaciones,
         renderCategorias, guardarCategoria, eliminarCategoria,
         renderAtributos, guardarAtributo, eliminarAtributo,
