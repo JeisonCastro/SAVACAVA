@@ -2206,35 +2206,25 @@
                         ? `<select onchange="wfAsignarAgente('${p.id}', this.value)" style="font-size:.72rem;padding:3px 6px;border:1px solid var(--border2);border-radius:6px;background:var(--bg1);color:var(--text1);max-width:130px" title="Asignar agente de IA a esta tienda">${opcionesAgente}</select>`
                         : '';
                     if (esAdmin()) {
-                        const sep = '<span style="color:var(--dim);font-size:.8rem;margin:0 3px;user-select:none">·</span>';
-                        const btnSty = 'font-size:.72rem;padding:4px 7px';
-                        const btnCls = 'btn-small';
-                        const dangerSty = btnSty + ';opacity:.85';
-                        const linksGrupo = [
-                            p.netlify_url ? `<button class="${btnCls}" onclick="window.open('${wfEscapeHtml(p.netlify_url)}','_blank')" style="${btnSty}" title="Abrir sitio"><i class="fas fa-external-link"></i></button>` : '',
-                            p.github_url ? `<button class="${btnCls}" onclick="window.open('${wfEscapeHtml(p.github_url)}','_blank')" style="${btnSty}" title="Repo GitHub"><i class="fab fa-github"></i></button>` : '',
-                            p.clone_url ? `<button class="${btnCls}" onclick="copiarClone('${wfEscapeHtml(p.clone_url)}', '${wfEscapeHtml(p.slug)}')" style="${btnSty}" title="Copiar clone"><i class="fas fa-copy"></i></button>` : ''
-                        ].filter(Boolean).join('');
-                        const gestionGrupo = [
+                        const btns = [
+                            p.netlify_url ? `<button class="icon-btn" onclick="window.open('${wfEscapeHtml(p.netlify_url)}','_blank')" title="Abrir sitio"><i class="fas fa-external-link"></i></button>` : '',
+                            p.github_url ? `<button class="icon-btn" onclick="window.open('${wfEscapeHtml(p.github_url)}','_blank')" title="Repo GitHub"><i class="fab fa-github"></i></button>` : '',
+                            p.clone_url ? `<button class="icon-btn" onclick="copiarClone('${wfEscapeHtml(p.clone_url)}', '${wfEscapeHtml(p.slug)}')" title="Copiar clone"><i class="fas fa-copy"></i></button>` : '',
                             agenteDropdown,
-                            p.plantilla === 'tienda' ? `<button class="${btnCls}" onclick="abrirTiendaModal('${p.id}','${wfEscapeHtml(p.nombre)}','${wfEscapeHtml(p.slug)}')" style="${btnSty}" title="Gestionar tienda"><i class="fas fa-store"></i></button>` : ''
-                        ].filter(Boolean).join('');
-                        const controlGrupo = `<button class="${btnCls}" onclick="actualizarEstadoWeb('${p.id}')" style="${btnSty}" title="Actualizar estado"><i class="fas fa-rotate"></i></button>`;
-                        const peligroGrupo = [
+                            p.plantilla === 'tienda' ? `<button class="icon-btn" onclick="abrirTiendaModal('${p.id}','${wfEscapeHtml(p.nombre)}','${wfEscapeHtml(p.slug)}')" title="Gestionar tienda"><i class="fas fa-store"></i></button>` : '',
+                            `<button class="icon-btn" onclick="actualizarEstadoWeb('${p.id}')" title="Actualizar estado"><i class="fas fa-rotate"></i></button>`,
                             p.netlify_site_id ? (inactivo
-                                ? `<button class="${btnCls} green" onclick="toggleActivoWeb('${p.id}', false, '${wfEscapeHtml(p.nombre)}')" style="${btnSty}" title="Reactivar sitio"><i class="fas fa-play"></i></button>`
-                                : `<button class="${btnCls} danger" onclick="toggleActivoWeb('${p.id}', true, '${wfEscapeHtml(p.nombre)}')" style="${dangerSty}" title="Apagar sitio"><i class="fas fa-power-off"></i></button>`) : '',
-                            `<button class="${btnCls} danger" onclick="eliminarProyectoWeb('${p.id}', '${wfEscapeHtml(p.nombre)}')" style="${dangerSty}" title="Eliminar registro"><i class="fas fa-trash"></i></button>`
-                        ].filter(Boolean).join('');
-                        const partes = [linksGrupo, gestionGrupo, controlGrupo, peligroGrupo].filter(Boolean);
-                        acciones = `<div style="display:inline-flex;align-items:center;gap:0;flex-wrap:wrap">${partes.join(sep)}</div>`;
+                                ? `<button class="icon-btn primary" onclick="toggleActivoWeb('${p.id}', false, '${wfEscapeHtml(p.nombre)}')" title="Reactivar sitio"><i class="fas fa-play"></i></button>`
+                                : `<button class="icon-btn danger" onclick="toggleActivoWeb('${p.id}', true, '${wfEscapeHtml(p.nombre)}')" title="Apagar sitio"><i class="fas fa-power-off"></i></button>`) : '',
+                            `<button class="icon-btn danger" onclick="eliminarProyectoWeb('${p.id}', '${wfEscapeHtml(p.nombre)}')" title="Eliminar"><i class="fas fa-trash"></i></button>`
+                        ].filter(Boolean);
+                        acciones = `<div class="agent-actions">${btns.join('')}</div>`;
                     } else {
-                        // Usuario tienda: ver tienda + dropdown agente + editar tienda
-                        const btnSty = 'font-size:.72rem;padding:4px 7px';
-                        acciones = `<div style="display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap">
+                        // Usuario tienda: dropdown agente + ver + editar tienda
+                        acciones = `<div class="agent-actions">
                             ${agenteDropdown}
-                            ${p.netlify_url ? `<button class="btn-small" onclick="window.open('${wfEscapeHtml(p.netlify_url)}','_blank')" style="${btnSty}" title="Ver tienda"><i class="fas fa-external-link"></i></button>` : ''}
-                            ${p.plantilla === 'tienda' ? `<button class="btn-main" onclick="abrirTiendaModal('${p.id}','${wfEscapeHtml(p.nombre)}','${wfEscapeHtml(p.slug)}')" style="font-size:.72rem;padding:5px 10px" title="Editar tienda"><i class="fas fa-store" style="margin-right:.25rem"></i> Editar tienda</button>` : ''}
+                            ${p.netlify_url ? `<button class="icon-btn" onclick="window.open('${wfEscapeHtml(p.netlify_url)}','_blank')" title="Ver tienda"><i class="fas fa-external-link"></i></button>` : ''}
+                            ${p.plantilla === 'tienda' ? `<button class="icon-btn primary" onclick="abrirTiendaModal('${p.id}','${wfEscapeHtml(p.nombre)}','${wfEscapeHtml(p.slug)}')" title="Editar tienda"><i class="fas fa-store"></i></button>` : ''}
                         </div>`;
                     }
 
@@ -2250,7 +2240,7 @@
                         <td>
                             ${p.dominio ? `<div style="font-size:.82rem">${wfEscapeHtml(p.dominio)}</div>${dominioBadge}${dominioErrorInfo}` : '—'}
                         </td>
-                        <td style="white-space:nowrap">
+                        <td>
                             ${acciones}
                         </td>
                     </tr>`;
