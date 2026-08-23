@@ -826,6 +826,34 @@
                     </div>
                 </div>
 
+                <!-- TAB: Permisos de Sitios Web -->
+                <div class="card" style="margin-bottom:1.5rem">
+                    <div class="card-header">
+                        <div class="card-icon"><i class="fas fa-globe"></i></div>
+                        <span class="card-title">Permisos de Sitios Web</span>
+                        <button class="btn-main" style="margin-left:auto;font-size:.8rem;padding:6px 12px" onclick="abrirModalPermisoSitio()">
+                            <i class="fas fa-plus" style="margin-right:.3rem"></i> Asignar permiso
+                        </button>
+                    </div>
+                    <p style="font-size:.82rem;color:var(--muted);margin-bottom:1rem;line-height:1.5">Asigna acceso a sitios web (landing pages, restaurante, etc.) a usuarios especificos. Roles: <b>admin_sitio</b> (contenido + agente + dominio), <b>editor_sitio</b> (contenido AI + tokens), <b>visor_sitio</b> (solo lectura).</p>
+                    <div class="table-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Sitio</th>
+                                    <th>Tipo</th>
+                                    <th>Usuario</th>
+                                    <th>Rol</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="admin-web-permisos-body">
+                                <tr><td colspan="5" style="text-align:center;color:var(--dim);padding:2rem">Cargando...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
                 <!-- MODAL: Agregar tokens / Editar plan -->
                 <div id="admin-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;align-items:center;justify-content:center">
                     <div style="background:var(--surface);border:1px solid var(--border2);border-radius:14px;padding:1.5rem;width:90%;max-width:420px;box-shadow:var(--shadow-soft)">
@@ -1637,6 +1665,7 @@
                 '<tr><td colspan="6" style="text-align:center;color:var(--red);padding:1.5rem">Error de conexion</td></tr>';
         }
         cargarAdminTiendaPermisos();
+        cargarAdminWebPermisos();
     }
 
     function abrirModalTokens(userId, nombre, current) {
@@ -1965,6 +1994,117 @@
         }
     }
 
+    // ── PERMISOS DE SITIOS WEB (admin) ──
+    let _adminSitioProyectos = [];
+
+    async function cargarAdminWebPermisos() {
+        if (!esAdmin()) return;
+        try {
+            const res = await fetch('/.netlify/functions/web-factory', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${currentSession?.access_token || ''}` },
+                body: JSON.stringify({ action: 'list' })
+            });
+            const data = await res.json();
+            const sitios = (data.proyectos || []).filter(p => p.plantilla !== 'tienda');
+            _adminSitioProyectos = sitios;
+
+            const container = document.getElementById('admin-web-permisos-body');
+            if (!sitios.length) {
+                container.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--dim);padding:1.5rem">No hay sitios web creados todavia.</td></tr>';
+                return;
+            }
+
+            let todosPermisos = [];
+            for (const s of sitios) {
+                const resP = await fetch('/.netlify/functions/tienda-permisos', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${currentSession?.access_token || ''}` },
+                    body: JSON.stringify({ action: 'list', proyecto_id: s.id })
+                });
+                const dataP = await resP.json();
+                for (const p of (dataP.permisos || [])) {
+                    todosPermisos.push({ ...p, proyecto_nombre: s.nombre, proyecto_slug: s.slug, proyecto_plantilla: s.plantilla });
+                }
+            }
+
+            if (!todosPermisos.length) {
+                container.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--dim);padding:1.5rem">No hay permisos asignados. Usa "Asignar permiso" para dar acceso a un usuario.</td></tr>';
+                return;
+            }
+
+            const plantillaLabels = { landing: 'Landing', restaurante: 'Restaurante', abogados: 'Abogados', tienda: 'Tienda', clinica: 'Clinica', gym: 'Gym', lawyer: 'Abogados', restaurant: 'Restaurante', medical: 'Medico', ecommerce: 'Ecommerce', generic: 'Generico' };
+            container.innerHTML = todosPermisos.map(p => `
+                <tr>
+                    <td><div style="font-weight:600">${escapeHtml(p.proyecto_nombre)}</div><div style="font-size:.72rem;color:var(--dim)">${escapeHtml(p.proyecto_slug)}</div></td>
+                    <td><span class="badge" style="font-size:.7rem;background:var(--bg2)">${escapeHtml(plantillaLabels[p.proyecto_plantilla] || p.proyecto_plantilla)}</span></td>
+                    <td><span style="font-size:.82rem">${escapeHtml(p.user_id.slice(0, 8))}…</span></td>
+                    <td><span class="badge badge-accent">${escapeHtml(p.rol)}</span></td>
+                    <td><button class="btn-small danger" onclick="revocarPermisoSitio('${p.proyecto_id}','${p.user_id}')" style="font-size:.72rem;padding:4px 8px" title="Revocar permiso"><i class="fas fa-trash"></i></button></td>
+                </tr>
+            `).join('');
+        } catch (err) {
+            document.getElementById('admin-web-permisos-body').innerHTML =
+                '<tr><td colspan="5" style="text-align:center;color:var(--red);padding:1.5rem">Error cargando permisos</td></tr>';
+        }
+    }
+
+    function abrirModalPermisoSitio() {
+        const opciones = _adminSitioProyectos.map(s => `<option value="${s.id}">${escapeHtml(s.nombre)} (${escapeHtml(s.slug)})</option>`).join('');
+        document.getElementById('admin-modal-title').textContent = 'Asignar Permiso de Sitio Web';
+        document.getElementById('admin-modal-body').innerHTML = `
+            <div class="field" style="margin-bottom:.8rem"><label>Email del usuario</label><input type="email" id="permiso-sitio-email" placeholder="usuario@ejemplo.com" style="width:100%;padding:8px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text)"></div>
+            <div class="field" style="margin-bottom:.8rem"><label>Sitio web (proyecto)</label><select id="permiso-sitio-proyecto" style="width:100%;padding:8px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text)">${opciones}</select></div>
+            <div class="field" style="margin-bottom:1rem"><label>Rol</label><select id="permiso-sitio-rol" style="width:100%;padding:8px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text)">
+                <option value="admin_sitio">Admin sitio (contenido + agente + dominio + tokens)</option>
+                <option value="editor_sitio">Editor sitio (contenido AI + tokens)</option>
+                <option value="visor_sitio">Visor sitio (solo lectura)</option>
+            </select></div>
+            <button class="btn-main" style="width:100%" onclick="guardarPermisoSitio()"><i class="fas fa-check" style="margin-right:.3rem"></i> Asignar</button>
+        `;
+        document.getElementById('admin-modal').style.display = 'flex';
+    }
+
+    async function guardarPermisoSitio() {
+        const email = document.getElementById('permiso-sitio-email').value.trim();
+        const proyecto_id = document.getElementById('permiso-sitio-proyecto').value;
+        const rol = document.getElementById('permiso-sitio-rol').value;
+        if (!email || !proyecto_id) return showToast('Completa email y sitio', 'error');
+        mostrarOverlayCarga('Asignando permiso...');
+        try {
+            const res = await fetch('/.netlify/functions/tienda-permisos', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${currentSession?.access_token || ''}` },
+                body: JSON.stringify({ action: 'grant', proyecto_id, email, rol })
+            });
+            const data = await res.json();
+            if (!data.ok) return showToast('Error: ' + (data.error || 'Desconocido'), 'error');
+            showToast('Permiso asignado correctamente');
+            cerrarAdminModal();
+            cargarAdminWebPermisos();
+        } finally {
+            ocultarOverlayCarga();
+        }
+    }
+
+    async function revocarPermisoSitio(proyecto_id, user_id) {
+        if (!confirm('¿Revocar este permiso de sitio web?')) return;
+        mostrarOverlayCarga('Revocando permiso...');
+        try {
+            const res = await fetch('/.netlify/functions/tienda-permisos', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${currentSession?.access_token || ''}` },
+                body: JSON.stringify({ action: 'revoke', proyecto_id, user_id })
+            });
+            const data = await res.json();
+            if (!data.ok) return showToast('Error: ' + (data.error || 'Desconocido'), 'error');
+            showToast('Permiso revocado');
+            cargarAdminWebPermisos();
+        } finally {
+            ocultarOverlayCarga();
+        }
+    }
+
     // ── WEB FACTORY ──
     let _wfPlantillas = [];
     let _wfEnv = {};
@@ -2231,6 +2371,7 @@
                                     '<span class="badge ' + b.cls + '"' + badgeInline + '>' + b.label + '</span>' +
                                     '<span class="wf-card-dot"></span>' +
                                     '<span class="wf-card-type">' + wfEscapeHtml(plantillaLabel) + '</span>' +
+                                    (p.mi_rol && p.mi_rol !== 'admin' && p.mi_rol !== 'owner' ? '<span class="badge badge-role" style="margin-left:4px;font-size:.65rem;background:var(--accent2);color:#fff">' + wfEscapeHtml(p.mi_rol) + '</span>' : '') +
                                 '</div>' +
                             '</div>' +
                         '</div>' +

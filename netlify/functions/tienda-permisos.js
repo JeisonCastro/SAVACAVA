@@ -1,17 +1,32 @@
-// tienda-permisos.js — CRUD de permisos de tienda por usuario
+// tienda-permisos.js — CRUD de permisos de proyecto por usuario
 //
 // Flujo: Admin asigna permiso a un usuario → el usuario ve Web Factory →
-//        solo sus tiendas asignadas → "Editar tienda" → tienda-admin.html.
+//        solo sus proyectos asignados → "Editar" → tienda-admin.html o editor AI.
 //
 // Acciones:
 //   list     → lista permisos de un proyecto (admin)
-//   my       → lista mis permisos de tienda (cualquier usuario autenticado)
+//   my       → lista mis permisos (cualquier usuario autenticado)
 //   grant    → asigna permiso a un usuario (admin)
 //   revoke   → elimina permiso (admin)
 //   check    → verifica si tengo permiso en un proyecto (cualquier usuario)
+//
+// Roles para tiendas:
+//   admin_tienda  → acceso completo a la tienda
+//   editor_tienda → editar productos y órdenes
+//   visor_tienda  → solo lectura
+//
+// Roles para sitios web:
+//   admin_sitio  → acceso completo al sitio (contenido, agente, dominio, tokens)
+//   editor_sitio → editar contenido AI y recargar tokens
+//   visor_sitio  → solo ver estado y preview
 
 const { supabase } = require('./supabase-admin');
 const { createClient } = require('@supabase/supabase-js');
+
+const ROLES_VALIDOS = [
+    'admin_tienda', 'editor_tienda', 'visor_tienda',
+    'admin_sitio', 'editor_sitio', 'visor_sitio'
+];
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
@@ -91,6 +106,16 @@ exports.handler = async (event) => {
             return { statusCode: 200, body: JSON.stringify({ ok: true, permisos: data || [] }) };
         }
 
+        // ── LIST_ALL: todos los permisos (admin dashboard) ──
+        if (action === 'list_all') {
+            const { data, error } = await supabase
+                .from('tienda_permisos')
+                .select('*, web_projects!inner(id, nombre, slug, plantilla, netlify_url)')
+                .order('created_at', { ascending: false });
+            if (error) return { statusCode: 500, body: JSON.stringify({ error: error.message }) };
+            return { statusCode: 200, body: JSON.stringify({ ok: true, permisos: data || [] }) };
+        }
+
         // ── GRANT: asignar permiso ──
         if (action === 'grant') {
             if (!proyecto_id) return { statusCode: 400, body: JSON.stringify({ error: 'Falta proyecto_id' }) };
@@ -108,6 +133,9 @@ exports.handler = async (event) => {
             if (!targetUserId) return { statusCode: 400, body: JSON.stringify({ error: 'Falta user_id o email' }) };
 
             const permisoRol = rol || 'admin_tienda';
+            if (!ROLES_VALIDOS.includes(permisoRol)) {
+                return { statusCode: 400, body: JSON.stringify({ error: 'Rol no válido: ' + permisoRol + '. Roles válidos: ' + ROLES_VALIDOS.join(', ') }) };
+            }
             const { data, error } = await supabase
                 .from('tienda_permisos')
                 .upsert({ proyecto_id, user_id: targetUserId, rol: permisoRol }, { onConflict: 'proyecto_id,user_id' })

@@ -129,6 +129,7 @@
         .badge-accent{background:rgba(14,165,233,.1);color:var(--accent);border:1px solid rgba(14,165,233,.18)}
         .badge-yellow{background:rgba(251,191,36,.1);color:var(--yellow);border:1px solid rgba(251,191,36,.18)}
         .badge-red{background:rgba(239,68,68,.1);color:var(--red);border:1px solid rgba(239,68,68,.18)}
+        .badge-role{font-size:.65rem;padding:2px 6px;border-radius:4px;font-weight:600;letter-spacing:.02em}
 
         /* MESSAGES */
         .msg{font-size:.82rem;text-align:center;padding:.55rem .85rem;border-radius:7px;margin-top:.75rem;display:none}

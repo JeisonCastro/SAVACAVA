@@ -789,6 +789,60 @@ async function pipelineCrear(body, adminId) {
     return { ok: true, id };
 }
 
+// ── Helper: verificar acceso a proyecto por usuario ──
+// Retorna { ok, rol, isAdmin, isOwner } o { ok: false, error }
+async function verificarAccesoProyecto(userId, proyectoId, operacion) {
+    // 1. Buscar proyecto
+    const { data: proyecto } = await supabase
+        .from('web_projects')
+        .select('id, created_by')
+        .eq('id', proyectoId)
+        .maybeSingle();
+    if (!proyecto) return { ok: false, error: 'Proyecto no encontrado', statusCode: 404 };
+
+    // 2. Admin global siempre pasa
+    const { data: perfil } = await supabase.from('perfiles').select('is_admin').eq('id', userId).single();
+    if (perfil?.is_admin) return { ok: true, rol: 'admin', isAdmin: true, isOwner: true };
+
+    // 3. Owner siempre pasa
+    if (proyecto.created_by === userId) return { ok: true, rol: 'owner', isAdmin: false, isOwner: true };
+
+    // 4. Buscar permiso específico
+    const { data: permiso } = await supabase
+        .from('tienda_permisos')
+        .select('rol')
+        .eq('proyecto_id', proyectoId)
+        .eq('user_id', userId)
+        .maybeSingle();
+    if (!permiso) return { ok: false, error: 'No tienes acceso a este sitio', statusCode: 403 };
+
+    // 5. Verificar rol contra operación requerida
+    const PERMISOS = {
+        // Sitios web
+        'ver_sitio':          ['admin_sitio', 'editor_sitio', 'visor_sitio'],
+        'editar_contenido':   ['admin_sitio', 'editor_sitio'],
+        'gestionar_agente':   ['admin_sitio'],
+        'eliminar_sitio':     ['admin_sitio'],
+        'config_dominio':     ['admin_sitio'],
+        'recargar_tokens':    ['admin_sitio', 'editor_sitio'],
+        'ver_tokens':         ['admin_sitio', 'editor_sitio', 'visor_sitio'],
+        // Tiendas
+        'ver_tienda':         ['admin_tienda', 'editor_tienda', 'visor_tienda'],
+        'editar_productos':   ['admin_tienda', 'editor_tienda'],
+        'gestionar_ordenes':  ['admin_tienda', 'editor_tienda'],
+        'config_pasarela':    ['admin_tienda'],
+        'gestionar_clientes': ['admin_tienda'],
+    };
+
+    if (operacion && PERMISOS[operacion]) {
+        if (!PERMISOS[operacion].includes(permiso.rol)) {
+            return { ok: false, error: 'Tu rol (' + permiso.rol + ') no permite esta operación', statusCode: 403 };
+        }
+    }
+
+    return { ok: true, rol: permiso.rol, isAdmin: false, isOwner: false };
+}
+
 // ── Handler ──
 exports.handler = async (event) => {
     try {
@@ -818,8 +872,9 @@ exports.handler = async (event) => {
             .single();
         const isAdmin = miPerfil?.is_admin === true;
 
-        // ── LIST_TIENDA_PARA_USUARIO: usuario no-admin ve solo sus tiendas asignadas ──
-        if (action === 'list_tienda_para_usuario') {
+        // ── LIST_PROYECTOS_PARA_USUARIO: usuario no-admin ve solo sus proyectos asignados ──
+        // Acepta tanto 'list_tienda_para_usuario' (legacy) como 'list_proyectos_para_usuario' (nuevo)
+        if (action === 'list_tienda_para_usuario' || action === 'list_proyectos_para_usuario') {
             const { data: permisos } = await supabase
                 .from('tienda_permisos')
                 .select('proyecto_id, rol')
@@ -832,12 +887,17 @@ exports.handler = async (event) => {
                 .from('web_projects')
                 .select('*')
                 .in('id', proyectoIds)
-                .eq('plantilla', 'tienda')
                 .order('created_at', { ascending: false });
             if (error) return { statusCode: 500, body: JSON.stringify({ error: error.message }) };
+
+            // Adjuntar rol del usuario a cada proyecto
+            const rolMap = {};
+            permisos.forEach(p => { rolMap[p.proyecto_id] = p.rol; });
+            const proyectosConRol = (proyectos || []).map(p => ({ ...p, mi_rol: rolMap[p.id] || null }));
+
             let plantillas = [];
             try { plantillas = leerPlantillas(); } catch (_) {}
-            return { statusCode: 200, body: JSON.stringify({ ok: true, proyectos: proyectos || [], plantillas, esAdmin: false }) };
+            return { statusCode: 200, body: JSON.stringify({ ok: true, proyectos: proyectosConRol, plantillas, esAdmin: false }) };
         }
 
         // ── LIST_AGENTES: retorna los agentes del usuario (para selects de asignación) ──
@@ -850,25 +910,23 @@ exports.handler = async (event) => {
             return { statusCode: 200, body: JSON.stringify({ ok: true, agentes: agentes || [] }) };
         }
 
-        // ── UPDATE_AGENTE: asignar/desasignar agente de IA a una tienda ──
-        // Actualiza web_projects.agente_id y sincroniza agentes_ia.tienda_id bidireccionalmente.
-        // Accesible para admin Y para usuarios con permiso en tienda_permisos.
+        // ── UPDATE_AGENTE: asignar/desasignar agente de IA a una tienda/sitio ──
+        // Accesible para admin Y para usuarios con permiso admin_sitio o admin_tienda.
         if (action === 'update_agente') {
             const { proyecto_id, agente_id } = body;
             if (!proyecto_id) return { statusCode: 400, body: JSON.stringify({ error: 'Falta proyecto_id' }) };
 
-            // Validar que el proyecto existe
+            // Validar acceso con permisos
+            const acceso = await verificarAccesoProyecto(userId, proyecto_id, 'gestionar_agente');
+            if (!acceso.ok) return { statusCode: acceso.statusCode || 403, body: JSON.stringify({ error: acceso.error }) };
+
+            // Leer proyecto actual
             const { data: proyecto } = await supabase
                 .from('web_projects')
                 .select('id, agente_id, plantilla, created_by')
                 .eq('id', proyecto_id)
                 .maybeSingle();
             if (!proyecto) return { statusCode: 404, body: JSON.stringify({ error: 'Proyecto no encontrado' }) };
-
-            // Validar permisos: admin o usuario con permiso en tienda_permisos
-            const tieneAcceso = isAdmin ||
-                (await supabase.from('tienda_permisos').select('proyecto_id').eq('user_id', userId).eq('proyecto_id', proyecto_id).maybeSingle()).data;
-            if (!tieneAcceso) return { statusCode: 403, body: JSON.stringify({ error: 'Sin acceso a esta tienda' }) };
 
             const nuevoAgenteId = agente_id ? Number(agente_id) : null;
             const agenteAnteriorId = proyecto.agente_id ? Number(proyecto.agente_id) : null;
@@ -935,9 +993,19 @@ exports.handler = async (event) => {
             };
         }
 
-        // ── Todas las demás acciones requieren admin ──
-        if (!isAdmin) {
+        // ── Todas las demás acciones requieren admin o permiso específico ──
+        // Acciones que un usuario con permiso puede ejecutar sobre SU proyecto
+        const accionesPermitidasConPermiso = ['get', 'get_by_slug', 'refresh_status'];
+        const proyectoIdParaPermiso = body.proyecto_id || body.id;
+
+        if (!isAdmin && !accionesPermitidasConPermiso.includes(action)) {
             return { statusCode: 403, body: JSON.stringify({ error: 'No eres admin' }) };
+        }
+
+        // Para acciones permitidas con permiso, verificar acceso al proyecto específico
+        if (!isAdmin && accionesPermitidasConPermiso.includes(action) && proyectoIdParaPermiso) {
+            const acceso = await verificarAccesoProyecto(userId, proyectoIdParaPermiso, 'ver_sitio');
+            if (!acceso.ok) return { statusCode: acceso.statusCode || 403, body: JSON.stringify({ error: acceso.error }) };
         }
 
         // ── LIST: proyectos + plantillas ──
