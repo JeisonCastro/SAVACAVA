@@ -1,17 +1,9 @@
 // site-editor.js — Editor AI de contenido para sitios web
-//
-// Permite a usuarios con permisos editar el contenido de sus sitios web
-// a través de un agente de IA, con sistema de consumo de tokens.
-//
-// Acciones:
-//   get_content    → leer y parsear HTML del sitio en GitHub
-//   edit_content   → ejecutar edición AI y commitear cambios
-//   check_tokens   → verificar tokens disponibles
-//   recharge_tokens → recargar tokens (post-pago)
+// Usa el mismo sistema de tokens que chat.js (perfiles.token_balance)
+// y los mismos proveedores de IA (DeepSeek primario, OpenAI respaldo).
 
 const { supabase } = require('./supabase-admin');
 const { createClient } = require('@supabase/supabase-js');
-const wf = require('./web-factory.js').helpers;
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
@@ -39,61 +31,73 @@ async function getUser(event) {
     return userData.user;
 }
 
-async function esAdmin(userId) {
-    const { data } = await supabase.from('perfiles').select('is_admin').eq('id', userId).single();
-    return data?.is_admin === true;
-}
+async function verificarAcceso(userId, proyectoId, requiereEdicion) {
+    const { data: perfil } = await supabase.from('perfiles').select('is_admin').eq('id', userId).maybeSingle();
+    if (perfil?.is_admin) return { ok: true, rol: 'admin', isOwner: true };
 
-async function verificarAcceso(userId, proyectoId,requiereEdicion) {
-    // Admin siempre pasa
-    if (await esAdmin(userId)) return { ok: true, rol: 'admin', isOwner: true };
-
-    // Owner siempre pasa
     const { data: proyecto } = await supabase
-        .from('web_projects')
-        .select('id, created_by')
-        .eq('id', proyectoId)
-        .maybeSingle();
+        .from('web_projects').select('id, created_by').eq('id', proyectoId).maybeSingle();
     if (!proyecto) return { ok: false, error: 'Proyecto no encontrado' };
     if (proyecto.created_by === userId) return { ok: true, rol: 'owner', isOwner: true };
 
-    // Buscar permiso
     const { data: permiso } = await supabase
-        .from('tienda_permisos')
-        .select('rol')
-        .eq('proyecto_id', proyectoId)
-        .eq('user_id', userId)
-        .maybeSingle();
+        .from('tienda_permisos').select('rol')
+        .eq('proyecto_id', proyectoId).eq('user_id', userId).maybeSingle();
     if (!permiso) return { ok: false, error: 'No tienes acceso a este sitio' };
 
-    // Verificar nivel de acceso
-    if (requiereEdicion && !ROLES_EDICION.includes(permiso.rol)) {
-        return { ok: false, error: 'Tu rol (' + permiso.rol + ') no permite edición de contenido' };
-    }
-    if (!ROLES_LECTURA.includes(permiso.rol)) {
+    if (requiereEdicion && !ROLES_EDICION.includes(permiso.rol))
+        return { ok: false, error: 'Tu rol (' + permiso.rol + ') no permite edición' };
+    if (!ROLES_LECTURA.includes(permiso.rol))
         return { ok: false, error: 'Tu rol no permite ver este sitio' };
-    }
 
     return { ok: true, rol: permiso.rol, isOwner: false };
 }
 
-// Parsear HTML en secciones editables
+async function llamarIA(mensajes, inputChars) {
+    const deepseekKey = process.env.DEEPSEEK_API_KEY;
+    const fallbackKey = process.env.FALLBACK_API_KEY || process.env.OPENIA_KEY;
+
+    if (deepseekKey) {
+        try {
+            const res = await fetch('https://api.deepseek.com/v1/chat/completions', {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${deepseekKey}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ model: 'deepseek-v4-flash', messages: mensajes, temperature: 0.2, max_tokens: 4000, thinking: { type: 'disabled' } }),
+                signal: AbortSignal.timeout(20000)
+            });
+            const data = await res.json();
+            if (data.choices?.[0]?.message?.content) return data.choices[0].message.content.trim();
+        } catch (e) { console.warn('DeepSeek falló:', e.message); }
+    }
+
+    if (fallbackKey) {
+        const res = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${fallbackKey}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ model: 'gpt-4o-mini', messages: mensajes, temperature: 0.3, max_tokens: 4000 }),
+            signal: AbortSignal.timeout(25000)
+        });
+        const data = await res.json();
+        if (data.choices?.[0]?.message?.content) return data.choices[0].message.content.trim();
+    }
+
+    throw new Error('No hay proveedor de IA disponible');
+}
+
 function parseSiteSections(html) {
     const sections = [];
-    const sectionRegex = /<(section|header|footer|main|article)[^>]*(?:\sid=["']([^"']*)["'])?[^>]*>([\s\S]*?)<\/\1>/gi;
-    let match;
-    while ((match = sectionRegex.exec(html)) !== null) {
-        const tag = match[1].toLowerCase();
-        const id = match[2] || `${tag}-${sections.length}`;
-        const content = match[3].trim();
-        // Extraer título significativo
+    const regex = /<(section|header|footer|main|article)[^>]*(?:\sid=["']([^"']*)["'])?[^>]*>([\s\S]*?)<\/\1>/gi;
+    let m;
+    while ((m = regex.exec(html)) !== null) {
+        const tag = m[1].toLowerCase();
+        const id = m[2] || `${tag}-${sections.length}`;
+        const content = m[3].trim();
         const titleMatch = content.match(/<h[1-6][^>]*>([^<]+)<\/h[1-6]>/i);
         const title = titleMatch ? titleMatch[1].trim() : id.replace(/-/g, ' ');
-        sections.push({ id, title, tag, html_content: content.substring(0, 500) + (content.length > 500 ? '...' : '') });
+        sections.push({ id, title, tag, preview: content.substring(0, 300) + (content.length > 300 ? '...' : '') });
     }
-    // Si no se encontraron secciones, crear una genérica
     if (!sections.length) {
-        sections.push({ id: 'contenido', title: 'Contenido principal', tag: 'div', html_content: html.substring(0, 1000) + (html.length > 1000 ? '...' : '') });
+        sections.push({ id: 'contenido', title: 'Contenido principal', tag: 'div', preview: html.substring(0, 600) + (html.length > 600 ? '...' : '') });
     }
     return sections;
 }
@@ -109,232 +113,149 @@ exports.handler = async (event) => {
 
         if (!proyecto_id) return { statusCode: 400, body: JSON.stringify({ error: 'Falta proyecto_id' }) };
 
-        // ── CHECK_TOKENS: verificar tokens disponibles ──
+        // ── CHECK_TOKENS ──
         if (action === 'check_tokens') {
             const acceso = await verificarAcceso(user.id, proyecto_id, false);
             if (!acceso.ok) return { statusCode: 403, body: JSON.stringify({ error: acceso.error }) };
 
-            const { data: proyecto } = await supabase
-                .from('web_projects')
-                .select('*')
-                .eq('id', proyecto_id)
-                .maybeSingle();
-            return {
-                statusCode: 200,
-                body: JSON.stringify({
-                    ok: true,
-                    tokens: proyecto?.edit_tokens || 0,
-                    tokens_used: proyecto?.edit_tokens_used || 0,
-                    puede_editar: (proyecto?.edit_tokens || 0) > 0
-                })
-            };
+            const { data: perfil } = await supabase.from('perfiles').select('token_balance').eq('id', user.id).maybeSingle();
+            const tokens = perfil?.token_balance || 0;
+
+            return { statusCode: 200, body: JSON.stringify({ ok: true, tokens, puede_editar: tokens > 0 }) };
         }
 
-        // ── GET_CONTENT: leer y parsear HTML del sitio ──
+        // ── GET_CONTENT ──
         if (action === 'get_content') {
             const acceso = await verificarAcceso(user.id, proyecto_id, false);
             if (!acceso.ok) return { statusCode: 403, body: JSON.stringify({ error: acceso.error }) };
 
-            const { data: proyecto } = await supabase
-                .from('web_projects')
-                .select('*')
-                .eq('id', proyecto_id)
-                .maybeSingle();
+            const { data: proyecto } = await supabase.from('web_projects').select('*').eq('id', proyecto_id).maybeSingle();
             if (!proyecto) return { statusCode: 404, body: JSON.stringify({ error: 'Proyecto no encontrado' }) };
-            if (!proyecto.github_owner || !proyecto.github_repo) return { statusCode: 400, body: JSON.stringify({ error: 'El sitio aún no tiene repositorio en GitHub' }) };
 
-            // Leer index.html del repo
+            const owner = proyecto.github_owner || 'JeisonCastro';
+            const repo = proyecto.github_repo || proyecto.slug;
             const branch = proyecto.default_branch || 'main';
-            const url = `https://api.github.com/repos/${proyecto.github_owner}/${proyecto.github_repo}/contents/index.html?ref=${branch}`;
-            const res = await fetch(url, {
+
+            const ghRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/index.html?ref=${branch}`, {
                 headers: { Authorization: `token ${GITHUB_TOKEN}`, Accept: 'application/vnd.github.v3+json' }
             });
-            if (!res.ok) return { statusCode: 502, body: JSON.stringify({ error: 'No se pudo leer el archivo del sitio' }) };
-            const fileData = await res.json();
-            const html = Buffer.from(fileData.content, 'base64').toString('utf-8');
-            const sha = fileData.sha;
+            if (!ghRes.ok) return { statusCode: 502, body: JSON.stringify({ error: 'No se pudo leer index.html del repositorio' }) };
 
+            const fileData = await ghRes.json();
+            const html = Buffer.from(fileData.content, 'base64').toString('utf-8');
             const sections = parseSiteSections(html);
+
+            const { data: perfil } = await supabase.from('perfiles').select('token_balance').eq('id', user.id).maybeSingle();
 
             return {
                 statusCode: 200,
                 body: JSON.stringify({
                     ok: true,
                     sections,
-                    sha,
+                    sha: fileData.sha,
                     full_html_length: html.length,
-                    tokens: proyecto.edit_tokens || 0,
-                    tokens_used: proyecto.edit_tokens_used || 0,
-                    puede_editar: (proyecto.edit_tokens || 0) > 0,
-                    site_url: proyecto.netlify_url
+                    tokens: perfil?.token_balance || 0,
+                    site_url: proyecto.netlify_url,
+                    github_owner: owner,
+                    github_repo: repo,
+                    branch
                 })
             };
         }
 
-        // ── EDIT_CONTENT: ejecutar edición AI y commitear ──
+        // ── EDIT_CONTENT ──
         if (action === 'edit_content') {
             const acceso = await verificarAcceso(user.id, proyecto_id, true);
             if (!acceso.ok) return { statusCode: 403, body: JSON.stringify({ error: acceso.error }) };
 
-            const { instruction, section_id } = body;
-            if (!instruction) return { statusCode: 400, body: JSON.stringify({ error: 'Falta instruction (instrucción de edición)' }) };
+            const { instruction } = body;
+            if (!instruction) return { statusCode: 400, body: JSON.stringify({ error: 'Falta instruction' }) };
 
-            // Verificar tokens
-            const { data: proyecto } = await supabase
-                .from('web_projects')
-                .select('*')
-                .eq('id', proyecto_id)
-                .maybeSingle();
+            const { data: perfil } = await supabase.from('perfiles').select('token_balance').eq('id', user.id).maybeSingle();
+            const tokens = perfil?.token_balance || 0;
+            if (tokens <= 0) return { statusCode: 402, body: JSON.stringify({ error: 'Sin tokens disponibles. Recarga tokens para continuar editando.' }) };
+
+            const { data: proyecto } = await supabase.from('web_projects').select('*').eq('id', proyecto_id).maybeSingle();
             if (!proyecto) return { statusCode: 404, body: JSON.stringify({ error: 'Proyecto no encontrado' }) };
-            if ((proyecto.edit_tokens || 0) <= 0) {
-                return { statusCode: 402, body: JSON.stringify({ error: 'Sin tokens disponibles. Recarga tokens para continuar editando.' }) };
-            }
 
-            // Leer HTML actual
+            const owner = proyecto.github_owner || 'JeisonCastro';
+            const repo = proyecto.github_repo || proyecto.slug;
             const branch = proyecto.default_branch || 'main';
-            const ghUrl = `https://api.github.com/repos/${proyecto.github_owner}/${proyecto.github_repo}/contents/index.html?ref=${branch}`;
-            const ghRes = await fetch(ghUrl, {
+
+            const ghRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/index.html?ref=${branch}`, {
                 headers: { Authorization: `token ${GITHUB_TOKEN}`, Accept: 'application/vnd.github.v3+json' }
             });
-            if (!ghRes.ok) return { statusCode: 502, body: JSON.stringify({ error: 'No se pudo leer el archivo del sitio' }) };
+            if (!ghRes.ok) return { statusCode: 502, body: JSON.stringify({ error: 'No se pudo leer index.html' }) };
+
             const fileData = await ghRes.json();
             const html = Buffer.from(fileData.content, 'base64').toString('utf-8');
-            const sha = fileData.sha;
 
-            // Llamar a AI para modificar el HTML
-            const OpenAI = require('openai');
-            const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-            const sections = parseSiteSections(html);
-            const sectionContext = section_id ? sections.find(s => s.id === section_id) : null;
-
-            const systemPrompt = `Eres un editor de contenido web. Modifica el HTML proporcionado según la instrucción del usuario.
+            const systemPrompt = `Eres un editor de contenido web experto. Modifica el HTML según la instrucción.
 Reglas:
-- SOLO modifica el contenido visible (texto, imágenes, enlaces), NO cambies la estructura CSS/JS
-- Mantén todas las clases CSS y IDs existentes
+- SOLO modifica contenido visible (texto, imagenes, enlaces, colores inline)
+- NO cambies la estructura CSS/JS ni elimines clases/IDs
 - Responde SOLO con el HTML modificado completo, sin explicaciones ni markdown
-- Si la instrucción no es clara, haz tu mejor interpretación`;
+- Si la instruccion es vaga, haz tu mejor interpretacion
+- Mantén el idioma original del sitio`;
 
-            const userPrompt = `HTML actual del sitio:
-${html}
+            const userPrompt = `HTML actual:\n${html}\n\nInstruccion: ${instruction}\n\nHTML modificado:`;
 
-${sectionContext ? `Sección a modificar: ${sectionContext.id} (${sectionContext.title})` : 'Modificar en todo el sitio'}
-
-Instrucción: ${instruction}
-
-HTML modificado:`;
-
-            const completion = await openai.chat.completions.create({
-                model: 'gpt-4o-mini',
-                messages: [
+            let newHtml;
+            try {
+                newHtml = await llamarIA([
                     { role: 'system', content: systemPrompt },
                     { role: 'user', content: userPrompt }
-                ],
-                max_tokens: 4000,
-                temperature: 0.3
-            });
+                ], instruction.length + html.length);
+            } catch (e) {
+                return { statusCode: 502, body: JSON.stringify({ error: 'Error del proveedor de IA: ' + e.message }) };
+            }
 
-            let newHtml = completion.choices[0]?.message?.content?.trim();
-            if (!newHtml) return { statusCode: 500, body: JSON.stringify({ error: 'La IA no generó respuesta' }) };
-
-            // Limpiar posibles marcadores markdown
             newHtml = newHtml.replace(/^```html?\s*/i, '').replace(/\s*```$/i, '');
 
-            // Calcular tokens consumidos
-            const tokensUsed = Math.ceil((instruction.length + newHtml.length) / 4) + 10;
-            const tokensRestantes = Math.max(0, (proyecto.edit_tokens || 0) - tokensUsed);
+            if (!newHtml || newHtml.length < 100) {
+                return { statusCode: 500, body: JSON.stringify({ error: 'La IA no generó un HTML válido' }) };
+            }
 
-            // Commit a GitHub
-            const commitMessage = `edit: ${instruction.substring(0, 80)}`;
-            const commitUrl = `https://api.github.com/repos/${proyecto.github_owner}/${proyecto.github_repo}/contents/index.html`;
-            const commitRes = await fetch(commitUrl, {
+            const tokensUsed = Math.ceil((instruction.length + newHtml.length) / 4) + 10;
+            const tokensRestantes = Math.max(0, tokens - tokensUsed);
+
+            const commitRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/index.html`, {
                 method: 'PUT',
-                headers: {
-                    Authorization: `token ${GITHUB_TOKEN}`,
-                    Accept: 'application/vnd.github.v3+json',
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    message: commitMessage,
-                    content: Buffer.from(newHtml).toString('base64'),
-                    sha: sha,
-                    branch: branch
-                })
+                headers: { Authorization: `token ${GITHUB_TOKEN}`, Accept: 'application/vnd.github.v3+json', 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: `edit: ${instruction.substring(0, 80)}`, content: Buffer.from(newHtml).toString('base64'), sha: fileData.sha, branch })
             });
             if (!commitRes.ok) {
                 const errData = await commitRes.json();
                 return { statusCode: 502, body: JSON.stringify({ error: 'Error al guardar en GitHub: ' + (errData.message || commitRes.statusText) }) };
             }
 
-            // Actualizar tokens en DB
-            await supabase.from('web_projects').update({
-                edit_tokens: tokensRestantes,
-                edit_tokens_used: (proyecto.edit_tokens_used || 0) + tokensUsed,
-                updated_at: new Date().toISOString()
-            }).eq('id', proyecto_id);
+            await supabase.from('perfiles').update({ token_balance: tokensRestantes }).eq('id', user.id);
 
-            // Log de consumo
             await supabase.from('edit_token_log').insert({
-                proyecto_id,
-                tokens_used: tokensUsed,
+                proyecto_id, user_id: user.id, tokens_used: tokensUsed,
                 description: instruction.substring(0, 200)
             });
 
-            // Trigger deploy en Netlify
             if (proyecto.netlify_site_id) {
                 try {
-                    await wf.dispararBuild(proyecto.netlify_site_id);
-                } catch (e) {
-                    console.error('site-editor: trigger deploy falló:', e.message);
-                }
+                    await fetch(`https://api.netlify.com/api/v1/sites/${proyecto.netlify_site_id}/builds`, {
+                        method: 'POST',
+                        headers: { Authorization: `Bearer ${process.env.NETLIFY_AUTH_TOKEN || ''}` }
+                    });
+                } catch (e) { console.error('site-editor: deploy trigger falló:', e.message); }
             }
 
             return {
                 statusCode: 200,
                 body: JSON.stringify({
-                    ok: true,
-                    tokens_used: tokensUsed,
-                    tokens_remaining: tokensRestantes,
+                    ok: true, tokens_used: tokensUsed, tokens_remaining: tokensRestantes,
                     preview_url: proyecto.netlify_url,
-                    message: `Edición aplicada. ${tokensUsed} tokens consumidos. ${tokensRestantes} tokens restantes.`
+                    message: `Edicion aplicada. ${tokensUsed} tokens consumidos. ${tokensRestantes} restantes.`
                 })
             };
         }
 
-        // ── RECHARGE_TOKENS: recargar tokens (post-pago) ──
-        if (action === 'recharge_tokens') {
-            const acceso = await verificarAcceso(user.id, proyecto_id, true);
-            if (!acceso.ok) return { statusCode: 403, body: JSON.stringify({ error: acceso.error }) };
-
-            const { tokens_to_add, order_id } = body;
-            if (!tokens_to_add || tokens_to_add <= 0) return { statusCode: 400, body: JSON.stringify({ error: 'Falta tokens_to_add' }) };
-
-            const { data: proyecto } = await supabase
-                .from('web_projects')
-                .select('*')
-                .eq('id', proyecto_id)
-                .maybeSingle();
-            if (!proyecto) return { statusCode: 404, body: JSON.stringify({ error: 'Proyecto no encontrado' }) };
-
-            const newTokens = (proyecto.edit_tokens || 0) + tokens_to_add;
-            await supabase.from('web_projects').update({
-                edit_tokens: newTokens,
-                updated_at: new Date().toISOString()
-            }).eq('id', proyecto_id);
-
-            // Log
-            await supabase.from('edit_token_log').insert({
-                proyecto_id,
-                tokens_used: -tokens_to_add,
-                description: order_id ? `Recarga orden #${order_id}` : 'Recarga manual'
-            });
-
-            return {
-                statusCode: 200,
-                body: JSON.stringify({ ok: true, tokens: newTokens, tokens_added: tokens_to_add })
-            };
-        }
-
-        return { statusCode: 400, body: JSON.stringify({ error: 'Acción no válida: ' + action }) };
+        return { statusCode: 400, body: JSON.stringify({ error: 'Accion no valida: ' + action }) };
 
     } catch (err) {
         console.error('site-editor error:', err);
