@@ -7,28 +7,20 @@ exports.handler = async (event) => {
         const body = JSON.parse(event.body || '{}');
         if (body.secret !== 'auvro-seed-2026') return { statusCode: 403, body: JSON.stringify({ error: 'Unauthorized' }) };
 
-        const { data: existing } = await supabase.from('web_projects').select('id').eq('slug', 'mascotraoficial').maybeSingle();
-        if (existing) return { statusCode: 200, body: JSON.stringify({ ok: true, message: 'Ya existe', id: existing.id }) };
+        const { data: existing } = await supabase.from('web_projects').select('id, github_owner, github_repo').eq('slug', 'mascotraoficial').maybeSingle();
+        if (!existing) return { statusCode: 404, body: JSON.stringify({ error: 'No existe el proyecto' }) };
 
-        const { data, error } = await supabase.from('web_projects').insert({
-            nombre: 'Mascota Ra Oficial',
-            slug: 'mascotraoficial',
-            cliente: 'Mascota Ra',
-            plantilla: 'landing',
-            descripcion: 'Pagina oficial de Mascota Ra',
-            github_owner: 'JeisonCastro',
-            github_repo: 'mascotraoficial',
-            default_branch: 'main',
-            github_url: 'https://github.com/JeisonCastro/mascotraoficial',
-            clone_url: 'https://github.com/JeisonCastro/mascotraoficial.git',
-            netlify_url: 'https://mascotraoficial.netlify.app',
-            netlify_site_id: '8e6329c1-c5d2-4a10-9870-47812e164150',
-            estado: 'publicado',
-            created_by: 'c253d139-dde5-4302-81ef-321a1b81ca6d'
-        }).select('id').single();
+        const updates = {};
+        if (!existing.github_owner) updates.github_owner = 'JeisonCastro';
+        if (!existing.github_repo) updates.github_repo = 'mascotraoficial';
+        updates.default_branch = 'main';
 
-        if (error) return { statusCode: 500, body: JSON.stringify({ error: error.message }) };
-        return { statusCode: 200, body: JSON.stringify({ ok: true, id: data.id }) };
+        if (Object.keys(updates).length > 1) {
+            const { error } = await supabase.from('web_projects').update(updates).eq('id', existing.id);
+            if (error) return { statusCode: 500, body: JSON.stringify({ error: error.message }) };
+        }
+
+        return { statusCode: 200, body: JSON.stringify({ ok: true, id: existing.id, updates }) };
     } catch (err) {
         return { statusCode: 500, body: JSON.stringify({ error: err.message }) };
     }
