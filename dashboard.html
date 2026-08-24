@@ -942,12 +942,10 @@
                                     <div style="text-align:center;color:var(--dim);padding:1.2rem;font-size:.78rem"><i class="fas fa-spinner fa-spin"></i> Cargando...</div>
                                 </div>
                             </div>
-                            <!-- Derecha: Chat AI -->
-                            <div style="flex:1;display:flex;flex-direction:column;min-width:0">
-                                <div id="editor-chat-messages" style="flex:1;overflow-y:auto;padding:.8rem 1rem;display:flex;flex-direction:column;gap:.5rem">
-                                    <div style="background:var(--bg2);border-radius:10px;padding:.6rem .8rem;font-size:.8rem;color:var(--muted);max-width:90%">
-                                        <i class="fas fa-robot" style="margin-right:.3rem;color:var(--accent)"></i> Hola! Soy tu asistente de edicion. Escribe lo que quieres cambiar en tu sitio.
-                                    </div>
+                            <!-- Derecha: Chat AI (patrón chat.html) -->
+                            <div style="flex:1;display:flex;flex-direction:column;min-width:0;overflow:hidden">
+                                <div id="editor-chat-main" style="flex:1;overflow-y:auto;padding:14px 14px 10px;scroll-behavior:smooth;overscroll-behavior:contain;background:var(--chat-panel)">
+                                    <div id="editor-chat-wrap" style="max-width:820px;margin:0 auto;display:flex;flex-direction:column;gap:14px;padding-bottom:14px"></div>
                                 </div>
                                 <!-- Token warning -->
                                 <div id="editor-token-warning" style="display:none;padding:.4rem .8rem;background:rgba(251,191,36,.1);border-top:1px solid rgba(251,191,36,.2);font-size:.72rem;color:var(--yellow);text-align:center">
@@ -955,16 +953,38 @@
                                     <span id="editor-token-warning-text"></span>
                                     <button onclick="abrirRecargaTokens()" style="background:var(--yellow);color:#000;border:none;border-radius:6px;padding:3px 8px;font-size:.7rem;font-weight:600;margin-left:.4rem;cursor:pointer">Recargar</button>
                                 </div>
-                                <!-- Input -->
-                                <div style="padding:.6rem .8rem;border-top:1px solid var(--border);display:flex;gap:.4rem;flex-shrink:0">
-                                    <textarea id="editor-chat-input" rows="1" placeholder="Ej: Cambia el telefono a 310-123-4567" style="flex:1;padding:.5rem .7rem;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text);font-size:.85rem;resize:none;min-height:38px;max-height:100px;font-family:inherit" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();enviarEdicionAI()}" oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,100)+'px'"></textarea>
-                                    <button id="editor-send-btn" onclick="enviarEdicionAI()" class="btn-main" style="padding:.5rem .8rem;font-size:.8rem;white-space:nowrap;align-self:flex-end"><i class="fas fa-paper-plane" style="margin-right:.2rem"></i><span class="editor-btn-text">Enviar</span></button>
+                                <!-- Composer (patrón chat.html) -->
+                                <div style="padding:10px 14px;background:var(--surface);border-top:1px solid var(--border);flex-shrink:0">
+                                    <div style="max-width:820px;margin:0 auto;display:flex;gap:10px;align-items:flex-end">
+                                        <textarea id="editor-chat-input" rows="1" placeholder="Escribe qué quieres cambiar..." style="flex:1;min-height:44px;max-height:118px;padding:12px 14px;background:var(--bg);border:1px solid var(--border2);border-radius:14px;color:var(--text);font-family:'Inter',system-ui,sans-serif;font-size:.9rem;resize:none;outline:none;line-height:1.5"></textarea>
+                                        <button id="editor-send-btn" onclick="enviarEdicionAI()" style="flex:0 0 auto;width:44px;height:44px;border-radius:50%;border:none;background:var(--accent);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;box-shadow:0 4px 14px rgba(14,165,233,.3)" aria-label="Enviar">
+                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13"/><path d="M22 2L15 22l-4-9-9-4z"/></svg>
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
                 <style>
+                    /* ── Editor chat: bubbles (mismo patrón que chat.html) ── */
+                    .editor-msg{display:flex;flex-direction:column;max-width:min(72%,680px);animation:editorMsgIn .22s ease}
+                    .editor-msg.user{align-self:flex-end;align-items:flex-end}
+                    .editor-msg.ai{align-self:flex-start;align-items:flex-start}
+                    .editor-msg .bubble{padding:10px 12px;border-radius:14px;line-height:1.55;font-size:.9rem;word-break:break-word;box-shadow:0 1px 3px rgba(16,24,40,.08);position:relative}
+                    .editor-msg.user .bubble{background:var(--bubble-user);border:1px solid var(--border);border-bottom-right-radius:5px}
+                    .editor-msg.ai .bubble{background:var(--bubble-ai);border:1px solid var(--border);border-bottom-left-radius:5px}
+                    .editor-msg .bubble .msg-role{display:block;font-size:.64rem;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);font-weight:700;margin-bottom:.25rem}
+                    .editor-msg .bubble .msg-text{display:block}
+                    .editor-msg .bubble a{color:var(--accent2);text-decoration:underline}
+                    .editor-msg .bubble ul{margin:4px 0 4px 18px}
+                    .editor-msg .bubble code{background:var(--bg2);padding:1px 5px;border-radius:4px;font-size:.82rem}
+                    .editor-typing{display:flex;gap:5px;padding:8px 4px}
+                    .editor-typing span{width:6px;height:6px;border-radius:50%;background:var(--accent);animation:editorBlink 1.2s infinite;opacity:.3}
+                    .editor-typing span:nth-child(2){animation-delay:.2s}
+                    .editor-typing span:nth-child(3){animation-delay:.4s}
+                    @keyframes editorMsgIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+                    @keyframes editorBlink{0%,80%,100%{opacity:.3}40%{opacity:1}}
                     @media(max-width:768px){
                         .editor-modal{align-items:flex-end!important}
                         .editor-modal-box{width:100%!important;max-width:none!important;max-height:100vh!important;border-radius:14px 14px 0 0!important;height:95vh}
@@ -973,13 +993,16 @@
                         .editor-link-desktop{display:none!important}
                         .editor-btn-text{display:none}
                         #editor-send-btn{padding:.5rem .6rem!important}
-                        #editor-send-btn i{margin:0!important}
+                        #editor-send-btn svg{margin:0!important}
                         #editor-chat-input{font-size:16px!important}
+                        .editor-msg{max-width:88%}
                     }
                     @media(max-width:480px){
                         .editor-modal-box{border-radius:12px 12px 0 0!important;height:97vh}
                         #editor-tokens-badge span:last-of-type{display:none}
                     }
+                    body:not(.light-mode) .editor-msg .bubble{box-shadow:0 1px 3px rgba(0,0,0,.4)}
+                    body:not(.light-mode) #editor-chat-input{background:var(--bg2)}
                 </style>
 
                 <!-- MODAL: Gestionar tienda (e-commerce) -->
@@ -2197,7 +2220,7 @@
     }
 
     // ── EDITOR AI DE CONTENIDO ──
-    let _editorState = { proyectoId: null, nombre: '', slug: '', tokens: 0, sections: [], sha: '' };
+    let _editorState = { proyectoId: null, nombre: '', slug: '', tokens: 0, sections: [], sha: '', docsArchivos: [], enviando: false };
 
     function _fmtTokens(n) {
         if (n >= 1000000) return (n / 1000000).toFixed(n % 1000000 === 0 ? 0 : 1) + 'M';
@@ -2205,18 +2228,85 @@
         return String(n);
     }
 
+    function _editorFmt(s) {
+        var out = String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        out = out.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+        out = out.replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener">$1</a>');
+        out = out.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+        out = out.replace(/(^|\s)\*([^*]+)\*/g, '$1<em>$2</em>');
+        var lines = out.split('\n');
+        var html = [];
+        var ul = false;
+        for (var i = 0; i < lines.length; i++) {
+            var bullet = lines[i].match(/^[-•]\s+(.*)$/);
+            if (bullet) {
+                if (!ul) { html.push('<ul>'); ul = true; }
+                html.push('<li>' + bullet[1] + '</li>');
+            } else {
+                if (ul) { html.push('</ul>'); ul = false; }
+                html.push(lines[i]);
+            }
+        }
+        if (ul) html.push('</ul>');
+        return html.join('<br>');
+    }
+
+    function editorAddMsg(text, tipo) {
+        var wrap = document.getElementById('editor-chat-wrap');
+        var main = document.getElementById('editor-chat-main');
+        var div = document.createElement('div');
+        div.className = 'editor-msg ' + (tipo === 'user' ? 'user' : 'ai');
+        var bubble = document.createElement('div');
+        bubble.className = 'bubble';
+        var role = document.createElement('span');
+        role.className = 'msg-role';
+        role.textContent = tipo === 'user' ? 'Tú' : 'Editor IA';
+        bubble.appendChild(role);
+        var body = document.createElement('span');
+        body.className = 'msg-text';
+        body.innerHTML = _editorFmt(text);
+        bubble.appendChild(body);
+        div.appendChild(bubble);
+        wrap.appendChild(div);
+        main.scrollTop = main.scrollHeight;
+    }
+
+    function editorAddTyping() {
+        editorRemoveTyping();
+        var wrap = document.getElementById('editor-chat-wrap');
+        var main = document.getElementById('editor-chat-main');
+        var div = document.createElement('div');
+        div.className = 'editor-msg ai';
+        div.id = 'editor-typing';
+        var bubble = document.createElement('div');
+        bubble.className = 'bubble';
+        bubble.innerHTML = '<div class="editor-typing"><span></span><span></span><span></span></div>';
+        div.appendChild(bubble);
+        wrap.appendChild(div);
+        main.scrollTop = main.scrollHeight;
+    }
+
+    function editorRemoveTyping() {
+        var t = document.getElementById('editor-typing');
+        if (t) t.remove();
+    }
+
     async function abrirEditorSitio(proyectoId, nombre, slug) {
-        _editorState = { proyectoId, nombre, slug, tokens: 0, sections: [], sha: '' };
+        _editorState = { proyectoId: proyectoId, nombre: nombre, slug: slug, tokens: 0, sections: [], sha: '', docsArchivos: [], enviando: false };
         document.getElementById('editor-sitio-nombre').textContent = nombre;
         document.getElementById('editor-sitio-slug').textContent = slug;
         document.getElementById('editor-tokens-count').textContent = '...';
         document.getElementById('editor-repo-name').textContent = '—';
         document.getElementById('editor-status-bar').style.display = 'none';
         document.getElementById('editor-secciones-list').innerHTML = '<div style="text-align:center;color:var(--dim);padding:1.2rem;font-size:.78rem"><i class="fas fa-spinner fa-spin"></i> Cargando...</div>';
-        document.getElementById('editor-chat-messages').innerHTML = '<div style="background:var(--bg2);border-radius:10px;padding:.6rem .8rem;font-size:.8rem;color:var(--muted);max-width:90%"><i class="fas fa-robot" style="margin-right:.3rem;color:var(--accent)"></i> Hola! Soy tu asistente de edicion. Escribe lo que quieres cambiar en tu sitio.</div>';
+        document.getElementById('editor-chat-wrap').innerHTML = '';
         document.getElementById('editor-token-warning').style.display = 'none';
         document.getElementById('editor-chat-input').value = '';
+        document.getElementById('editor-send-btn').disabled = false;
         document.getElementById('editor-sitio-modal').style.display = 'flex';
+
+        // Welcome message
+        editorAddMsg('Hola! Soy tu asistente de edición. Conozco tu sitio y puedo modificar contenido, textos, colores y estilos. Escribe lo que quieres cambiar.', 'ai');
 
         try {
             var res = await fetch('/.netlify/functions/site-editor', {
@@ -2232,12 +2322,18 @@
             _editorState.sections = data.sections || [];
             _editorState.tokens = data.tokens || 0;
             _editorState.sha = data.sha || '';
+            _editorState.docsArchivos = data.docs_archivos || [];
             document.getElementById('editor-sitio-link').href = data.site_url || '#';
             document.getElementById('editor-tokens-count').textContent = _fmtTokens(data.tokens || 0);
             document.getElementById('editor-status-bar').style.display = 'flex';
             document.getElementById('editor-repo-name').textContent = (data.github_owner || '') + '/' + (data.github_repo || '');
             actualizarWarningTokens();
             renderEditorSecciones();
+
+            // Show docs status in chat
+            if (data.docs_archivos && data.docs_archivos.length) {
+                editorAddMsg('Contexto del proyecto cargado: ' + data.docs_archivos.join(', ') + '. Estoy listo para editar.', 'ai');
+            }
         } catch (err) {
             document.getElementById('editor-secciones-list').innerHTML = '<div style="text-align:center;color:var(--red);padding:1.2rem;font-size:.78rem"><i class="fas fa-exclamation-triangle"></i> Error de conexion</div>';
         }
@@ -2294,17 +2390,18 @@
     async function enviarEdicionAI() {
         var input = document.getElementById('editor-chat-input');
         var instruction = input.value.trim();
-        if (!instruction) return;
+        if (!instruction || _editorState.enviando) return;
         if (_editorState.tokens <= 0) return showToast('Sin tokens disponibles. Recarga para continuar.', 'error');
 
         var btn = document.getElementById('editor-send-btn');
+        _editorState.enviando = true;
         btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+        btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10" stroke-dasharray="31.4" stroke-dashoffset="10"><animateTransform attributeName="transform" type="rotate" values="0 12 12;360 12 12" dur="1s" repeatCount="indefinite"/></circle></svg>';
         input.value = '';
         input.style.height = 'auto';
 
-        agregarMensajeChat('user', instruction);
-        agregarMensajeChat('assistant', '<i class="fas fa-spinner fa-spin" style="margin-right:.3rem"></i> Analizando tu proyecto...');
+        editorAddMsg(instruction, 'user');
+        editorAddTyping();
 
         try {
             var res = await fetch('/.netlify/functions/site-editor', {
@@ -2313,44 +2410,39 @@
                 body: JSON.stringify({ action: 'edit_content', proyecto_id: _editorState.proyectoId, instruction: instruction })
             });
             var data = await res.json();
-
-            var msgs = document.getElementById('editor-chat-messages');
-            var lastMsg = msgs.lastElementChild;
-            if (lastMsg) msgs.removeChild(lastMsg);
+            editorRemoveTyping();
 
             if (data.ok) {
                 _editorState.tokens = data.tokens_remaining;
                 document.getElementById('editor-tokens-count').textContent = _fmtTokens(data.tokens_remaining || 0);
                 actualizarWarningTokens();
-                agregarMensajeChat('assistant', 'Edicion aplicada. ' + (data.tokens_used || 0) + ' tokens consumidos. ' + _fmtTokens(data.tokens_remaining || 0) + ' restantes. Tu sitio se esta actualizando...');
-                showToast('Edicion aplicada');
+                var msg = data.message || ('Edición aplicada. ' + (data.tokens_used || 0) + ' tokens consumidos.');
+                editorAddMsg(msg + ' Tu sitio se está actualizando...', 'ai');
+                showToast('Edición aplicada — ' + (data.commits || ['index.html']).join(' + '));
             } else {
-                agregarMensajeChat('assistant', 'Error: ' + (data.error || 'No se pudo aplicar'));
+                editorAddMsg('No pude aplicar la edición: ' + (data.error || 'Error desconocido'), 'ai');
             }
         } catch (err) {
-            var msgs2 = document.getElementById('editor-chat-messages');
-            var last2 = msgs2.lastElementChild;
-            if (last2) msgs2.removeChild(last2);
-            agregarMensajeChat('assistant', 'Error de conexion: ' + err.message);
+            editorRemoveTyping();
+            editorAddMsg('Error de conexión: ' + err.message, 'ai');
         } finally {
+            _editorState.enviando = false;
             btn.disabled = false;
-            btn.innerHTML = '<i class="fas fa-paper-plane"></i>';
+            btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13"/><path d="M22 2L15 22l-4-9-9-4z"/></svg>';
         }
     }
 
-    function agregarMensajeChat(role, text) {
-        var container = document.getElementById('editor-chat-messages');
-        var isUser = role === 'user';
-        var bg = isUser ? 'var(--accent)' : 'var(--bg2)';
-        var color = isUser ? '#fff' : 'var(--text)';
-        var align = isUser ? 'margin-left:auto' : '';
-        var icon = isUser ? '' : '<i class="fas fa-robot" style="margin-right:.3rem;color:var(--accent)"></i> ';
-        var div = document.createElement('div');
-        div.style.cssText = 'background:' + bg + ';color:' + color + ';border-radius:10px;padding:.6rem .8rem;font-size:.8rem;max-width:88%;' + align + ';word-wrap:break-word;line-height:1.4';
-        div.innerHTML = icon + text;
-        container.appendChild(div);
-        container.scrollTop = container.scrollHeight;
+    function editorAutoGrow() {
+        var inp = document.getElementById('editor-chat-input');
+        inp.style.height = 'auto';
+        inp.style.height = Math.min(inp.scrollHeight, 118) + 'px';
     }
+
+    document.getElementById('editor-chat-input').addEventListener('input', editorAutoGrow);
+    document.getElementById('editor-chat-input').addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); enviarEdicionAI(); }
+    });
+    document.getElementById('editor-send-btn').addEventListener('click', enviarEdicionAI);
 
     // ── Recarga de tokens (mismos planes y flujo Wompi que tokens-view) ──
     function abrirRecargaTokens() {

@@ -1,6 +1,7 @@
 // site-editor.js — Editor AI de contenido para sitios web
-// Usa el mismo sistema de tokens que chat.js (perfiles.token_balance)
-// y los mismos proveedores de IA (DeepSeek primario, OpenAI respaldo).
+// Lee /docs del repositorio para contexto del proyecto.
+// Soporta edición de index.html y styles.css.
+// Usa perfiles.token_balance (mismo sistema que chat.js).
 
 const { supabase } = require('./supabase-admin');
 const { createClient } = require('@supabase/supabase-js');
@@ -18,6 +19,8 @@ const headers = {
 
 const ROLES_EDICION = ['admin_sitio', 'editor_sitio'];
 const ROLES_LECTURA = ['admin_sitio', 'editor_sitio', 'visor_sitio'];
+
+const GH_HEADERS = { Authorization: `token ${GITHUB_TOKEN}`, Accept: 'application/vnd.github.v3+json' };
 
 async function getUser(event) {
     const authHeader = event.headers.authorization || event.headers.Authorization;
@@ -63,7 +66,7 @@ async function llamarIA(mensajes, inputChars) {
                 method: 'POST',
                 headers: { Authorization: `Bearer ${deepseekKey}`, 'Content-Type': 'application/json' },
                 body: JSON.stringify({ model: 'deepseek-v4-flash', messages: mensajes, temperature: 0.2, max_tokens: 4000, thinking: { type: 'disabled' } }),
-                signal: AbortSignal.timeout(20000)
+                signal: AbortSignal.timeout(30000)
             });
             const data = await res.json();
             if (data.choices?.[0]?.message?.content) return data.choices[0].message.content.trim();
@@ -75,7 +78,7 @@ async function llamarIA(mensajes, inputChars) {
             method: 'POST',
             headers: { Authorization: `Bearer ${fallbackKey}`, 'Content-Type': 'application/json' },
             body: JSON.stringify({ model: 'gpt-4o-mini', messages: mensajes, temperature: 0.3, max_tokens: 4000 }),
-            signal: AbortSignal.timeout(25000)
+            signal: AbortSignal.timeout(35000)
         });
         const data = await res.json();
         if (data.choices?.[0]?.message?.content) return data.choices[0].message.content.trim();
@@ -83,6 +86,44 @@ async function llamarIA(mensajes, inputChars) {
 
     throw new Error('No hay proveedor de IA disponible');
 }
+
+// ── GitHub helpers ──
+
+async function ghReadFile(owner, repo, branch, path) {
+    const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${branch}`, { headers: GH_HEADERS });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return { content: Buffer.from(data.content, 'base64').toString('utf-8'), sha: data.sha };
+}
+
+async function ghListDir(owner, repo, branch, path) {
+    const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${branch}`, { headers: GH_HEADERS });
+    if (!res.ok) return [];
+    const data = await res.json();
+    if (!Array.isArray(data)) return [];
+    return data.filter(f => f.type === 'file');
+}
+
+// ── Docs reading ──
+
+async function leerDocsProyecto(owner, repo, branch) {
+    const files = await ghListDir(owner, repo, branch, 'docs');
+    const mdFiles = files.filter(f => f.name.endsWith('.md'));
+    if (!mdFiles.length) return { archivos: [], contenido: '' };
+
+    const partes = [];
+    const nombres = [];
+    for (const f of mdFiles) {
+        const file = await ghReadFile(owner, repo, branch, `docs/${f.name}`);
+        if (file) {
+            nombres.push(f.name);
+            partes.push(`--- ${f.name} ---\n${file.content}`);
+        }
+    }
+    return { archivos: nombres, contenido: partes.join('\n\n') };
+}
+
+// ── Site parsing ──
 
 function parseSiteSections(html) {
     const sections = [];
@@ -101,6 +142,28 @@ function parseSiteSections(html) {
     }
     return sections;
 }
+
+function validarHTML(html) {
+    if (!html || html.length < 100) return false;
+    const lower = html.toLowerCase();
+    return lower.includes('<head') && lower.includes('<body') && lower.includes('</html>');
+}
+
+function separarArchivos(raw) {
+    const htmlMatch = raw.match(/<!--HTML_START-->([\s\S]*?)<!--HTML_END-->/i);
+    const cssMatch = raw.match(/<!--CSS_START-->([\s\S]*?)<!--CSS_END-->/i);
+
+    if (htmlMatch) {
+        return {
+            html: htmlMatch[1].trim(),
+            css: cssMatch ? cssMatch[1].trim() : null
+        };
+    }
+
+    return { html: raw, css: null };
+}
+
+// ── Handler ──
 
 exports.handler = async (event) => {
     if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers, body: '' };
@@ -136,15 +199,11 @@ exports.handler = async (event) => {
             const repo = proyecto.github_repo || proyecto.slug;
             const branch = proyecto.default_branch || 'main';
 
-            const ghRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/index.html?ref=${branch}`, {
-                headers: { Authorization: `token ${GITHUB_TOKEN}`, Accept: 'application/vnd.github.v3+json' }
-            });
-            if (!ghRes.ok) return { statusCode: 502, body: JSON.stringify({ error: 'No se pudo leer index.html del repositorio' }) };
+            const indexFile = await ghReadFile(owner, repo, branch, 'index.html');
+            if (!indexFile) return { statusCode: 502, body: JSON.stringify({ error: 'No se pudo leer index.html del repositorio' }) };
 
-            const fileData = await ghRes.json();
-            const html = Buffer.from(fileData.content, 'base64').toString('utf-8');
-            const sections = parseSiteSections(html);
-
+            const sections = parseSiteSections(indexFile.content);
+            const docs = await leerDocsProyecto(owner, repo, branch);
             const { data: perfil } = await supabase.from('perfiles').select('token_balance').eq('id', user.id).maybeSingle();
 
             return {
@@ -152,13 +211,15 @@ exports.handler = async (event) => {
                 body: JSON.stringify({
                     ok: true,
                     sections,
-                    sha: fileData.sha,
-                    full_html_length: html.length,
+                    sha: indexFile.sha,
+                    full_html_length: indexFile.content.length,
                     tokens: perfil?.token_balance || 0,
                     site_url: proyecto.netlify_url,
                     github_owner: owner,
                     github_repo: repo,
-                    branch
+                    branch,
+                    docs_archivos: docs.archivos,
+                    docs_contenido: docs.contenido
                 })
             };
         }
@@ -182,60 +243,112 @@ exports.handler = async (event) => {
             const repo = proyecto.github_repo || proyecto.slug;
             const branch = proyecto.default_branch || 'main';
 
-            const ghRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/index.html?ref=${branch}`, {
-                headers: { Authorization: `token ${GITHUB_TOKEN}`, Accept: 'application/vnd.github.v3+json' }
-            });
-            if (!ghRes.ok) return { statusCode: 502, body: JSON.stringify({ error: 'No se pudo leer index.html' }) };
+            // Leer index.html
+            const indexFile = await ghReadFile(owner, repo, branch, 'index.html');
+            if (!indexFile) return { statusCode: 502, body: JSON.stringify({ error: 'No se pudo leer index.html' }) };
 
-            const fileData = await ghRes.json();
-            const html = Buffer.from(fileData.content, 'base64').toString('utf-8');
+            // Leer styles.css (opcional)
+            const cssFile = await ghReadFile(owner, repo, branch, 'styles.css');
 
-            const systemPrompt = `Eres un editor de contenido web experto. Modifica el HTML según la instrucción.
-Reglas:
-- SOLO modifica contenido visible (texto, imagenes, enlaces, colores inline)
-- NO cambies la estructura CSS/JS ni elimines clases/IDs
-- Responde SOLO con el HTML modificado completo, sin explicaciones ni markdown
-- Si la instruccion es vaga, haz tu mejor interpretacion
-- Mantén el idioma original del sitio`;
+            // Leer docs/ para contexto del proyecto
+            const docs = await leerDocsProyecto(owner, repo, branch);
 
-            const userPrompt = `HTML actual:\n${html}\n\nInstruccion: ${instruction}\n\nHTML modificado:`;
+            // ── Construir system prompt con contexto ──
+            const docsSection = docs.contenido
+                ? `\n\nDOCUMENTACIÓN DEL PROYECTO:\n${docs.contenido}\n`
+                : '\n\nNo hay documentación disponible en /docs para este proyecto.\n';
 
-            let newHtml;
+            const systemPrompt = `Eres un editor de contenido web especializado en el sitio del cliente.
+
+IDENTIDAD DEL PROYECTO:
+- Nombre: ${proyecto.nombre || 'Sitio web'}
+- Slug: ${proyecto.slug || 'sitio'}
+- URL: ${proyecto.netlify_url || 'N/A'}
+${docsSection}
+REGLAS PRINCIPALES (en orden de prioridad):
+1. CAMBIOS MÍNIMOS: Modifica ÚNICAMENTE lo necesario para cumplir la instrucción exacta del usuario. NO cambies layout, estructura, CSS no relacionado, JS, ni funcionalidades que no estén directamente implicadas en el cambio.
+2. PRESERVAR IDENTIDAD: Respeta colores, tipografía, branding, estilo y tono existente definidos en la documentación del proyecto.
+3. NO INVENTAR CONTENIDO: Si la instrucción pide información que no existe en /docs ni en el código actual (ej: "agrega información de servicios"), solicita al usuario que proporcione esa información.
+4. MANTENER INTACTO: No elimines formularios, WhatsApp, navegación, menús, footer, integraciones, PWA, responsive, dark mode, analytics, ni ninguna funcionalidad existente.
+5. RESPETAR ESTRUCTURA: No reorganices secciones, no muevas componentes, no cambies el orden del contenido a menos que se pida explícitamente.
+6. CLARIDAD: Si la instrucción es ambigua y un cambio radical podría romper el sitio, responde explicando qué podrías hacer y pide confirmación.
+
+ARCHIVOS DEL PROYECTO:
+- index.html (contenido principal)
+- styles.css (estilos)
+Si el cambio es solo de contenido (textos, imágenes, colores inline, enlaces), modifica solo index.html.
+Si el cambio requiere modificar estilos CSS (colores de fondo, tamaños, espaciado, etc.), indica el cambio en CSS también.
+
+FORMATO DE RESPUESTA:
+Primero escribe una línea breve explicando qué vas a cambiar.
+Luego el HTML modificado entre las marcas:
+<!--HTML_START-->
+html modificado completo
+<!--HTML_END-->
+Si necesitas cambiar CSS, inclúyelo también:
+<!--CSS_START-->
+css modificado completo
+<!--CSS_END-->
+Responde SOLO con eso. Sin explicaciones adicionales. Sin markdown.`;
+
+            const userPrompt = `INSTRUCCIÓN DEL USUARIO:\n${instruction}\n\nHTML ACTUAL:\n${indexFile.content}` + (cssFile ? `\n\nCSS ACTUAL:\n${cssFile.content}` : '');
+
+            let rawResponse;
             try {
-                newHtml = await llamarIA([
+                rawResponse = await llamarIA([
                     { role: 'system', content: systemPrompt },
                     { role: 'user', content: userPrompt }
-                ], instruction.length + html.length);
+                ], instruction.length + indexFile.content.length + (cssFile ? cssFile.content.length : 0));
             } catch (e) {
                 return { statusCode: 502, body: JSON.stringify({ error: 'Error del proveedor de IA: ' + e.message }) };
             }
 
-            newHtml = newHtml.replace(/^```html?\s*/i, '').replace(/\s*```$/i, '');
+            // Limpiar markdown code blocks si la IA los incluye
+            rawResponse = rawResponse.replace(/^```html?\s*/i, '').replace(/\s*```$/i, '');
 
-            if (!newHtml || newHtml.length < 100) {
-                return { statusCode: 500, body: JSON.stringify({ error: 'La IA no generó un HTML válido' }) };
+            const { html: newHtml, css: newCss } = separarArchivos(rawResponse);
+
+            // Validar HTML
+            if (!validarHTML(newHtml)) {
+                return { statusCode: 500, body: JSON.stringify({ error: 'La IA no generó un HTML válido. Intenta con una instrucción más clara.' }) };
             }
 
-            const tokensUsed = Math.ceil((instruction.length + newHtml.length) / 4) + 10;
-            const tokensRestantes = Math.max(0, tokens - tokensUsed);
+            // ── Commit cambios ──
+            const commits = [];
 
-            const commitRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/index.html`, {
+            // Commit index.html
+            const commitIndex = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/index.html`, {
                 method: 'PUT',
                 headers: { Authorization: `token ${GITHUB_TOKEN}`, Accept: 'application/vnd.github.v3+json', 'Content-Type': 'application/json' },
-                body: JSON.stringify({ message: `edit: ${instruction.substring(0, 80)}`, content: Buffer.from(newHtml).toString('base64'), sha: fileData.sha, branch })
+                body: JSON.stringify({ message: `edit: ${instruction.substring(0, 80)}`, content: Buffer.from(newHtml).toString('base64'), sha: indexFile.sha, branch })
             });
-            if (!commitRes.ok) {
-                const errData = await commitRes.json();
-                return { statusCode: 502, body: JSON.stringify({ error: 'Error al guardar en GitHub: ' + (errData.message || commitRes.statusText) }) };
+            if (!commitIndex.ok) {
+                const errData = await commitIndex.json();
+                return { statusCode: 502, body: JSON.stringify({ error: 'Error al guardar index.html en GitHub: ' + (errData.message || commitIndex.statusText) }) };
+            }
+            commits.push('index.html');
+
+            // Commit styles.css si cambió
+            if (newCss && cssFile) {
+                const commitCss = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/styles.css`, {
+                    method: 'PUT',
+                    headers: { Authorization: `token ${GITHUB_TOKEN}`, Accept: 'application/vnd.github.v3+json', 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: `edit: ${instruction.substring(0, 80)} (css)`, content: Buffer.from(newCss).toString('base64'), sha: cssFile.sha, branch })
+                });
+                if (commitCss.ok) commits.push('styles.css');
             }
 
-            await supabase.from('perfiles').update({ token_balance: tokensRestantes }).eq('id', user.id);
+            // ── Deduct tokens ──
+            const tokensUsed = Math.ceil((instruction.length + newHtml.length + (newCss ? newCss.length : 0)) / 4) + 10;
+            const tokensRestantes = Math.max(0, tokens - tokensUsed);
 
+            await supabase.from('perfiles').update({ token_balance: tokensRestantes }).eq('id', user.id);
             await supabase.from('edit_token_log').insert({
                 proyecto_id, user_id: user.id, tokens_used: tokensUsed,
                 description: instruction.substring(0, 200)
             });
 
+            // ── Trigger Netlify deploy ──
             if (proyecto.netlify_site_id) {
                 try {
                     await fetch(`https://api.netlify.com/api/v1/sites/${proyecto.netlify_site_id}/builds`, {
@@ -249,13 +362,13 @@ Reglas:
                 statusCode: 200,
                 body: JSON.stringify({
                     ok: true, tokens_used: tokensUsed, tokens_remaining: tokensRestantes,
-                    preview_url: proyecto.netlify_url,
-                    message: `Edicion aplicada. ${tokensUsed} tokens consumidos. ${tokensRestantes} restantes.`
+                    preview_url: proyecto.netlify_url, commits,
+                    message: `Edición aplicada en ${commits.join(' + ')}. ${tokensUsed} tokens consumidos. ${tokensRestantes} restantes.`
                 })
             };
         }
 
-        return { statusCode: 400, body: JSON.stringify({ error: 'Accion no valida: ' + action }) };
+        return { statusCode: 400, body: JSON.stringify({ error: 'Acción no válida: ' + action }) };
 
     } catch (err) {
         console.error('site-editor error:', err);

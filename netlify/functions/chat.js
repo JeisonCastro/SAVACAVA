@@ -1954,14 +1954,14 @@ INSTRUCCIONES:
                     const proyectoId = accData.proyecto_id || null;
 
                     if (!instruction) {
-                        respuestaIA = "¿Qué quieres cambiar en tu sitio web? Describe el cambio que necesitas (ej: cambiar el teléfono, actualizar la dirección, etc.).";
+                        respuestaIA = "¿Qué quieres cambiar en tu sitio web? Describe el cambio específico que necesitas (ej: cambiar el teléfono, actualizar la dirección, modificar un color).";
                     } else {
                         // Buscar el proyecto: usar el proporcionado o el primero del usuario
                         let pid = proyectoId;
                         if (!pid) {
                             const { data: proyectos } = await supabase
                                 .from('web_projects')
-                                .select('id')
+                                .select('id, nombre')
                                 .eq('created_by', user.id)
                                 .limit(1);
                             pid = proyectos?.[0]?.id;
@@ -1979,9 +1979,10 @@ INSTRUCCIONES:
                             const siteData = await siteRes.json();
 
                             if (siteData.ok) {
-                                respuestaIA = `Edición aplicada. ${siteData.tokens_used} tokens consumidos. ${siteData.tokens_remaining} tokens restantes. Tu sitio se está actualizando.`;
+                                const archivos = Array.isArray(siteData.commits) ? siteData.commits.join(' y ') : 'index.html';
+                                respuestaIA = `Edición aplicada en ${archivos}. ${siteData.tokens_used} tokens consumidos. ${siteData.tokens_remaining} restantes. Tu sitio se está actualizando.`;
                             } else {
-                                respuestaIA = `No pude aplicar la edición: ${siteData.error || 'Error desconocido'}`;
+                                respuestaIA = `No pude aplicar la edición: ${siteData.error || 'Error desconocido'}. Verifica la instrucción e intenta de nuevo.`;
                             }
                         }
                     }

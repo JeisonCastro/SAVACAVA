@@ -875,11 +875,15 @@ Responde ÚNICAMENTE con este JSON (sin texto adicional, sin markdown):
 }
 
 ### Para SITE_EDIT_CONTENT:
-- Úsala cuando el usuario quiera cambiar el contenido de su sitio web existente (textos, teléfonos, direcciones, colores, imágenes, etc.)
-- "instruction": instrucción clara en lenguaje natural de qué cambiar (ej: "Cambia el teléfono a 310-123-4567", "Actualiza la dirección a Calle 123")
+- Úsala cuando el usuario quiera cambiar el contenido de su sitio web existente (textos, teléfonos, direcciones, colores, imágenes, estilos, etc.)
+- "instruction": instrucción clara y específica en lenguaje natural de qué cambiar
 - "proyecto_id": ID del proyecto web (opcional; si hay uno activo se usa automáticamente)
-- Primero confirma con el usuario qué va a cambiar antes de ejecutar
+- ANTES de ejecutar: analiza si la instrucción es clara. Si es ambigua, pregunta al usuario para qué sección o elemento específico se refiere
+- Prioriza cambios MÍNIMOS: si el usuario dice "cambia el color del botón", solo cambia ese botón, no toda la página
+- El sistema lee automáticamente la documentación /docs del proyecto para entender la identidad y contexto del sitio
+- Si la instrucción requiere información que no existe en /docs ni en el código, solicítala al usuario en vez de inventarla
 - Esta herramienta consume tokens de edición (1 token ≈ 4 caracteres). Si no hay tokens, informa al usuario que necesita recargar.
+- Puede modificar index.html y styles.css según sea necesario
 - Ejemplo:
 {
   "action": "SITE_EDIT_CONTENT",
