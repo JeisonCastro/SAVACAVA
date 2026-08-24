@@ -65,8 +65,8 @@ async function llamarIA(mensajes, inputChars) {
             const res = await fetch('https://api.deepseek.com/v1/chat/completions', {
                 method: 'POST',
                 headers: { Authorization: `Bearer ${deepseekKey}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ model: 'deepseek-v4-flash', messages: mensajes, temperature: 0.2, max_tokens: 4000, thinking: { type: 'disabled' } }),
-                signal: AbortSignal.timeout(30000)
+                body: JSON.stringify({ model: 'deepseek-v4-flash', messages: mensajes, temperature: 0.2, max_tokens: 16000, thinking: { type: 'disabled' } }),
+                signal: AbortSignal.timeout(60000)
             });
             const data = await res.json();
             if (data.choices?.[0]?.message?.content) return data.choices[0].message.content.trim();
@@ -77,8 +77,8 @@ async function llamarIA(mensajes, inputChars) {
         const res = await fetch('https://api.openai.com/v1/chat/completions', {
             method: 'POST',
             headers: { Authorization: `Bearer ${fallbackKey}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ model: 'gpt-4o-mini', messages: mensajes, temperature: 0.3, max_tokens: 4000 }),
-            signal: AbortSignal.timeout(35000)
+            body: JSON.stringify({ model: 'gpt-4o-mini', messages: mensajes, temperature: 0.3, max_tokens: 16000 }),
+            signal: AbortSignal.timeout(60000)
         });
         const data = await res.json();
         if (data.choices?.[0]?.message?.content) return data.choices[0].message.content.trim();

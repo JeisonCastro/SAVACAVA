@@ -6,6 +6,12 @@
   external_node_modules = ["@supabase/supabase-js"]
   included_files = ["wf-templates/**"]
 
+[functions."site-editor"]
+  timeout = 120
+
+[functions."chat"]
+  timeout = 120
+
 # ── Cron diario: ciclo de suscripciones (desactivar planes vencidos) ─────────
 [functions."verificar-suscripciones"]
   schedule = "@daily"
