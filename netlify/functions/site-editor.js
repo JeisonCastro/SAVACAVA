@@ -65,7 +65,7 @@ async function llamarIA(mensajes, inputChars) {
             const res = await fetch('https://api.deepseek.com/v1/chat/completions', {
                 method: 'POST',
                 headers: { Authorization: `Bearer ${deepseekKey}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ model: 'deepseek-v4-flash', messages: mensajes, temperature: 0.2, max_tokens: 16000, thinking: { type: 'disabled' } }),
+                body: JSON.stringify({ model: 'deepseek-v4-flash', messages: mensajes, temperature: 0.2, max_tokens: 8000, thinking: { type: 'disabled' } }),
                 signal: AbortSignal.timeout(60000)
             });
             const data = await res.json();
@@ -266,17 +266,24 @@ exports.handler = async (event) => {
                 ? `\n\nDOCUMENTACIÓN DEL PROYECTO:\n${docs.contenido}\n`
                 : '\n\nNo hay documentación disponible en /docs para este proyecto.\n';
 
-            const systemPrompt = `Eres un generador de HTML. Tu ÚNICA tarea es devolver el HTML modificado completo.
+            const systemPrompt = `Eres un editor de contenido web. Tu tarea es hacer cambios MÍNIMOS en el HTML existente.
+
+INSTRUCCIÓN: El usuario quiere hacer un cambio específico en el sitio.
 
 REGLAS:
-1. Devuelve SOLO el HTML completo modificado. Nada más.
-2. NO expliques qué cambiaste. NO uses markdown. NO uses \`\`\`html.
-3. El HTML debe ser completo (con <!DOCTYPE>, <head>, <body>, </html>).
-4. Cambia SOLO lo que el usuario pidió. NO cambies nada más.
-5. Preserva toda la estructura, clases, IDs, scripts y estilos existentes.
-6. Si el usuario pide un cambio de CSS, agrega un bloque <style> en el <head>.
+1. Devuelve ÚNICAMENTE el HTML COMPLETO modificado.
+2. Cambia SOLO lo que se pide. NO cambies nada más.
+3. NO uses markdown, NO uses explicaciones, NO uses código html.
+4. Empieza con <!DOCTYPE html> y termina con </html>.
+5. Si el cambio es muy simple (cambiar una palabra, un color, un número), usa SEARCH/REPLACE en este formato exacto:
 
-FORMATO: Tu respuesta debe ser EXCLUSIVAMENTE el código HTML. Empieza con <!DOCTYPE html> y termina con </html>.`;
+SEARCH:
+ texto exacto a buscar en el HTML
+
+REPLACE:
+ texto de reemplazo
+
+Puedes dar múltiples pares SEARCH/REPLACE. Si el cambio es complejo (agregar secciones, reorganizar), devuelve el HTML completo.`;
 
             const userPrompt = `HTML ACTUAL:\n${indexFile.content}\n\nINSTRUCCIÓN: ${instruction}\n\nDevuelve el HTML COMPLETO modificado:`;
 
@@ -293,15 +300,44 @@ FORMATO: Tu respuesta debe ser EXCLUSIVAMENTE el código HTML. Empieza con <!DOC
             // Limpiar markdown code blocks si la IA los incluye
             rawResponse = rawResponse.replace(/^```html?\s*/i, '').replace(/\s*```$/i, '').trim();
 
-            console.log('site-editor: rawResponse length=' + rawResponse.length + ' first200=' + rawResponse.substring(0, 200));
+            // Estrategia 1: SEARCH/REPLACE (rápido, para cambios simples)
+            const searchReplacePattern = /SEARCH:\s*\n([\s\S]*?)\nREPLACE:\s*\n([\s\S]*?)(?=\n\nSEARCH:|$)/gi;
+            const replacements = [];
+            let match;
+            while ((match = searchReplacePattern.exec(rawResponse)) !== null) {
+                const search = match[1].trim();
+                const replace = match[2].trim();
+                if (search && search.length >= 3) {
+                    replacements.push({ search, replace });
+                }
+            }
 
-            const { html: newHtml, css: newCss } = separarArchivos(rawResponse);
+            let newHtml;
+            let newCss = null;
 
-            console.log('site-editor: newHtml length=' + (newHtml || '').length + ' first200=' + (newHtml || '').substring(0, 200));
+            if (replacements.length > 0) {
+                // Aplicar SEARCH/REPLACE al HTML original
+                newHtml = indexFile.content;
+                let applied = 0;
+                for (const r of replacements) {
+                    if (newHtml.includes(r.search)) {
+                        newHtml = newHtml.split(r.search).join(r.replace);
+                        applied++;
+                    }
+                }
+                if (applied === 0) {
+                    return { statusCode: 422, body: JSON.stringify({ error: 'La IA devolvió SEARCH/REPLACE pero ninguno coincide con el HTML actual. Intenta con una instrucción más específica.' }) };
+                }
+            } else {
+                // Estrategia 2: HTML completo (para cambios complejos)
+                const { html, css } = separarArchivos(rawResponse);
+                newHtml = html;
+                newCss = css;
+            }
 
             // Validar HTML
             if (!validarHTML(newHtml)) {
-                console.log('site-editor: VALIDATION FAILED. newHtml first500=' + (newHtml || '').substring(0, 500));
+                console.log('site-editor: VALIDATION FAILED. newHtml length=' + (newHtml || '').length);
                 return { statusCode: 500, body: JSON.stringify({ error: 'La IA no generó un HTML válido. Intenta con una instrucción más clara.' }) };
             }
 

@@ -2027,21 +2027,27 @@ INSTRUCCIONES:
                                             ? `\n\nDOCUMENTACIÓN DEL PROYECTO:\n${docsContenido}`
                                             : '';
 
-                                        const systemPrompt = `Eres un generador de HTML. Tu ÚNICA tarea es devolver el HTML modificado completo.
+                                        const systemPrompt = `Eres un editor de contenido web. Tu tarea es hacer cambios MÍNIMOS en el HTML existente.
 
 DOCUMENTACIÓN DEL PROYECTO:
 - Nombre: ${proyecto.nombre || 'Sitio web'}
 - URL: ${proyecto.netlify_url || 'N/A'}${docsSection}
 
 REGLAS:
-1. Devuelve SOLO el HTML completo modificado. Nada más.
-2. NO expliques qué cambiaste. NO uses markdown. NO uses \`\`\`html.
-3. El HTML debe ser completo (con <!DOCTYPE>, <head>, <body>, </html>).
-4. Cambia SOLO lo que el usuario pidió. NO cambies nada más.
-5. Preserva toda la estructura, clases, IDs, scripts y estilos existentes.
-6. Si el usuario pide un cambio de CSS, agrega un bloque <style> en el <head>.
+1. Devuelve ÚNICAMENTE el HTML COMPLETO modificado.
+2. Cambia SOLO lo que se pide. NO cambies nada más.
+3. NO uses markdown, NO uses explicaciones.
+4. Empieza con <!DOCTYPE html> y termina con </html>.
+5. Para cambios simples (cambiar palabras, colores, números, URLs), usa SEARCH/REPLACE:
 
-FORMATO: El contenido de tu respuesta debe ser EXCLUSIVAMENTE el código HTML. Empieza con <!DOCTYPE html> y termina con </html>. Nada más.`;
+SEARCH:
+ texto exacto a buscar
+
+REPLACE:
+ texto de reemplazo
+
+Puedes dar múltiples pares SEARCH/REPLACE.
+Para cambios complejos (agregar secciones, reorganizar), devuelve el HTML completo.`;
 
                                         // ── 6. Llamar a la IA ──
                                         let rawResponse;
@@ -2049,7 +2055,7 @@ FORMATO: El contenido de tu respuesta debe ser EXCLUSIVAMENTE el código HTML. E
                                             // Reutilizar el mismo patrón de llamada que el chat principal
                                             const deepseekKey = process.env.DEEPSEEK_API_KEY;
                                             const fallbackKey = process.env.FALLBACK_API_KEY || process.env.OPENIA_KEY;
-                                            const userPrompt = `HTML ACTUAL:\n${indexFile.content}\n\nINSTRUCCIÓN: ${instruction}\n\nDevuelve el HTML COMPLETO modificado:`;
+                                            const userPrompt = `HTML ACTUAL:\n${indexFile.content}\n\nINSTRUCCIÓN: ${instruction}\n\nSi el cambio es simple, responde con SEARCH/REPLACE. Si es complejo, devuelve el HTML completo.`;
                                             const messages = [
                                                 { role: 'system', content: systemPrompt },
                                                 { role: 'user', content: userPrompt }
@@ -2082,37 +2088,62 @@ FORMATO: El contenido de tu respuesta debe ser EXCLUSIVAMENTE el código HTML. E
                                         if (!rawResponse) {
                                             respuestaIA = "No pude procesar la edición. El proveedor de IA no respondió. Intenta de nuevo.";
                                         } else {
-                                            // ── 7. Parsear respuesta — el modelo devuelve HTML crudo ──
-                                            let cleaned = rawResponse.replace(/^```html?\s*/i, '').replace(/\s*```$/i, '').trim();
-
-                                            // Buscar donde empieza el HTML real
-                                            const doctypeIdx = cleaned.indexOf('<!DOCTYPE');
-                                            const htmlIdx = cleaned.indexOf('<html');
-                                            const startIdx = doctypeIdx !== -1 ? doctypeIdx : (htmlIdx !== -1 ? htmlIdx : 0);
-                                            let newHtml = cleaned.substring(startIdx).trim();
-
-                                            // Quitar marcadores si los hubiera
-                                            const htmlEnd = newHtml.lastIndexOf('</html>');
-                                            if (htmlEnd !== -1) newHtml = newHtml.substring(0, htmlEnd + 7);
-
-                                            // CSS si el modelo lo incluyó
+                                            // ── 7. Parsear respuesta ──
+                                            let newHtml = null;
                                             let newCss = null;
-                                            const cssMatch = rawResponse.match(/```css\s*([\s\S]*?)```/i);
-                                            if (cssMatch) newCss = cssMatch[1].trim();
-                                            const cssMarkerMatch = rawResponse.match(/<!--CSS_START-->([\s\S]*?)<!--CSS_END-->/i);
-                                            if (cssMarkerMatch) newCss = cssMarkerMatch[1].trim();
+                                            const filesToCommit = [];
 
-                                            // Validar HTML
-                                            const lower = (newHtml || '').toLowerCase();
-                                            if (!newHtml || newHtml.length < 100 || !lower.includes('<body') || !lower.includes('</html>')) {
-                                                // Último recurso: si la respuesta es corta y parece un cambio puntual, reportar qué devolvió
-                                                console.error('site-editor: AI response invalid. First 500 chars:', rawResponse.substring(0, 500));
-                                                respuestaIA = "La IA no devolvió HTML válido. Esto puede pasar con modelos pequeños. Intenta con una instrucción más simple.";
+                                            // Estrategia 1: SEARCH/REPLACE (rápido, para cambios simples)
+                                            const searchReplacePattern = /SEARCH:\s*\n([\s\S]*?)\nREPLACE:\s*\n([\s\S]*?)(?=\n\nSEARCH:|$)/gi;
+                                            const replacements = [];
+                                            let m;
+                                            while ((m = searchReplacePattern.exec(rawResponse)) !== null) {
+                                                const search = m[1].trim();
+                                                const replace = m[2].trim();
+                                                if (search && search.length >= 3) replacements.push({ search, replace });
+                                            }
+
+                                            if (replacements.length > 0) {
+                                                // Aplicar SEARCH/REPLACE al HTML original
+                                                newHtml = indexFile.content;
+                                                let applied = 0;
+                                                for (const r of replacements) {
+                                                    if (newHtml.includes(r.search)) {
+                                                        newHtml = newHtml.split(r.search).join(r.replace);
+                                                        applied++;
+                                                    }
+                                                }
+                                                if (applied > 0) {
+                                                    filesToCommit.push({ path: 'index.html', content: newHtml, sha: indexFile.sha });
+                                                } else {
+                                                    respuestaIA = "La IA devolvió cambios pero ninguno coincide con el HTML actual. Intenta con una instrucción más específica.";
+                                                }
                                             } else {
+                                                // Estrategia 2: HTML completo
+                                                let cleaned = rawResponse.replace(/^```html?\s*/i, '').replace(/\s*```$/i, '').trim();
+                                                const doctypeIdx = cleaned.indexOf('<!DOCTYPE');
+                                                const htmlIdx = cleaned.indexOf('<html');
+                                                const startIdx = doctypeIdx !== -1 ? doctypeIdx : (htmlIdx !== -1 ? htmlIdx : 0);
+                                                let html = cleaned.substring(startIdx).trim();
+                                                const htmlEnd = html.lastIndexOf('</html>');
+                                                if (htmlEnd !== -1) html = html.substring(0, htmlEnd + 7);
+
+                                                const cssMatch = rawResponse.match(/```css\s*([\s\S]*?)```/i);
+                                                if (cssMatch) newCss = cssMatch[1].trim();
+
+                                                const lower = (html || '').toLowerCase();
+                                                if (html && html.length > 100 && lower.includes('<body') && lower.includes('</html>')) {
+                                                    filesToCommit.push({ path: 'index.html', content: html, sha: indexFile.sha });
+                                                    if (newCss && cssFile) filesToCommit.push({ path: 'styles.css', content: newCss, sha: cssFile.sha });
+                                                } else {
+                                                    respuestaIA = "La IA no devolvió HTML válido. Intenta con una instrucción más simple.";
+                                                }
+                                            }
+
+                                            if (!respuestaIA && filesToCommit.length > 0) {
                                                 // ── 8. Commit a GitHub (PUT /contents = commit en main = auto-deploy Netlify) ──
                                                 const archivos = [];
 
-                                                // PUT /contents/{path} crea commit directamente
                                                 const commitArchivo = async (path, content, sha) => {
                                                     const res = await fetch(`${ghBase}/contents/${path}`, {
                                                         method: 'PUT', headers: ghHeaders,
@@ -2125,21 +2156,17 @@ FORMATO: El contenido de tu respuesta debe ser EXCLUSIVAMENTE el código HTML. E
                                                     return res.status === 201;
                                                 };
 
-                                                // Commit index.html
-                                                const okIndex = await commitArchivo('index.html', newHtml, indexFile.sha);
-                                                if (okIndex) archivos.push('index.html');
-
-                                                // Commit styles.css si cambió
-                                                if (newCss && cssFile) {
-                                                    const okCss = await commitArchivo('styles.css', newCss, cssFile.sha);
-                                                    if (okCss) archivos.push('styles.css');
+                                                for (const file of filesToCommit) {
+                                                    const ok = await commitArchivo(file.path, file.content, file.sha);
+                                                    if (ok) archivos.push(file.path);
                                                 }
 
                                                 if (!archivos.length) {
                                                     respuestaIA = "No pude guardar los cambios en GitHub. Verifica los permisos del repositorio.";
                                                 } else {
                                                     // ── 9. Deduct tokens ──
-                                                    const tokensUsed = Math.ceil((instruction.length + newHtml.length + (newCss ? newCss.length : 0)) / 4) + 10;
+                                                    const totalContent = filesToCommit.reduce((acc, f) => acc + f.content.length, 0);
+                                                    const tokensUsed = Math.ceil((instruction.length + totalContent) / 4) + 10;
                                                     const tokensRestantes = Math.max(0, tokens - tokensUsed);
 
                                                     await supabase.from('perfiles').update({ token_balance: tokensRestantes }).eq('id', user.id);
