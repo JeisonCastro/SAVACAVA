@@ -150,36 +150,25 @@ function validarHTML(html) {
 }
 
 function separarArchivos(raw) {
-    // Try explicit markers first
-    const htmlMatch = raw.match(/<!--HTML_START-->([\s\S]*?)<!--HTML_END-->/i);
-    const cssMatch = raw.match(/<!--CSS_START-->([\s\S]*?)<!--CSS_END-->/i);
-
-    if (htmlMatch) {
-        return {
-            html: htmlMatch[1].trim(),
-            css: cssMatch ? cssMatch[1].trim() : null
-        };
-    }
-
-    // Fallback: strip markdown code blocks
+    // Strip markdown code fences
     let cleaned = raw.replace(/^```html?\s*/i, '').replace(/\s*```$/i, '').trim();
 
-    // If the response has a natural language preamble before the HTML, try to find where HTML starts
-    const htmlStart = cleaned.indexOf('<!DOCTYPE') !== -1 ? cleaned.indexOf('<!DOCTYPE') :
-                      cleaned.indexOf('<html') !== -1 ? cleaned.indexOf('<html') : 0;
+    // Find where real HTML starts
+    const doctypeIdx = cleaned.indexOf('<!DOCTYPE');
+    const htmlIdx = cleaned.indexOf('<html');
+    const startIdx = doctypeIdx !== -1 ? doctypeIdx : (htmlIdx !== -1 ? htmlIdx : 0);
+    let html = cleaned.substring(startIdx).trim();
 
-    // Check if there's a CSS block separated by a code fence or marker
-    const cssCodeBlock = cleaned.match(/```css\s*([\s\S]*?)```/i);
-    let css = cssCodeBlock ? cssCodeBlock[1].trim() : null;
+    // Truncate at last </html>
+    const htmlEnd = html.lastIndexOf('</html>');
+    if (htmlEnd !== -1) html = html.substring(0, htmlEnd + 7);
 
-    // Also check for <!--CSS_START--> even without <!--HTML_START-->
-    const cssMarker = cleaned.match(/<!--CSS_START-->([\s\S]*?)<!--CSS_END-->/i);
-    if (cssMarker) css = cssMarker[1].trim();
+    // CSS if present
+    let css = null;
+    const cssBlock = raw.match(/```css\s*([\s\S]*?)```/i);
+    if (cssBlock) css = cssBlock[1].trim();
 
-    return {
-        html: cleaned.substring(htmlStart).replace(/<!--CSS_START-->[\s\S]*?<!--CSS_END-->/i, '').trim(),
-        css
-    };
+    return { html, css };
 }
 
 // ── Handler ──
@@ -277,40 +266,19 @@ exports.handler = async (event) => {
                 ? `\n\nDOCUMENTACIÓN DEL PROYECTO:\n${docs.contenido}\n`
                 : '\n\nNo hay documentación disponible en /docs para este proyecto.\n';
 
-            const systemPrompt = `Eres un editor de contenido web especializado en el sitio del cliente.
+            const systemPrompt = `Eres un generador de HTML. Tu ÚNICA tarea es devolver el HTML modificado completo.
 
-IDENTIDAD DEL PROYECTO:
-- Nombre: ${proyecto.nombre || 'Sitio web'}
-- Slug: ${proyecto.slug || 'sitio'}
-- URL: ${proyecto.netlify_url || 'N/A'}
-${docsSection}
-REGLAS PRINCIPALES (en orden de prioridad):
-1. CAMBIOS MÍNIMOS: Modifica ÚNICAMENTE lo necesario para cumplir la instrucción exacta del usuario. NO cambies layout, estructura, CSS no relacionado, JS, ni funcionalidades que no estén directamente implicadas en el cambio.
-2. PRESERVAR IDENTIDAD: Respeta colores, tipografía, branding, estilo y tono existente definidos en la documentación del proyecto.
-3. NO INVENTAR CONTENIDO: Si la instrucción pide información que no existe en /docs ni en el código actual (ej: "agrega información de servicios"), solicita al usuario que proporcione esa información.
-4. MANTENER INTACTO: No elimines formularios, WhatsApp, navegación, menús, footer, integraciones, PWA, responsive, dark mode, analytics, ni ninguna funcionalidad existente.
-5. RESPETAR ESTRUCTURA: No reorganices secciones, no muevas componentes, no cambies el orden del contenido a menos que se pida explícitamente.
-6. CLARIDAD: Si la instrucción es ambigua y un cambio radical podría romper el sitio, responde explicando qué podrías hacer y pide confirmación.
+REGLAS:
+1. Devuelve SOLO el HTML completo modificado. Nada más.
+2. NO expliques qué cambiaste. NO uses markdown. NO uses \`\`\`html.
+3. El HTML debe ser completo (con <!DOCTYPE>, <head>, <body>, </html>).
+4. Cambia SOLO lo que el usuario pidió. NO cambies nada más.
+5. Preserva toda la estructura, clases, IDs, scripts y estilos existentes.
+6. Si el usuario pide un cambio de CSS, agrega un bloque <style> en el <head>.
 
-ARCHIVOS DEL PROYECTO:
-- index.html (contenido principal)
-- styles.css (estilos)
-Si el cambio es solo de contenido (textos, imágenes, colores inline, enlaces), modifica solo index.html.
-Si el cambio requiere modificar estilos CSS (colores de fondo, tamaños, espaciado, etc.), indica el cambio en CSS también.
+FORMATO: Tu respuesta debe ser EXCLUSIVAMENTE el código HTML. Empieza con <!DOCTYPE html> y termina con </html>.`;
 
-FORMATO DE RESPUESTA:
-Primero escribe una línea breve explicando qué vas a cambiar.
-Luego el HTML modificado entre las marcas:
-<!--HTML_START-->
-html modificado completo
-<!--HTML_END-->
-Si necesitas cambiar CSS, inclúyelo también:
-<!--CSS_START-->
-css modificado completo
-<!--CSS_END-->
-Responde SOLO con eso. Sin explicaciones adicionales. Sin markdown.`;
-
-            const userPrompt = `INSTRUCCIÓN DEL USUARIO:\n${instruction}\n\nHTML ACTUAL:\n${indexFile.content}` + (cssFile ? `\n\nCSS ACTUAL:\n${cssFile.content}` : '');
+            const userPrompt = `HTML ACTUAL:\n${indexFile.content}\n\nINSTRUCCIÓN: ${instruction}\n\nDevuelve el HTML COMPLETO modificado:`;
 
             let rawResponse;
             try {

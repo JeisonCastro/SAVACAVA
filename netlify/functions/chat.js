@@ -2027,36 +2027,21 @@ INSTRUCCIONES:
                                             ? `\n\nDOCUMENTACIÓN DEL PROYECTO:\n${docsContenido}`
                                             : '';
 
-                                        const systemPrompt = `Eres un editor de contenido web especializado en el sitio del cliente.
+                                        const systemPrompt = `Eres un generador de HTML. Tu ÚNICA tarea es devolver el HTML modificado completo.
 
-IDENTIDAD DEL PROYECTO:
+DOCUMENTACIÓN DEL PROYECTO:
 - Nombre: ${proyecto.nombre || 'Sitio web'}
-- Slug: ${proyecto.slug || 'sitio'}
 - URL: ${proyecto.netlify_url || 'N/A'}${docsSection}
 
-REGLAS PRINCIPALES (en orden de prioridad):
-1. CAMBIOS MÍNIMOS: Modifica ÚNICAMENTE lo necesario para cumplir la instrucción exacta del usuario. NO cambies layout, estructura, CSS no relacionado, JS, ni funcionalidades que no estén directamente implicadas.
-2. PRESERVAR IDENTIDAD: Respeta colores, tipografía, branding, estilo y tono existente.
-3. NO INVENTAR CONTENIDO: Si la instrucción pide información que no existe en /docs ni en el código, solicita al usuario que la proporcione.
-4. MANTENER INTACTO: No elimines formularios, WhatsApp, navegación, menús, footer, integraciones, PWA, responsive, dark mode, analytics ni ninguna funcionalidad existente.
-5. RESPETAR ESTRUCTURA: No reorganices secciones ni muevas componentes a menos que se pida explícitamente.
-6. CLARIDAD: Si la instrucción es ambigua y un cambio radical podría romper el sitio, responde con una explicación y pide confirmación.
+REGLAS:
+1. Devuelve SOLO el HTML completo modificado. Nada más.
+2. NO expliques qué cambiaste. NO uses markdown. NO uses \`\`\`html.
+3. El HTML debe ser completo (con <!DOCTYPE>, <head>, <body>, </html>).
+4. Cambia SOLO lo que el usuario pidió. NO cambies nada más.
+5. Preserva toda la estructura, clases, IDs, scripts y estilos existentes.
+6. Si el usuario pide un cambio de CSS, agrega un bloque <style> en el <head>.
 
-ARCHIVOS: index.html (contenido principal), styles.css (estilos, si existe).
-Si el cambio es solo de contenido: solo index.html.
-Si el cambio requiere CSS (colores, tamaños, espaciado): incluye CSS también.
-
-FORMATO DE RESPUESTA:
-Primero una línea breve explicando qué cambias.
-Luego el HTML modificado entre marcadores:
-<!--HTML_START-->
-html completo modificado
-<!--HTML_END-->
-Si necesitas cambiar CSS, inclúyelo:
-<!--CSS_START-->
-css completo modificado
-<!--CSS_END-->
-Sin explicaciones adicionales. Sin markdown.`;
+FORMATO: El contenido de tu respuesta debe ser EXCLUSIVAMENTE el código HTML. Empieza con <!DOCTYPE html> y termina con </html>. Nada más.`;
 
                                         // ── 6. Llamar a la IA ──
                                         let rawResponse;
@@ -2064,7 +2049,7 @@ Sin explicaciones adicionales. Sin markdown.`;
                                             // Reutilizar el mismo patrón de llamada que el chat principal
                                             const deepseekKey = process.env.DEEPSEEK_API_KEY;
                                             const fallbackKey = process.env.FALLBACK_API_KEY || process.env.OPENIA_KEY;
-                                            const userPrompt = `INSTRUCCIÓN DEL USUARIO:\n${instruction}\n\nHTML ACTUAL:\n${indexFile.content}` + (cssFile ? `\n\nCSS ACTUAL:\n${cssFile.content}` : '');
+                                            const userPrompt = `HTML ACTUAL:\n${indexFile.content}\n\nINSTRUCCIÓN: ${instruction}\n\nDevuelve el HTML COMPLETO modificado:`;
                                             const messages = [
                                                 { role: 'system', content: systemPrompt },
                                                 { role: 'user', content: userPrompt }
@@ -2097,28 +2082,32 @@ Sin explicaciones adicionales. Sin markdown.`;
                                         if (!rawResponse) {
                                             respuestaIA = "No pude procesar la edición. El proveedor de IA no respondió. Intenta de nuevo.";
                                         } else {
-                                            // ── 7. Parsear respuesta ──
-                                            rawResponse = rawResponse.replace(/^```html?\s*/i, '').replace(/\s*```$/i, '').trim();
-                                            const htmlMatch = rawResponse.match(/<!--HTML_START-->([\s\S]*?)<!--HTML_END-->/i);
-                                            const cssMatch = rawResponse.match(/<!--CSS_START-->([\s\S]*?)<!--CSS_END-->/i);
+                                            // ── 7. Parsear respuesta — el modelo devuelve HTML crudo ──
+                                            let cleaned = rawResponse.replace(/^```html?\s*/i, '').replace(/\s*```$/i, '').trim();
 
-                                            let newHtml = htmlMatch ? htmlMatch[1].trim() : null;
-                                            let newCss = cssMatch ? cssMatch[1].trim() : null;
+                                            // Buscar donde empieza el HTML real
+                                            const doctypeIdx = cleaned.indexOf('<!DOCTYPE');
+                                            const htmlIdx = cleaned.indexOf('<html');
+                                            const startIdx = doctypeIdx !== -1 ? doctypeIdx : (htmlIdx !== -1 ? htmlIdx : 0);
+                                            let newHtml = cleaned.substring(startIdx).trim();
 
-                                            // Fallback: si no hay marcadores, buscar <!DOCTYPE o <html
-                                            if (!newHtml) {
-                                                const cleaned = rawResponse.replace(/^```html?\s*/i, '').replace(/\s*```$/i, '').trim();
-                                                const htmlStart = cleaned.indexOf('<!DOCTYPE') !== -1 ? cleaned.indexOf('<!DOCTYPE') :
-                                                                  cleaned.indexOf('<html') !== -1 ? cleaned.indexOf('<html') : 0;
-                                                newHtml = cleaned.substring(htmlStart).replace(/<!--CSS_START-->[\s\S]*?<!--CSS_END-->/i, '').trim();
-                                                const cssBlock = cleaned.match(/```css\s*([\s\S]*?)```/i);
-                                                if (cssBlock) newCss = cssBlock[1].trim();
-                                            }
+                                            // Quitar marcadores si los hubiera
+                                            const htmlEnd = newHtml.lastIndexOf('</html>');
+                                            if (htmlEnd !== -1) newHtml = newHtml.substring(0, htmlEnd + 7);
+
+                                            // CSS si el modelo lo incluyó
+                                            let newCss = null;
+                                            const cssMatch = rawResponse.match(/```css\s*([\s\S]*?)```/i);
+                                            if (cssMatch) newCss = cssMatch[1].trim();
+                                            const cssMarkerMatch = rawResponse.match(/<!--CSS_START-->([\s\S]*?)<!--CSS_END-->/i);
+                                            if (cssMarkerMatch) newCss = cssMarkerMatch[1].trim();
 
                                             // Validar HTML
                                             const lower = (newHtml || '').toLowerCase();
-                                            if (!newHtml || newHtml.length < 100 || !lower.includes('<head') || !lower.includes('<body') || !lower.includes('</html>')) {
-                                                respuestaIA = "La IA no generó un HTML válido. Intenta con una instrucción más clara o específica.";
+                                            if (!newHtml || newHtml.length < 100 || !lower.includes('<body') || !lower.includes('</html>')) {
+                                                // Último recurso: si la respuesta es corta y parece un cambio puntual, reportar qué devolvió
+                                                console.error('site-editor: AI response invalid. First 500 chars:', rawResponse.substring(0, 500));
+                                                respuestaIA = "La IA no devolvió HTML válido. Esto puede pasar con modelos pequeños. Intenta con una instrucción más simple.";
                                             } else {
                                                 // ── 8. Commit a GitHub (PUT /contents = commit en main = auto-deploy Netlify) ──
                                                 const archivos = [];
