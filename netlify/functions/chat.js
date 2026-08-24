@@ -23,7 +23,7 @@ const {
     crearPaymentLinkVenta,
     extraerDatosLead
 } = require('./crm-helper');
-const { pipelineCrear, validarSlug } = require('./web-factory.js').helpers;
+const { pipelineCrear, validarSlug, dispararBuild } = require('./web-factory.js').helpers;
 
 // Toolkits nativos (no requieren conexión Composio): la disponibilidad depende
 // solo de que la herramienta esté habilitada en agente_tools.
@@ -1943,7 +1943,9 @@ INSTRUCCIONES:
             }
         }
 
-        // ── SITE EDIT: Editar contenido de sitio web con IA ──
+        // ── SITE EDIT: Editar contenido de sitio web con IA (nativo, inline) ──
+        // Misma arquitectura que WEBFACTORY_CREAR_DEMO: todo en el mismo proceso.
+        // Lee archivos del repositorio GitHub, llama IA, commitea y despliega a Netlify.
         if (actionPayload?.action === 'SITE_EDIT_CONTENT') {
             try {
                 if (!toolDisponible(toolsDisponibles, 'SITE_EDIT_CONTENT')) {
@@ -1954,35 +1956,243 @@ INSTRUCCIONES:
                     const proyectoId = accData.proyecto_id || null;
 
                     if (!instruction) {
-                        respuestaIA = "¿Qué quieres cambiar en tu sitio web? Describe el cambio específico que necesitas (ej: cambiar el teléfono, actualizar la dirección, modificar un color).";
+                        respuestaIA = "¿Qué quieres cambiar en tu sitio web? Describe el cambio específico (ej: cambiar el teléfono, actualizar la dirección, modificar un color).";
                     } else {
-                        // Buscar el proyecto: usar el proporcionado o el primero del usuario
+                        // ── 1. Buscar el proyecto ──
                         let pid = proyectoId;
                         if (!pid) {
                             const { data: proyectos } = await supabase
-                                .from('web_projects')
-                                .select('id, nombre')
-                                .eq('created_by', user.id)
-                                .limit(1);
+                                .from('web_projects').select('id')
+                                .eq('created_by', user.id).limit(1);
                             pid = proyectos?.[0]?.id;
                         }
-
                         if (!pid) {
                             respuestaIA = "No encontré un sitio web asociado a tu cuenta. Primero crea uno con Web Factory.";
                         } else {
-                            // Llamar a site-editor
-                            const siteRes = await fetch(`${process.env.URL || 'https://savacava.com'}/.netlify/functions/site-editor`, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${event.headers.authorization?.replace('Bearer ', '') || ''}` },
-                                body: JSON.stringify({ action: 'edit_content', proyecto_id: pid, instruction: instruction })
-                            });
-                            const siteData = await siteRes.json();
-
-                            if (siteData.ok) {
-                                const archivos = Array.isArray(siteData.commits) ? siteData.commits.join(' y ') : 'index.html';
-                                respuestaIA = `Edición aplicada en ${archivos}. ${siteData.tokens_used} tokens consumidos. ${siteData.tokens_remaining} restantes. Tu sitio se está actualizando.`;
+                            const { data: proyecto } = await supabase
+                                .from('web_projects').select('*').eq('id', pid).maybeSingle();
+                            if (!proyecto) {
+                                respuestaIA = "No encontré el proyecto solicitado.";
                             } else {
-                                respuestaIA = `No pude aplicar la edición: ${siteData.error || 'Error desconocido'}. Verifica la instrucción e intenta de nuevo.`;
+                                const owner = proyecto.github_owner || 'JeisonCastro';
+                                const repo = proyecto.github_repo || proyecto.slug;
+                                const branch = proyecto.default_branch || 'main';
+                                const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
+                                const ghBase = `https://api.github.com/repos/${owner}/${repo}`;
+                                const ghHeaders = { Authorization: `Bearer ${GITHUB_TOKEN}`, Accept: 'application/vnd.github+json', 'Content-Type': 'application/json' };
+
+                                // ── 2. Leer tokens del usuario ──
+                                const { data: perfil } = await supabase.from('perfiles').select('token_balance').eq('id', user.id).maybeSingle();
+                                const tokens = perfil?.token_balance || 0;
+                                if (tokens <= 0) {
+                                    respuestaIA = "No tienes tokens suficientes. Recarga tokens para poder editar tu sitio.";
+                                } else {
+
+                                    // ── 3. Leer archivos del repositorio ──
+                                    const ghRead = async (path) => {
+                                        const r = await fetch(`${ghBase}/contents/${path}?ref=${branch}`, { headers: ghHeaders });
+                                        if (!r.ok) return null;
+                                        const d = await r.json();
+                                        return { content: Buffer.from(d.content, 'base64').toString('utf-8'), sha: d.sha };
+                                    };
+
+                                    const indexFile = await ghRead('index.html');
+                                    if (!indexFile) {
+                                        respuestaIA = "No pude leer index.html del repositorio. Verifica que el proyecto tenga archivos.";
+                                    } else {
+                                        const cssFile = await ghRead('styles.css');
+
+                                        // ── 4. Leer docs/ para contexto ──
+                                        let docsContenido = '';
+                                        let docsArchivos = [];
+                                        try {
+                                            const docsRes = await fetch(`${ghBase}/contents/docs?ref=${branch}`, { headers: ghHeaders });
+                                            if (docsRes.ok) {
+                                                const docsList = await docsRes.json();
+                                                if (Array.isArray(docsList)) {
+                                                    const mdFiles = docsList.filter(f => f.type === 'file' && f.name.endsWith('.md'));
+                                                    for (const f of mdFiles) {
+                                                        const fData = await ghRead(`docs/${f.name}`);
+                                                        if (fData) {
+                                                            docsArchivos.push(f.name);
+                                                            docsContenido += `--- ${f.name} ---\n${fData.content}\n\n`;
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        } catch (_) {}
+
+                                        // ── 5. Construir system prompt con contexto del proyecto ──
+                                        const docsSection = docsContenido
+                                            ? `\n\nDOCUMENTACIÓN DEL PROYECTO:\n${docsContenido}`
+                                            : '';
+
+                                        const systemPrompt = `Eres un editor de contenido web especializado en el sitio del cliente.
+
+IDENTIDAD DEL PROYECTO:
+- Nombre: ${proyecto.nombre || 'Sitio web'}
+- Slug: ${proyecto.slug || 'sitio'}
+- URL: ${proyecto.netlify_url || 'N/A'}${docsSection}
+
+REGLAS PRINCIPALES (en orden de prioridad):
+1. CAMBIOS MÍNIMOS: Modifica ÚNICAMENTE lo necesario para cumplir la instrucción exacta del usuario. NO cambies layout, estructura, CSS no relacionado, JS, ni funcionalidades que no estén directamente implicadas.
+2. PRESERVAR IDENTIDAD: Respeta colores, tipografía, branding, estilo y tono existente.
+3. NO INVENTAR CONTENIDO: Si la instrucción pide información que no existe en /docs ni en el código, solicita al usuario que la proporcione.
+4. MANTENER INTACTO: No elimines formularios, WhatsApp, navegación, menús, footer, integraciones, PWA, responsive, dark mode, analytics ni ninguna funcionalidad existente.
+5. RESPETAR ESTRUCTURA: No reorganices secciones ni muevas componentes a menos que se pida explícitamente.
+6. CLARIDAD: Si la instrucción es ambigua y un cambio radical podría romper el sitio, responde con una explicación y pide confirmación.
+
+ARCHIVOS: index.html (contenido principal), styles.css (estilos, si existe).
+Si el cambio es solo de contenido: solo index.html.
+Si el cambio requiere CSS (colores, tamaños, espaciado): incluye CSS también.
+
+FORMATO DE RESPUESTA:
+Primero una línea breve explicando qué cambias.
+Luego el HTML modificado entre marcadores:
+<!--HTML_START-->
+html completo modificado
+<!--HTML_END-->
+Si necesitas cambiar CSS, inclúyelo:
+<!--CSS_START-->
+css completo modificado
+<!--CSS_END-->
+Sin explicaciones adicionales. Sin markdown.`;
+
+                                        // ── 6. Llamar a la IA ──
+                                        let rawResponse;
+                                        try {
+                                            // Reutilizar el mismo patrón de llamada que el chat principal
+                                            const deepseekKey = process.env.DEEPSEEK_API_KEY;
+                                            const fallbackKey = process.env.FALLBACK_API_KEY || process.env.OPENIA_KEY;
+                                            const userPrompt = `INSTRUCCIÓN DEL USUARIO:\n${instruction}\n\nHTML ACTUAL:\n${indexFile.content}` + (cssFile ? `\n\nCSS ACTUAL:\n${cssFile.content}` : '');
+                                            const messages = [
+                                                { role: 'system', content: systemPrompt },
+                                                { role: 'user', content: userPrompt }
+                                            ];
+
+                                            if (deepseekKey) {
+                                                try {
+                                                    const aiRes = await fetch('https://api.deepseek.com/v1/chat/completions', {
+                                                        method: 'POST',
+                                                        headers: { Authorization: `Bearer ${deepseekKey}`, 'Content-Type': 'application/json' },
+                                                        body: JSON.stringify({ model: 'deepseek-v4-flash', messages, temperature: 0.2, max_tokens: 4000, thinking: { type: 'disabled' } }),
+                                                        signal: AbortSignal.timeout(30000)
+                                                    });
+                                                    const aiData = await aiRes.json();
+                                                    if (aiData.choices?.[0]?.message?.content) rawResponse = aiData.choices[0].message.content.trim();
+                                                } catch (_) {}
+                                            }
+                                            if (!rawResponse && fallbackKey) {
+                                                const aiRes = await fetch('https://api.openai.com/v1/chat/completions', {
+                                                    method: 'POST',
+                                                    headers: { Authorization: `Bearer ${fallbackKey}`, 'Content-Type': 'application/json' },
+                                                    body: JSON.stringify({ model: 'gpt-4o-mini', messages, temperature: 0.3, max_tokens: 4000 }),
+                                                    signal: AbortSignal.timeout(35000)
+                                                });
+                                                const aiData = await aiRes.json();
+                                                if (aiData.choices?.[0]?.message?.content) rawResponse = aiData.choices[0].message.content.trim();
+                                            }
+                                        } catch (_) {}
+
+                                        if (!rawResponse) {
+                                            respuestaIA = "No pude procesar la edición. El proveedor de IA no respondió. Intenta de nuevo.";
+                                        } else {
+                                            // ── 7. Parsear respuesta ──
+                                            rawResponse = rawResponse.replace(/^```html?\s*/i, '').replace(/\s*```$/i, '').trim();
+                                            const htmlMatch = rawResponse.match(/<!--HTML_START-->([\s\S]*?)<!--HTML_END-->/i);
+                                            const cssMatch = rawResponse.match(/<!--CSS_START-->([\s\S]*?)<!--CSS_END-->/i);
+
+                                            let newHtml = htmlMatch ? htmlMatch[1].trim() : null;
+                                            let newCss = cssMatch ? cssMatch[1].trim() : null;
+
+                                            // Fallback: si no hay marcadores, buscar <!DOCTYPE o <html
+                                            if (!newHtml) {
+                                                const cleaned = rawResponse.replace(/^```html?\s*/i, '').replace(/\s*```$/i, '').trim();
+                                                const htmlStart = cleaned.indexOf('<!DOCTYPE') !== -1 ? cleaned.indexOf('<!DOCTYPE') :
+                                                                  cleaned.indexOf('<html') !== -1 ? cleaned.indexOf('<html') : 0;
+                                                newHtml = cleaned.substring(htmlStart).replace(/<!--CSS_START-->[\s\S]*?<!--CSS_END-->/i, '').trim();
+                                                const cssBlock = cleaned.match(/```css\s*([\s\S]*?)```/i);
+                                                if (cssBlock) newCss = cssBlock[1].trim();
+                                            }
+
+                                            // Validar HTML
+                                            const lower = (newHtml || '').toLowerCase();
+                                            if (!newHtml || newHtml.length < 100 || !lower.includes('<head') || !lower.includes('<body') || !lower.includes('</html>')) {
+                                                respuestaIA = "La IA no generó un HTML válido. Intenta con una instrucción más clara o específica.";
+                                            } else {
+                                                // ── 8. Commit a GitHub (patrón de inyectarWidgetEnRepo) ──
+                                                const archivos = [];
+
+                                                // Función para commit de un archivo
+                                                const commitArchivo = async (path, content, sha) => {
+                                                    const blobRes = await fetch(`${ghBase}/git/blobs`, {
+                                                        method: 'POST', headers: ghHeaders,
+                                                        body: JSON.stringify({ content: Buffer.from(content, 'utf-8').toString('base64'), encoding: 'base64' })
+                                                    });
+                                                    if (!blobRes.ok) return false;
+                                                    const blob = await blobRes.json();
+
+                                                    const refRes = await fetch(`${ghBase}/git/ref/heads/${branch}`, { headers: ghHeaders });
+                                                    if (!refRes.ok) return false;
+                                                    const refData = await refRes.json();
+
+                                                    const treeRes = await fetch(`${ghBase}/git/trees`, {
+                                                        method: 'POST', headers: ghHeaders,
+                                                        body: JSON.stringify({ tree: [{ path, mode: '100644', type: 'blob', sha: blob.sha }], base_tree: refData.object.sha })
+                                                    });
+                                                    if (!treeRes.ok) return false;
+                                                    const treeData = await treeRes.json();
+
+                                                    const commitRes = await fetch(`${ghBase}/git/commits`, {
+                                                        method: 'POST', headers: ghHeaders,
+                                                        body: JSON.stringify({ message: `edit: ${instruction.substring(0, 80)}`, tree: treeData.sha, parents: [refData.object.sha] })
+                                                    });
+                                                    if (!commitRes.ok) return false;
+                                                    const commitData = await commitRes.json();
+
+                                                    const updateRef = await fetch(`${ghBase}/git/refs/heads/${branch}`, {
+                                                        method: 'PATCH', headers: ghHeaders,
+                                                        body: JSON.stringify({ sha: commitData.sha, force: true })
+                                                    });
+                                                    return updateRef.ok;
+                                                };
+
+                                                // Commit index.html
+                                                const okIndex = await commitArchivo('index.html', newHtml);
+                                                if (okIndex) archivos.push('index.html');
+
+                                                // Commit styles.css si cambió
+                                                if (newCss && cssFile) {
+                                                    const okCss = await commitArchivo('styles.css', newCss);
+                                                    if (okCss) archivos.push('styles.css');
+                                                }
+
+                                                if (!archivos.length) {
+                                                    respuestaIA = "No pude guardar los cambios en GitHub. Verifica los permisos del repositorio.";
+                                                } else {
+                                                    // ── 9. Deduct tokens ──
+                                                    const tokensUsed = Math.ceil((instruction.length + newHtml.length + (newCss ? newCss.length : 0)) / 4) + 10;
+                                                    const tokensRestantes = Math.max(0, tokens - tokensUsed);
+
+                                                    await supabase.from('perfiles').update({ token_balance: tokensRestantes }).eq('id', user.id);
+                                                    await supabase.from('logs_consumo').insert({
+                                                        user_id: user.id, agente_id: targetID,
+                                                        nombre_agente: 'Editor IA Web',
+                                                        tokens_usados: tokensUsed,
+                                                        tipo: 'edicion_web'
+                                                    });
+
+                                                    // ── 10. Deploy Netlify ──
+                                                    if (proyecto.netlify_site_id) {
+                                                        try { await dispararBuild(proyecto.netlify_site_id); } catch (_) {}
+                                                    }
+
+                                                    respuestaIA = `Edición aplicada en ${archivos.join(' y ')}. ${tokensUsed} tokens consumidos. ${tokensRestantes} restantes. Tu sitio se está actualizando en Netlify.`;
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
