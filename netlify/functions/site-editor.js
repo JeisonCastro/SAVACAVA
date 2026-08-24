@@ -337,7 +337,6 @@ Puedes dar múltiples pares SEARCH/REPLACE. Si el cambio es complejo (agregar se
 
             // Validar HTML
             if (!validarHTML(newHtml)) {
-                console.log('site-editor: VALIDATION FAILED. newHtml length=' + (newHtml || '').length);
                 return { statusCode: 500, body: JSON.stringify({ error: 'La IA no generó un HTML válido. Intenta con una instrucción más clara.' }) };
             }
 
