@@ -23,7 +23,7 @@ const {
     crearPaymentLinkVenta,
     extraerDatosLead
 } = require('./crm-helper');
-const { pipelineCrear, validarSlug, dispararBuild } = require('./web-factory.js').helpers;
+const { pipelineCrear, validarSlug } = require('./web-factory.js').helpers;
 
 // Toolkits nativos (no requieren conexión Composio): la disponibilidad depende
 // solo de que la herramienta esté habilitada en agente_tools.
@@ -2120,50 +2120,29 @@ Sin explicaciones adicionales. Sin markdown.`;
                                             if (!newHtml || newHtml.length < 100 || !lower.includes('<head') || !lower.includes('<body') || !lower.includes('</html>')) {
                                                 respuestaIA = "La IA no generó un HTML válido. Intenta con una instrucción más clara o específica.";
                                             } else {
-                                                // ── 8. Commit a GitHub (patrón de inyectarWidgetEnRepo) ──
+                                                // ── 8. Commit a GitHub (PUT /contents = commit en main = auto-deploy Netlify) ──
                                                 const archivos = [];
 
-                                                // Función para commit de un archivo
+                                                // PUT /contents/{path} crea commit directamente
                                                 const commitArchivo = async (path, content, sha) => {
-                                                    const blobRes = await fetch(`${ghBase}/git/blobs`, {
-                                                        method: 'POST', headers: ghHeaders,
-                                                        body: JSON.stringify({ content: Buffer.from(content, 'utf-8').toString('base64'), encoding: 'base64' })
+                                                    const res = await fetch(`${ghBase}/contents/${path}`, {
+                                                        method: 'PUT', headers: ghHeaders,
+                                                        body: JSON.stringify({
+                                                            message: `edit: ${instruction.substring(0, 80)}`,
+                                                            content: Buffer.from(content, 'utf-8').toString('base64'),
+                                                            sha, branch
+                                                        })
                                                     });
-                                                    if (!blobRes.ok) return false;
-                                                    const blob = await blobRes.json();
-
-                                                    const refRes = await fetch(`${ghBase}/git/ref/heads/${branch}`, { headers: ghHeaders });
-                                                    if (!refRes.ok) return false;
-                                                    const refData = await refRes.json();
-
-                                                    const treeRes = await fetch(`${ghBase}/git/trees`, {
-                                                        method: 'POST', headers: ghHeaders,
-                                                        body: JSON.stringify({ tree: [{ path, mode: '100644', type: 'blob', sha: blob.sha }], base_tree: refData.object.sha })
-                                                    });
-                                                    if (!treeRes.ok) return false;
-                                                    const treeData = await treeRes.json();
-
-                                                    const commitRes = await fetch(`${ghBase}/git/commits`, {
-                                                        method: 'POST', headers: ghHeaders,
-                                                        body: JSON.stringify({ message: `edit: ${instruction.substring(0, 80)}`, tree: treeData.sha, parents: [refData.object.sha] })
-                                                    });
-                                                    if (!commitRes.ok) return false;
-                                                    const commitData = await commitRes.json();
-
-                                                    const updateRef = await fetch(`${ghBase}/git/refs/heads/${branch}`, {
-                                                        method: 'PATCH', headers: ghHeaders,
-                                                        body: JSON.stringify({ sha: commitData.sha, force: true })
-                                                    });
-                                                    return updateRef.ok;
+                                                    return res.status === 201;
                                                 };
 
                                                 // Commit index.html
-                                                const okIndex = await commitArchivo('index.html', newHtml);
+                                                const okIndex = await commitArchivo('index.html', newHtml, indexFile.sha);
                                                 if (okIndex) archivos.push('index.html');
 
                                                 // Commit styles.css si cambió
                                                 if (newCss && cssFile) {
-                                                    const okCss = await commitArchivo('styles.css', newCss);
+                                                    const okCss = await commitArchivo('styles.css', newCss, cssFile.sha);
                                                     if (okCss) archivos.push('styles.css');
                                                 }
 
@@ -2182,12 +2161,7 @@ Sin explicaciones adicionales. Sin markdown.`;
                                                         tipo: 'edicion_web'
                                                     });
 
-                                                    // ── 10. Deploy Netlify ──
-                                                    if (proyecto.netlify_site_id) {
-                                                        try { await dispararBuild(proyecto.netlify_site_id); } catch (_) {}
-                                                    }
-
-                                                    respuestaIA = `Edición aplicada en ${archivos.join(' y ')}. ${tokensUsed} tokens consumidos. ${tokensRestantes} restantes. Tu sitio se está actualizando en Netlify.`;
+                                                    respuestaIA = `Edición aplicada en ${archivos.join(' y ')}. ${tokensUsed} tokens consumidos. ${tokensRestantes} restantes. Tu sitio se actualizará en ~60 segundos.`;
                                                 }
                                             }
                                         }
