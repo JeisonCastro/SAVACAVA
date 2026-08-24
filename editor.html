@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Editor de Sitio | AUVRO</title>
+<meta name="color-scheme" content="dark light">
+<meta name="theme-color" content="#0f1115" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f8fafc" media="(prefers-color-scheme: light)">
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link rel="stylesheet" href="auvro-design.css">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{height:100%}
+body{
+  font-family:'Inter',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);
+  height:100%;height:100dvh;display:flex;flex-direction:column;overflow:hidden;
+  -webkit-tap-highlight-color:transparent;
+}
+
+/* ── HEADER ─────────────────────────────────────────────────────────────── */
+header{
+  display:flex;align-items:center;gap:12px;
+  padding:10px 16px;padding-top:calc(env(safe-area-inset-top, 0px) + 10px);
+  background:var(--surface);border-bottom:1px solid var(--border);flex:0 0 auto;z-index:10;
+}
+.back-btn{
+  width:36px;height:36px;border-radius:10px;border:1px solid var(--border2);background:var(--bg);
+  color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center;
+  flex:0 0 auto;text-decoration:none;transition:all .2s;
+}
+.back-btn:hover{color:var(--accent);border-color:var(--accent)}
+.site-avatar{
+  width:40px;height:40px;border-radius:50%;flex:0 0 auto;
+  background:rgba(14,165,233,.12);border:1px solid rgba(14,165,233,.24);color:var(--accent);
+  font-family:'Inter',system-ui,sans-serif;font-weight:800;font-size:.95rem;
+  display:flex;align-items:center;justify-content:center;text-transform:uppercase;
+}
+.title-wrap{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center}
+#site-name{font-weight:800;font-size:.95rem;letter-spacing:.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.header-sub{font-size:.74rem;color:var(--muted);display:flex;align-items:center;gap:6px;margin-top:2px}
+.header-right{display:flex;align-items:center;gap:8px}
+.tokens-badge{
+  display:flex;align-items:center;gap:.3rem;background:var(--bg2);border:1px solid var(--border);
+  border-radius:8px;padding:4px 8px;font-size:.72rem;flex-shrink:0;
+}
+.tokens-badge i{color:var(--yellow);font-size:.65rem}
+.view-link{
+  font-size:.72rem;color:var(--accent);text-decoration:none;white-space:nowrap;
+  display:flex;align-items:center;gap:4px;flex-shrink:0;
+}
+.view-link:hover{text-decoration:underline}
+.theme-toggle-btn{
+  width:34px;height:34px;border-radius:10px;border:1px solid var(--border2);background:var(--bg);
+  color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;
+}
+.theme-toggle-btn:hover{border-color:var(--accent);color:var(--accent)}
+.theme-toggle-btn .icon-sun{display:none}
+.theme-toggle-btn .icon-moon{display:block}
+body.light-mode .theme-toggle-btn .icon-sun{display:block}
+body.light-mode .theme-toggle-btn .icon-moon{display:none}
+
+/* ── SECTIONS BAR ───────────────────────────────────────────────────────── */
+.sections-bar{
+  flex:0 0 auto;background:var(--surface);border-bottom:1px solid var(--border);
+  overflow:hidden;transition:max-height .25s ease;
+}
+.sections-bar.collapsed{max-height:0!important;border-bottom:none}
+.sections-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:6px 16px;font-size:.68rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;
+  cursor:pointer;user-select:none;
+}
+.sections-header:hover{color:var(--text)}
+.sections-header i{transition:transform .2s;font-size:.6rem}
+.sections-header.collapsed i.fa-chevron-up{transform:rotate(180deg)}
+.sections-strip{
+  display:flex;gap:8px;overflow-x:auto;padding:0 16px 8px;scrollbar-width:thin;
+}
+.sections-strip::-webkit-scrollbar{height:4px}
+.sections-strip::-webkit-scrollbar-thumb{background:var(--border2);border-radius:999px}
+.section-chip{
+  flex:0 0 auto;display:flex;align-items:center;gap:6px;
+  padding:6px 10px;border-radius:8px;border:1px solid var(--border2);background:var(--bg);
+  font-size:.74rem;color:var(--text);cursor:pointer;transition:all .15s;white-space:nowrap;
+}
+.section-chip:hover{border-color:var(--accent);color:var(--accent);background:rgba(14,165,233,.05)}
+.section-chip i{font-size:.6rem;color:var(--accent);flex-shrink:0}
+.section-chip .chip-label{font-weight:600}
+.section-chip .chip-tag{font-size:.62rem;color:var(--dim)}
+.sections-loading{padding:8px 16px;font-size:.72rem;color:var(--dim);text-align:center}
+.sections-empty{padding:8px 16px;font-size:.72rem;color:var(--dim);text-align:center}
+
+/* ── MESSAGES ───────────────────────────────────────────────────────────── */
+main{
+  flex:1 1 auto;overflow-y:auto;padding:18px 14px 10px;scroll-behavior:smooth;
+  overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:var(--border2) transparent;
+  background:var(--chat-panel);
+}
+main::-webkit-scrollbar{width:8px}
+main::-webkit-scrollbar-thumb{background:var(--border2);border-radius:999px}
+.wrap{max-width:820px;margin:0 auto;display:flex;flex-direction:column;gap:14px;padding-bottom:14px}
+.msg{display:flex;flex-direction:column;max-width:min(72%,680px);animation:msgFadeIn .22s ease}
+@keyframes msgFadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.msg.user{align-self:flex-end;align-items:flex-end}
+.msg.ai{align-self:flex-start;align-items:flex-start}
+.bubble{
+  padding:10px 12px;border-radius:14px;line-height:1.55;font-size:.9rem;word-break:break-word;
+  box-shadow:0 1px 3px rgba(16,24,40,.08);position:relative;
+}
+.msg-role{
+  display:block;font-size:.64rem;letter-spacing:.07em;text-transform:uppercase;
+  color:var(--muted);font-weight:700;margin-bottom:.25rem;
+}
+.msg-text{display:block}
+.msg.user .bubble{background:var(--bubble-user);border:1px solid var(--border);border-bottom-right-radius:5px}
+.msg.ai .bubble{background:var(--bubble-ai);border:1px solid var(--border);border-bottom-left-radius:5px}
+.bubble ul{margin:4px 0 4px 18px}
+.bubble a{color:var(--accent2);text-decoration:underline}
+.bubble code{background:var(--bg2);padding:1px 5px;border-radius:4px;font-size:.82rem}
+.typing{display:flex;gap:5px;padding:8px 4px}
+.typing span{width:6px;height:6px;border-radius:50%;background:var(--accent);animation:blink 1.2s infinite;opacity:.3}
+.typing span:nth-child(2){animation-delay:.2s}
+.typing span:nth-child(3){animation-delay:.4s}
+@keyframes blink{0%,80%,100%{opacity:.3}40%{opacity:1}}
+.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:46vh;text-align:center;gap:6px;padding:2rem;color:var(--dim)}
+.empty-state .empty-icon{
+  width:52px;height:52px;border-radius:14px;background:var(--surface);border:1px solid var(--border);
+  display:flex;align-items:center;justify-content:center;margin-bottom:8px;color:var(--accent);
+}
+.empty-state .empty-title{font-weight:700;font-size:1rem;color:var(--text)}
+.empty-state .empty-sub{font-size:.85rem;max-width:340px;line-height:1.5}
+
+/* ── TOKEN WARNING ──────────────────────────────────────────────────────── */
+.token-warning{
+  display:none;padding:.4rem .8rem;background:rgba(251,191,36,.1);border-top:1px solid rgba(251,191,36,.2);
+  font-size:.72rem;color:var(--yellow);text-align:center;flex:0 0 auto;
+}
+.token-warning.visible{display:block}
+.token-warning button{
+  background:var(--yellow);color:#000;border:none;border-radius:6px;padding:3px 8px;
+  font-size:.7rem;font-weight:600;margin-left:.4rem;cursor:pointer;
+}
+
+/* ── COMPOSER ───────────────────────────────────────────────────────────── */
+footer{
+  flex:0 0 auto;padding:10px 16px;padding-bottom:calc(env(safe-area-inset-bottom, 0px) + 10px);
+  background:var(--surface);border-top:1px solid var(--border);
+}
+.composer{max-width:820px;margin:0 auto;display:flex;gap:10px;align-items:flex-end}
+#editor-input{
+  flex:1;min-height:44px;max-height:118px;padding:12px 14px;background:var(--bg);
+  border:1px solid var(--border2);border-radius:14px;color:var(--text);
+  font-family:'Inter',system-ui,sans-serif;font-size:.9rem;resize:none;outline:none;line-height:1.5;
+}
+#editor-input:focus{border-color:var(--accent)}
+#editor-input::placeholder{color:var(--dim)}
+#send-btn{
+  flex:0 0 auto;width:44px;height:44px;border-radius:50%;border:none;background:var(--accent);color:#fff;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;
+  box-shadow:0 4px 14px rgba(14,165,233,.3);
+}
+#send-btn:hover{background:var(--accent2);transform:translateY(-1px)}
+#send-btn:disabled{opacity:.5;cursor:not-allowed;transform:none;box-shadow:none}
+
+/* ── TOAST ──────────────────────────────────────────────────────────────── */
+.toast{
+  position:fixed;left:50%;bottom:100px;transform:translateX(-50%);
+  background:var(--surface);border:1px solid var(--border2);color:var(--text);
+  padding:10px 16px;border-radius:12px;font-size:.84rem;box-shadow:0 12px 40px rgba(0,0,0,.35);
+  display:none;z-index:50;max-width:90vw;text-align:center;
+}
+
+/* ── DARK MODE ──────────────────────────────────────────────────────────── */
+body:not(.light-mode) .bubble{box-shadow:0 1px 3px rgba(0,0,0,.4)}
+body:not(.light-mode) #editor-input{background:var(--bg2)}
+body:not(.light-mode) .back-btn,body:not(.light-mode) .theme-toggle-btn{background:var(--bg2)}
+
+/* ── RESPONSIVE ─────────────────────────────────────────────────────────── */
+@media(max-width:768px){
+  .view-link span{display:none}
+  .sections-strip{padding:0 12px 6px}
+}
+@media(max-width:560px){
+  .msg{max-width:88%}
+  #editor-input{font-size:16px!important}
+}
+</style>
+</head>
+<body class="light-mode">
+<script>try{if((localStorage.getItem('auvrouter_theme')||'light')!=='light'){document.body.classList.remove('light-mode')}}catch(_){}</script>
+
+<header>
+  <a class="back-btn" href="dashboard.html" title="Volver al dashboard" aria-label="Volver">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+  </a>
+  <div class="site-avatar" id="site-avatar">S</div>
+  <div class="title-wrap">
+    <div id="site-name">Editor de Sitio</div>
+    <div class="header-sub"><span id="site-slug">—</span></div>
+  </div>
+  <div class="header-right">
+    <div class="tokens-badge">
+      <i class="fas fa-bolt"></i>
+      <span id="tokens-count">...</span>
+      <span>tok</span>
+    </div>
+    <a id="site-link" href="#" target="_blank" class="view-link">
+      <i class="fas fa-external-link" style="font-size:.65rem"></i><span>Ver sitio</span>
+    </a>
+    <button class="theme-toggle-btn" onclick="toggleTheme()" title="Cambiar modo claro/oscuro" aria-label="Cambiar modo">
+      <svg class="icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+      <svg class="icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+    </button>
+  </div>
+</header>
+
+<!-- Sections bar (colapsable) -->
+<div class="sections-bar" id="sections-bar">
+  <div class="sections-header" onclick="toggleSections()">
+    <span><i class="fas fa-layer-group" style="margin-right:.3rem"></i> Secciones del sitio</span>
+    <i class="fas fa-chevron-up"></i>
+  </div>
+  <div class="sections-strip" id="sections-strip">
+    <div class="sections-loading"><i class="fas fa-spinner fa-spin"></i> Cargando...</div>
+  </div>
+</div>
+
+<main id="main">
+  <div class="wrap" id="wrap"></div>
+</main>
+
+<div class="token-warning" id="token-warning">
+  <i class="fas fa-exclamation-triangle" style="margin-right:.2rem"></i>
+  <span id="token-warning-text"></span>
+  <button onclick="abrirRecargaTokens()">Recargar</button>
+</div>
+
+<footer>
+  <div class="composer">
+    <textarea id="editor-input" rows="1" placeholder="Escribe qué quieres cambiar en tu sitio..."></textarea>
+    <button id="send-btn" aria-label="Enviar">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13"/><path d="M22 2L15 22l-4-9-9-4z"/></svg>
+    </button>
+  </div>
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const CONFIG = {
+  URL: "https://zsxkfqnalkfvwjrzuqip.supabase.co",
+  ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzeGtmcW5hbGtmdndqcnp1cWlwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0NDgyODMsImV4cCI6MjA5MjAyNDI4M30.R4j23l3IHEL966VupeR-Sx_KtDQzB8NzfJtEVDGewGs"
+};
+const _supabase = supabase.createClient(CONFIG.URL, CONFIG.ANON_KEY);
+
+const params = new URLSearchParams(window.location.search);
+const PROYECTO_ID = params.get('id');
+const PROYECTO_NOMBRE = params.get('nombre') || 'Editor de Sitio';
+const PROYECTO_SLUG = params.get('slug') || '';
+const LOGIN_URL = '/login.html?redirect=' + encodeURIComponent('/editor.html' + window.location.search);
+
+const wrap = document.getElementById('wrap');
+const main = document.getElementById('main');
+const input = document.getElementById('editor-input');
+const toast = document.getElementById('toast');
+
+let sesion = null;
+let enviando = false;
+let state = { tokens: 0, sections: [], docsArchivos: [], repoName: '' };
+
+/* ── UTILS ──────────────────────────────────────────────────────────────── */
+
+function esc(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
+}
+
+function fmt(s) {
+  let out = esc(s);
+  out = out.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+  out = out.replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener">$1</a>');
+  out = out.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  out = out.replace(/(^|\s)\*([^*]+)\*/g, '$1<em>$2</em>');
+  const lines = out.split('\n');
+  const html = [];
+  let ul = false;
+  for (const line of lines) {
+    const bullet = line.match(/^[-•]\s+(.*)$/);
+    if (bullet) {
+      if (!ul) { html.push('<ul>'); ul = true; }
+      html.push('<li>' + bullet[1] + '</li>');
+    } else {
+      if (ul) { html.push('</ul>'); ul = false; }
+      html.push(line);
+    }
+  }
+  if (ul) html.push('</ul>');
+  return html.join('<br>');
+}
+
+function fmtTokens(n) {
+  if (n >= 1000000) return (n / 1000000).toFixed(n % 1000000 === 0 ? 0 : 1) + 'M';
+  if (n >= 1000) return (n / 1000).toFixed(n % 1000 === 0 ? 0 : 1) + 'K';
+  return String(n);
+}
+
+function showToast(msg) {
+  toast.textContent = msg;
+  toast.style.display = 'block';
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(() => { toast.style.display = 'none'; }, 3500);
+}
+
+function toggleTheme() {
+  const claro = document.body.classList.toggle('light-mode');
+  try { localStorage.setItem('auvrouter_theme', claro ? 'light' : 'dark'); } catch (_) {}
+}
+
+/* ── CHAT BUBBLES ───────────────────────────────────────────────────────── */
+
+function addMsg(text, tipo) {
+  const div = document.createElement('div');
+  div.className = 'msg ' + (tipo === 'user' ? 'user' : 'ai');
+  const bubble = document.createElement('div');
+  bubble.className = 'bubble';
+  const label = document.createElement('span');
+  label.className = 'msg-role';
+  label.textContent = tipo === 'user' ? 'Tú' : 'Editor IA';
+  bubble.appendChild(label);
+  const body = document.createElement('span');
+  body.className = 'msg-text';
+  body.innerHTML = fmt(text);
+  bubble.appendChild(body);
+  div.appendChild(bubble);
+  wrap.appendChild(div);
+  main.scrollTop = main.scrollHeight;
+}
+
+function addTyping() {
+  removeTyping();
+  const div = document.createElement('div');
+  div.className = 'msg ai';
+  div.id = 'typing';
+  const bubble = document.createElement('div');
+  bubble.className = 'bubble';
+  bubble.innerHTML = '<div class="typing"><span></span><span></span><span></span></div>';
+  div.appendChild(bubble);
+  wrap.appendChild(div);
+  main.scrollTop = main.scrollHeight;
+}
+
+function removeTyping() {
+  const t = document.getElementById('typing');
+  if (t) t.remove();
+}
+
+/* ── SECTIONS ───────────────────────────────────────────────────────────── */
+
+function toggleSections() {
+  const bar = document.getElementById('sections-bar');
+  const header = bar.querySelector('.sections-header');
+  bar.classList.toggle('collapsed');
+  header.classList.toggle('collapsed');
+}
+
+function renderSections(sections) {
+  const strip = document.getElementById('sections-strip');
+  if (!sections || !sections.length) {
+    strip.innerHTML = '<div class="sections-empty">Sin secciones detectadas</div>';
+    return;
+  }
+  strip.innerHTML = sections.map((s, i) => {
+    const icon = s.tag === 'header' ? 'fa-heading' : s.tag === 'footer' ? 'fa-shoe-prints' : s.tag === 'section' ? 'fa-layer-group' : 'fa-square';
+    return '<div class="section-chip" onclick="selectSection(' + i + ')" title="' + esc(s.title) + '">' +
+      '<i class="fas ' + icon + '"></i>' +
+      '<span class="chip-label">' + esc(s.title) + '</span>' +
+      '<span class="chip-tag">' + esc(s.tag) + '</span>' +
+    '</div>';
+  }).join('');
+}
+
+function selectSection(idx) {
+  const s = state.sections[idx];
+  if (!s) return;
+  input.value = 'Quiero editar la sección "' + s.title + '". ';
+  input.focus();
+  autoGrow();
+}
+
+/* ── TOKEN WARNING ──────────────────────────────────────────────────────── */
+
+function updateTokenWarning() {
+  const warn = document.getElementById('token-warning');
+  const warnText = document.getElementById('token-warning-text');
+  if (state.tokens <= 0) {
+    warn.classList.add('visible');
+    warn.style.background = 'rgba(239,68,68,.1)';
+    warn.style.borderColor = 'rgba(239,68,68,.2)';
+    warn.style.color = 'var(--red)';
+    warnText.textContent = 'Sin tokens disponibles.';
+  } else if (state.tokens < 5000) {
+    warn.classList.add('visible');
+    warn.style.background = 'rgba(251,191,36,.1)';
+    warn.style.borderColor = 'rgba(251,191,36,.2)';
+    warn.style.color = 'var(--yellow)';
+    warnText.textContent = 'Te quedan ' + fmtTokens(state.tokens) + ' tokens.';
+  } else {
+    warn.classList.remove('visible');
+  }
+}
+
+/* ── SEND ───────────────────────────────────────────────────────────────── */
+
+async function enviar() {
+  const instruction = input.value.trim();
+  if (!instruction || enviando) return;
+  if (state.tokens <= 0) return showToast('Sin tokens. Recarga para continuar.', 'error');
+
+  enviando = true;
+  document.getElementById('send-btn').disabled = true;
+  input.value = '';
+  input.style.height = 'auto';
+
+  addMsg(instruction, 'user');
+  addTyping();
+
+  try {
+    const res = await fetch('/.netlify/functions/site-editor', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + sesion.access_token },
+      body: JSON.stringify({ action: 'edit_content', proyecto_id: PROYECTO_ID, instruction })
+    });
+    const data = await res.json();
+    removeTyping();
+
+    if (data.ok) {
+      state.tokens = data.tokens_remaining;
+      document.getElementById('tokens-count').textContent = fmtTokens(data.tokens_remaining || 0);
+      updateTokenWarning();
+      const msg = data.message || ('Edición aplicada. ' + (data.tokens_used || 0) + ' tokens consumidos.');
+      addMsg(msg + ' Tu sitio se está actualizando...', 'ai');
+      showToast('Edición aplicada — ' + (data.commits || ['index.html']).join(' + '));
+    } else {
+      addMsg('No pude aplicar la edición: ' + (data.error || 'Error desconocido'), 'ai');
+    }
+  } catch (err) {
+    removeTyping();
+    addMsg('Error de conexión: ' + err.message, 'ai');
+  } finally {
+    enviando = false;
+    document.getElementById('send-btn').disabled = false;
+  }
+}
+
+function autoGrow() {
+  input.style.height = 'auto';
+  input.style.height = Math.min(input.scrollHeight, 118) + 'px';
+}
+
+/* ── TOKEN RECHARGE ─────────────────────────────────────────────────────── */
+
+function abrirRecargaTokens() {
+  const planes = [
+    { tokens: 100000, precio: '$6.100 COP', label: 'Básico', totalCents: 610000 },
+    { tokens: 500000, precio: '$21.600 COP', label: 'Estándar', totalCents: 2160000, featured: true },
+    { tokens: 1000000, precio: '$37.000 COP', label: 'Premium', totalCents: 3700000 }
+  ];
+  addMsg('Planes de tokens disponibles:\n' + planes.map(p =>
+    '- ' + p.label + ': ' + fmtTokens(p.tokens) + ' tokens — ' + p.precio
+  ).join('\n') + '\n\nEscribe "Recargar básico", "Recargar estándar" o "Recargar premium" para continuar.', 'ai');
+}
+
+/* ── INIT ───────────────────────────────────────────────────────────────── */
+
+input.addEventListener('input', autoGrow);
+input.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); enviar(); }
+});
+document.getElementById('send-btn').addEventListener('click', enviar);
+
+(async function init() {
+  if (!PROYECTO_ID) {
+    wrap.innerHTML = '';
+    addMsg('Falta el ID del proyecto. <a href="dashboard.html">Volver al dashboard</a>.', 'ai');
+    return;
+  }
+
+  const { data: { session } } = await _supabase.auth.getSession();
+  if (!session) { window.location.href = LOGIN_URL; return; }
+  const { data: { user }, error } = await _supabase.auth.getUser(session.access_token);
+  if (error || !user) { window.location.href = LOGIN_URL; return; }
+  sesion = session;
+
+  document.getElementById('site-name').textContent = PROYECTO_NOMBRE;
+  document.getElementById('site-avatar').textContent = (PROYECTO_NOMBRE || 'S').trim().charAt(0).toUpperCase();
+  document.getElementById('site-slug').textContent = PROYECTO_SLUG;
+
+  try {
+    const res = await fetch('/.netlify/functions/site-editor', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + sesion.access_token },
+      body: JSON.stringify({ action: 'get_content', proyecto_id: PROYECTO_ID })
+    });
+    const data = await res.json();
+
+    if (!data.ok) {
+      addMsg('Error al cargar el proyecto: ' + (data.error || 'Desconocido'), 'ai');
+      return;
+    }
+
+    state.tokens = data.tokens || 0;
+    state.sections = data.sections || [];
+    state.docsArchivos = data.docs_archivos || [];
+    state.repoName = (data.github_owner || '') + '/' + (data.github_repo || '');
+
+    document.getElementById('tokens-count').textContent = fmtTokens(data.tokens || 0);
+    document.getElementById('site-link').href = data.site_url || '#';
+    document.getElementById('site-slug').textContent = state.repoName;
+    updateTokenWarning();
+    renderSections(state.sections);
+
+    addMsg('Hola! Soy tu editor de contenido. Conozco tu sitio y puedo modificar textos, colores y estilos. Escribe lo que quieres cambiar o selecciona una sección de arriba.', 'ai');
+
+    if (state.docsArchivos.length) {
+      addMsg('Contexto del proyecto cargado: ' + state.docsArchivos.join(', ') + '. Estoy listo para editar.', 'ai');
+    }
+  } catch (err) {
+    addMsg('Error de conexión al cargar el proyecto.', 'ai');
+  }
+})();
+</script>
+</body>
+</html>
