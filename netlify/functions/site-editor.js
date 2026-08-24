@@ -150,6 +150,7 @@ function validarHTML(html) {
 }
 
 function separarArchivos(raw) {
+    // Try explicit markers first
     const htmlMatch = raw.match(/<!--HTML_START-->([\s\S]*?)<!--HTML_END-->/i);
     const cssMatch = raw.match(/<!--CSS_START-->([\s\S]*?)<!--CSS_END-->/i);
 
@@ -160,7 +161,25 @@ function separarArchivos(raw) {
         };
     }
 
-    return { html: raw, css: null };
+    // Fallback: strip markdown code blocks
+    let cleaned = raw.replace(/^```html?\s*/i, '').replace(/\s*```$/i, '').trim();
+
+    // If the response has a natural language preamble before the HTML, try to find where HTML starts
+    const htmlStart = cleaned.indexOf('<!DOCTYPE') !== -1 ? cleaned.indexOf('<!DOCTYPE') :
+                      cleaned.indexOf('<html') !== -1 ? cleaned.indexOf('<html') : 0;
+
+    // Check if there's a CSS block separated by a code fence or marker
+    const cssCodeBlock = cleaned.match(/```css\s*([\s\S]*?)```/i);
+    let css = cssCodeBlock ? cssCodeBlock[1].trim() : null;
+
+    // Also check for <!--CSS_START--> even without <!--HTML_START-->
+    const cssMarker = cleaned.match(/<!--CSS_START-->([\s\S]*?)<!--CSS_END-->/i);
+    if (cssMarker) css = cssMarker[1].trim();
+
+    return {
+        html: cleaned.substring(htmlStart).replace(/<!--CSS_START-->[\s\S]*?<!--CSS_END-->/i, '').trim(),
+        css
+    };
 }
 
 // ── Handler ──
@@ -304,7 +323,7 @@ Responde SOLO con eso. Sin explicaciones adicionales. Sin markdown.`;
             }
 
             // Limpiar markdown code blocks si la IA los incluye
-            rawResponse = rawResponse.replace(/^```html?\s*/i, '').replace(/\s*```$/i, '');
+            rawResponse = rawResponse.replace(/^```html?\s*/i, '').replace(/\s*```$/i, '').trim();
 
             const { html: newHtml, css: newCss } = separarArchivos(rawResponse);
 
