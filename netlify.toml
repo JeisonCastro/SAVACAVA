@@ -7,10 +7,10 @@
   included_files = ["wf-templates/**"]
 
 [functions."site-editor"]
-  timeout = 120
+  timeout = 30
 
 [functions."chat"]
-  timeout = 120
+  timeout = 30
 
 # ── Cron diario: ciclo de suscripciones (desactivar planes vencidos) ─────────
 [functions."verificar-suscripciones"]

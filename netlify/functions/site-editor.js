@@ -65,8 +65,8 @@ async function llamarIA(mensajes, inputChars) {
             const res = await fetch('https://api.deepseek.com/v1/chat/completions', {
                 method: 'POST',
                 headers: { Authorization: `Bearer ${deepseekKey}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ model: 'deepseek-v4-flash', messages: mensajes, temperature: 0.2, max_tokens: 8000, thinking: { type: 'disabled' } }),
-                signal: AbortSignal.timeout(60000)
+                body: JSON.stringify({ model: 'deepseek-v4-flash', messages: mensajes, temperature: 0.2, max_tokens: 4000, thinking: { type: 'disabled' } }),
+                signal: AbortSignal.timeout(30000)
             });
             const data = await res.json();
             if (data.choices?.[0]?.message?.content) return data.choices[0].message.content.trim();
@@ -77,7 +77,7 @@ async function llamarIA(mensajes, inputChars) {
         const res = await fetch('https://api.openai.com/v1/chat/completions', {
             method: 'POST',
             headers: { Authorization: `Bearer ${fallbackKey}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ model: 'gpt-4o-mini', messages: mensajes, temperature: 0.3, max_tokens: 16000 }),
+            body: JSON.stringify({ model: 'gpt-4o-mini', messages: mensajes, temperature: 0.3, max_tokens: 4000 }),
             signal: AbortSignal.timeout(60000)
         });
         const data = await res.json();
@@ -261,38 +261,64 @@ exports.handler = async (event) => {
             // Leer docs/ para contexto del proyecto
             const docs = await leerDocsProyecto(owner, repo, branch);
 
-            // ── Construir system prompt con contexto ──
+            // ── Extraer contexto relevante del HTML (no enviar 43K completos) ──
+            const fullHtml = indexFile.content;
+            const htmlLower = fullHtml.toLowerCase();
+            const instrLower = instruction.toLowerCase();
+
+            // Buscar keywords de la instrucción en el HTML
+            const instructionWords = instrLower.split(/\s+/).filter(w => w.length > 3);
+            const relevantSections = [];
+
+            // Encontrar líneas/sectores relevantes
+            const lines = fullHtml.split('\n');
+            for (const word of instructionWords) {
+                for (let i = 0; i < lines.length; i++) {
+                    if (lines[i].toLowerCase().includes(word)) {
+                        // Contexto: 5 líneas antes y 5 después
+                        const start = Math.max(0, i - 5);
+                        const end = Math.min(lines.length, i + 6);
+                        const section = lines.slice(start, end).join('\n');
+                        if (!relevantSections.some(s => s.includes(section.substring(0, 100)))) {
+                            relevantSections.push('...línea ' + (i+1) + '...\n' + section);
+                        }
+                    }
+                }
+            }
+
+            // Si no encontramos nada relevante, enviar primeras 5000 chars como fallback
+            const contextHtml = relevantSections.length > 0
+                ? relevantSections.join('\n\n---\n\n')
+                : fullHtml.substring(0, 5000);
+
             const docsSection = docs.contenido
                 ? `\n\nDOCUMENTACIÓN DEL PROYECTO:\n${docs.contenido}\n`
-                : '\n\nNo hay documentación disponible en /docs para este proyecto.\n';
+                : '';
 
-            const systemPrompt = `Eres un editor de contenido web. Tu tarea es hacer cambios MÍNIMOS en el HTML existente.
-
-INSTRUCCIÓN: El usuario quiere hacer un cambio específico en el sitio.
+            const systemPrompt = `Eres un editor de contenido web. Tu tarea es hacer cambios MÍNIMOS en el HTML.
 
 REGLAS:
-1. Devuelve ÚNICAMENTE el HTML COMPLETO modificado.
-2. Cambia SOLO lo que se pide. NO cambies nada más.
-3. NO uses markdown, NO uses explicaciones, NO uses código html.
-4. Empieza con <!DOCTYPE html> y termina con </html>.
-5. Si el cambio es muy simple (cambiar una palabra, un color, un número), usa SEARCH/REPLACE en este formato exacto:
+1. Cambia SOLO lo que se pide. NO cambies nada más.
+2. NO uses markdown, NO uses explicaciones.
+3. Usa SEARCH/REPLACE en este formato:
 
 SEARCH:
- texto exacto a buscar en el HTML
+ texto exacto a buscar (incluye suficiente contexto para encontrarlo)
 
 REPLACE:
  texto de reemplazo
 
-Puedes dar múltiples pares SEARCH/REPLACE. Si el cambio es complejo (agregar secciones, reorganizar), devuelve el HTML completo.`;
+Puedes dar múltiples pares SEARCH/REPLACE.
+Solo necesitas devolver los SEARCH/REPLACE, NO el HTML completo.`;
 
-            const userPrompt = `HTML ACTUAL:\n${indexFile.content}\n\nINSTRUCCIÓN: ${instruction}\n\nDevuelve el HTML COMPLETO modificado:`;
+            const userPrompt = `INSTRUCCIÓN: ${instruction}\n\nPartes relevantes del HTML:\n${contextHtml}\n\nDevuelve solo SEARCH/REPLACE:`;
 
             let rawResponse;
             try {
                 rawResponse = await llamarIA([
                     { role: 'system', content: systemPrompt },
                     { role: 'user', content: userPrompt }
-                ], instruction.length + indexFile.content.length + (cssFile ? cssFile.content.length : 0));
+                ], instruction.length + contextHtml.length);
             } catch (e) {
                 return { statusCode: 502, body: JSON.stringify({ error: 'Error del proveedor de IA: ' + e.message }) };
             }

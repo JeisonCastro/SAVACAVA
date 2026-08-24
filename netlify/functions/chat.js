@@ -2022,32 +2022,49 @@ INSTRUCCIONES:
                                             }
                                         } catch (_) {}
 
-                                        // ── 5. Construir system prompt con contexto del proyecto ──
+                                        // ── 5. Extraer contexto relevante del HTML ──
+                                        const fullHtml = indexFile.content;
+                                        const instrLower = instruction.toLowerCase();
+                                        const instructionWords = instrLower.split(/\s+/).filter(w => w.length > 3);
+                                        const relevantSections = [];
+                                        const htmlLines = fullHtml.split('\n');
+
+                                        for (const word of instructionWords) {
+                                            for (let i = 0; i < htmlLines.length; i++) {
+                                                if (htmlLines[i].toLowerCase().includes(word)) {
+                                                    const start = Math.max(0, i - 5);
+                                                    const end = Math.min(htmlLines.length, i + 6);
+                                                    const section = htmlLines.slice(start, end).join('\n');
+                                                    if (!relevantSections.some(s => s.includes(section.substring(0, 100)))) {
+                                                        relevantSections.push('...línea ' + (i+1) + '...\n' + section);
+                                                    }
+                                                }
+                                            }
+                                        }
+
+                                        const contextHtml = relevantSections.length > 0
+                                            ? relevantSections.join('\n\n---\n\n')
+                                            : fullHtml.substring(0, 5000);
+
                                         const docsSection = docsContenido
                                             ? `\n\nDOCUMENTACIÓN DEL PROYECTO:\n${docsContenido}`
                                             : '';
 
-                                        const systemPrompt = `Eres un editor de contenido web. Tu tarea es hacer cambios MÍNIMOS en el HTML existente.
-
-DOCUMENTACIÓN DEL PROYECTO:
-- Nombre: ${proyecto.nombre || 'Sitio web'}
-- URL: ${proyecto.netlify_url || 'N/A'}${docsSection}
+                                        const systemPrompt = `Eres un editor de contenido web. Tu tarea es hacer cambios MÍNIMOS en el HTML.
 
 REGLAS:
-1. Devuelve ÚNICAMENTE el HTML COMPLETO modificado.
-2. Cambia SOLO lo que se pide. NO cambies nada más.
-3. NO uses markdown, NO uses explicaciones.
-4. Empieza con <!DOCTYPE html> y termina con </html>.
-5. Para cambios simples (cambiar palabras, colores, números, URLs), usa SEARCH/REPLACE:
+1. Cambia SOLO lo que se pide. NO cambies nada más.
+2. NO uses markdown, NO uses explicaciones.
+3. Usa SEARCH/REPLACE en este formato:
 
 SEARCH:
- texto exacto a buscar
+ texto exacto a buscar (incluye suficiente contexto para encontrarlo)
 
 REPLACE:
  texto de reemplazo
 
 Puedes dar múltiples pares SEARCH/REPLACE.
-Para cambios complejos (agregar secciones, reorganizar), devuelve el HTML completo.`;
+Solo necesitas devolver los SEARCH/REPLACE, NO el HTML completo.`;
 
                                         // ── 6. Llamar a la IA ──
                                         let rawResponse;
@@ -2055,7 +2072,7 @@ Para cambios complejos (agregar secciones, reorganizar), devuelve el HTML comple
                                             // Reutilizar el mismo patrón de llamada que el chat principal
                                             const deepseekKey = process.env.DEEPSEEK_API_KEY;
                                             const fallbackKey = process.env.FALLBACK_API_KEY || process.env.OPENIA_KEY;
-                                            const userPrompt = `HTML ACTUAL:\n${indexFile.content}\n\nINSTRUCCIÓN: ${instruction}\n\nSi el cambio es simple, responde con SEARCH/REPLACE. Si es complejo, devuelve el HTML completo.`;
+                                            const userPrompt = `INSTRUCCIÓN: ${instruction}\n\nPartes relevantes del HTML:\n${contextHtml}\n\nDevuelve solo SEARCH/REPLACE:`;
                                             const messages = [
                                                 { role: 'system', content: systemPrompt },
                                                 { role: 'user', content: userPrompt }
@@ -2066,8 +2083,8 @@ Para cambios complejos (agregar secciones, reorganizar), devuelve el HTML comple
                                                     const aiRes = await fetch('https://api.deepseek.com/v1/chat/completions', {
                                                         method: 'POST',
                                                         headers: { Authorization: `Bearer ${deepseekKey}`, 'Content-Type': 'application/json' },
-                                                        body: JSON.stringify({ model: 'deepseek-v4-flash', messages, temperature: 0.2, max_tokens: 16000, thinking: { type: 'disabled' } }),
-                                                        signal: AbortSignal.timeout(60000)
+                                                        body: JSON.stringify({ model: 'deepseek-v4-flash', messages, temperature: 0.2, max_tokens: 4000, thinking: { type: 'disabled' } }),
+                                                        signal: AbortSignal.timeout(30000)
                                                     });
                                                     const aiData = await aiRes.json();
                                                     if (aiData.choices?.[0]?.message?.content) rawResponse = aiData.choices[0].message.content.trim();
@@ -2077,8 +2094,8 @@ Para cambios complejos (agregar secciones, reorganizar), devuelve el HTML comple
                                                 const aiRes = await fetch('https://api.openai.com/v1/chat/completions', {
                                                     method: 'POST',
                                                     headers: { Authorization: `Bearer ${fallbackKey}`, 'Content-Type': 'application/json' },
-                                                    body: JSON.stringify({ model: 'gpt-4o-mini', messages, temperature: 0.3, max_tokens: 16000 }),
-                                                    signal: AbortSignal.timeout(60000)
+                                                    body: JSON.stringify({ model: 'gpt-4o-mini', messages, temperature: 0.3, max_tokens: 4000 }),
+                                                    signal: AbortSignal.timeout(30000)
                                                 });
                                                 const aiData = await aiRes.json();
                                                 if (aiData.choices?.[0]?.message?.content) rawResponse = aiData.choices[0].message.content.trim();
