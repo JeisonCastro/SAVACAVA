@@ -293,10 +293,15 @@ FORMATO: Tu respuesta debe ser EXCLUSIVAMENTE el código HTML. Empieza con <!DOC
             // Limpiar markdown code blocks si la IA los incluye
             rawResponse = rawResponse.replace(/^```html?\s*/i, '').replace(/\s*```$/i, '').trim();
 
+            console.log('site-editor: rawResponse length=' + rawResponse.length + ' first200=' + rawResponse.substring(0, 200));
+
             const { html: newHtml, css: newCss } = separarArchivos(rawResponse);
+
+            console.log('site-editor: newHtml length=' + (newHtml || '').length + ' first200=' + (newHtml || '').substring(0, 200));
 
             // Validar HTML
             if (!validarHTML(newHtml)) {
+                console.log('site-editor: VALIDATION FAILED. newHtml first500=' + (newHtml || '').substring(0, 500));
                 return { statusCode: 500, body: JSON.stringify({ error: 'La IA no generó un HTML válido. Intenta con una instrucción más clara.' }) };
             }
 
