@@ -108,6 +108,7 @@ main::-webkit-scrollbar-thumb{background:var(--border2);border-radius:999px}
 @keyframes msgFadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 .msg.user{align-self:flex-end;align-items:flex-end}
 .msg.ai{align-self:flex-start;align-items:flex-start}
+.msg.system{align-self:center;align-items:center;max-width:90%}
 .bubble{
   padding:10px 12px;border-radius:14px;line-height:1.55;font-size:.9rem;word-break:break-word;
   box-shadow:0 1px 3px rgba(16,24,40,.08);position:relative;
@@ -119,6 +120,10 @@ main::-webkit-scrollbar-thumb{background:var(--border2);border-radius:999px}
 .msg-text{display:block}
 .msg.user .bubble{background:var(--bubble-user);border:1px solid var(--border);border-bottom-right-radius:5px}
 .msg.ai .bubble{background:var(--bubble-ai);border:1px solid var(--border);border-bottom-left-radius:5px}
+.msg.system .bubble{
+  background:rgba(14,165,233,.06);border:1px solid rgba(14,165,233,.15);
+  border-radius:12px;font-size:.82rem;color:var(--muted);text-align:center;
+}
 .bubble ul{margin:4px 0 4px 18px}
 .bubble a{color:var(--accent2);text-decoration:underline}
 .bubble code{background:var(--bg2);padding:1px 5px;border-radius:4px;font-size:.82rem}
@@ -134,6 +139,59 @@ main::-webkit-scrollbar-thumb{background:var(--border2);border-radius:999px}
 }
 .empty-state .empty-title{font-weight:700;font-size:1rem;color:var(--text)}
 .empty-state .empty-sub{font-size:.85rem;max-width:340px;line-height:1.5}
+
+/* ── PROPOSAL CARD ──────────────────────────────────────────────────────── */
+.proposal-card{
+  margin-top:8px;border:1px solid var(--border2);border-radius:12px;
+  overflow:hidden;background:var(--bg);
+}
+.proposal-header{
+  display:flex;align-items:center;gap:8px;padding:8px 12px;
+  background:var(--surface);border-bottom:1px solid var(--border2);font-size:.78rem;font-weight:600;
+}
+.proposal-header i{font-size:.7rem}
+.proposal-header .riesgo-bajo{color:var(--green)}
+.proposal-header .riesgo-medio{color:var(--yellow)}
+.proposal-header .riesgo-alto{color:var(--red)}
+.proposal-body{padding:10px 12px;font-size:.82rem;line-height:1.5;color:var(--text)}
+.proposal-changes{
+  margin-top:6px;padding:8px 10px;background:var(--bg2);border-radius:8px;
+  font-size:.78rem;color:var(--muted);max-height:120px;overflow-y:auto;
+}
+.proposal-changes .change-item{
+  padding:4px 0;border-bottom:1px solid var(--border2);display:flex;gap:6px;
+}
+.proposal-changes .change-item:last-child{border-bottom:none}
+.proposal-changes .change-arrow{color:var(--accent);flex-shrink:0;font-size:.7rem;margin-top:2px}
+.proposal-actions{
+  display:flex;gap:8px;padding:8px 12px;border-top:1px solid var(--border2);background:var(--surface);
+}
+.proposal-btn{
+  flex:1;padding:8px 12px;border-radius:8px;border:none;font-size:.82rem;font-weight:600;
+  cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:6px;
+}
+.proposal-btn:disabled{opacity:.5;cursor:not-allowed}
+.proposal-btn-approve{background:var(--accent);color:#fff}
+.proposal-btn-approve:hover:not(:disabled){background:var(--accent2)}
+.proposal-btn-reject{background:var(--bg2);color:var(--text);border:1px solid var(--border2)}
+.proposal-btn-reject:hover:not(:disabled){border-color:var(--red);color:var(--red)}
+.proposal-btn-adjust{background:var(--bg2);color:var(--text);border:1px solid var(--border2)}
+.proposal-btn-adjust:hover:not(:disabled){border-color:var(--yellow);color:var(--yellow)}
+
+/* ── UNDO BANNER ────────────────────────────────────────────────────────── */
+.undo-banner{
+  display:none;align-items:center;justify-content:center;gap:10px;
+  padding:8px 16px;background:rgba(14,165,233,.08);border-top:1px solid rgba(14,165,233,.2);
+  font-size:.82rem;color:var(--accent);flex:0 0 auto;
+}
+.undo-banner.visible{display:flex}
+.undo-banner button{
+  background:var(--accent);color:#fff;border:none;border-radius:6px;padding:4px 10px;
+  font-size:.78rem;font-weight:600;cursor:pointer;transition:all .15s;
+}
+.undo-banner button:hover{background:var(--accent2)}
+.undo-banner button:disabled{opacity:.5;cursor:not-allowed}
+.undo-banner .undo-timer{font-size:.72rem;color:var(--muted)}
 
 /* ── TOKEN WARNING ──────────────────────────────────────────────────────── */
 .token-warning{
@@ -179,6 +237,9 @@ footer{
 body:not(.light-mode) .bubble{box-shadow:0 1px 3px rgba(0,0,0,.4)}
 body:not(.light-mode) #editor-input{background:var(--bg2)}
 body:not(.light-mode) .back-btn,body:not(.light-mode) .theme-toggle-btn{background:var(--bg2)}
+body:not(.light-mode) .proposal-card{background:var(--bg2)}
+body:not(.light-mode) .proposal-header{background:var(--bg)}
+body:not(.light-mode) .proposal-changes{background:var(--bg)}
 
 /* ── RESPONSIVE ─────────────────────────────────────────────────────────── */
 @media(max-width:768px){
@@ -188,6 +249,7 @@ body:not(.light-mode) .back-btn,body:not(.light-mode) .theme-toggle-btn{backgrou
 @media(max-width:560px){
   .msg{max-width:88%}
   #editor-input{font-size:16px!important}
+  .proposal-actions{flex-direction:column}
 }
 </style>
 </head>
@@ -234,6 +296,15 @@ body:not(.light-mode) .back-btn,body:not(.light-mode) .theme-toggle-btn{backgrou
   <div class="wrap" id="wrap"></div>
 </main>
 
+<div class="undo-banner" id="undo-banner">
+  <i class="fas fa-check-circle" style="color:var(--green)"></i>
+  <span id="undo-text">Cambios aplicados</span>
+  <button id="undo-btn" onclick="deshacer()">
+    <i class="fas fa-undo" style="font-size:.7rem"></i> Deshacer
+  </button>
+  <span class="undo-timer" id="undo-timer"></span>
+</div>
+
 <div class="token-warning" id="token-warning">
   <i class="fas fa-exclamation-triangle" style="margin-right:.2rem"></i>
   <span id="token-warning-text"></span>
@@ -271,7 +342,15 @@ const toast = document.getElementById('toast');
 
 let sesion = null;
 let enviando = false;
-let state = { tokens: 0, sections: [], docsArchivos: [], repoName: '' };
+let state = {
+  tokens: 0,
+  sections: [],
+  docsArchivos: [],
+  repoName: '',
+  lastCommitSha: null,
+  pendingProposal: null,
+  history: []
+};
 
 /* ── UTILS ──────────────────────────────────────────────────────────────── */
 
@@ -322,22 +401,59 @@ function toggleTheme() {
 
 /* ── CHAT BUBBLES ───────────────────────────────────────────────────────── */
 
-function addMsg(text, tipo) {
+function addMsg(text, tipo, extra) {
   const div = document.createElement('div');
-  div.className = 'msg ' + (tipo === 'user' ? 'user' : 'ai');
+  div.className = 'msg ' + (tipo === 'user' ? 'user' : tipo === 'system' ? 'system' : 'ai');
   const bubble = document.createElement('div');
   bubble.className = 'bubble';
-  const label = document.createElement('span');
-  label.className = 'msg-role';
-  label.textContent = tipo === 'user' ? 'Tú' : 'Editor IA';
-  bubble.appendChild(label);
+  if (tipo !== 'system') {
+    const label = document.createElement('span');
+    label.className = 'msg-role';
+    label.textContent = tipo === 'user' ? 'Tú' : 'Editor IA';
+    bubble.appendChild(label);
+  }
   const body = document.createElement('span');
   body.className = 'msg-text';
   body.innerHTML = fmt(text);
   bubble.appendChild(body);
+  if (extra) bubble.appendChild(extra);
   div.appendChild(bubble);
   wrap.appendChild(div);
   main.scrollTop = main.scrollHeight;
+  return div;
+}
+
+function addProposalCard(respuesta, riesgo, cambios, resumen) {
+  const card = document.createElement('div');
+  card.className = 'proposal-card';
+  card.innerHTML = `
+    <div class="proposal-header">
+      <i class="fas fa-clipboard-check"></i>
+      <span>Propuesta de cambios</span>
+      <span class="riesgo-${riesgo}" style="margin-left:auto;font-size:.7rem;text-transform:uppercase">${riesgo}</span>
+    </div>
+    <div class="proposal-body">${fmt(respuesta)}</div>
+    ${cambios.length > 0 ? `<div class="proposal-changes">
+      ${cambios.map(c => `<div class="change-item">
+        <span class="change-arrow"><i class="fas fa-arrow-right"></i></span>
+        <span>${esc(c.search.substring(0, 80))}${c.search.length > 80 ? '...' : ''} → ${esc(c.replace.substring(0, 60))}${c.replace.length > 60 ? '...' : ''}</span>
+      </div>`).join('')}
+    </div>` : ''}
+    <div class="proposal-actions" id="proposal-actions">
+      <button class="proposal-btn proposal-btn-approve" onclick="aprobarPropuesta()">
+        <i class="fas fa-check"></i> Aprobar cambios
+      </button>
+      <button class="proposal-btn proposal-btn-reject" onclick="rechazarPropuesta()">
+        <i class="fas fa-times"></i> Cancelar
+      </button>
+      <button class="proposal-btn proposal-btn-adjust" onclick="ajustarPropuesta()">
+        <i class="fas fa-pen"></i> Ajustar
+      </button>
+    </div>
+  `;
+  wrap.appendChild(card);
+  main.scrollTop = main.scrollHeight;
+  return card;
 }
 
 function addTyping() {
@@ -356,6 +472,63 @@ function addTyping() {
 function removeTyping() {
   const t = document.getElementById('typing');
   if (t) t.remove();
+}
+
+/* ── UNDO SYSTEM ────────────────────────────────────────────────────────── */
+
+let undoTimer = null;
+let undoSeconds = 0;
+
+function showUndoBanner(sha) {
+  const banner = document.getElementById('undo-banner');
+  const timer = document.getElementById('undo-timer');
+  banner.classList.add('visible');
+  document.getElementById('undo-btn').disabled = false;
+  undoSeconds = 300;
+  timer.textContent = `(${undoSeconds}s)`;
+  clearInterval(undoTimer);
+  undoTimer = setInterval(() => {
+    undoSeconds--;
+    timer.textContent = `(${undoSeconds}s)`;
+    if (undoSeconds <= 0) {
+      clearInterval(undoTimer);
+      banner.classList.remove('visible');
+      state.lastCommitSha = null;
+    }
+  }, 1000);
+}
+
+function hideUndoBanner() {
+  clearInterval(undoTimer);
+  document.getElementById('undo-banner').classList.remove('visible');
+}
+
+async function deshacer() {
+  if (!state.lastCommitSha) return showToast('No hay cambios para deshacer');
+  const btn = document.getElementById('undo-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Revirtiendo...';
+
+  try {
+    const res = await fetch('/.netlify/functions/site-editor', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + sesion.access_token },
+      body: JSON.stringify({ action: 'undo', proyecto_id: PROYECTO_ID, previous_sha: state.lastCommitSha })
+    });
+    const data = await res.json();
+    if (data.ok) {
+      addMsg('Cambios revertidos. Tu sitio se está restaurando...', 'ai');
+      showToast('Cambios deshechos');
+      state.lastCommitSha = null;
+      hideUndoBanner();
+    } else {
+      addMsg('No se pudo revertir: ' + (data.error || 'Error desconocido'), 'ai');
+      btn.disabled = false;
+    }
+  } catch (err) {
+    addMsg('Error al revertir: ' + err.message, 'ai');
+    btn.disabled = false;
+  }
 }
 
 /* ── SECTIONS ───────────────────────────────────────────────────────────── */
@@ -413,6 +586,84 @@ function updateTokenWarning() {
   }
 }
 
+/* ── PROPOSAL ACTIONS ───────────────────────────────────────────────────── */
+
+async function aprobarPropuesta() {
+  const proposal = state.pendingProposal;
+  if (!proposal || !proposal.cambios.length) return;
+
+  const actionsDiv = document.getElementById('proposal-actions');
+  if (actionsDiv) {
+    actionsDiv.innerHTML = '<button class="proposal-btn proposal-btn-approve" disabled><i class="fas fa-spinner fa-spin"></i> Aplicando...</button>';
+  }
+
+  try {
+    const res = await fetch('/.netlify/functions/site-editor', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + sesion.access_token },
+      body: JSON.stringify({
+        action: 'execute',
+        proyecto_id: PROYECTO_ID,
+        instruction: proposal.instruction,
+        cambios: proposal.cambios,
+        previous_sha: state.lastCommitSha
+      })
+    });
+    const data = await res.json();
+
+    if (data.ok) {
+      state.tokens = data.tokens_remaining;
+      document.getElementById('tokens-count').textContent = fmtTokens(data.tokens_remaining || 0);
+      updateTokenWarning();
+      state.lastCommitSha = data.previous_sha;
+      state.pendingProposal = null;
+
+      if (actionsDiv) {
+        actionsDiv.innerHTML = '<button class="proposal-btn proposal-btn-approve" disabled style="background:var(--green)"><i class="fas fa-check"></i> Aplicado</button>';
+      }
+
+      addMsg(data.message || 'Cambios aplicados. Tu sitio se está actualizando...', 'ai');
+      showToast('Edición aplicada — sitio actualizándose');
+      showUndoBanner(data.commit_sha);
+    } else {
+      if (actionsDiv) {
+        actionsDiv.innerHTML = `
+          <button class="proposal-btn proposal-btn-approve" onclick="aprobarPropuesta()"><i class="fas fa-check"></i> Reintentar</button>
+          <button class="proposal-btn proposal-btn-reject" onclick="rechazarPropuesta()"><i class="fas fa-times"></i> Cancelar</button>
+        `;
+      }
+      addMsg('No pude aplicar los cambios: ' + (data.error || 'Error desconocido'), 'ai');
+    }
+  } catch (err) {
+    if (actionsDiv) {
+      actionsDiv.innerHTML = `
+        <button class="proposal-btn proposal-btn-approve" onclick="aprobarPropuesta()"><i class="fas fa-check"></i> Reintentar</button>
+        <button class="proposal-btn proposal-btn-reject" onclick="rechazarPropuesta()"><i class="fas fa-times"></i> Cancelar</button>
+      `;
+    }
+    addMsg('Error de conexión: ' + err.message, 'ai');
+  }
+}
+
+function rechazarPropuesta() {
+  state.pendingProposal = null;
+  const actionsDiv = document.getElementById('proposal-actions');
+  if (actionsDiv) {
+    actionsDiv.innerHTML = '<button class="proposal-btn proposal-btn-reject" disabled><i class="fas fa-times"></i> Cancelado</button>';
+  }
+  addMsg('Propuesta cancelada. Puedo preparar otra si lo necesitas.', 'ai');
+}
+
+function ajustarPropuesta() {
+  state.pendingProposal = null;
+  const actionsDiv = document.getElementById('proposal-actions');
+  if (actionsDiv) {
+    actionsDiv.innerHTML = '<button class="proposal-btn proposal-btn-adjust" disabled><i class="fas fa-pen"></i> Modificando...</button>';
+  }
+  addMsg('¿Qué te gustaría ajustar de la propuesta? Puedo modificar el texto, el alcance o cualquier detalle.', 'ai');
+  input.focus();
+}
+
 /* ── SEND ───────────────────────────────────────────────────────────────── */
 
 async function enviar() {
@@ -432,7 +683,7 @@ async function enviar() {
     const res = await fetch('/.netlify/functions/site-editor', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + sesion.access_token },
-      body: JSON.stringify({ action: 'edit_content', proyecto_id: PROYECTO_ID, instruction })
+      body: JSON.stringify({ action: 'analyze', proyecto_id: PROYECTO_ID, instruction })
     });
     const data = await res.json();
     removeTyping();
@@ -441,11 +692,36 @@ async function enviar() {
       state.tokens = data.tokens_remaining;
       document.getElementById('tokens-count').textContent = fmtTokens(data.tokens_remaining || 0);
       updateTokenWarning();
-      const msg = data.message || ('Edición aplicada. ' + (data.tokens_used || 0) + ' tokens consumidos.');
-      addMsg(msg + ' Tu sitio se está actualizando...', 'ai');
-      showToast('Edición aplicada — ' + (data.commits || ['index.html']).join(' + '));
+
+      // Si hay pregunta de clarificación
+      if (data.pregunta_clarificacion) {
+        addMsg(data.respuesta, 'ai');
+        addMsg(data.pregunta_clarificacion, 'system');
+        enviando = false;
+        document.getElementById('send-btn').disabled = false;
+        return;
+      }
+
+      // Guardar propuesta pendiente
+      state.pendingProposal = {
+        instruction,
+        cambios: data.cambios || [],
+        riesgo: data.riesgo || 'bajo'
+      };
+
+      // Renderizar respuesta + proposal card
+      addMsg(data.respuesta, 'ai');
+
+      if (data.cambios && data.cambios.length > 0) {
+        addProposalCard(
+          data.resumen_cambios || `${data.cambios.length} cambio(s) propuesto(s)`,
+          data.riesgo || 'bajo',
+          data.cambios,
+          data.resumen_cambios
+        );
+      }
     } else {
-      addMsg('No pude aplicar la edición: ' + (data.error || 'Error desconocido'), 'ai');
+      addMsg('No pude analizar la solicitud: ' + (data.error || 'Error desconocido'), 'ai');
     }
   } catch (err) {
     removeTyping();
@@ -516,6 +792,7 @@ document.getElementById('send-btn').addEventListener('click', enviar);
     state.sections = data.sections || [];
     state.docsArchivos = data.docs_archivos || [];
     state.repoName = (data.github_owner || '') + '/' + (data.github_repo || '');
+    state.lastCommitSha = data.last_commit_sha || null;
 
     document.getElementById('tokens-count').textContent = fmtTokens(data.tokens || 0);
     document.getElementById('site-link').href = data.site_url || '#';
@@ -523,10 +800,10 @@ document.getElementById('send-btn').addEventListener('click', enviar);
     updateTokenWarning();
     renderSections(state.sections);
 
-    addMsg('Hola! Soy tu editor de contenido. Conozco tu sitio y puedo modificar textos, colores y estilos. Escribe lo que quieres cambiar o selecciona una sección de arriba.', 'ai');
+    addMsg('Hola! Soy tu asistente de edición web. Analizo tu sitio, te propongo cambios y solo aplico cuando tú lo apruebes. ¿Qué quieres modificar?', 'ai');
 
     if (state.docsArchivos.length) {
-      addMsg('Contexto del proyecto cargado: ' + state.docsArchivos.join(', ') + '. Estoy listo para editar.', 'ai');
+      addMsg('Contexto del proyecto cargado: ' + state.docsArchivos.join(', ') + '. Estoy listo.', 'ai');
     }
   } catch (err) {
     addMsg('Error de conexión al cargar el proyecto.', 'ai');

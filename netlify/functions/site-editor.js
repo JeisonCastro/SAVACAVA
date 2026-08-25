@@ -1,6 +1,6 @@
-// site-editor.js — Editor AI de contenido para sitios web
+// site-editor.js — Editor AI conversacional de contenido web
+// Flujo: analyze (propuesta) → execute (aplicar) → undo (revertir)
 // Lee /docs del repositorio para contexto del proyecto.
-// Soporta edición de index.html y styles.css.
 // Usa perfiles.token_balance (mismo sistema que chat.js).
 
 const { supabase } = require('./supabase-admin');
@@ -21,6 +21,26 @@ const ROLES_EDICION = ['admin_sitio', 'editor_sitio'];
 const ROLES_LECTURA = ['admin_sitio', 'editor_sitio', 'visor_sitio'];
 
 const GH_HEADERS = { Authorization: `token ${GITHUB_TOKEN}`, Accept: 'application/vnd.github.v3+json' };
+
+// ── Zonas protegidas (NO editar sin confirmación explícita) ──
+const ZONAS_PROTEGIDAS = [
+    'supabase', 'auth', 'login', 'signup', 'password', 'token',
+    'payment', 'pago', 'wompi', 'checkout', 'carrito', 'cart',
+    'api_key', 'apikey', 'secret', 'private_key',
+    'service-worker', 'sw.js', 'manifest.json'
+];
+
+// ── Nivel de riesgo ──
+function evaluarRiesgo(instruction, html) {
+    const instLower = instruction.toLowerCase();
+    const riesgosAlto = ['borrar', 'eliminar', 'quitar', 'reset', 'reiniciar', 'reemplazar todo', 'nuevo html', 'rebuild'];
+    const riesgosMedio = ['cambiar', 'modificar', 'actualizar', 'mover', 'reordenar', 'agregar sección'];
+    const protegido = ZONAS_PROTEGIDAS.some(z => instLower.includes(z));
+
+    if (riesgosAlto.some(r => instLower.includes(r)) || protegido) return 'alto';
+    if (riesgosMedio.some(r => instLower.includes(r))) return 'medio';
+    return 'bajo';
+}
 
 async function getUser(event) {
     const authHeader = event.headers.authorization || event.headers.Authorization;
@@ -56,7 +76,7 @@ async function verificarAcceso(userId, proyectoId, requiereEdicion) {
     return { ok: true, rol: permiso.rol, isOwner: false };
 }
 
-async function llamarIA(mensajes, inputChars) {
+async function llamarIA(mensajes, maxTokens = 4000) {
     const deepseekKey = process.env.DEEPSEEK_API_KEY;
     const fallbackKey = process.env.FALLBACK_API_KEY || process.env.OPENIA_KEY;
 
@@ -65,8 +85,8 @@ async function llamarIA(mensajes, inputChars) {
             const res = await fetch('https://api.deepseek.com/v1/chat/completions', {
                 method: 'POST',
                 headers: { Authorization: `Bearer ${deepseekKey}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ model: 'deepseek-v4-flash', messages: mensajes, temperature: 0.2, max_tokens: 4000, thinking: { type: 'disabled' } }),
-                signal: AbortSignal.timeout(30000)
+                body: JSON.stringify({ model: 'deepseek-v4-flash', messages: mensajes, temperature: 0.2, max_tokens: maxTokens, thinking: { type: 'disabled' } }),
+                signal: AbortSignal.timeout(45000)
             });
             const data = await res.json();
             if (data.choices?.[0]?.message?.content) return data.choices[0].message.content.trim();
@@ -77,7 +97,7 @@ async function llamarIA(mensajes, inputChars) {
         const res = await fetch('https://api.openai.com/v1/chat/completions', {
             method: 'POST',
             headers: { Authorization: `Bearer ${fallbackKey}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ model: 'gpt-4o-mini', messages: mensajes, temperature: 0.3, max_tokens: 4000 }),
+            body: JSON.stringify({ model: 'gpt-4o-mini', messages: mensajes, temperature: 0.3, max_tokens: maxTokens }),
             signal: AbortSignal.timeout(60000)
         });
         const data = await res.json();
@@ -102,6 +122,30 @@ async function ghListDir(owner, repo, branch, path) {
     const data = await res.json();
     if (!Array.isArray(data)) return [];
     return data.filter(f => f.type === 'file');
+}
+
+async function ghGetLastCommit(owner, repo, branch) {
+    const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/commits?sha=${branch}&per_page=1`, { headers: GH_HEADERS });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data?.[0]?.sha || null;
+}
+
+async function ghRevertToCommit(owner, repo, branch, targetSha, commitMessage) {
+    const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/git/refs/heads/${branch}`, { headers: GH_HEADERS });
+    if (!res.ok) throw new Error('No se pudo leer la ref del branch');
+    const refData = await res.json();
+
+    const updateRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/git/refs/heads/${branch}`, {
+        method: 'PATCH',
+        headers: { ...GH_HEADERS, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sha: targetSha, force: false })
+    });
+    if (!updateRes.ok) {
+        const errData = await updateRes.json();
+        throw new Error('Error al revertir: ' + (errData.message || updateRes.statusText));
+    }
+    return true;
 }
 
 // ── Docs reading ──
@@ -150,25 +194,67 @@ function validarHTML(html) {
 }
 
 function separarArchivos(raw) {
-    // Strip markdown code fences
     let cleaned = raw.replace(/^```html?\s*/i, '').replace(/\s*```$/i, '').trim();
-
-    // Find where real HTML starts
     const doctypeIdx = cleaned.indexOf('<!DOCTYPE');
     const htmlIdx = cleaned.indexOf('<html');
     const startIdx = doctypeIdx !== -1 ? doctypeIdx : (htmlIdx !== -1 ? htmlIdx : 0);
     let html = cleaned.substring(startIdx).trim();
-
-    // Truncate at last </html>
     const htmlEnd = html.lastIndexOf('</html>');
     if (htmlEnd !== -1) html = html.substring(0, htmlEnd + 7);
-
-    // CSS if present
     let css = null;
     const cssBlock = raw.match(/```css\s*([\s\S]*?)```/i);
     if (cssBlock) css = cssBlock[1].trim();
-
     return { html, css };
+}
+
+function extractContext(html, instruction) {
+    const instrLower = instruction.toLowerCase();
+    const words = instrLower.split(/\s+/).filter(w => w.length > 3);
+    const lines = html.split('\n');
+    const relevant = [];
+
+    for (const word of words) {
+        for (let i = 0; i < lines.length; i++) {
+            if (lines[i].toLowerCase().includes(word)) {
+                const start = Math.max(0, i - 8);
+                const end = Math.min(lines.length, i + 9);
+                const section = lines.slice(start, end).join('\n');
+                if (!relevant.some(s => s.includes(section.substring(0, 100)))) {
+                    relevant.push('...línea ' + (i + 1) + '...\n' + section);
+                }
+            }
+        }
+    }
+
+    return relevant.length > 0
+        ? relevant.join('\n\n---\n\n')
+        : html.substring(0, 5000);
+}
+
+function aplicarSearchReplace(originalHtml, replacements) {
+    let html = originalHtml;
+    let applied = 0;
+    for (const r of replacements) {
+        if (html.includes(r.search)) {
+            html = html.split(r.search).join(r.replace);
+            applied++;
+        }
+    }
+    return { html, applied };
+}
+
+function parseSearchReplace(raw) {
+    const pattern = /SEARCH:\s*\n([\s\S]*?)\nREPLACE:\s*\n([\s\S]*?)(?=\n\nSEARCH:|$)/gi;
+    const replacements = [];
+    let match;
+    while ((match = pattern.exec(raw)) !== null) {
+        const search = match[1].trim();
+        const replace = match[2].trim();
+        if (search && search.length >= 3) {
+            replacements.push({ search, replace });
+        }
+    }
+    return replacements;
 }
 
 // ── Handler ──
@@ -188,10 +274,8 @@ exports.handler = async (event) => {
         if (action === 'check_tokens') {
             const acceso = await verificarAcceso(user.id, proyecto_id, false);
             if (!acceso.ok) return { statusCode: 403, body: JSON.stringify({ error: acceso.error }) };
-
             const { data: perfil } = await supabase.from('perfiles').select('token_balance').eq('id', user.id).maybeSingle();
             const tokens = perfil?.token_balance || 0;
-
             return { statusCode: 200, body: JSON.stringify({ ok: true, tokens, puede_editar: tokens > 0 }) };
         }
 
@@ -213,6 +297,7 @@ exports.handler = async (event) => {
             const sections = parseSiteSections(indexFile.content);
             const docs = await leerDocsProyecto(owner, repo, branch);
             const { data: perfil } = await supabase.from('perfiles').select('token_balance').eq('id', user.id).maybeSingle();
+            const lastCommit = await ghGetLastCommit(owner, repo, branch);
 
             return {
                 statusCode: 200,
@@ -220,6 +305,7 @@ exports.handler = async (event) => {
                     ok: true,
                     sections,
                     sha: indexFile.sha,
+                    last_commit_sha: lastCommit,
                     full_html_length: indexFile.content.length,
                     tokens: perfil?.token_balance || 0,
                     site_url: proyecto.netlify_url,
@@ -232,9 +318,9 @@ exports.handler = async (event) => {
             };
         }
 
-        // ── EDIT_CONTENT ──
-        if (action === 'edit_content') {
-            const acceso = await verificarAcceso(user.id, proyecto_id, true);
+        // ── ANALYZE (conversacional: analiza → propone → espera aprobación) ──
+        if (action === 'analyze') {
+            const acceso = await verificarAcceso(user.id, proyecto_id, false);
             if (!acceso.ok) return { statusCode: 403, body: JSON.stringify({ error: acceso.error }) };
 
             const { instruction } = body;
@@ -242,7 +328,7 @@ exports.handler = async (event) => {
 
             const { data: perfil } = await supabase.from('perfiles').select('token_balance').eq('id', user.id).maybeSingle();
             const tokens = perfil?.token_balance || 0;
-            if (tokens <= 0) return { statusCode: 402, body: JSON.stringify({ error: 'Sin tokens disponibles. Recarga tokens para continuar editando.' }) };
+            if (tokens <= 0) return { statusCode: 402, body: JSON.stringify({ error: 'Sin tokens disponibles. Recarga tokens para continuar.' }) };
 
             const { data: proyecto } = await supabase.from('web_projects').select('*').eq('id', proyecto_id).maybeSingle();
             if (!proyecto) return { statusCode: 404, body: JSON.stringify({ error: 'Proyecto no encontrado' }) };
@@ -251,174 +337,223 @@ exports.handler = async (event) => {
             const repo = proyecto.github_repo || proyecto.slug;
             const branch = proyecto.default_branch || 'main';
 
-            // Leer index.html
             const indexFile = await ghReadFile(owner, repo, branch, 'index.html');
             if (!indexFile) return { statusCode: 502, body: JSON.stringify({ error: 'No se pudo leer index.html' }) };
 
-            // Leer styles.css (opcional)
             const cssFile = await ghReadFile(owner, repo, branch, 'styles.css');
-
-            // Leer docs/ para contexto del proyecto
             const docs = await leerDocsProyecto(owner, repo, branch);
+            const contextHtml = extractContext(indexFile.content, instruction);
+            const riesgo = evaluarRiesgo(instruction, indexFile.content);
 
-            // ── Extraer contexto relevante del HTML (no enviar 43K completos) ──
-            const fullHtml = indexFile.content;
-            const htmlLower = fullHtml.toLowerCase();
-            const instrLower = instruction.toLowerCase();
+            const docsSection = docs.contenido ? `\n\nDOCUMENTACIÓN DEL PROYECTO:\n${docs.contenido}\n` : '';
 
-            // Buscar keywords de la instrucción en el HTML
-            const instructionWords = instrLower.split(/\s+/).filter(w => w.length > 3);
-            const relevantSections = [];
-
-            // Encontrar líneas/sectores relevantes
-            const lines = fullHtml.split('\n');
-            for (const word of instructionWords) {
-                for (let i = 0; i < lines.length; i++) {
-                    if (lines[i].toLowerCase().includes(word)) {
-                        // Contexto: 5 líneas antes y 5 después
-                        const start = Math.max(0, i - 5);
-                        const end = Math.min(lines.length, i + 6);
-                        const section = lines.slice(start, end).join('\n');
-                        if (!relevantSections.some(s => s.includes(section.substring(0, 100)))) {
-                            relevantSections.push('...línea ' + (i+1) + '...\n' + section);
-                        }
-                    }
-                }
-            }
-
-            // Si no encontramos nada relevante, enviar primeras 5000 chars como fallback
-            const contextHtml = relevantSections.length > 0
-                ? relevantSections.join('\n\n---\n\n')
-                : fullHtml.substring(0, 5000);
-
-            const docsSection = docs.contenido
-                ? `\n\nDOCUMENTACIÓN DEL PROYECTO:\n${docs.contenido}\n`
-                : '';
-
-            const systemPrompt = `Eres un editor de contenido web. Tu tarea es hacer cambios MÍNIMOS en el HTML.
+            const systemPrompt = `Eres un asistente de desarrollo web conversacional. Analizas lo que el usuario quiere cambiar en su sitio y propones una solución.
 
 REGLAS:
-1. Cambia SOLO lo que se pide. NO cambies nada más.
-2. NO uses markdown, NO uses explicaciones.
-3. Usa SEARCH/REPLACE en este formato:
+1. Responde como un humano: cálido, claro, directo.
+2. Primero analiza qué se pide, luego propone una solución concreta.
+3. Si hay riesgo alto (ej: borrar contenido, zona protegida), advierte antes de proponer.
+4. Si la instrucción es ambigua, pide clarificación antes de proponer cambios.
+5. Siempres incluye SEARCH/REPLACE para los cambios que propones.
+6. Para cambios simples (teléfono, texto, color), da SEARCH/REPLACE directo.
+7. Para cambios complejos (nueva sección, reestructurar), explica qué harás y da SEARCH/REPLACE.
 
-SEARCH:
- texto exacto a buscar (incluye suficiente contexto para encontrarlo)
+FORMATO DE RESPUESTA (JSON estricto, sin markdown):
+{
+  "respuesta": "Tu análisis conversacional. Explica qué encontraste, qué propones, y por qué.",
+  "riesgo": "bajo|medio|alto",
+  "cambios": [
+    {"search": "texto exacto a buscar", "replace": "texto de reemplazo"}
+  ],
+  "resumen_cambios": "Descripción breve de los cambios propuestos",
+  "pregunta_clarificacion": null
+}
 
-REPLACE:
- texto de reemplazo
+Si necesitas que el usuario aclare algo, responde con pregunta_clarificacion y cambios vacío.
+Siempre responde en español.`;
 
-Puedes dar múltiples pares SEARCH/REPLACE.
-Solo necesitas devolver los SEARCH/REPLACE, NO el HTML completo.`;
+            const userPrompt = `INSTRUCCIÓN DEL USUARIO: ${instruction}
 
-            const userPrompt = `INSTRUCCIÓN: ${instruction}\n\nPartes relevantes del HTML:\n${contextHtml}\n\nDevuelve solo SEARCH/REPLACE:`;
+CONTEXTO RELEVANTE DEL HTML (extracto):
+${contextHtml}
+
+${docsSection}
+
+Analiza y responde con el JSON:`;
 
             let rawResponse;
             try {
                 rawResponse = await llamarIA([
                     { role: 'system', content: systemPrompt },
                     { role: 'user', content: userPrompt }
-                ], instruction.length + contextHtml.length);
+                ], 4000);
             } catch (e) {
                 return { statusCode: 502, body: JSON.stringify({ error: 'Error del proveedor de IA: ' + e.message }) };
             }
 
-            // Limpiar markdown code blocks si la IA los incluye
-            rawResponse = rawResponse.replace(/^```html?\s*/i, '').replace(/\s*```$/i, '').trim();
+            // Limpiar markdown si la IA lo incluye
+            rawResponse = rawResponse.replace(/^```json?\s*/i, '').replace(/\s*```$/i, '').trim();
 
-            // Estrategia 1: SEARCH/REPLACE (rápido, para cambios simples)
-            const searchReplacePattern = /SEARCH:\s*\n([\s\S]*?)\nREPLACE:\s*\n([\s\S]*?)(?=\n\nSEARCH:|$)/gi;
-            const replacements = [];
-            let match;
-            while ((match = searchReplacePattern.exec(rawResponse)) !== null) {
-                const search = match[1].trim();
-                const replace = match[2].trim();
-                if (search && search.length >= 3) {
-                    replacements.push({ search, replace });
+            let parsed;
+            try {
+                parsed = JSON.parse(rawResponse);
+            } catch (e) {
+                // Si no es JSON válido, intentar extraer SEARCH/REPLACE del texto libre
+                const replacements = parseSearchReplace(rawResponse);
+                parsed = {
+                    respuesta: rawResponse.replace(/SEARCH:[\s\S]*$/, '').trim() || 'He analizado tu solicitud.',
+                    riesgo: evaluarRiesgo(instruction, indexFile.content),
+                    cambios: replacements,
+                    resumen_cambios: replacements.length > 0 ? `${replacements.length} cambio(s) propuesto(s)` : 'Sin cambios automáticos',
+                    pregunta_clarificacion: null
+                };
+            }
+
+            // Validar que los SEARCH/REPLACE coinciden con el HTML actual
+            if (parsed.cambios && parsed.cambios.length > 0) {
+                const { applied } = aplicarSearchReplace(indexFile.content, parsed.cambios);
+                if (applied === 0 && parsed.cambios.length > 0) {
+                    return {
+                        statusCode: 200,
+                        body: JSON.stringify({
+                            ok: true,
+                            respuesta: 'Encontré tu solicitud pero los textos exactos no coinciden con el HTML actual. ¿Podrías ser más específico sobre qué texto quieres cambiar? Puedes copiar el texto tal como aparece en el sitio.',
+                            riesgo: 'bajo',
+                            cambios: [],
+                            resumen_cambios: '',
+                            pregunta_clarificacion: '¿Puedes copiar el texto exacto que quieres modificar?',
+                            tokens_remaining: tokens
+                        })
+                    };
                 }
-            }
-
-            let newHtml;
-            let newCss = null;
-
-            if (replacements.length > 0) {
-                // Aplicar SEARCH/REPLACE al HTML original
-                newHtml = indexFile.content;
-                let applied = 0;
-                for (const r of replacements) {
-                    if (newHtml.includes(r.search)) {
-                        newHtml = newHtml.split(r.search).join(r.replace);
-                        applied++;
-                    }
-                }
-                if (applied === 0) {
-                    return { statusCode: 422, body: JSON.stringify({ error: 'La IA devolvió SEARCH/REPLACE pero ninguno coincide con el HTML actual. Intenta con una instrucción más específica.' }) };
-                }
-            } else {
-                // Estrategia 2: HTML completo (para cambios complejos)
-                const { html, css } = separarArchivos(rawResponse);
-                newHtml = html;
-                newCss = css;
-            }
-
-            // Validar HTML
-            if (!validarHTML(newHtml)) {
-                return { statusCode: 500, body: JSON.stringify({ error: 'La IA no generó un HTML válido. Intenta con una instrucción más clara.' }) };
-            }
-
-            // ── Commit cambios ──
-            const commits = [];
-
-            // Commit index.html
-            const commitIndex = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/index.html`, {
-                method: 'PUT',
-                headers: { Authorization: `token ${GITHUB_TOKEN}`, Accept: 'application/vnd.github.v3+json', 'Content-Type': 'application/json' },
-                body: JSON.stringify({ message: `edit: ${instruction.substring(0, 80)}`, content: Buffer.from(newHtml).toString('base64'), sha: indexFile.sha, branch })
-            });
-            if (!commitIndex.ok) {
-                const errData = await commitIndex.json();
-                return { statusCode: 502, body: JSON.stringify({ error: 'Error al guardar index.html en GitHub: ' + (errData.message || commitIndex.statusText) }) };
-            }
-            commits.push('index.html');
-
-            // Commit styles.css si cambió
-            if (newCss && cssFile) {
-                const commitCss = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/styles.css`, {
-                    method: 'PUT',
-                    headers: { Authorization: `token ${GITHUB_TOKEN}`, Accept: 'application/vnd.github.v3+json', 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ message: `edit: ${instruction.substring(0, 80)} (css)`, content: Buffer.from(newCss).toString('base64'), sha: cssFile.sha, branch })
-                });
-                if (commitCss.ok) commits.push('styles.css');
-            }
-
-            // ── Deduct tokens ──
-            const tokensUsed = Math.ceil((instruction.length + newHtml.length + (newCss ? newCss.length : 0)) / 4) + 10;
-            const tokensRestantes = Math.max(0, tokens - tokensUsed);
-
-            await supabase.from('perfiles').update({ token_balance: tokensRestantes }).eq('id', user.id);
-            await supabase.from('edit_token_log').insert({
-                proyecto_id, user_id: user.id, tokens_used: tokensUsed,
-                description: instruction.substring(0, 200)
-            });
-
-            // ── Trigger Netlify deploy ──
-            if (proyecto.netlify_site_id) {
-                try {
-                    await fetch(`https://api.netlify.com/api/v1/sites/${proyecto.netlify_site_id}/builds`, {
-                        method: 'POST',
-                        headers: { Authorization: `Bearer ${process.env.NETLIFY_AUTH_TOKEN || ''}` }
-                    });
-                } catch (e) { console.error('site-editor: deploy trigger falló:', e.message); }
             }
 
             return {
                 statusCode: 200,
                 body: JSON.stringify({
-                    ok: true, tokens_used: tokensUsed, tokens_remaining: tokensRestantes,
-                    preview_url: proyecto.netlify_url, commits,
-                    message: `Edición aplicada en ${commits.join(' + ')}. ${tokensUsed} tokens consumidos. ${tokensRestantes} restantes.`
+                    ok: true,
+                    respuesta: parsed.respuesta || 'Analicé tu solicitud.',
+                    riesgo: parsed.riesgo || riesgo,
+                    cambios: parsed.cambios || [],
+                    resumen_cambios: parsed.resumen_cambios || '',
+                    pregunta_clarificacion: parsed.pregunta_clarificacion || null,
+                    tokens_remaining: tokens,
+                    preview_url: proyecto.netlify_url
                 })
             };
+        }
+
+        // ── EXECUTE (aplicar cambios aprobados) ──
+        if (action === 'execute') {
+            const acceso = await verificarAcceso(user.id, proyecto_id, true);
+            if (!acceso.ok) return { statusCode: 403, body: JSON.stringify({ error: acceso.error }) };
+
+            const { instruction, cambios, previous_sha } = body;
+            if (!cambios || !Array.isArray(cambios) || cambios.length === 0)
+                return { statusCode: 400, body: JSON.stringify({ error: 'Falta cambios (array de SEARCH/REPLACE)' }) };
+
+            const { data: perfil } = await supabase.from('perfiles').select('token_balance').eq('id', user.id).maybeSingle();
+            const tokens = perfil?.token_balance || 0;
+            if (tokens <= 0) return { statusCode: 402, body: JSON.stringify({ error: 'Sin tokens disponibles.' }) };
+
+            const { data: proyecto } = await supabase.from('web_projects').select('*').eq('id', proyecto_id).maybeSingle();
+            if (!proyecto) return { statusCode: 404, body: JSON.stringify({ error: 'Proyecto no encontrado' }) };
+
+            const owner = proyecto.github_owner || 'JeisonCastro';
+            const repo = proyecto.github_repo || proyecto.slug;
+            const branch = proyecto.default_branch || 'main';
+
+            // Re-leer para obtener SHA actualizado
+            const indexFile = await ghReadFile(owner, repo, branch, 'index.html');
+            if (!indexFile) return { statusCode: 502, body: JSON.stringify({ error: 'No se pudo leer index.html' }) };
+
+            const cssFile = await ghReadFile(owner, repo, branch, 'styles.css');
+
+            // Aplicar SEARCH/REPLACE
+            const { html: newHtml, applied } = aplicarSearchReplace(indexFile.content, cambios);
+            if (applied === 0) {
+                return { statusCode: 422, body: JSON.stringify({ error: 'Ningún SEARCH/REPLACE coincide con el HTML actual. Los cambios pueden haber sido modificados.' }) };
+            }
+
+            if (!validarHTML(newHtml)) {
+                return { statusCode: 500, body: JSON.stringify({ error: 'El resultado no es HTML válido.' }) };
+            }
+
+            // Obtener SHA previo para undo
+            const shaBefore = previous_sha || await ghGetLastCommit(owner, repo, branch);
+
+            // Commit
+            const commitRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/index.html`, {
+                method: 'PUT',
+                headers: { ...GH_HEADERS, 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    message: `edit: ${(instruction || 'cambio aprobado').substring(0, 80)}`,
+                    content: Buffer.from(newHtml).toString('base64'),
+                    sha: indexFile.sha,
+                    branch
+                })
+            });
+            if (!commitRes.ok) {
+                const errData = await commitRes.json();
+                return { statusCode: 502, body: JSON.stringify({ error: 'Error al guardar en GitHub: ' + (errData.message || commitRes.statusText) }) };
+            }
+
+            const commitData = await commitRes.json();
+            const newCommitSha = commitData.commit?.sha || null;
+
+            // Deduct tokens (solo execute cobra tokens, analyze es gratis)
+            const tokensUsed = Math.ceil((applied * 50 + newHtml.length) / 4) + 10;
+            const tokensRestantes = Math.max(0, tokens - tokensUsed);
+
+            await supabase.from('perfiles').update({ token_balance: tokensRestantes }).eq('id', user.id);
+            await supabase.from('edit_token_log').insert({
+                proyecto_id, user_id: user.id, tokens_used: tokensUsed,
+                description: (instruction || 'cambio aprobado').substring(0, 200)
+            });
+
+            return {
+                statusCode: 200,
+                body: JSON.stringify({
+                    ok: true,
+                    tokens_used: tokensUsed,
+                    tokens_remaining: tokensRestantes,
+                    applied: applied,
+                    preview_url: proyecto.netlify_url,
+                    commit_sha: newCommitSha,
+                    previous_sha: shaBefore,
+                    message: `Cambios aplicados (${applied} búsqueda/reemplazo). ${tokensUsed} tokens. Sitio actualizándose...`
+                })
+            };
+        }
+
+        // ── UNDO (revertir al commit anterior) ──
+        if (action === 'undo') {
+            const acceso = await verificarAcceso(user.id, proyecto_id, true);
+            if (!acceso.ok) return { statusCode: 403, body: JSON.stringify({ error: acceso.error }) };
+
+            const { previous_sha } = body;
+            if (!previous_sha) return { statusCode: 400, body: JSON.stringify({ error: 'Falta previous_sha para revertir' }) };
+
+            const { data: proyecto } = await supabase.from('web_projects').select('*').eq('id', proyecto_id).maybeSingle();
+            if (!proyecto) return { statusCode: 404, body: JSON.stringify({ error: 'Proyecto no encontrado' }) };
+
+            const owner = proyecto.github_owner || 'JeisonCastro';
+            const repo = proyecto.github_repo || proyecto.slug;
+            const branch = proyecto.default_branch || 'main';
+
+            try {
+                await ghRevertToCommit(owner, repo, branch, previous_sha, 'Revert: deshacer edición');
+                return {
+                    statusCode: 200,
+                    body: JSON.stringify({
+                        ok: true,
+                        preview_url: proyecto.netlify_url,
+                        message: 'Cambios revertidos. El sitio se está restaurando...'
+                    })
+                };
+            } catch (e) {
+                return { statusCode: 502, body: JSON.stringify({ error: 'No se pudo revertir: ' + e.message }) };
+            }
         }
 
         return { statusCode: 400, body: JSON.stringify({ error: 'Acción no válida: ' + action }) };

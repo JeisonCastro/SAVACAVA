@@ -1943,9 +1943,9 @@ INSTRUCCIONES:
             }
         }
 
-        // ── SITE EDIT: Editar contenido de sitio web con IA (nativo, inline) ──
-        // Misma arquitectura que WEBFACTORY_CREAR_DEMO: todo en el mismo proceso.
-        // Lee archivos del repositorio GitHub, llama IA, commitea y despliega a Netlify.
+        // ── SITE EDIT: Editor AI conversacional de contenido web ──
+        // Flujo: analyze (propuesta) → usuario aprueba → execute (aplicar) → undo (revertir)
+        // Lee archivos del repositorio GitHub, llama IA, propone cambios, aplica solo con aprobación.
         if (actionPayload?.action === 'SITE_EDIT_CONTENT') {
             try {
                 if (!toolDisponible(toolsDisponibles, 'SITE_EDIT_CONTENT')) {
@@ -1954,8 +1954,11 @@ INSTRUCCIONES:
                     const accData = actionPayload.data || {};
                     const instruction = String(accData.instruction || '').trim();
                     const proyectoId = accData.proyecto_id || null;
+                    const mode = accData.mode || 'analyze'; // 'analyze' | 'execute' | 'undo'
+                    const prevSha = accData.previous_sha || null;
+                    const prevCambios = accData.cambios || null;
 
-                    if (!instruction) {
+                    if (!instruction && mode !== 'undo') {
                         respuestaIA = "¿Qué quieres cambiar en tu sitio web? Describe el cambio específico (ej: cambiar el teléfono, actualizar la dirección, modificar un color).";
                     } else {
                         // ── 1. Buscar el proyecto ──
@@ -1981,6 +1984,20 @@ INSTRUCCIONES:
                                 const ghBase = `https://api.github.com/repos/${owner}/${repo}`;
                                 const ghHeaders = { Authorization: `Bearer ${GITHUB_TOKEN}`, Accept: 'application/vnd.github+json', 'Content-Type': 'application/json' };
 
+                                const ghRead = async (path) => {
+                                    const r = await fetch(`${ghBase}/contents/${path}?ref=${branch}`, { headers: ghHeaders });
+                                    if (!r.ok) return null;
+                                    const d = await r.json();
+                                    return { content: Buffer.from(d.content, 'base64').toString('utf-8'), sha: d.sha };
+                                };
+
+                                const ghGetLastCommit = async () => {
+                                    const r = await fetch(`${ghBase}/commits?sha=${branch}&per_page=1`, { headers: ghHeaders });
+                                    if (!r.ok) return null;
+                                    const d = await r.json();
+                                    return d?.[0]?.sha || null;
+                                };
+
                                 // ── 2. Leer tokens del usuario ──
                                 const { data: perfil } = await supabase.from('perfiles').select('token_balance').eq('id', user.id).maybeSingle();
                                 const tokens = perfil?.token_balance || 0;
@@ -1988,213 +2005,246 @@ INSTRUCCIONES:
                                     respuestaIA = "No tienes tokens suficientes. Recarga tokens para poder editar tu sitio.";
                                 } else {
 
-                                    // ── 3. Leer archivos del repositorio ──
-                                    const ghRead = async (path) => {
-                                        const r = await fetch(`${ghBase}/contents/${path}?ref=${branch}`, { headers: ghHeaders });
-                                        if (!r.ok) return null;
-                                        const d = await r.json();
-                                        return { content: Buffer.from(d.content, 'base64').toString('utf-8'), sha: d.sha };
-                                    };
-
-                                    const indexFile = await ghRead('index.html');
-                                    if (!indexFile) {
-                                        respuestaIA = "No pude leer index.html del repositorio. Verifica que el proyecto tenga archivos.";
-                                    } else {
-                                        const cssFile = await ghRead('styles.css');
-
-                                        // ── 4. Leer docs/ para contexto ──
-                                        let docsContenido = '';
-                                        let docsArchivos = [];
+                                    // ── UNDO ──
+                                    if (mode === 'undo' && prevSha) {
                                         try {
-                                            const docsRes = await fetch(`${ghBase}/contents/docs?ref=${branch}`, { headers: ghHeaders });
-                                            if (docsRes.ok) {
-                                                const docsList = await docsRes.json();
-                                                if (Array.isArray(docsList)) {
-                                                    const mdFiles = docsList.filter(f => f.type === 'file' && f.name.endsWith('.md'));
-                                                    for (const f of mdFiles) {
-                                                        const fData = await ghRead(`docs/${f.name}`);
-                                                        if (fData) {
-                                                            docsArchivos.push(f.name);
-                                                            docsContenido += `--- ${f.name} ---\n${fData.content}\n\n`;
-                                                        }
-                                                    }
+                                            const refRes = await fetch(`${ghBase}/git/refs/heads/${branch}`, { headers: ghHeaders });
+                                            if (refRes.ok) {
+                                                await fetch(`${ghBase}/git/refs/heads/${branch}`, {
+                                                    method: 'PATCH', headers: { ...ghHeaders, 'Content-Type': 'application/json' },
+                                                    body: JSON.stringify({ sha: prevSha, force: false })
+                                                });
+                                                respuestaIA = 'Cambios revertidos. Tu sitio se está restaurando.';
+                                            } else {
+                                                respuestaIA = 'No se pudo revertir los cambios.';
+                                            }
+                                        } catch (_) {
+                                            respuestaIA = 'Error al intentar revertir.';
+                                        }
+                                    }
+                                    // ── EXECUTE (aplicar cambios aprobados) ──
+                                    else if (mode === 'execute' && prevCambios && prevCambios.length > 0) {
+                                        const indexFile = await ghRead('index.html');
+                                        if (!indexFile) {
+                                            respuestaIA = "No pude leer index.html del repositorio.";
+                                        } else {
+                                            // Aplicar SEARCH/REPLACE
+                                            let newHtml = indexFile.content;
+                                            let applied = 0;
+                                            for (const r of prevCambios) {
+                                                if (newHtml.includes(r.search)) {
+                                                    newHtml = newHtml.split(r.search).join(r.replace);
+                                                    applied++;
                                                 }
                                             }
-                                        } catch (_) {}
-
-                                        // ── 5. Extraer contexto relevante del HTML ──
-                                        const fullHtml = indexFile.content;
-                                        const instrLower = instruction.toLowerCase();
-                                        const instructionWords = instrLower.split(/\s+/).filter(w => w.length > 3);
-                                        const relevantSections = [];
-                                        const htmlLines = fullHtml.split('\n');
-
-                                        for (const word of instructionWords) {
-                                            for (let i = 0; i < htmlLines.length; i++) {
-                                                if (htmlLines[i].toLowerCase().includes(word)) {
-                                                    const start = Math.max(0, i - 5);
-                                                    const end = Math.min(htmlLines.length, i + 6);
-                                                    const section = htmlLines.slice(start, end).join('\n');
-                                                    if (!relevantSections.some(s => s.includes(section.substring(0, 100)))) {
-                                                        relevantSections.push('...línea ' + (i+1) + '...\n' + section);
+                                            if (applied === 0) {
+                                                respuestaIA = "Ningún cambio coincide con el HTML actual. Los textos pueden haber cambiado. Pídeme que analice de nuevo.";
+                                            } else {
+                                                const lower = newHtml.toLowerCase();
+                                                if (!(lower.includes('<head') && lower.includes('<body') && lower.includes('</html>'))) {
+                                                    respuestaIA = "El resultado no es HTML válido. No apliqué los cambios.";
+                                                } else {
+                                                    // Obtener SHA previo para undo
+                                                    const shaBefore = prevSha || await ghGetLastCommit();
+                                                    // Commit
+                                                    const commitRes = await fetch(`${ghBase}/contents/index.html`, {
+                                                        method: 'PUT', headers: ghHeaders,
+                                                        body: JSON.stringify({
+                                                            message: `edit: ${instruction.substring(0, 80)}`,
+                                                            content: Buffer.from(newHtml, 'utf-8').toString('base64'),
+                                                            sha: indexFile.sha, branch
+                                                        })
+                                                    });
+                                                    if (!commitRes.ok) {
+                                                        respuestaIA = "No pude guardar los cambios en GitHub.";
+                                                    } else {
+                                                        const tokensUsed = Math.ceil((applied * 50 + newHtml.length) / 4) + 10;
+                                                        const tokensRestantes = Math.max(0, tokens - tokensUsed);
+                                                        await supabase.from('perfiles').update({ token_balance: tokensRestantes }).eq('id', user.id);
+                                                        await supabase.from('logs_consumo').insert({
+                                                            user_id: user.id, agente_id: targetID,
+                                                            nombre_agente: 'Editor IA Web',
+                                                            tokens_usados: tokensUsed,
+                                                            tipo: 'edicion_web'
+                                                        });
+                                                        respuestaIA = `✅ Cambios aplicados (${applied} búsqueda/reemplazo). ${tokensUsed} tokens consumidos. Sitio actualizándose en ~60s.\n\nPara deshacer, dime "deshacer" y envía este código: \`${shaBefore}\``;
                                                     }
                                                 }
                                             }
                                         }
+                                    }
+                                    // ── ANALYZE (conversacional: analiza → propone → espera aprobación) ──
+                                    else {
+                                        const indexFile = await ghRead('index.html');
+                                        if (!indexFile) {
+                                            respuestaIA = "No pude leer index.html del repositorio. Verifica que el proyecto tenga archivos.";
+                                        } else {
+                                            // Leer docs/ para contexto
+                                            let docsContenido = '';
+                                            try {
+                                                const docsRes = await fetch(`${ghBase}/contents/docs?ref=${branch}`, { headers: ghHeaders });
+                                                if (docsRes.ok) {
+                                                    const docsList = await docsRes.json();
+                                                    if (Array.isArray(docsList)) {
+                                                        const mdFiles = docsList.filter(f => f.type === 'file' && f.name.endsWith('.md'));
+                                                        for (const f of mdFiles) {
+                                                            const fData = await ghRead(`docs/${f.name}`);
+                                                            if (fData) docsContenido += `--- ${f.name} ---\n${fData.content}\n\n`;
+                                                        }
+                                                    }
+                                                }
+                                            } catch (_) {}
 
-                                        const contextHtml = relevantSections.length > 0
-                                            ? relevantSections.join('\n\n---\n\n')
-                                            : fullHtml.substring(0, 5000);
+                                            // Extraer contexto relevante del HTML
+                                            const fullHtml = indexFile.content;
+                                            const instrLower = instruction.toLowerCase();
+                                            const instructionWords = instrLower.split(/\s+/).filter(w => w.length > 3);
+                                            const relevantSections = [];
+                                            const htmlLines = fullHtml.split('\n');
 
-                                        const docsSection = docsContenido
-                                            ? `\n\nDOCUMENTACIÓN DEL PROYECTO:\n${docsContenido}`
-                                            : '';
+                                            for (const word of instructionWords) {
+                                                for (let i = 0; i < htmlLines.length; i++) {
+                                                    if (htmlLines[i].toLowerCase().includes(word)) {
+                                                        const start = Math.max(0, i - 8);
+                                                        const end = Math.min(htmlLines.length, i + 9);
+                                                        const section = htmlLines.slice(start, end).join('\n');
+                                                        if (!relevantSections.some(s => s.includes(section.substring(0, 100)))) {
+                                                            relevantSections.push('...línea ' + (i+1) + '...\n' + section);
+                                                        }
+                                                    }
+                                                }
+                                            }
 
-                                        const systemPrompt = `Eres un editor de contenido web. Tu tarea es hacer cambios MÍNIMOS en el HTML.
+                                            const contextHtml = relevantSections.length > 0
+                                                ? relevantSections.join('\n\n---\n\n')
+                                                : fullHtml.substring(0, 5000);
+
+                                            const docsSection = docsContenido
+                                                ? `\n\nDOCUMENTACIÓN DEL PROYECTO:\n${docsContenido}`
+                                                : '';
+
+                                            // Evaluar riesgo
+                                            const riesgosAlto = ['borrar', 'eliminar', 'quitar', 'reset', 'reiniciar', 'reemplazar todo', 'nuevo html', 'rebuild'];
+                                            const riesgosMedio = ['cambiar', 'modificar', 'actualizar', 'mover', 'reordenar', 'agregar sección'];
+                                            let riesgo = 'bajo';
+                                            if (riesgosAlto.some(r => instrLower.includes(r))) riesgo = 'alto';
+                                            else if (riesgosMedio.some(r => instrLower.includes(r))) riesgo = 'medio';
+
+                                            const systemPrompt = `Eres un asistente de desarrollo web conversacional. Analizas lo que el usuario quiere cambiar en su sitio y propones una solución.
 
 REGLAS:
-1. Cambia SOLO lo que se pide. NO cambies nada más.
-2. NO uses markdown, NO uses explicaciones.
-3. Usa SEARCH/REPLACE en este formato:
+1. Responde como un humano: cálido, claro, directo.
+2. Primero analiza qué se pide, luego propone una solución concreta.
+3. Si hay riesgo alto (ej: borrar contenido), advierte antes de proponer.
+4. Si la instrucción es ambigua, pide clarificación antes de proponer.
+5. Siempre incluye SEARCH/REPLACE para los cambios que propones.
+6. Para cambios simples (teléfono, texto, color), da SEARCH/REPLACE directo.
+7. Para cambios complejos, explica qué harás y da SEARCH/REPLACE.
 
-SEARCH:
- texto exacto a buscar (incluye suficiente contexto para encontrarlo)
+FORMATO DE RESPUESTA (JSON estricto, sin markdown):
+{
+  "respuesta": "Tu análisis conversacional. Explica qué encontraste, qué propones, y por qué.",
+  "riesgo": "bajo|medio|alto",
+  "cambios": [
+    {"search": "texto exacto a buscar", "replace": "texto de reemplazo"}
+  ],
+  "resumen_cambios": "Descripción breve de los cambios propuestos",
+  "pregunta_clarificacion": null
+}
 
-REPLACE:
- texto de reemplazo
+Si necesitas que el usuario aclare algo, responde con pregunta_clarificacion y cambios vacío.
+Siempre responde en español.`;
 
-Puedes dar múltiples pares SEARCH/REPLACE.
-Solo necesitas devolver los SEARCH/REPLACE, NO el HTML completo.`;
+                                            const userPrompt = `INSTRUCCIÓN DEL USUARIO: ${instruction}\n\nCONTEXTO RELEVANTE DEL HTML:\n${contextHtml}\n\n${docsSection}\nAnaliza y responde con el JSON:`;
 
-                                        // ── 6. Llamar a la IA ──
-                                        let rawResponse;
-                                        try {
-                                            // Reutilizar el mismo patrón de llamada que el chat principal
-                                            const deepseekKey = process.env.DEEPSEEK_API_KEY;
-                                            const fallbackKey = process.env.FALLBACK_API_KEY || process.env.OPENIA_KEY;
-                                            const userPrompt = `INSTRUCCIÓN: ${instruction}\n\nPartes relevantes del HTML:\n${contextHtml}\n\nDevuelve solo SEARCH/REPLACE:`;
-                                            const messages = [
-                                                { role: 'system', content: systemPrompt },
-                                                { role: 'user', content: userPrompt }
-                                            ];
+                                            let rawResponse;
+                                            try {
+                                                const deepseekKey = process.env.DEEPSEEK_API_KEY;
+                                                const fallbackKey = process.env.FALLBACK_API_KEY || process.env.OPENIA_KEY;
+                                                const messages = [
+                                                    { role: 'system', content: systemPrompt },
+                                                    { role: 'user', content: userPrompt }
+                                                ];
 
-                                            if (deepseekKey) {
-                                                try {
-                                                    const aiRes = await fetch('https://api.deepseek.com/v1/chat/completions', {
+                                                if (deepseekKey) {
+                                                    try {
+                                                        const aiRes = await fetch('https://api.deepseek.com/v1/chat/completions', {
+                                                            method: 'POST',
+                                                            headers: { Authorization: `Bearer ${deepseekKey}`, 'Content-Type': 'application/json' },
+                                                            body: JSON.stringify({ model: 'deepseek-v4-flash', messages, temperature: 0.2, max_tokens: 4000, thinking: { type: 'disabled' } }),
+                                                            signal: AbortSignal.timeout(45000)
+                                                        });
+                                                        const aiData = await aiRes.json();
+                                                        if (aiData.choices?.[0]?.message?.content) rawResponse = aiData.choices[0].message.content.trim();
+                                                    } catch (_) {}
+                                                }
+                                                if (!rawResponse && fallbackKey) {
+                                                    const aiRes = await fetch('https://api.openai.com/v1/chat/completions', {
                                                         method: 'POST',
-                                                        headers: { Authorization: `Bearer ${deepseekKey}`, 'Content-Type': 'application/json' },
-                                                        body: JSON.stringify({ model: 'deepseek-v4-flash', messages, temperature: 0.2, max_tokens: 4000, thinking: { type: 'disabled' } }),
-                                                        signal: AbortSignal.timeout(30000)
+                                                        headers: { Authorization: `Bearer ${fallbackKey}`, 'Content-Type': 'application/json' },
+                                                        body: JSON.stringify({ model: 'gpt-4o-mini', messages, temperature: 0.3, max_tokens: 4000 }),
+                                                        signal: AbortSignal.timeout(60000)
                                                     });
                                                     const aiData = await aiRes.json();
                                                     if (aiData.choices?.[0]?.message?.content) rawResponse = aiData.choices[0].message.content.trim();
-                                                } catch (_) {}
-                                            }
-                                            if (!rawResponse && fallbackKey) {
-                                                const aiRes = await fetch('https://api.openai.com/v1/chat/completions', {
-                                                    method: 'POST',
-                                                    headers: { Authorization: `Bearer ${fallbackKey}`, 'Content-Type': 'application/json' },
-                                                    body: JSON.stringify({ model: 'gpt-4o-mini', messages, temperature: 0.3, max_tokens: 4000 }),
-                                                    signal: AbortSignal.timeout(30000)
-                                                });
-                                                const aiData = await aiRes.json();
-                                                if (aiData.choices?.[0]?.message?.content) rawResponse = aiData.choices[0].message.content.trim();
-                                            }
-                                        } catch (_) {}
+                                                }
+                                            } catch (_) {}
 
-                                        if (!rawResponse) {
-                                            respuestaIA = "No pude procesar la edición. El proveedor de IA no respondió. Intenta de nuevo.";
-                                        } else {
-                                            // ── 7. Parsear respuesta ──
-                                            let newHtml = null;
-                                            let newCss = null;
-                                            const filesToCommit = [];
+                                            if (!rawResponse) {
+                                                respuestaIA = "No pude procesar la solicitud. El proveedor de IA no respondió. Intenta de nuevo.";
+                                            } else {
+                                                // Limpiar markdown si la IA lo incluye
+                                                rawResponse = rawResponse.replace(/^```json?\s*/i, '').replace(/\s*```$/i, '').trim();
 
-                                            // Estrategia 1: SEARCH/REPLACE (rápido, para cambios simples)
-                                            const searchReplacePattern = /SEARCH:\s*\n([\s\S]*?)\nREPLACE:\s*\n([\s\S]*?)(?=\n\nSEARCH:|$)/gi;
-                                            const replacements = [];
-                                            let m;
-                                            while ((m = searchReplacePattern.exec(rawResponse)) !== null) {
-                                                const search = m[1].trim();
-                                                const replace = m[2].trim();
-                                                if (search && search.length >= 3) replacements.push({ search, replace });
-                                            }
+                                                let parsed;
+                                                try {
+                                                    parsed = JSON.parse(rawResponse);
+                                                } catch (e) {
+                                                    // Si no es JSON, extraer SEARCH/REPLACE del texto libre
+                                                    const srPattern = /SEARCH:\s*\n([\s\S]*?)\nREPLACE:\s*\n([\s\S]*?)(?=\n\nSEARCH:|$)/gi;
+                                                    const reps = [];
+                                                    let m;
+                                                    while ((m = srPattern.exec(rawResponse)) !== null) {
+                                                        if (m[1].trim().length >= 3) reps.push({ search: m[1].trim(), replace: m[2].trim() });
+                                                    }
+                                                    parsed = {
+                                                        respuesta: rawResponse.replace(/SEARCH:[\s\S]*$/, '').trim() || 'He analizado tu solicitud.',
+                                                        riesgo,
+                                                        cambios: reps,
+                                                        resumen_cambios: reps.length > 0 ? `${reps.length} cambio(s) propuesto(s)` : 'Sin cambios automáticos',
+                                                        pregunta_clarificacion: null
+                                                    };
+                                                }
 
-                                            if (replacements.length > 0) {
-                                                // Aplicar SEARCH/REPLACE al HTML original
-                                                newHtml = indexFile.content;
-                                                let applied = 0;
-                                                for (const r of replacements) {
-                                                    if (newHtml.includes(r.search)) {
-                                                        newHtml = newHtml.split(r.search).join(r.replace);
-                                                        applied++;
+                                                // Validar SEARCH/REPLACE contra HTML actual
+                                                if (parsed.cambios && parsed.cambios.length > 0) {
+                                                    let testHtml = indexFile.content;
+                                                    let ok = 0;
+                                                    for (const r of parsed.cambios) {
+                                                        if (testHtml.includes(r.search)) { testHtml = testHtml.split(r.search).join(r.replace); ok++; }
+                                                    }
+                                                    if (ok === 0) {
+                                                        respuestaIA = 'Encontré tu solicitud pero los textos exactos no coinciden con el HTML actual. ¿Podrías copiar el texto tal como aparece en el sitio?';
                                                     }
                                                 }
-                                                if (applied > 0) {
-                                                    filesToCommit.push({ path: 'index.html', content: newHtml, sha: indexFile.sha });
-                                                } else {
-                                                    respuestaIA = "La IA devolvió cambios pero ninguno coincide con el HTML actual. Intenta con una instrucción más específica.";
-                                                }
-                                            } else {
-                                                // Estrategia 2: HTML completo
-                                                let cleaned = rawResponse.replace(/^```html?\s*/i, '').replace(/\s*```$/i, '').trim();
-                                                const doctypeIdx = cleaned.indexOf('<!DOCTYPE');
-                                                const htmlIdx = cleaned.indexOf('<html');
-                                                const startIdx = doctypeIdx !== -1 ? doctypeIdx : (htmlIdx !== -1 ? htmlIdx : 0);
-                                                let html = cleaned.substring(startIdx).trim();
-                                                const htmlEnd = html.lastIndexOf('</html>');
-                                                if (htmlEnd !== -1) html = html.substring(0, htmlEnd + 7);
 
-                                                const cssMatch = rawResponse.match(/```css\s*([\s\S]*?)```/i);
-                                                if (cssMatch) newCss = cssMatch[1].trim();
+                                                if (!respuestaIA) {
+                                                    // Construir respuesta conversacional
+                                                    const shaBefore = await ghGetLastCommit();
+                                                    let respuesta = parsed.respuesta || 'Analicé tu solicitud.';
 
-                                                const lower = (html || '').toLowerCase();
-                                                if (html && html.length > 100 && lower.includes('<body') && lower.includes('</html>')) {
-                                                    filesToCommit.push({ path: 'index.html', content: html, sha: indexFile.sha });
-                                                    if (newCss && cssFile) filesToCommit.push({ path: 'styles.css', content: newCss, sha: cssFile.sha });
-                                                } else {
-                                                    respuestaIA = "La IA no devolvió HTML válido. Intenta con una instrucción más simple.";
-                                                }
-                                            }
+                                                    if (parsed.pregunta_clarificacion) {
+                                                        respuesta += '\n\n' + parsed.pregunta_clarificacion;
+                                                    } else if (parsed.cambios && parsed.cambios.length > 0) {
+                                                        respuesta += `\n\n📋 **${parsed.cambios.length} cambio(s) propuesto(s)** — Riesgo: ${parsed.riesgo || riesgo}`;
+                                                        respuesta += '\n\nPara aprobar, responde: **"aprobar cambios"';
+                                                        respuesta += '\nPara cancelar, responde: **"cancelar"';
+                                                        respuesta += `\n\n.shiro:edits:${pid}:${shaBefore}:${Buffer.from(JSON.stringify(parsed.cambios)).toString('base64').substring(0, 200)}`;
+                                                    } else {
+                                                        respuesta += '\n\n¿Qué te gustaría ajustar?';
+                                                    }
 
-                                            if (!respuestaIA && filesToCommit.length > 0) {
-                                                // ── 8. Commit a GitHub (PUT /contents = commit en main = auto-deploy Netlify) ──
-                                                const archivos = [];
-
-                                                const commitArchivo = async (path, content, sha) => {
-                                                    const res = await fetch(`${ghBase}/contents/${path}`, {
-                                                        method: 'PUT', headers: ghHeaders,
-                                                        body: JSON.stringify({
-                                                            message: `edit: ${instruction.substring(0, 80)}`,
-                                                            content: Buffer.from(content, 'utf-8').toString('base64'),
-                                                            sha, branch
-                                                        })
-                                                    });
-                                                    return res.status === 201;
-                                                };
-
-                                                for (const file of filesToCommit) {
-                                                    const ok = await commitArchivo(file.path, file.content, file.sha);
-                                                    if (ok) archivos.push(file.path);
-                                                }
-
-                                                if (!archivos.length) {
-                                                    respuestaIA = "No pude guardar los cambios en GitHub. Verifica los permisos del repositorio.";
-                                                } else {
-                                                    // ── 9. Deduct tokens ──
-                                                    const totalContent = filesToCommit.reduce((acc, f) => acc + f.content.length, 0);
-                                                    const tokensUsed = Math.ceil((instruction.length + totalContent) / 4) + 10;
-                                                    const tokensRestantes = Math.max(0, tokens - tokensUsed);
-
-                                                    await supabase.from('perfiles').update({ token_balance: tokensRestantes }).eq('id', user.id);
-                                                    await supabase.from('logs_consumo').insert({
-                                                        user_id: user.id, agente_id: targetID,
-                                                        nombre_agente: 'Editor IA Web',
-                                                        tokens_usados: tokensUsed,
-                                                        tipo: 'edicion_web'
-                                                    });
-
-                                                    respuestaIA = `Edición aplicada en ${archivos.join(' y ')}. ${tokensUsed} tokens consumidos. ${tokensRestantes} restantes. Tu sitio se actualizará en ~60 segundos.`;
+                                                    respuestaIA = respuesta;
                                                 }
                                             }
                                         }
