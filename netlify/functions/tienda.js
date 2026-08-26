@@ -70,16 +70,17 @@ async function autenticarAdmin(event, proyectoId) {
         .single();
     if (miPerfil?.is_admin) return userId;
     // Si no es admin, verificar permiso de tienda para el proyecto específico
+    const ROLES_TIENDA_PERMITIDOS = ['admin_tienda', 'editor_tienda'];
     if (proyectoId) {
         const { data: permiso } = await supabase
             .from('tienda_permisos')
-            .select('id')
+            .select('rol')
             .eq('proyecto_id', proyectoId)
             .eq('user_id', userId)
             .maybeSingle();
-        if (permiso) return userId;
+        if (permiso && ROLES_TIENDA_PERMITIDOS.includes(permiso.rol)) return userId;
     }
-    throw new Error('No eres admin');
+    throw new Error('No tienes permiso para administrar esta tienda');
 }
 
 // ── Modelo ──

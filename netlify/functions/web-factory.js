@@ -817,21 +817,22 @@ async function verificarAccesoProyecto(userId, proyectoId, operacion) {
     if (!permiso) return { ok: false, error: 'No tienes acceso a este sitio', statusCode: 403 };
 
     // 5. Verificar rol contra operación requerida
+    // Roles de tienda equivalen a roles de sitio (un proyecto puede ser ambos)
     const PERMISOS = {
-        // Sitios web
-        'ver_sitio':          ['admin_sitio', 'editor_sitio', 'visor_sitio'],
-        'editar_contenido':   ['admin_sitio', 'editor_sitio'],
-        'gestionar_agente':   ['admin_sitio'],
+        // Sitios web (incluye roles de tienda como equivalentes)
+        'ver_sitio':          ['admin_sitio', 'editor_sitio', 'visor_sitio', 'admin_tienda', 'editor_tienda', 'visor_tienda'],
+        'editar_contenido':   ['admin_sitio', 'editor_sitio', 'admin_tienda', 'editor_tienda'],
+        'gestionar_agente':   ['admin_sitio', 'admin_tienda'],
         'eliminar_sitio':     ['admin_sitio'],
         'config_dominio':     ['admin_sitio'],
-        'recargar_tokens':    ['admin_sitio', 'editor_sitio'],
-        'ver_tokens':         ['admin_sitio', 'editor_sitio', 'visor_sitio'],
+        'recargar_tokens':    ['admin_sitio', 'editor_sitio', 'admin_tienda', 'editor_tienda'],
+        'ver_tokens':         ['admin_sitio', 'editor_sitio', 'visor_sitio', 'admin_tienda', 'editor_tienda', 'visor_tienda'],
         // Tiendas
-        'ver_tienda':         ['admin_tienda', 'editor_tienda', 'visor_tienda'],
-        'editar_productos':   ['admin_tienda', 'editor_tienda'],
-        'gestionar_ordenes':  ['admin_tienda', 'editor_tienda'],
-        'config_pasarela':    ['admin_tienda'],
-        'gestionar_clientes': ['admin_tienda'],
+        'ver_tienda':         ['admin_tienda', 'editor_tienda', 'visor_tienda', 'admin_sitio', 'editor_sitio', 'visor_sitio'],
+        'editar_productos':   ['admin_tienda', 'editor_tienda', 'admin_sitio'],
+        'gestionar_ordenes':  ['admin_tienda', 'editor_tienda', 'admin_sitio'],
+        'config_pasarela':    ['admin_tienda', 'admin_sitio'],
+        'gestionar_clientes': ['admin_tienda', 'admin_sitio'],
     };
 
     if (operacion && PERMISOS[operacion]) {

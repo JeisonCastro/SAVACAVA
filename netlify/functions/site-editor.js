@@ -17,8 +17,9 @@ const headers = {
     "Content-Type": "application/json"
 };
 
-const ROLES_EDICION = ['admin_sitio', 'editor_sitio'];
-const ROLES_LECTURA = ['admin_sitio', 'editor_sitio', 'visor_sitio'];
+// Roles de sitio + roles de tienda (un proyecto puede ser ambos)
+const ROLES_EDICION = ['admin_sitio', 'editor_sitio', 'admin_tienda', 'editor_tienda'];
+const ROLES_LECTURA = ['admin_sitio', 'editor_sitio', 'visor_sitio', 'admin_tienda', 'editor_tienda', 'visor_tienda'];
 
 const GH_HEADERS = { Authorization: `token ${GITHUB_TOKEN}`, Accept: 'application/vnd.github.v3+json' };
 

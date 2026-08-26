@@ -48,16 +48,17 @@ async function autenticar(event, proyectoId) {
     .single();
   if (miPerfil?.is_admin) return userId;
   // Si no es admin, verificar permiso de tienda para el proyecto específico
+  const ROLES_PERMITIDOS = ['admin_tienda', 'editor_tienda', 'admin_sitio'];
   if (proyectoId) {
     const { data: permiso } = await supabase
       .from('tienda_permisos')
-      .select('id')
+      .select('rol')
       .eq('proyecto_id', proyectoId)
       .eq('user_id', userId)
       .maybeSingle();
-    if (permiso) return userId;
+    if (permiso && ROLES_PERMITIDOS.includes(permiso.rol)) return userId;
   }
-  throw new Error('No eres admin');
+  throw new Error('No tienes permiso para administrar este sitio');
 }
 
 async function validarPropietario(proyectoId, userId) {
@@ -68,15 +69,16 @@ async function validarPropietario(proyectoId, userId) {
     .eq('id', proyectoId)
     .maybeSingle();
   if (!proyecto) throw new Error('Sitio no encontrado');
-  // Permitir si es el dueño O si tiene permisos de tienda
+  // Permitir si es el dueño O si tiene permisos de tienda/sitio
   if (proyecto.created_by === userId) return proyecto;
+  const ROLES_PERMITIDOS = ['admin_tienda', 'editor_tienda', 'admin_sitio'];
   const { data: permiso } = await supabase
     .from('tienda_permisos')
-    .select('id')
+    .select('rol')
     .eq('proyecto_id', proyectoId)
     .eq('user_id', userId)
     .maybeSingle();
-  if (permiso) return proyecto;
+  if (permiso && ROLES_PERMITIDOS.includes(permiso.rol)) return proyecto;
   throw new Error('No tienes acceso a este sitio');
 }
 
