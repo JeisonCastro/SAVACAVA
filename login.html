@@ -243,8 +243,8 @@ body{
     <span class="logo-text">AUVRO</span>
   </div>
 
-  <h1 class="card-title" id="card-title">Fábrica de Agentes</h1>
-  <p class="card-sub" id="card-sub">Inicia sesión para gestionar tus agentes</p>
+  <h1 class="card-title" id="card-title">Panel de Control</h1>
+  <p class="card-sub" id="card-sub">Inicia sesión para administrar tu web y agentes</p>
 
   <div id="login-fields">
     <div class="field">
@@ -473,9 +473,9 @@ function setModo(m) {
   document.getElementById('btn-toggle').style.display = '';
   document.getElementById('divider-text').parentElement.style.display = '';
   document.getElementById('loading').style.display = 'none';
-  document.getElementById('card-title').textContent = modo === 'login' ? 'Fábrica de Agentes' : 'Crea tu cuenta';
+  document.getElementById('card-title').textContent = modo === 'login' ? 'Panel de Control' : 'Crea tu cuenta';
   document.getElementById('card-sub').textContent = modo === 'login'
-    ? 'Inicia sesión para gestionar tus agentes'
+    ? 'Inicia sesión para administrar tu web y agentes'
     : 'Regístrate en menos de un minuto';
   document.getElementById('btn-submit').textContent = modo === 'login' ? 'Iniciar sesión' : 'Crear cuenta';
   document.getElementById('divider-text').textContent = modo === 'login' ? '¿No tienes cuenta?' : '¿Ya tienes cuenta?';

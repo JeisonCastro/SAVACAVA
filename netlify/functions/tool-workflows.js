@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// tool-workflows.js — Motor de herramientas para Fábrica de Agentes IA
+// tool-workflows.js — Motor de herramientas para Panel de Control
 // Estrategia: DeepSeek es el cerebro. Este archivo es el ejecutor.
 // ─────────────────────────────────────────────────────────────────────────────
 
