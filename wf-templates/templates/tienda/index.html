@@ -129,7 +129,6 @@
     function qs(s) { return document.querySelector(s); }
 
     var catalogoTodos = [];
-    var categoriaActiva = '';
     var selVar = {}; // producto_id -> { atributo_id: valor }
 
     function guardar() {
@@ -158,18 +157,83 @@
     function abrirCarrito() { qs('#cart-drawer').setAttribute('aria-hidden', 'false'); qs('#cart-overlay').hidden = false; document.body.classList.add('modal-open'); }
     function cerrarCarrito() { qs('#cart-drawer').setAttribute('aria-hidden', 'true'); qs('#cart-overlay').hidden = true; document.body.classList.remove('modal-open'); }
 
+    // Estado de filtros duales
+    var categoriaPrincipal = '';  // Filtro de categoría principal
+    var categoriaActiva = '';     // Filtro de subcategoría (full name)
+
+    function parsearCategorias(categorias) {
+        var grupos = {};
+        var orden = [];
+        categorias.forEach(function (c) {
+            var parts = c.split(' - ');
+            if (parts.length >= 2) {
+                var main = parts[0].trim();
+                var sub = parts.slice(1).join(' - ').trim();
+                if (!grupos[main]) { grupos[main] = []; orden.push(main); }
+                grupos[main].push(sub);
+            } else {
+                if (!grupos['_directo']) { grupos['_directo'] = []; orden.push('_directo'); }
+                grupos['_directo'].push(c.trim());
+            }
+        });
+        return { grupos: grupos, orden: orden };
+    }
+
     function renderFiltros(categorias) {
         var wrap = qs('#filtros');
         if (!categorias || !categorias.length) { wrap.hidden = true; return; }
         wrap.hidden = false;
-        var chips = ['<button type="button" class="chip' + (categoriaActiva === '' ? ' chip-on' : '') + '" data-cat="">Todos</button>'];
-        categorias.forEach(function (c) {
-            chips.push('<button type="button" class="chip' + (categoriaActiva === c ? ' chip-on' : '') + '" data-cat="' + esc(c) + '">' + esc(c) + '</button>');
+        var parsed = parsearCategorias(categorias);
+        var html = '';
+
+        // Botón "Todos"
+        html += '<button type="button" class="chip' + (!categoriaPrincipal && !categoriaActiva ? ' chip-on' : '') + '" data-main="" data-sub="">Todos</button>';
+
+        parsed.orden.forEach(function (main) {
+            if (main === '_directo') return;
+            var subs = parsed.grupos[main];
+            var isActive = categoriaPrincipal === main && !categoriaActiva;
+            html += '<div class="filtros-grupo">';
+            html += '<button type="button" class="chip' + (isActive ? ' chip-on' : '') + '" data-main="' + esc(main) + '" data-sub="">' + esc(main) + '</button>';
+            // Solo mostrar subs si la principal está activa o si estamos viendo una sub de esta principal
+            var showSubs = categoriaPrincipal === main || subs.some(function (s) { return categoriaActiva === main + ' - ' + s; });
+            if (showSubs) {
+                subs.forEach(function (s) {
+                    var full = main + ' - ' + s;
+                    var subActive = categoriaActiva === full;
+                    html += '<button type="button" class="chip chip-sub' + (subActive ? ' chip-on' : '') + '" data-main="' + esc(main) + '" data-sub="' + esc(full) + '">' + esc(s) + '</button>';
+                });
+            }
+            html += '</div>';
         });
-        wrap.innerHTML = chips.join('');
+
+        // Categorías directas (sin sub)
+        (parsed.grupos['_directo'] || []).forEach(function (c) {
+            html += '<button type="button" class="chip' + (categoriaActiva === c ? ' chip-on' : '') + '" data-main="" data-sub="' + esc(c) + '">' + esc(c) + '</button>';
+        });
+
+        wrap.innerHTML = html;
         wrap.querySelectorAll('.chip').forEach(function (ch) {
             ch.addEventListener('click', function () {
-                categoriaActiva = ch.getAttribute('data-cat');
+                var main = ch.getAttribute('data-main') || '';
+                var sub = ch.getAttribute('data-sub') || '';
+                if (!main && !sub) {
+                    // "Todos"
+                    categoriaPrincipal = '';
+                    categoriaActiva = '';
+                } else if (!sub) {
+                    // Click en principal: toggle
+                    if (categoriaPrincipal === main && !categoriaActiva) {
+                        categoriaPrincipal = '';
+                    } else {
+                        categoriaPrincipal = main;
+                        categoriaActiva = '';
+                    }
+                } else {
+                    // Click en sub
+                    categoriaPrincipal = main;
+                    categoriaActiva = sub;
+                }
                 renderGrid();
                 renderFiltros(categorias);
             });
@@ -203,7 +267,14 @@
 
     function renderGrid() {
         var grid = qs('#grid-productos');
-        var lista = categoriaActiva ? catalogoTodos.filter(function (p) { return (p.categoria || '').trim() === categoriaActiva; }) : catalogoTodos;
+        var lista;
+        if (categoriaActiva) {
+            lista = catalogoTodos.filter(function (p) { return (p.categoria || '').trim() === categoriaActiva; });
+        } else if (categoriaPrincipal) {
+            lista = catalogoTodos.filter(function (p) { return (p.categoria || '').trim().indexOf(categoriaPrincipal + ' - ') === 0 || (p.categoria || '').trim() === categoriaPrincipal; });
+        } else {
+            lista = catalogoTodos;
+        }
         if (!lista.length) { grid.innerHTML = '<div class="empty">No hay productos en esta categoría.</div>'; return; }
 
         grid.innerHTML = lista.map(function (p) {
