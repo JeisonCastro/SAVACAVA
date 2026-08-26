@@ -58,7 +58,13 @@
         .stat { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
         .stat .n { font-size: 1.5rem; font-weight: 800; color: var(--accent); }
         .stat .l { font-size: .74rem; color: var(--muted); margin-top: 2px; }
-        .sel-box { border: 1px solid var(--border); border-radius: 8px; padding: 8px; margin-bottom: 6px; }
+        .sel-box { border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; background: var(--bg2); }
+        .sel-box .attr-head { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: .86rem; padding-bottom: 6px; border-bottom: 1px solid var(--border); margin-bottom: 6px; }
+        .sel-box .attr-head input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--accent); }
+        .sel-box .val-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 4px 8px; }
+        .sel-box .val-list label { display: flex; align-items: center; gap: 6px; font-size: .8rem; padding: 4px 6px; border-radius: 6px; cursor: pointer; transition: background .15s; }
+        .sel-box .val-list label:hover { background: rgba(255,255,255,.05); }
+        .sel-box .val-list input[type="checkbox"] { width: 14px; height: 14px; accent-color: var(--accent); }
         .toast { position: fixed; bottom: 18px; right: 18px; z-index: 1000; background: var(--surface); border: 1px solid var(--border2); border-left: 4px solid var(--green); padding: 12px 16px; border-radius: 10px; font-size: .86rem; box-shadow: var(--shadow-soft); opacity: 0; transform: translateY(8px); transition: .2s ease; }
         .toast.show { opacity: 1; transform: translateY(0); }
         .toast.error { border-left-color: var(--red); }
@@ -369,9 +375,12 @@
                 </div>
                 <div class="field"><label>Ficha técnica (key: valor — solo informativo, no genera variantes)</label><textarea id="p-attrs" rows="2" placeholder="Material: Acero&#10;Garantía: 1 año">${esc(attrTxt)}</textarea></div>
                 <div id="wrap-var" style="display:none">
-                    <div class="field"><label>Variantes (selección de atributos → genera combinaciones con stock propio)</label>
+                    <div class="field"><label>Variantes del producto</label>
                         <div id="p-selector"></div>
-                        <div style="font-size:.72rem;color:var(--dim);margin-top:6px">Ej: Color (Rojo, Azul) + Talla (S, M, L) = 6 variaciones. Cada variación tiene su precio, stock e imagen. Los atributos se crean en la sección "Atributos" del menú.</div>
+                        <div style="font-size:.72rem;color:var(--dim);margin-top:8px">
+                            Marca el atributo y los valores que apliquen. Se generan todas las combinaciones automáticamente.<br>
+                            Ej: Color (Rojo, Azul) + Talla (S, M, L) = 6 variaciones, cada una con su stock, precio e imagen.
+                        </div>
                     </div>
                 </div>
                 <div class="field"><label>Imágenes (varias para colores/presentaciones; la primera es portada)</label>
@@ -411,13 +420,20 @@
         if (!S.atributos.length) { cont.innerHTML = '<div style="font-size:.8rem;color:var(--dim)">No hay atributos creados. Ve a la sección Atributos y crea uno (ej. Color, Talla).</div>'; return; }
         const mapa = {};
         (selector || []).forEach(a => { mapa[a.atributo_id] = a.valores || []; });
-        cont.innerHTML = S.atributos.map(a => `
-            <div class="sel-box">
-                <label style="font-weight:700;font-size:.84rem;display:flex;align-items:center;gap:6px"><input type="checkbox" class="sel-a" data-aid="${a.id}" ${mapa[a.id] ? 'checked' : ''}> ${esc(a.nombre)}</label>
-                <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">
-                    ${(a.valores || []).map(v => `<label style="font-size:.78rem;display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" class="sel-v" data-aid="${a.id}" data-val="${esc(String(v))}" ${(mapa[a.id] || []).includes(String(v)) ? 'checked' : ''}> ${esc(String(v))}</label>`).join('')}
+        cont.innerHTML = S.atributos.map(a => {
+            const vals = (a.valores || []);
+            const checked = mapa[a.id] ? true : false;
+            return `<div class="sel-box">
+                <div class="attr-head">
+                    <input type="checkbox" class="sel-a" data-aid="${a.id}" ${checked ? 'checked' : ''}>
+                    <span>${esc(a.nombre)}</span>
+                    <span style="margin-left:auto;font-size:.72rem;font-weight:400;color:var(--dim)">${vals.length} valor${vals.length !== 1 ? 'es' : ''}</span>
                 </div>
-            </div>`).join('');
+                <div class="val-list">
+                    ${vals.map(v => `<label><input type="checkbox" class="sel-v" data-aid="${a.id}" data-val="${esc(String(v))}" ${(mapa[a.id] || []).includes(String(v)) ? 'checked' : ''}> ${esc(String(v))}</label>`).join('')}
+                </div>
+            </div>`;
+        }).join('');
     }
 
     function renderImgs() {
