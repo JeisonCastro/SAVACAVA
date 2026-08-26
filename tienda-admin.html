@@ -165,7 +165,7 @@
     }
 
     function tipoLabel(t) {
-        return { simple: 'Simple', fisico: 'Simple', variable: 'Variable', digital: 'Digital', servicio: 'Servicio' }[t] || t || '—';
+        return { simple: 'Simple', fisico: 'Simple', variable: 'Variable', digital: 'Digital', servicio: 'Servicio', catalogo: 'Catálogo' }[t] || t || '—';
     }
 
     function toggleTheme() {
@@ -307,7 +307,7 @@
                         ${p.imagen ? `<img src="${esc(p.imagen)}" alt="">` : '<div style="width:46px;height:46px;border-radius:8px;background:var(--bg);border:1px solid var(--border2)"></div>'}
                         <div class="info">
                             <div style="font-weight:700">${esc(p.nombre)}</div>
-                            <div style="font-size:.74rem;color:var(--dim)">${tipoLabel(p.tipo)} · ${fmtCOP(p.precio_cents)}${p.categoria ? ' · ' + esc(p.categoria) : ''}${p.tipo === 'variable' ? ' · ' + (p.variaciones || []).length + ' variaciones' : ''}${p.tipo === 'simple' && p.stock != null ? ' · Stock: ' + p.stock : ''}${p.activo ? '' : ' · <span style="color:var(--red)">oculto</span>'}</div>
+                            <div style="font-size:.74rem;color:var(--dim)">${tipoLabel(p.tipo)} · ${(p.tipo === 'variable' || p.tipo === 'catalogo') ? ((p.variaciones || []).length + ' variaciones') : fmtCOP(p.precio_cents)}${p.categoria ? ' · ' + esc(p.categoria) : ''}${p.tipo === 'simple' && p.stock != null ? ' · Stock: ' + p.stock : ''}${p.activo ? '' : ' · <span style="color:var(--red)">oculto</span>'}</div>
                         </div>
                         <button class="btn-small" onclick="editarProducto('${p.id}')"><i class="fas fa-pen"></i> Editar</button>
                         <button class="btn-small danger" onclick="eliminarProducto('${p.id}','${esc(p.nombre)}')"><i class="fas fa-trash"></i></button>
@@ -355,22 +355,23 @@
                         <select id="p-tipo" onchange="syncTipo()">
                             <option value="simple"${tipo === 'simple' ? ' selected' : ''}>Simple (físico)</option>
                             <option value="variable"${tipo === 'variable' ? ' selected' : ''}>Variable (atributos)</option>
+                            <option value="catalogo"${tipo === 'catalogo' ? ' selected' : ''}>Catálogo (sin precio)</option>
                             <option value="digital"${tipo === 'digital' ? ' selected' : ''}>Digital</option>
                             <option value="servicio"${tipo === 'servicio' ? ' selected' : ''}>Servicio</option>
                         </select></div></div>
-                    <div style="flex:1;min-width:110px"><div class="field"><label>Precio base (COP)${tipo === 'variable' ? ' — desde' : ''}</label><input id="p-precio" type="number" min="0" value="${Math.round(((prod && prod.precio_cents) || 0) / 100)}" placeholder="Ej: 95000"></div></div>
+                    <div style="flex:1;min-width:110px" id="wrap-precio"><div class="field"><label>Precio base (COP)${tipo === 'variable' ? ' — desde' : ''}</label><input id="p-precio" type="number" min="0" value="${Math.round(((prod && prod.precio_cents) || 0) / 100)}" placeholder="Ej: 95000"></div></div>
                     <div style="flex:1;min-width:90px" id="wrap-stock"><div class="field"><label>Stock</label><input id="p-stock" type="number" min="0" value="${tipo === 'simple' && prod && prod.stock != null ? prod.stock : ''}" placeholder="Vacío = ilimitado"></div></div>
-                    <div style="flex:1;min-width:110px"><div class="field"><label>SKU (opcional)</label><input id="p-sku" value="${esc(prod && prod.sku || '')}" placeholder="PEPITO-01"></div></div>
+                    <div style="flex:1;min-width:110px" id="wrap-sku"><div class="field"><label>SKU (opcional)</label><input id="p-sku" value="${esc(prod && prod.sku || '')}" placeholder="PEPITO-01"></div></div>
                 </div>
                 <div class="field"><label>Descripción</label><input id="p-desc" value="${esc(prod && prod.descripcion || '')}" placeholder="Breve descripción para el cliente"></div>
                 <div class="field"><label>Categoría</label>
                     <select id="p-cat"><option value="">Sin categoría</option>${catsOpts}</select>
                 </div>
-                <div class="field"><label>Ficha técnica (clave: valor, una por línea)</label><textarea id="p-attrs" rows="2" placeholder="Material: Acero&#10;Garantía: 1 año">${esc(attrTxt)}</textarea></div>
+                <div class="field"><label>Ficha técnica (key: valor — solo informativo, no genera variantes)</label><textarea id="p-attrs" rows="2" placeholder="Material: Acero&#10;Garantía: 1 año">${esc(attrTxt)}</textarea></div>
                 <div id="wrap-var" style="display:none">
-                    <div class="field"><label>Atributos de variación (elige atributo y sus valores → se generan las combinaciones)</label>
+                    <div class="field"><label>Variantes (selección de atributos → genera combinaciones con stock propio)</label>
                         <div id="p-selector"></div>
-                        <div style="font-size:.72rem;color:var(--dim);margin-top:6px">Ej: Color (Negro, Blanco) + Talla (S, M, L) = 6 variaciones. Crea atributos en la sección Atributos.</div>
+                        <div style="font-size:.72rem;color:var(--dim);margin-top:6px">Ej: Color (Rojo, Azul) + Talla (S, M, L) = 6 variaciones. Cada variación tiene su precio, stock e imagen. Los atributos se crean en la sección "Atributos" del menú.</div>
                     </div>
                 </div>
                 <div class="field"><label>Imágenes (varias para colores/presentaciones; la primera es portada)</label>
@@ -399,7 +400,9 @@
         const t = $('p-tipo').value;
         $('wrap-stock').style.display = t === 'simple' ? '' : 'none';
         $('wrap-digital').style.display = t === 'digital' ? '' : 'none';
-        $('wrap-var').style.display = t === 'variable' ? '' : 'none';
+        $('wrap-var').style.display = (t === 'variable' || t === 'catalogo') ? '' : 'none';
+        $('wrap-precio').style.display = t === 'catalogo' ? 'none' : '';
+        $('wrap-sku').style.display = t === 'catalogo' ? 'none' : '';
     }
 
     function renderSelector(selector) {
@@ -452,7 +455,7 @@
         const tipo = $('p-tipo').value;
         const precio = Math.round(Number($('p-precio').value) || 0) * 100;
         if (!nombre) { msg.textContent = 'Escribe el nombre del producto'; msg.className = 'msg error'; return; }
-        if (tipo !== 'variable' && precio <= 0) { msg.textContent = 'El precio debe ser mayor a 0'; msg.className = 'msg error'; return; }
+        if (tipo !== 'variable' && tipo !== 'catalogo' && precio <= 0) { msg.textContent = 'El precio debe ser mayor a 0'; msg.className = 'msg error'; return; }
         let stock = null;
         if (tipo === 'simple') { const v = $('p-stock').value.trim(); stock = v === '' ? null : Math.max(0, Math.floor(Number(v) || 0)); }
         const desc = $('p-desc').value.trim();
@@ -461,7 +464,7 @@
         const atributos = {};
         ($('p-attrs').value || '').split('\n').map(s => s.trim()).filter(Boolean).forEach(l => { const i = l.indexOf(':'); if (i > -1) atributos[l.slice(0, i).trim()] = l.slice(i + 1).trim(); });
         const selector = [];
-        if (tipo === 'variable') {
+        if (tipo === 'variable' || tipo === 'catalogo') {
             document.querySelectorAll('.sel-a:checked').forEach(chk => {
                 const aid = chk.getAttribute('data-aid');
                 const attr = S.atributos.find(a => String(a.id) === aid); if (!attr) return;
@@ -486,7 +489,7 @@
             });
             if (!data.ok) throw new Error(data.error || 'No se pudo guardar');
             toast('Producto guardado');
-            if (data.producto && data.producto.tipo === 'variable' && Array.isArray(data.producto.variaciones)) {
+            if (data.producto && (data.producto.tipo === 'variable' || data.producto.tipo === 'catalogo') && Array.isArray(data.producto.variaciones)) {
                 formVariaciones(data.producto);
             } else { renderProductos(); }
         } catch (err) { msg.textContent = 'Error: ' + err.message; msg.className = 'msg error'; }

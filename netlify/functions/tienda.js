@@ -39,7 +39,7 @@ const BUCKET_IMG = 'productos';
 const BUCKET_DIGITAL = 'tienda-digital';
 const TAMANO_MAX = 8 * 1024 * 1024;
 
-const TIPOS_VALIDOS = ['simple', 'variable', 'digital', 'servicio'];
+const TIPOS_VALIDOS = ['simple', 'variable', 'digital', 'servicio', 'catalogo'];
 
 const headers = {
     "Access-Control-Allow-Origin": "*",
@@ -210,8 +210,8 @@ async function accionCatalogo(params) {
     const catMap = {};
     for (const c of categorias || []) catMap[c.id] = c.nombre;
 
-    // Variaciones de los productos variables
-    const varProductos = (productos || []).filter(p => normalizarTipo(p.tipo) === 'variable');
+    // Variaciones de los productos variables y catálogo
+    const varProductos = (productos || []).filter(p => { const t = normalizarTipo(p.tipo); return t === 'variable' || t === 'catalogo'; });
     const varById = {};
     if (varProductos.length) {
         const { data: variaciones } = await supabase
@@ -240,11 +240,12 @@ async function accionCatalogo(params) {
         }));
         let agotado = false;
         if (tipo === 'variable') {
-            agotado = variacionesPub.length === 0 || variacionesPub.every(v => v.agotado);
+            agotado = variacionesPub.length > 0 && variacionesPub.every(v => v.agotado);
         } else if (tipo === 'simple') {
             agotado = p.stock !== null && p.stock <= 0;
         }
-        const precios = tipo === 'variable'
+        // catalogo: nunca agotado
+        const precios = (tipo === 'variable' || tipo === 'catalogo')
             ? variacionesPub.map(v => precioVariacion(v, p.precio_cents)).filter(n => n != null)
             : [p.precio_cents];
         const precio_desde = precios.length ? Math.min(...precios) : p.precio_cents;
@@ -254,8 +255,8 @@ async function accionCatalogo(params) {
             categoria: catNombre,
             categoria_id: p.categoria_id || null,
             precio_desde,
-            atributos_selector: tipo === 'variable' ? (p.atributos_selector || []) : null,
-            variaciones: tipo === 'variable' ? variacionesPub : null,
+            atributos_selector: (tipo === 'variable' || tipo === 'catalogo') ? (p.atributos_selector || []) : null,
+            variaciones: (tipo === 'variable' || tipo === 'catalogo') ? variacionesPub : null,
             agotado
         };
     });
@@ -311,6 +312,7 @@ async function accionCheckout(body) {
         const prod = porId[it.producto_id];
         if (!prod || !prod.activo) return ok({ ok: false, error: 'Un producto del carrito ya no está disponible' }, 400);
         const tipo = normalizarTipo(prod.tipo);
+        if (tipo === 'catalogo') return ok({ ok: false, error: 'El producto "' + prod.nombre + '" es solo catálogo y no se puede comprar' }, 400);
         const cant = Math.min(Math.max(1, Math.floor(Number(it.cantidad) || 1)), 99);
 
         let precioUnit = prod.precio_cents;
@@ -577,7 +579,7 @@ async function accionGuardarProducto(adminId, body) {
 
     const tipoNorm = normalizarTipo(tipo);
     const precio = Math.max(0, Math.round(Number(precio_cents) || 0));
-    if (tipoNorm !== 'variable' && precio <= 0) return ok({ ok: false, error: 'El precio debe ser mayor a 0' }, 400);
+    if (tipoNorm !== 'variable' && tipoNorm !== 'catalogo' && precio <= 0) return ok({ ok: false, error: 'El precio debe ser mayor a 0' }, 400);
 
     // Categoría (si viene id, denormalizamos el nombre para el filtro de la tienda)
     let categoriaNombre = String(categoria || '').trim();
@@ -590,8 +592,11 @@ async function accionGuardarProducto(adminId, body) {
 
     // Imágenes (varias, ej. colores)
     const fuentesImagen = [];
-    if (imagen) fuentesImagen.push(imagen);
-    if (Array.isArray(imagenes)) fuentesImagen.push(...imagenes);
+    if (Array.isArray(imagenes) && imagenes.length) {
+        fuentesImagen.push(...imagenes);
+    } else if (imagen) {
+        fuentesImagen.push(imagen);
+    }
     const imagenesFinal = [];
     for (const src of fuentesImagen) {
         const s = String(src || '').trim();
@@ -609,7 +614,7 @@ async function accionGuardarProducto(adminId, body) {
         archivoFinal = await subirArchivoDigital(proyecto_id, archivo_data_url, filename || 'archivo');
     }
 
-    const selector = tipoNorm === 'variable'
+    const selector = (tipoNorm === 'variable' || tipoNorm === 'catalogo')
         ? (Array.isArray(atributos_selector) ? atributos_selector : [])
             .filter(a => a && a.atributo_id && Array.isArray(a.valores) && a.valores.length)
             .map(a => ({
@@ -649,9 +654,9 @@ async function accionGuardarProducto(adminId, body) {
         producto = data;
     }
 
-    // Generar/sincronizar variaciones (productos variables)
+    // Generar/sincronizar variaciones (productos variables y catálogo)
     let variaciones = [];
-    if (tipoNorm === 'variable') {
+    if (tipoNorm === 'variable' || tipoNorm === 'catalogo') {
         const { data: existentes } = await supabase
             .from('tienda_variaciones')
             .select('*')

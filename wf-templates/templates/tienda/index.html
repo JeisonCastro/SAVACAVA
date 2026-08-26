@@ -234,7 +234,7 @@
             var varCompleta = tipo === 'variable' && varSel != null;
 
             var selectorHtml = '';
-            if (tipo === 'variable' && p.atributos_selector) {
+            if ((tipo === 'variable' || tipo === 'catalogo') && p.atributos_selector) {
                 var sel = selVar[p.id] || {};
                 selectorHtml = '<div class="attr-selector">' + p.atributos_selector.map(function (a) {
                     var actual = sel[a.atributo_id] || '';
@@ -247,7 +247,9 @@
 
             var precioMostrado;
             var promoHtml = '';
-            if (tipo === 'variable') {
+            if (tipo === 'catalogo') {
+                precioMostrado = null;
+            } else if (tipo === 'variable') {
                 if (varSel) {
                     precioMostrado = precioVariacion(varSel, p.precio_cents);
                     if (varSel.precio_promo_cents != null && varSel.precio_cents != null && varSel.precio_promo_cents > 0 && varSel.precio_promo_cents < varSel.precio_cents) {
@@ -262,10 +264,16 @@
 
             var agotadoActual = tipo === 'variable'
                 ? (varSel ? (varSel.stock !== null && varSel.stock <= 0) : false)
-                : p.agotado;
+                : (tipo === 'catalogo' ? false : p.agotado);
 
             var btn;
-            if (tipo === 'servicio') {
+            if (tipo === 'catalogo') {
+                btn = varCompleta
+                    ? '<div class="btn btn-outline btn-block" style="cursor:default;opacity:.7">' + esc(varSel.nombre) + '</div>'
+                    : (p.atributos_selector && p.atributos_selector.length
+                        ? '<button class="btn btn-outline btn-block" disabled>Selecciona una opción</button>'
+                        : '');
+            } else if (tipo === 'servicio') {
                 btn = '<a class="btn btn-outline btn-block js-servicio" data-p="' + p.id + '" href="#">Solicitar por WhatsApp</a>';
             } else if (tipo === 'variable') {
                 btn = (varCompleta && !agotadoActual)
@@ -280,12 +288,11 @@
             }
 
             return '<div class="card">' + img +
-                '<div class="card-body"><div class="card-badges">' + badgeCat + '<span class="badge">' + (tipo === 'simple' ? 'Físico' : tipo === 'digital' ? 'Digital' : tipo === 'variable' ? 'Variable' : 'Servicio') + '</span>' + stockBadge + '</div>' +
+                '<div class="card-body"><div class="card-badges">' + badgeCat + '<span class="badge">' + (tipo === 'simple' ? 'Físico' : tipo === 'digital' ? 'Digital' : tipo === 'variable' ? 'Variable' : tipo === 'catalogo' ? 'Catálogo' : 'Servicio') + '</span>' + stockBadge + '</div>' +
                 '<h3>' + esc(p.nombre) + '</h3>' +
                 '<p class="prod-desc">' + esc(p.descripcion || '') + '</p>' +
                 attrs + selectorHtml +
-                '<div class="prod-precio" data-precio="' + p.id + '">' + fmt(precioMostrado) + '</div>' +
-                promoHtml +
+                (precioMostrado != null ? '<div class="prod-precio" data-precio="' + p.id + '">' + fmt(precioMostrado) + '</div>' + promoHtml : '') +
                 btn + '</div></div>';
         }).join('');
 
@@ -307,7 +314,27 @@
                 var val = b.getAttribute('data-val');
                 if (!selVar[pid]) selVar[pid] = {};
                 selVar[pid][aid] = val;
+                // Buscar imagen de variación antes de renderGrid (reconstruye DOM)
+                var prod = catalogoTodos.find(function (p) { return p.id === pid; });
+                var varImg = null;
+                if (prod) {
+                    var vsel = variacionElegida(prod);
+                    if (vsel && vsel.imagen) varImg = vsel.imagen;
+                    else if (prod.imagenes && prod.imagenes.length) varImg = prod.imagenes[0];
+                    else if (prod.imagen) varImg = prod.imagen;
+                }
                 renderGrid();
+                // Aplicar imagen al card del producto después del re-render
+                if (varImg) {
+                    var btnAfter = grid.querySelector('.var-btn[data-p="' + pid + '"]');
+                    if (btnAfter) {
+                        var card = btnAfter.closest('.card');
+                        if (card) {
+                            var mainImg = card.querySelector('.gal-main img') || card.querySelector('.prod-img');
+                            if (mainImg) mainImg.src = varImg;
+                        }
+                    }
+                }
             });
         });
 
