@@ -140,7 +140,7 @@ async function ghRevertToCommit(owner, repo, branch, targetSha, commitMessage) {
     const updateRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/git/refs/heads/${branch}`, {
         method: 'PATCH',
         headers: { ...GH_HEADERS, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sha: targetSha, force: false })
+        body: JSON.stringify({ sha: targetSha, force: true })
     });
     if (!updateRes.ok) {
         const errData = await updateRes.json();
