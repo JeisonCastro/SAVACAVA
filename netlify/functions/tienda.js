@@ -201,7 +201,7 @@ async function accionCatalogo(params) {
 
     const { data: productos, error } = await supabase
         .from('tienda_productos')
-        .select('id, nombre, descripcion, precio_cents, tipo, imagen, imagenes, stock, activo, categoria, categoria_id, atributos, atributos_selector, variantes, sku')
+        .select('id, nombre, descripcion, precio_cents, tipo, imagen, imagenes, stock, activo, whatsapp_button, categoria, categoria_id, atributos, atributos_selector, variantes, sku')
         .eq('proyecto_id', proyecto.id)
         .eq('activo', true)
         .order('created_at', { ascending: true });
@@ -572,7 +572,7 @@ async function validarAcceso(proyectoId, userId) {
 }
 
 async function accionGuardarProducto(adminId, body) {
-    const { proyecto_id, id, nombre, descripcion, precio_cents, tipo, activo, stock, imagen, imagenes, archivo_data_url, filename, categoria_id, categoria, atributos, atributos_selector, sku, variantes } = body;
+    const { proyecto_id, id, nombre, descripcion, precio_cents, tipo, activo, whatsapp_button, stock, imagen, imagenes, archivo_data_url, filename, categoria_id, categoria, atributos, atributos_selector, sku, variantes } = body;
     const acceso = await validarAcceso(proyecto_id, adminId);
     if (acceso) return acceso;
     if (!nombre || !String(nombre).trim()) return ok({ ok: false, error: 'Falta el nombre del producto' }, 400);
@@ -630,6 +630,7 @@ async function accionGuardarProducto(adminId, body) {
         precio_cents: precio,
         tipo: tipoNorm,
         activo: activo === false ? false : true,
+        whatsapp_button: whatsapp_button === true,
         stock: tipoNorm === 'simple' ? (stock === null || stock === undefined || stock === '' ? null : Math.max(0, Math.floor(Number(stock)))) : null,
         imagen: imagenFinal,
         imagenes: imagenesFinal.length ? imagenesFinal : null,

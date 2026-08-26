@@ -339,11 +339,15 @@
 
             var btn;
             if (tipo === 'catalogo') {
-                btn = varCompleta
+                var selectorBtn = varCompleta
                     ? '<div class="btn btn-outline btn-block" style="cursor:default;opacity:.7">' + esc(varSel.nombre) + '</div>'
                     : (p.atributos_selector && p.atributos_selector.length
                         ? '<button class="btn btn-outline btn-block" disabled>Selecciona una opción</button>'
                         : '');
+                var waBtn = p.whatsapp_button
+                    ? '<a class="btn btn-wa btn-block js-wa-catalogo" data-p="' + p.id + '" data-v="' + (varCompleta ? esc(varSel.nombre) : '') + '" href="#">Consultar por WhatsApp</a>'
+                    : '';
+                btn = selectorBtn + waBtn;
             } else if (tipo === 'servicio') {
                 btn = '<a class="btn btn-outline btn-block js-servicio" data-p="' + p.id + '" href="#">Solicitar por WhatsApp</a>';
             } else if (tipo === 'variable') {
@@ -436,6 +440,17 @@
                 if (!prod) return;
                 var msg = encodeURIComponent('Hola, quiero solicitar el servicio: ' + prod.nombre);
                 window.open('https://wa.me/' + WA + '?text=' + msg, '_blank');
+            });
+        });
+
+        grid.querySelectorAll('.js-wa-catalogo').forEach(function (a) {
+            a.addEventListener('click', function (e) {
+                e.preventDefault();
+                var prod = catalogoTodos.find(function (p) { return p.id === a.getAttribute('data-p'); });
+                if (!prod) return;
+                var variacion = a.getAttribute('data-v') || '';
+                var msg = 'Hola, quiero información sobre: ' + prod.nombre + (variacion ? ' (' + variacion + ')' : '');
+                window.open('https://wa.me/' + WA + '?text=' + encodeURIComponent(msg), '_blank');
             });
         });
     }

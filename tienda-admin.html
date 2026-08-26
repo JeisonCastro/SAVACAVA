@@ -394,6 +394,7 @@
                 </div>
                 <div style="display:flex;gap:10px;align-items:center;margin-top:6px;flex-wrap:wrap">
                     <label style="font-size:.84rem;display:flex;align-items:center;gap:6px"><input type="checkbox" id="p-activo" ${!(prod && prod.activo === false) ? 'checked' : ''}> Disponible en la tienda</label>
+                    <label id="wrap-wa" style="font-size:.84rem;display:flex;align-items:center;gap:6px;display:${tipo === 'catalogo' ? 'flex' : 'none'}"><input type="checkbox" id="p-whatsapp" ${prod && prod.whatsapp_button ? 'checked' : ''}> Botón WhatsApp</label>
                     <span style="flex:1"></span>
                     <button class="btn-main btn-green" onclick="guardarProducto()"><i class="fas fa-save"></i> Guardar producto</button>
                     <button class="btn-small" onclick="renderProductos()">Cancelar</button>
@@ -412,6 +413,7 @@
         $('wrap-var').style.display = (t === 'variable' || t === 'catalogo') ? '' : 'none';
         $('wrap-precio').style.display = t === 'catalogo' ? 'none' : '';
         $('wrap-sku').style.display = t === 'catalogo' ? 'none' : '';
+        $('wrap-wa').style.display = t === 'catalogo' ? '' : 'none';
     }
 
     function renderSelector(selector) {
@@ -492,11 +494,12 @@
         const imagenes = S.imagenes.map((_, i) => { const el = $('p-img-' + i); return el ? el.value.trim() : ''; }).filter(Boolean);
         const imagen = imagenes[0] || '';
         const activo = $('p-activo').checked;
+        const whatsapp_button = $('p-whatsapp') ? $('p-whatsapp').checked : false;
         msg.textContent = 'Guardando…'; msg.className = 'msg';
         try {
             const data = await api('guardar_producto', {
                 proyecto_id: ctx.proyecto_id, id: S.editandoId || null,
-                nombre, descripcion: desc, precio_cents: precio, tipo, activo, stock, imagen, imagenes,
+                nombre, descripcion: desc, precio_cents: precio, tipo, activo, whatsapp_button, stock, imagen, imagenes,
                 categoria_id, categoria: null, sku,
                 atributos: Object.keys(atributos).length ? atributos : null,
                 atributos_selector: selector.length ? selector : null,
