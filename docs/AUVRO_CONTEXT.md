@@ -1009,6 +1009,19 @@ Multiusuario.
 
 # Changelog de Cambios Técnicos
 
+## 30 Ago 2026 — CRM: nueva sub-pestaña "Clientes" con historial de oportunidades por cliente
+
+- `dashboard.html` `#view-crm`: se agrega la sub-pestaña **Clientes** (junto a Dashboard/Pipeline/Ventas) y el contenedor `#crm-tab-clientes`.
+- Nueva función `renderClientesCRM()`:
+  - **Deduplica clientes** por email (luego teléfono, luego nombre) a partir de `crm_leads` del rango/agente seleccionados.
+  - Lista cada cliente con avatar inicial, nombre/email/teléfono, # oportunidades (leads), # ventas cerradas, valor total vendido y última actividad.
+  - Buscador client-side (`#crm-cliente-buscar`) por nombre/email/teléfono.
+  - **Detalle de cliente** (`crmClienteSeleccionado`): al hacer clic en un cliente muestra el historial completo de sus oportunidades con estado (chip de color), valor, agente, fecha y origen; cada oportunidad abre `abrirLeadModal`.
+- `dashboard.css`: estilos `.crm-cliente` (tarjeta interactiva), `.crm-chip` (badge de estado), `.crm-cliente-detalle` (panel), variante light-mode.
+- `cambiarTabCRM`/`renderCRM` sincronizan la pestaña y refrescan `renderClientesCRM` cuando está activa.
+- Cache bump a `v15` (`dashboard.css?v=15`, `auvro-design.css?v=15`, `auvro-v15`).
+- Backend `crm.js` sin cambios: enriquece `crm_leads` con `estado` y `agente` (ya disponible para las nuevas vistas).
+
 ## 30 Ago 2026 — Habilitar tipo `tour` en BD + confirmar flujo agente→tienda sin tocar datos
 
 - **Bloqueante resuelto:** la migración `20260826_tienda_tipo_catalogo.sql` definía `CHECK (tipo IN ('fisico','simple','variable','digital','servicio','catalogo'))`, por lo que guardar un producto tipo `tour` desde `tienda-admin` fallaba con violación de restricción en producción.

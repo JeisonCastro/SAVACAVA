@@ -72,8 +72,8 @@
             rel="stylesheet">
         <link rel="stylesheet"
             href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-        <link rel="stylesheet" href="dashboard.css?v=14">
-        <link rel="stylesheet" href="auvro-design.css?v=14">
+        <link rel="stylesheet" href="dashboard.css?v=15">
+        <link rel="stylesheet" href="auvro-design.css?v=15">
 
     </head>
     <body class="light-mode">
@@ -256,6 +256,7 @@
                 <div id="crm-tabs" style="display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:1rem;background:var(--surface);border:1px solid var(--border2);border-radius:12px;padding:.35rem;">
                     <button class="crm-tab" data-tab="dashboard" onclick="cambiarTabCRM('dashboard')">Dashboard</button>
                     <button class="crm-tab" data-tab="pipeline" onclick="cambiarTabCRM('pipeline')">Pipeline</button>
+                    <button class="crm-tab" data-tab="clientes" onclick="cambiarTabCRM('clientes')">Clientes</button>
                     <button class="crm-tab" data-tab="ventas" onclick="cambiarTabCRM('ventas')">Ventas</button>
                 </div>
 
@@ -288,6 +289,14 @@
                         </div>
                     </div>
                 </div>
+                </div>
+
+                <div id="crm-tab-clientes" style="display:none;">
+                    <div id="crm-clientes" style="display:flex;flex-direction:column;gap:1rem;">
+                        <div class="empty-state" style="width:100%"><i class="fas fa-users"></i>
+                            <p style="margin-top:.5rem">Cargando clientes...</p>
+                        </div>
+                    </div>
                 </div>
 
                 <div id="crm-tab-ventas" style="display:none;">
@@ -3764,8 +3773,9 @@
             const el = document.getElementById('crm-tab-' + tab);
             if (el) el.style.display = (tab === crmTab) ? '' : 'none';
         };
-        show('dashboard'); show('pipeline'); show('ventas');
+        show('dashboard'); show('pipeline'); show('clientes'); show('ventas');
         if (tab === 'ventas') renderVentasCRM();
+        if (tab === 'clientes') renderClientesCRM();
     }
 
     function renderVentasCRM() {
@@ -3819,6 +3829,139 @@
                 </div>
             </div>`;
         cont.innerHTML = `<div style="display:flex;flex-direction:column;gap:1rem;">${tarjetas}</div>`;
+    }
+
+    let crmClienteSeleccionado = null;
+
+    function renderClientesCRM() {
+        const cont = document.getElementById('crm-clientes');
+        if (!cont) return;
+        const agentes = crmData.agentes || [];
+        const estados = crmData.estados || [];
+        const cerradas = estados.filter(e => e.es_cerrada).map(e => String(e.id));
+        const perdidas = estados.filter(e => e.es_perdida).map(e => String(e.id));
+        const estadoNombre = id => { const e = estados.find(x => String(x.id) === String(id)); return e ? e.nombre : '—'; };
+        const estadoColor = id => { const e = estados.find(x => String(x.id) === String(id)); return (e && e.color) || '#0ea5e9'; };
+        const estadoEsCerrada = id => cerradas.includes(String(id));
+        const estadoEsPerdida = id => perdidas.includes(String(id));
+        const agenteNombre = id => { const a = agentes.find(x => String(x.id) === String(id)); return a ? a.nombre_agente : '—'; };
+        const leads = (crmData.leads || []).filter(l => !crmAgenteSeleccionado || String(l.agente_id) === String(crmAgenteSeleccionado));
+
+        // Deduplicar clientes por email (o teléfono como respaldo)
+        const claveCliente = l => {
+            const email = (l.email || '').trim().toLowerCase();
+            if (email) return 'e:' + email;
+            const tel = (l.telefono || '').trim().replace(/[^\d+]/g, '');
+            if (tel) return 't:' + tel;
+            return 'n:' + String(l.nombre || '').trim().toLowerCase();
+        };
+        const clientesMap = new Map();
+        for (const l of leads) {
+            const k = claveCliente(l);
+            if (!clientesMap.has(k)) clientesMap.set(k, []);
+            clientesMap.get(k).push(l);
+        }
+        const clientes = Array.from(clientesMap.entries()).map(([k, ls]) => {
+            const mejor = ls.find(x => x.email) || ls.find(x => x.telefono) || ls[0];
+            const oportunidades = ls.length;
+            const ventas = ls.filter(x => x.valor_venta_cents && estadoEsCerrada(x.estado_id)).length;
+            const valor = ls.filter(x => estadoEsCerrada(x.estado_id)).reduce((s, x) => s + (Number(x.valor_venta_cents) || 0), 0);
+            const ultima = ls.reduce((m, x) => new Date(x.updated_at || x.created_at || 0) > m ? new Date(x.updated_at || x.created_at || 0) : m, new Date(0));
+            return {
+                k,
+                nombre: mejor.nombre || 'Sin nombre',
+                email: mejor.email || '',
+                telefono: mejor.telefono || '',
+                oportunidades, ventas, valor,
+                ultimaActividad: ultima,
+                leads: ls.slice().sort((a, b) => new Date(b.updated_at || b.created_at || 0) - new Date(a.updated_at || a.created_at || 0))
+            };
+        }).sort((a, b) => b.valor - a.valor || b.ultimaActividad - a.ultimaActividad);
+
+        const fichas = clientes.length
+            ? clientes.map(c => `
+                <div class="crm-cliente" onclick="crmClienteSeleccionado=${JSON.stringify(c.k).replace(/"/g, '&quot;')};renderClientesCRM()">
+                    <div style="width:40px;height:40px;border-radius:50%;background:var(--accent)1a;color:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.9rem;flex-shrink:0;">${escapeHtml((c.nombre.trim()[0] || '?').toUpperCase())}</div>
+                    <div class="grow" style="min-width:0;">
+                        <div style="font-family:'Inter',sans-serif;font-weight:700;font-size:.84rem;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(c.nombre)}</div>
+                        <div style="font-size:.74rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${c.email ? escapeHtml(c.email) : ''}${c.email && c.telefono ? ' · ' : ''}${c.telefono ? escapeHtml(c.telefono) : ''}</div>
+                        <div style="font-size:.7rem;color:var(--dim);margin-top:.1rem;">${c.oportunidades} oportunidad(es) · ${c.ventas} venta(s) · Último: ${c.ultimaActividad.getTime() ? c.ultimaActividad.toLocaleDateString('es-CO') : '—'}</div>
+                    </div>
+                    <div style="text-align:right;flex-shrink:0;">
+                        <div style="font-family:'Inter',sans-serif;font-weight:800;font-size:.85rem;color:var(--green);">${fmtPesos(c.valor)}</div>
+                        <div style="font-size:.68rem;color:var(--dim);">vendido</div>
+                        <i class="fas fa-chevron-right" style="font-size:.6rem;color:var(--dim);margin-top:.2rem;"></i>
+                    </div>
+                </div>`).join('')
+            : '<div class="empty-state" style="width:100%"><i class="fas fa-users-slash"></i><p style="margin-top:.5rem">Aún no hay clientes para este rango/agente.</p></div>';
+
+        // Panel de detalle del cliente seleccionado (historial de oportunidades)
+        let detalle = '';
+        if (crmClienteSeleccionado) {
+            const c = clientes.find(x => x.k === crmClienteSeleccionado) || null;
+            detalle = `
+                <div class="crm-cliente-detalle">
+                    <div style="display:flex;justify-content:space-between;align-items:center;gap:.6rem;flex-wrap:wrap;margin-bottom:.8rem;">
+                        <div style="display:flex;align-items:center;gap:.7rem;">
+                            <div style="width:44px;height:44px;border-radius:50%;background:var(--accent)1a;color:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:1rem;">${c ? escapeHtml((c.nombre.trim()[0] || '?').toUpperCase()) : '?'}</div>
+                            <div>
+                                <div style="font-family:'Inter',sans-serif;font-weight:800;font-size:1rem;color:var(--text);">${c ? escapeHtml(c.nombre) : '—'}</div>
+                                <div style="font-size:.76rem;color:var(--muted);">${c ? [c.email, c.telefono].filter(Boolean).join(' · ') : ''}</div>
+                            </div>
+                        </div>
+                        <div style="display:flex;gap:.5rem;">
+                            <span class="crm-chip">${c ? c.oportunidades : 0} oportunidades</span>
+                            <span class="crm-chip" style="color:var(--green)">${c ? c.ventas : 0} ventas</span>
+                            <span class="crm-chip" style="color:var(--yellow)">${c ? fmtPesos(c.valor) : '$0'}</span>
+                        </div>
+                    </div>
+                    <div style="font-family:'Inter',sans-serif;font-weight:700;font-size:.8rem;color:var(--muted);margin-bottom:.5rem;"><i class="fas fa-font-awesome" style="margin-right:.35rem;"></i>Historial de oportunidades</div>
+                    <div style="display:flex;flex-direction:column;gap:.5rem;">
+                        ${(c && c.leads.length) ? c.leads.map(l => `
+                            <div onclick="abrirLeadModal('${l.id}')" style="cursor:pointer;background:var(--bg2);border:1px solid var(--border2);border-left:3px solid ${estadoColor(l.estado_id)};border-radius:10px;padding:.6rem .75rem;display:flex;justify-content:space-between;align-items:center;gap:.6rem;flex-wrap:wrap;">
+                                <div style="min-width:0;">
+                                    <div style="font-weight:700;font-size:.8rem;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(l.nombre || 'Sin nombre')} <span style="font-weight:400;color:var(--dim);font-size:.72rem;">· ${agenteNombre(l.agente_id)}</span></div>
+                                    <div style="font-size:.7rem;color:var(--dim);margin-top:.15rem;">${l.interes ? escapeHtml(l.interes) + ' · ' : ''}${l.created_at ? new Date(l.created_at).toLocaleDateString('es-CO') : ''}${l.origen === 'tienda' ? ' · Tienda' : (l.origen === 'whatsapp' ? ' · WhatsApp' : (l.origen ? ' · ' + l.origen : ''))}</div>
+                                </div>
+                                <div style="text-align:right;flex-shrink:0;display:flex;align-items:center;gap:.5rem;">
+                                    <span class="crm-chip" style="color:${estadoColor(l.estado_id)}">${estadoNombre(l.estado_id)}</span>
+                                    ${l.valor_venta_cents ? `<span style="font-weight:800;font-size:.78rem;color:${estadoEsCerrada(l.estado_id) ? 'var(--green)' : 'var(--text)'};">${fmtPesos(l.valor_venta_cents)}</span>` : ''}
+                                </div>
+                            </div>`).join('')
+                        : '<div style="font-size:.76rem;color:var(--dim);padding:.4rem 0;">Sin oportunidades registradas.</div>'}
+                    </div>
+                </div>`;
+        }
+
+        cont.innerHTML = `
+            <input type="text" id="crm-cliente-buscar" placeholder="Buscar cliente por nombre, email o teléfono..." oninput="renderClientesCRM()" style="width:100%;box-sizing:border-box;background:var(--surface);border:1px solid var(--border2);border-radius:10px;padding:.55rem .8rem;font-size:.82rem;color:var(--text);">
+            ${detalle}
+            <div id="crm-clientes-list" style="display:flex;flex-direction:column;gap:.55rem;">
+                ${fichas}
+            </div>`;
+
+        // Filtro de búsqueda client-side
+        const term = (document.getElementById('crm-cliente-buscar')?.value || '').trim().toLowerCase();
+        const list = document.getElementById('crm-clientes-list');
+        if (list && term) {
+            const filtrados = clientes.filter(c =>
+                (c.nombre || '').toLowerCase().includes(term) ||
+                (c.email || '').toLowerCase().includes(term) ||
+                (c.telefono || '').toLowerCase().includes(term)
+            );
+            list.innerHTML = filtrados.length
+                ? filtrados.map(c => `
+                    <div class="crm-cliente" onclick="crmClienteSeleccionado=${JSON.stringify(c.k).replace(/"/g, '&quot;')};renderClientesCRM()">
+                        <div style="width:40px;height:40px;border-radius:50%;background:var(--accent)1a;color:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.9rem;flex-shrink:0;">${escapeHtml((c.nombre.trim()[0] || '?').toUpperCase())}</div>
+                        <div class="grow" style="min-width:0;">
+                            <div style="font-weight:700;font-size:.84rem;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(c.nombre)}</div>
+                            <div style="font-size:.74rem;color:var(--muted);">${c.email ? escapeHtml(c.email) : ''}${c.email && c.telefono ? ' · ' : ''}${c.telefono ? escapeHtml(c.telefono) : ''}</div>
+                        </div>
+                        <div style="text-align:right;flex-shrink:0;"><div style="font-weight:800;font-size:.82rem;color:var(--green);">${fmtPesos(c.valor)}</div><div style="font-size:.68rem;color:var(--dim);">${c.ventas} venta(s)</div></div>
+                    </div>`).join('')
+                : '<div class="empty-state" style="width:100%"><i class="fas fa-search"></i><p style="margin-top:.5rem">Sin resultados para "' + escapeHtml(term) + '".</p></div>';
+            if (crmClienteSeleccionado && !filtrados.some(c => c.k === crmClienteSeleccionado)) crmClienteSeleccionado = null;
+        }
     }
 
     function onFiltroTiendaChange() {
@@ -3936,6 +4079,7 @@
         renderEmbudo();
 
         if (crmTab === 'ventas') renderVentasCRM();
+        if (crmTab === 'clientes') renderClientesCRM();
 
         document.getElementById('crm-pipeline-title').textContent = estados.length
             ? 'Pipeline de ventas'
