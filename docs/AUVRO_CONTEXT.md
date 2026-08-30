@@ -1009,6 +1009,16 @@ Multiusuario.
 
 # Changelog de Cambios Técnicos
 
+## 30 Ago 2026 — Verificación responsive multisize: 0 overflow horizontal (desktop/tablet/mobile)
+
+**Objetivo:** validar el criterio LOOP de mobile/tablet/desktop con mediciones reales, no inspección visual.
+
+**Método:** servidor HTTP local estático (Node en `localhost:8899`, mime types correctos, sin cache) + Chrome headless (`--dump-dom` con `virtual-time-budget`) cargando en iframes same-origin cada página de la app a 3 anchos (1440 px desktop, 768 px tablet, 390 px mobile) y comparando `documentElement.scrollWidth` vs `clientWidth` (overflow horizontal).
+
+**Resultado:** 15/15 combinaciones con `scrollWidth === clientWidth` exacto (sin script horizontal): `tienda-admin.html`, `login.html`, `politicas.html`, `editor.html`, `chat.html` × {1440, 768, 390}. `dashboard.html` no aplica en esta prueba (redirige a login sin sesión; su layout móvil ya fue validado en ciclos previos).
+
+**Además:** el `viewport` meta de las 7 páginas de la app usa `width=device-width, initial-scale=1.0, viewport-fit=cover` (correcto para safe-area en notch). Cero errores de consola/red al cargar las 7 páginas headless (`Failed to load resource`/`Uncaught` inexistentes) y todos los assets del precache SW confirmados presentes.
+
 ## 30 Ago 2026 — Auditoría de assets: eliminada referencia rota al splash iPad (`splash-834x1194.png`)
 
 **Objetivo/fix:** auditoría de integridad sobre las 10 páginas del sitio (todos los `src`/`href` locales) detectó una única referencia a un archivo inexistente: en `login.html`, el splash de Apple `href="/splash/splash-834x1194.png"` (iPad Pro 11"/Air 4) apuntaba a un PNG que no existe en `splash/` → 404 al instalar la PWA en ese dispositivo.
