@@ -1009,6 +1009,18 @@ Multiusuario.
 
 # Changelog de Cambios Técnicos
 
+## 30 Ago 2026 — Bug corregido: dark mode no funcionaba en login.html (consumía tokens propios duplicados)
+
+**Objetivo/fix:** en `login.html` el modo oscuro NUNCA se aplicaba: la página definía su propio bloque de tokens `:root` y `body.light-mode` con los MISMOS valores claros (no existía set oscuro), duplicando el Design System en vez de consumirlo. Al quitar `light-mode` del body (dark), los tokens seguían siendo claros → login siempre se veía claro, incluso con `auvrouter_theme='dark'`.
+
+**Cambio en `login.html`:**
+- Añadido `<link rel="stylesheet" href="auvro-design.css?v=12">` (ahora consume el Design System central: `:root` oscuro + `body.light-mode` claro, con `!important`).
+- Eliminada la duplicación de tokens (`:root`/`body.light-mode` con valores claros) del `<style>` inline; se mantiene solo `--safe-top`/`--safe-bottom` (específicos de login, no existen en el Design System). Con el cuerpo sin `light-mode`, el `:root` oscuro del Design System ahora manda.
+
+**Verificado (render headless Chrome real):**
+- CSS `--bg` resuelto = `#0a0d14` (dark) con body sin `light-mode`; `#f5f7fa` (light) con `body.light-mode`. Ambos correctos.
+- login con `auvrouter_theme='dark'` → body renderiza `class=""` (oscuro aplicado), sin FOUC.
+
 ## 30 Ago 2026 — Tema global unificado + anti-FOUC + Design System en toda la app + cache-busting PWA
 
 **Objetivo:** eliminar el "flash" de tema (FOUC) al navegar entre páginas, unificar claro/oscuro en TODAS las páginas de la app, y que todas consuman el mismo Design System (`auvro-design.css`), además de refrescar la caché del Service Worker para la nueva versión.
