@@ -72,8 +72,8 @@
             rel="stylesheet">
         <link rel="stylesheet"
             href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-        <link rel="stylesheet" href="dashboard.css?v=16">
-        <link rel="stylesheet" href="auvro-design.css?v=16">
+        <link rel="stylesheet" href="dashboard.css?v=17">
+        <link rel="stylesheet" href="auvro-design.css?v=17">
 
     </head>
     <body class="light-mode">
@@ -1099,10 +1099,10 @@
 
                 <div id="cfg-tienda-nota" style="display:none;background:var(--bg2);border:1px dashed var(--border2);border-radius:10px;padding:.7rem .8rem;margin-bottom:1rem;font-size:.76rem;color:var(--muted);">
                     <i class="fas fa-store" style="margin-right:.35rem;color:var(--green);"></i>
-                    Este agente está vinculado a una <b>TIENDA</b>. El catálogo (productos, tours), la pasarela de pago
-                    y las notificaciones comerciales se gestionan desde el <b>módulo TIENDA</b> de este agente, no aquí.
-                    Aquí solo configuras la captura de leads y los estados del pipeline; el agente toma los productos y
-                    cierra ventas con la pasarela de la tienda automáticamente.
+                    Este agente está vinculado a una <b>TIENDA</b>. El catálogo (productos, tours), la pasarela de pago,
+                    las notificaciones comerciales y el <b>pipeline de ventas</b> se gestionan desde el <b>módulo TIENDA</b>
+                    de este agente (menú <b>Pipeline de ventas</b>), no aquí. El agente toma los productos, cierra ventas
+                    con la pasarela de la tienda y mueve sus leads por el pipeline de la tienda automáticamente.
                 </div>
 
                 <div class="field">
@@ -1175,6 +1175,7 @@
                 <div id="cfg-catalogo-list"></div>
                 </div>
 
+                <div id="cfg-sec-pipeline">
                 <h4 style="font-family:'Inter',sans-serif;font-size:.9rem;font-weight:700;margin:1.2rem 0 .5rem;">Pipeline de ventas (estados)</h4>
                 <p style="font-size:.74rem;color:var(--muted);margin-bottom:.6rem;">Crea tus estados. Marca cuál es el estado de venta cerrada para que el pago aprobado la cierre automáticamente.</p>
                 <div id="cfg-estados-list"></div>
@@ -1187,6 +1188,7 @@
                         <option value="negociacion">negociacion</option>
                     </select>
                     <button class="btn-main" style="padding:.45rem .8rem;font-size:.78rem;" onclick="agregarEstado()"><i class="fas fa-plus" style="margin-right:.25rem"></i>Agregar</button>
+                </div>
                 </div>
 
                 <div class="msg" id="crm-config-msg"></div>
@@ -4248,7 +4250,7 @@
         document.getElementById('cfg-crm-activo').checked = config.crm_activo === true;
         const agenteTieneTienda = agenteSel ? Boolean(agenteSel.tienda_id) : false;
         document.getElementById('cfg-tienda-nota').style.display = agenteTieneTienda ? 'block' : 'none';
-        ['cfg-sec-pasarela', 'cfg-sec-notif', 'cfg-sec-catalogo'].forEach(id => {
+        ['cfg-sec-pasarela', 'cfg-sec-notif', 'cfg-sec-catalogo', 'cfg-sec-pipeline'].forEach(id => {
             const el = document.getElementById(id);
             if (el) el.style.display = agenteTieneTienda ? 'none' : 'block';
         });

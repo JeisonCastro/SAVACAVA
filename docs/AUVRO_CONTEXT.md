@@ -1009,6 +1009,18 @@ Multiusuario.
 
 # Changelog de Cambios Técnicos
 
+## 30 Ago 2026 — Pipeline por TIENDA (`tienda_pipeline`): CRM per-tienda multi-agente
+
+- **Objetivo:** completar el CRM per-tienda. El pipeline (estados) se define por TIENDA (tabla `tienda_pipeline`), no por agente. El agente asignado a una tienda toma catálogo, pasarela, notificaciones y **pipeline de la tienda**. Se mantiene el fallback a `crm_estados` (por usuario) para los agentes aún sin `tienda_id` (transición segura).
+- **`supabase/migrations/20260830_tienda_pipeline.sql` (aplicada):** tabla `tienda_pipeline` (`proyecto_id`, `nombre`, `orden`, `es_inicial`, `es_cerrada`, `es_perdida`, `avance_automatico`, `color`), RLS (admin / `tienda_permisos`), RPC `cerrar_lead_venta_tienda(p_lead_id, p_valor_cents)` (con fallback a `cerrar_lead_venta` si no hay `proyecto_id`), y seed de 6 estados por tienda (Nuevo/Contactado/Calificado/Negociación/Ganado/Perdido).
+- **`netlify/functions/crm-helper.js`:** nuevas funciones per-tienda: `sembrarPipelineTienda(proyectoId)`, `obtenerEstadoInicialTienda(proyectoId)`, `obtenerEstadoCerradaTienda(proyectoId)`, `avanzarEstadoAutomaticoPorTienda({leadId, proyectoId, estadoActualId, etapa})`. `extraerDatosLead` y `obtenerOCrearLead` ahora usan estos por-tienda cuando el agente tiene `tienda_id` (el lead se crea con `proyecto_id = tienda_id` y `estado_id` del pipeline de la tienda), con fallback a `crm_estados` para agentes sin tienda.
+- **`netlify/functions/pago-webhook.js`:** al cerrar una venta de tienda en el CRM ahora resuelve estado inicial/cerrada desde `tienda_pipeline` cuando `agenteLink.tienda_id || orden.proyecto_id` existe; si no, usa `crm_estados` por usuario.
+- **`netlify/functions/crm.js`:** el GET del panel devuelve los estados desde `tienda_pipeline` cuando se filtra por `tienda_id` (antes siempre `crm_estados`); `lead_guardar` (creación manual) resuelve el estado inicial desde el pipeline de la tienda si el agente tiene `tienda_id`.
+- **`netlify/functions/tienda.js`:** acciones CRUD del pipeline de la tienda con el patrón `autenticarAdmin`/`validarAcceso`: `listar_pipeline`, `guardar_pipeline_estado`, `eliminar_pipeline_estado` (no permite borrar estados terminales y reasigna los leads al estado inicial).
+- **`tienda-admin.html`:** nueva sección **Pipeline de ventas** (`renderPipeline`, `guardarEstadoPipeline`, `eliminarEstadoPipeline`) en el menú lateral del módulo tienda; enlace en el sidebar (icono `fa-sitemap`). Cache bump local a `?v=14`.
+- **`dashboard.html` (config CRM):** para agentes con tienda ahora también se oculta la sección "Pipeline de ventas" (la gestiona el módulo tienda) y se amplió el aviso `cfg-tienda-nota`; se mantiene para agentes sin tienda (transición).
+- **Cache bump a `v17`:** `dashboard.html` (`dashboard.css?v=17`, `auvro-design.css?v=17`) y `sw.js` (`auvro-v17` + precache `?v=17`).
+
 ## 30 Ago 2026 — Sin redundancia de lógica/UI: agente con TIENDA captura leads y vende con la tienda por defecto
 
 - **Objetivo:** eliminar la redundancia en configuración y lógica: cuando un agente se asigna a una tienda (`agentes_ia.tienda_id`), el catálogo (productos y tours), la pasarela Wompi y las notificaciones comerciales son los **de la tienda**, y la captura de leads ocurre **por defecto**, sin depender del catálogo jsonb ni de activar `crm_activo`/conexiones manualmente.

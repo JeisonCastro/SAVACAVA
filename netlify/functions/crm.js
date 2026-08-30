@@ -71,11 +71,11 @@ exports.handler = async (event) => {
                 .select('*')
                 .eq('user_id', user.id);
 
-            const { data: estados } = await supabase
-                .from('crm_estados')
-                .select('*')
-                .eq('user_id', user.id)
-                .order('orden', { ascending: true });
+            // Estados / pipeline: si se filtra por tienda, usar el pipeline de la
+            // tienda; si no, el pipeline por usuario (transición para agentes sin tienda).
+            const { data: estados } = tiendaFiltro
+                ? await supabase.from('tienda_pipeline').select('*').eq('proyecto_id', tiendaFiltro).order('orden', { ascending: true })
+                : await supabase.from('crm_estados').select('*').eq('user_id', user.id).order('orden', { ascending: true });
 
             // Filtros por fecha de creación (desde/hasta ISO) y origen
             const filtros = (q) => {
@@ -338,9 +338,10 @@ exports.handler = async (event) => {
         // ── Crear/editar lead manualmente ──
         if (accion === 'lead_guardar') {
             const { id, agente_id, nombre, telefono, email, interes, notas, preferencias, estado_id } = body;
-            const estadoInicial = await require('./crm-helper').obtenerEstadoInicial(user.id);
+            const helper = require('./crm-helper');
 
             let proyectoId = null;
+            let estadoInicial = await helper.obtenerEstadoInicial(user.id);
             if (!id && agente_id) {
                 const { data: agenteValido } = await supabase
                     .from('agentes_ia')
@@ -350,6 +351,9 @@ exports.handler = async (event) => {
                     .maybeSingle();
                 if (!agenteValido) return { statusCode: 404, headers, body: JSON.stringify({ error: 'Agente no encontrado.' }) };
                 proyectoId = agenteValido.tienda_id || null;
+                if (proyectoId) {
+                    estadoInicial = await helper.obtenerEstadoInicialTienda(proyectoId) || estadoInicial;
+                }
             }
 
             const data = {

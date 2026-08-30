@@ -1126,6 +1126,9 @@ exports.handler = async (event) => {
         if (action === 'estado_notificaciones') return await accionEstadoNotificaciones(adminId, params);
         if (action === 'configurar_notificaciones') return await accionConfigurarNotificaciones(adminId, body);
         if (action === 'desconectar_gmail') return await accionDesconectarGmail(adminId, body);
+        if (action === 'listar_pipeline') return await accionListarPipeline(adminId, params);
+        if (action === 'guardar_pipeline_estado') return await accionGuardarPipelineEstado(adminId, body);
+        if (action === 'eliminar_pipeline_estado') return await accionEliminarPipelineEstado(adminId, body);
 
         return ok({ ok: false, error: 'Acción no válida' }, 400);
     } catch (err) {
@@ -1135,5 +1138,65 @@ exports.handler = async (event) => {
         return ok({ ok: false, error: err.message || 'Error interno' }, 500);
     }
 };
+
+// ── Pipeline CRM de la tienda (estados tienda_pipeline) ──
+async function accionListarPipeline(adminId, params) {
+    const { proyecto_id } = params;
+    const acceso = await validarAcceso(proyecto_id, adminId);
+    if (acceso) return acceso;
+    const helper = require('./crm-helper');
+    await helper.sembrarPipelineTienda(proyecto_id);
+    const { data: estados, error } = await supabase
+        .from('tienda_pipeline')
+        .select('*')
+        .eq('proyecto_id', proyecto_id)
+        .order('orden', { ascending: true });
+    if (error) return ok({ ok: false, error: error.message }, 500);
+    return ok({ ok: true, estados: estados || [] });
+}
+
+async function accionGuardarPipelineEstado(adminId, body) {
+    const { proyecto_id, id, nombre, orden, es_inicial, es_cerrada, es_perdida, color } = body;
+    const acceso = await validarAcceso(proyecto_id, adminId);
+    if (acceso) return acceso;
+    const nombreLimpio = String(nombre || '').trim();
+    if (!nombreLimpio) return ok({ ok: false, error: 'Falta el nombre del estado' }, 400);
+    const cond = (v) => v === true || v === 'true' || v === 1;
+    const datos = {
+        nombre: nombreLimpio,
+        orden: Number(orden) || 0,
+        es_inicial: cond(es_inicial),
+        es_cerrada: cond(es_cerrada),
+        es_perdida: cond(es_perdida),
+        color: String(color || '#0ea5e9')
+    };
+    let error;
+    if (id) {
+        ({ error } = await supabase.from('tienda_pipeline').update(datos).eq('id', id).eq('proyecto_id', proyecto_id));
+    } else {
+        ({ error } = await supabase.from('tienda_pipeline').insert({ proyecto_id, ...datos }));
+    }
+    if (error) return ok({ ok: false, error: error.message }, 500);
+    return ok({ ok: true });
+}
+
+async function accionEliminarPipelineEstado(adminId, body) {
+    const { id } = body;
+    if (!id) return ok({ ok: false, error: 'Falta id' }, 400);
+    const { data: est } = await supabase.from('tienda_pipeline').select('proyecto_id').eq('id', id).maybeSingle();
+    if (!est) return ok({ ok: false, error: 'Estado no encontrado' }, 404);
+    const acceso = await validarAcceso(est.proyecto_id, adminId);
+    if (acceso) return acceso;
+    if (est.es_cerrada || est.es_perdida) {
+        return ok({ ok: false, error: 'No se puede eliminar un estado terminal' }, 400);
+    }
+    // Reasignar leads en ese estado al estado inicial (o primero) para no romper el pipeline
+    const helper = require('./crm-helper');
+    const estadoInicial = await helper.obtenerEstadoInicialTienda(est.proyecto_id);
+    await supabase.from('crm_leads').update({ estado_id: estadoInicial }).eq('proyecto_id', est.proyecto_id).eq('estado_id', id).select();
+    const { error } = await supabase.from('tienda_pipeline').delete().eq('id', id);
+    if (error) return ok({ ok: false, error: error.message }, 500);
+    return ok({ ok: true });
+}
 
 module.exports.handler = exports.handler;

@@ -288,7 +288,7 @@ exports.handler = async (event) => {
                         try {
                             const { data: agenteLink } = await supabase
                                 .from('agentes_ia')
-                                .select('user_id, crm_activo')
+                                .select('user_id, crm_activo, tienda_id')
                                 .eq('id', orden.agente_id)
                                 .maybeSingle();
                             if (agenteLink?.crm_activo) {
@@ -311,10 +311,19 @@ exports.handler = async (event) => {
                                     leadId = leadExistente?.id || null;
                                 }
 
-                                // Estado inicial y cerrada del pipeline para crear/cerrar el lead
-                                const { obtenerEstadoInicial, obtenerEstadoCerrada } = require('./crm-helper');
-                                const estadoCerrada = await obtenerEstadoCerrada(userId);
-                                const estadoInicial = await obtenerEstadoInicial(userId);
+                                // Estado inicial y cerrada del pipeline para crear/cerrar el lead.
+                                // Si el agente está en una tienda, se usan los estados de la tienda.
+                                const helper = require('./crm-helper');
+                                let estadoCerrada;
+                                let estadoInicial;
+                                if (agenteLink.tienda_id || orden.proyecto_id) {
+                                    const proyectoId = orden.proyecto_id || agenteLink.tienda_id;
+                                    estadoCerrada = await helper.obtenerEstadoCerradaTienda(proyectoId);
+                                    estadoInicial = await helper.obtenerEstadoInicialTienda(proyectoId);
+                                } else {
+                                    estadoCerrada = await helper.obtenerEstadoCerrada(userId);
+                                    estadoInicial = await helper.obtenerEstadoInicial(userId);
+                                }
 
                                 if (!leadId) {
                                     const { data: nuevo } = await supabase

@@ -115,6 +115,57 @@ async function obtenerEstadoCerrada(userId) {
     return data?.id || null;
 }
 
+// ── Pipeline por TIENDA (tienda_pipeline) ──────────────────────────────────
+// Los pipelines del CRM se definen sobre la tienda (no por agente). El agente
+// asignado a una tienda toma estos estados. Se mantiene el fallback a
+// crm_estados (por usuario) para los agentes aún sin tienda (transición).
+async function sembrarPipelineTienda(proyectoId) {
+    if (!proyectoId) return;
+    const { data: existing } = await supabase
+        .from('tienda_pipeline')
+        .select('id')
+        .eq('proyecto_id', proyectoId)
+        .limit(1);
+    if (existing && existing.length > 0) return;
+    const rows = ESTADOS_DEFAULT.map(e => ({ ...e, proyecto_id: proyectoId }));
+    const { error } = await supabase.from('tienda_pipeline').insert(rows);
+    if (error) console.error('Error sembrando pipeline de tienda:', error.message);
+}
+
+async function obtenerEstadoInicialTienda(proyectoId) {
+    if (!proyectoId) return null;
+    const { data } = await supabase
+        .from('tienda_pipeline')
+        .select('id')
+        .eq('proyecto_id', proyectoId)
+        .eq('es_inicial', true)
+        .order('orden', { ascending: true })
+        .limit(1)
+        .maybeSingle();
+    if (data?.id) return data.id;
+    const { data: primer } = await supabase
+        .from('tienda_pipeline')
+        .select('id')
+        .eq('proyecto_id', proyectoId)
+        .order('orden', { ascending: true })
+        .limit(1)
+        .maybeSingle();
+    return primer?.id || null;
+}
+
+async function obtenerEstadoCerradaTienda(proyectoId) {
+    if (!proyectoId) return null;
+    const { data } = await supabase
+        .from('tienda_pipeline')
+        .select('id')
+        .eq('proyecto_id', proyectoId)
+        .eq('es_cerrada', true)
+        .order('orden', { ascending: true })
+        .limit(1)
+        .maybeSingle();
+    return data?.id || null;
+}
+
 // ── Catálogo de tienda (e-commerce) ──────────────────────────────────────────
 // Carga productos de tienda_productos + variaciones de tienda_variaciones
 // y los adapta al mismo formato que el catálogo CRM para inyectar en el prompt.
@@ -395,7 +446,10 @@ Reglas:
             .limit(1)
             .maybeSingle();
 
-        const estadoInicial = await obtenerEstadoInicial(agente.user_id);
+        const tiendaIdLead = agente.tienda_id || null;
+        const estadoInicial = tiendaIdLead
+            ? await obtenerEstadoInicialTienda(tiendaIdLead)
+            : await obtenerEstadoInicial(agente.user_id);
 
         const leadData = {
             user_id: agente.user_id,
@@ -422,12 +476,21 @@ Reglas:
                 .eq('id', leadExistente.id);
 
             // Avance automático de estado (solo hacia adelante y nunca a terminal)
-            await avanzarEstadoAutomatico({
-                leadId: leadExistente.id,
-                userId: agente.user_id,
-                estadoActualId: leadExistente.estado_id,
-                etapa: extraido.etapa
-            });
+            if (tiendaIdLead) {
+                await avanzarEstadoAutomaticoPorTienda({
+                    leadId: leadExistente.id,
+                    proyectoId: tiendaIdLead,
+                    estadoActualId: leadExistente.estado_id,
+                    etapa: extraido.etapa
+                });
+            } else {
+                await avanzarEstadoAutomatico({
+                    leadId: leadExistente.id,
+                    userId: agente.user_id,
+                    estadoActualId: leadExistente.estado_id,
+                    etapa: extraido.etapa
+                });
+            }
         } else if (leadExistente !== null || externalUserId || conversacionId) {
             const { data: nuevoLead, error: errIns } = await supabase
                 .from('crm_leads')
@@ -440,12 +503,21 @@ Reglas:
                 .single();
             if (errIns) console.error('Error insertando lead:', errIns.message);
             else if (nuevoLead?.id) {
-                await avanzarEstadoAutomatico({
-                    leadId: nuevoLead.id,
-                    userId: agente.user_id,
-                    estadoActualId: estadoInicial,
-                    etapa: extraido.etapa
-                });
+                if (tiendaIdLead) {
+                    await avanzarEstadoAutomaticoPorTienda({
+                        leadId: nuevoLead.id,
+                        proyectoId: tiendaIdLead,
+                        estadoActualId: estadoInicial,
+                        etapa: extraido.etapa
+                    });
+                } else {
+                    await avanzarEstadoAutomatico({
+                        leadId: nuevoLead.id,
+                        userId: agente.user_id,
+                        estadoActualId: estadoInicial,
+                        etapa: extraido.etapa
+                    });
+                }
             }
         }
     } catch (err) {
@@ -461,6 +533,33 @@ async function avanzarEstadoAutomatico({ leadId, userId, estadoActualId, etapa }
         .from('crm_estados')
         .select('id, orden, es_cerrada, es_perdida')
         .eq('user_id', userId)
+        .order('orden', { ascending: true });
+
+    if (!estados || estados.length === 0) return;
+
+    const actual = estados.find(e => e.id === estadoActualId);
+    if (!actual || actual.es_cerrada || actual.es_perdida) return;
+
+    const objetivo = estados.find(e => e.avance_automatico === etapa);
+    if (!objetivo || objetivo.es_cerrada || objetivo.es_perdida) return;
+
+    if (objetivo.orden > actual.orden) {
+        await supabase
+            .from('crm_leads')
+            .update({ estado_id: objetivo.id, updated_at: new Date().toISOString() })
+            .eq('id', leadId);
+    }
+}
+
+// Igual que avanzarEstadoAutomatico pero usando el pipeline de la TIENDA
+// (para leads de tienda: proyecto_id != null).
+async function avanzarEstadoAutomaticoPorTienda({ leadId, proyectoId, estadoActualId, etapa }) {
+    if (!proyectoId || !etapa || !['contactado', 'calificado', 'negociacion'].includes(etapa)) return;
+
+    const { data: estados } = await supabase
+        .from('tienda_pipeline')
+        .select('id, orden, es_cerrada, es_perdida')
+        .eq('proyecto_id', proyectoId)
         .order('orden', { ascending: true });
 
     if (!estados || estados.length === 0) return;
@@ -786,7 +885,10 @@ async function obtenerOCrearLead({ agente, canal, externalUserId, conversacionId
 
     if (existente?.id) return existente.id;
 
-    const estadoInicial = await obtenerEstadoInicial(agente.user_id);
+    const tiendaIdLead = agente.tienda_id || null;
+    const estadoInicial = tiendaIdLead
+        ? await obtenerEstadoInicialTienda(tiendaIdLead)
+        : await obtenerEstadoInicial(agente.user_id);
     const { data: nuevo } = await supabase
         .from('crm_leads')
         .insert({
@@ -795,6 +897,7 @@ async function obtenerOCrearLead({ agente, canal, externalUserId, conversacionId
             conversacion_id: conversacionId || null,
             external_user_id: externalUserId || null,
             origen: canal || 'web',
+            proyecto_id: tiendaIdLead,
             estado_id: estadoInicial,
             etapa_generica: 'nuevo',
             telefono: canal === 'whatsapp' ? externalUserId : null
@@ -811,8 +914,11 @@ module.exports = {
     TIPOS_PRODUCTO,
     obtenerConfigCRM,
     sembrarEstadosDefault,
+    sembrarPipelineTienda,
     obtenerEstadoInicial,
     obtenerEstadoCerrada,
+    obtenerEstadoInicialTienda,
+    obtenerEstadoCerradaTienda,
     normalizarProducto,
     calcularPrecioProducto,
     construirTextoCatalogo,
@@ -822,6 +928,7 @@ module.exports = {
     deepseekJSON,
     extraerDatosLead,
     avanzarEstadoAutomatico,
+    avanzarEstadoAutomaticoPorTienda,
     crearPaymentLinkVenta,
     obtenerOCrearLead
 };
