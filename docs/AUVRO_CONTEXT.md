@@ -1009,6 +1009,16 @@ Multiusuario.
 
 # Changelog de Cambios Técnicos
 
+## 30 Ago 2026 — Habilitar tipo `tour` en BD + confirmar flujo agente→tienda sin tocar datos
+
+- **Bloqueante resuelto:** la migración `20260826_tienda_tipo_catalogo.sql` definía `CHECK (tipo IN ('fisico','simple','variable','digital','servicio','catalogo'))`, por lo que guardar un producto tipo `tour` desde `tienda-admin` fallaba con violación de restricción en producción.
+- Nueva migración `supabase/migrations/20260830_tienda_tipo_tour.sql` que **relaja el CHECK** para incluir `'tour'`. **Aplicada directamente a la BD de producción** (`supabase db query --linked`) porque el CLI `db push` está desalineado (la tabla `supabase_migrations.schema_migrations` remota solo registra 2 migraciones; el resto de esquema se aplica manualmente — reconciliar ese tracking está fuera de alcance y es pre-existente). Verificado en vivo: `pg_get_constraintdef` muestra `'tour'` incluido.
+- **Sin migración de datos:** la decisión de producto fue **no tocar datos de catálogo en producción**. Aunque `PabloViajes` y `Asistente Whatsapp` tienen catálogos turísticos en `crm_config_agente.catalogo` (jsonb) y se confirmó que **ningún agente tiene `tienda_id`** actualmente, se dejó el código listo para que, cuando el admin vincule un agente→tienda, todo funcione sin duplicar:
+  - `chat.js` (líneas 1300-1303): si `agente.tienda_id` está set, consume `obtenerCatalogoTienda(tiendaId)`; si la tienda no tiene productos, cae al catálogo CRM jsonb.
+  - `crm-helper.js` `obtenerCatalogoTienda` mapea tours de tienda al formato por pasajero; `productosParaCliente` pasa `categorias_pasajero`/`escalas_cantidad`/`extras` al widget.
+  - El admin crea los tours desde `tienda-admin` (tipo "Tour / Actividad") y las tarifas se guardan en `tienda_productos.atributos`.
+- **Migración del catálogo turístico jsonb → `tienda_productos`**: queda pendiente por decisión explícita (no ejecutar ahora), y solo tendrá sentido una vez se defina a qué tienda pertenece cada agente.
+
 ## 30 Ago 2026 — Reestructuración AUVRO: la TIENDA es la fuente única de catálogo/comercio, el AGENTE la consume, y el CRM integra las ventas de tienda
 
 **Objetivo:** avanzar la reestructuración del ecosistema: la tienda (`web_projects` + `tienda_*`) es el nodo comercial (catálogo, tipos de producto, pasarela), el agente IA la consume como fuente única, y el CRM (`crm_leads`) registra también las ventas pagadas de tienda para que la analítica capture ingresos por tienda/agente.
@@ -1047,7 +1057,7 @@ Multiusuario.
 
 **Archivos modificados:** `netlify/functions/tienda.js`, `netlify/functions/crm-helper.js`, `netlify/functions/pago-webhook.js`, `tienda-admin.html`, `dashboard.html`, `dashboard.css`, `sw.js`, `docs/AUVRO_CONTEXT.md`.
 
-**Nota de persistencia:** los campos de tour se guardan en `tienda_productos.atributos` (jsonb) reutilizando la columna existente — no se requirió migración de esquema para esta iteración. Pendiente de una siguiente iteración: migrar el catálogo turístico que hoy existe solo en `crm_config_agente.catalogo` (jsonb) hacia `tienda_productos` cuando el agente tenga `tienda_id`.
+**Nota de persistencia (actualizada 30 Ago):** los campos de tour se guardan en `tienda_productos.atributos` (jsonb). Esta iteración detectó que la restricción `tienda_productos_tipo_check` no incluía `tour`, por lo que se aplicó `20260830_tienda_tipo_tour.sql` (ver entrada superior). La migración del catálogo turístico `crm_config_agente.catalogo` → `tienda_productos` **queda pendiente por decisión explícita** (no se tocan datos; se hará manualmente enlazando agente→tienda cuando corresponda).
 
 ## 30 Ago 2026 — Dark mode negro puro `#000000` (se eliminó el tinte azul navy)
 
