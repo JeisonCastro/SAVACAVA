@@ -1,4 +1,4 @@
-/* ─── AUVRO Service Worker v3.0 (tema global + cache busting) ─────────────── */
+/* ─── AUVRO Service Worker v3.1 (chat/editor precacheados) ──────── */
 const CACHE_NAME = 'auvro-v12';
 const OFFLINE_URL = '/offline.html';
 const CACHE_MAX_ENTRIES = 100;
@@ -8,6 +8,8 @@ const PRECACHE_URLS = [
   '/',
   '/dashboard.html',
   '/tienda-admin.html',
+  '/chat.html',
+  '/editor.html',
   '/login.html',
   '/offline.html',
   '/manifest.json',

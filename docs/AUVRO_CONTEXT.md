@@ -1009,6 +1009,16 @@ Multiusuario.
 
 # Changelog de Cambios Técnicos
 
+## 30 Ago 2026 — SW v3.1: chat.html y editor.html añadidos al precache (offline completo del app shell)
+
+**Objetivo/fix:** `chat.html` y `editor.html` son documentos independientes a los que se navega desde el dashboard (`window.open('editor.html?...')` y `location='/chat.html?agente=...'`), pero NO estaban en `PRECACHE_URLS` — solo se cacheaban de forma runtime (stale-while-revalidate) tras la primera visita online. Si el usuario instalaba la PWA y luego abría esos flujos sin conexión (sin haberlos visitado antes), recibía fallback/404.
+
+**Cambio en `sw.js`:** añadidos `'/chat.html'` y `'/editor.html'` a `PRECACHE_URLS` (comentario de versión → v3.1). El resto de la estrategia se mantiene: documentos network-first, fuentes/CDN cache-first, `widget.js` siempre red-first, resto stale-while-revalidate, activate purga caches distintos de `auvro-v12`.
+
+**Verificado:** `node --check sw.js` OK; vista de shortcuts del manifest (`#bandeja`, `#agentes`) confirmada en `vistasValidas` del dashboard.
+
+**Nota:** `CACHE_NAME` se mantiene `auvro-v12` (el cambio de bytes del SW fuerza el reinstalado; `cache.add` re-añade las URLs al mismo cache coherrecto con el `?v=12` de los CSS).
+
 ## 30 Ago 2026 — Verificación responsive multisize: 0 overflow horizontal (desktop/tablet/mobile)
 
 **Objetivo:** validar el criterio LOOP de mobile/tablet/desktop con mediciones reales, no inspección visual.
