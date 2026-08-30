@@ -1009,6 +1009,14 @@ Multiusuario.
 
 # Changelog de Cambios Técnicos
 
+## 30 Ago 2026 — Auditoría de assets: eliminada referencia rota al splash iPad (`splash-834x1194.png`)
+
+**Objetivo/fix:** auditoría de integridad sobre las 10 páginas del sitio (todos los `src`/`href` locales) detectó una única referencia a un archivo inexistente: en `login.html`, el splash de Apple `href="/splash/splash-834x1194.png"` (iPad Pro 11"/Air 4) apuntaba a un PNG que no existe en `splash/` → 404 al instalar la PWA en ese dispositivo.
+
+**Cambio en `login.html`:** eliminada la línea del splash `834x1194` (el archivo real nunca existió; los otros 6 splashes presentes cubren iPhone + iPad Pro 12.9").
+
+**Verificado:** re-escaneo automático de `src`/`href` locales sobre los 10 HTML → 0 referencias rotas. Todos los assets del precache del SW (`icon-192.svg`, `icon-512.svg`, `favicon.ico`, `offline.html`, `dashboard.css`, `auvro-design.css`) también confirmados presentes en raíz.
+
 ## 30 Ago 2026 — Bug corregido: dark mode no funcionaba en login.html (consumía tokens propios duplicados)
 
 **Objetivo/fix:** en `login.html` el modo oscuro NUNCA se aplicaba: la página definía su propio bloque de tokens `:root` y `body.light-mode` con los MISMOS valores claros (no existía set oscuro), duplicando el Design System en vez de consumirlo. Al quitar `light-mode` del body (dark), los tokens seguían siendo claros → login siempre se veía claro, incluso con `auvrouter_theme='dark'`.
