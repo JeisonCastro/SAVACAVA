@@ -1,5 +1,5 @@
-/* ─── AUVRO Service Worker v2.1 (widget.js network-first) ─────────────────── */
-const CACHE_NAME = 'auvro-v11';
+/* ─── AUVRO Service Worker v3.0 (tema global + cache busting) ─────────────── */
+const CACHE_NAME = 'auvro-v12';
 const OFFLINE_URL = '/offline.html';
 const CACHE_MAX_ENTRIES = 100;
 
@@ -7,13 +7,16 @@ const CACHE_MAX_ENTRIES = 100;
 const PRECACHE_URLS = [
   '/',
   '/dashboard.html',
+  '/tienda-admin.html',
   '/login.html',
   '/offline.html',
   '/manifest.json',
+  '/dashboard.css?v=12',
+  '/auvro-design.css?v=12',
   '/icon-192.svg',
   '/icon-512.svg',
   '/favicon.ico',
-  'https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap',
+  'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap',
   'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css'
 ];
 

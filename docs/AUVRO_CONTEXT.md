@@ -1009,6 +1009,27 @@ Multiusuario.
 
 # Changelog de Cambios Técnicos
 
+## 30 Ago 2026 — Tema global unificado + anti-FOUC + Design System en toda la app + cache-busting PWA
+
+**Objetivo:** eliminar el "flash" de tema (FOUC) al navegar entre páginas, unificar claro/oscuro en TODAS las páginas de la app, y que todas consuman el mismo Design System (`auvro-design.css`), además de refrescar la caché del Service Worker para la nueva versión.
+
+**Fuente única de verdad del tema (ya existente en chat/editor, ahora extendida a toda la app):** `localStorage['auvrouter_theme']` = `'light'` | `'dark'` (default `'light'`), aplicado con la clase `body.light-mode` (ausente = oscuro, presente = claro).
+
+**Patrón anti-FOUC (replicado en todas las páginas):** `<body class="light-mode">` + `<script>try{if((localStorage.getItem('auvrouter_theme')||'light')!=='light'){document.body.classList.remove('light-mode')}}catch(_){}</script>` inmediatamente después de abrir `<body>`, de modo que la clase correcta queda aplicada en el primer render (sin flash).
+
+**Archivos tocados:**
+- `dashboard.html`: `<body>` → `<body class="light-mode">` + script anti-FOUC temprano (corrige el FOUC y el default opuesto). CSS links → `dashboard.css?v=12` + `auvro-design.css?v=12`. Iconos Apple rotos → `apple-touch-icon-*.png` reales.
+- `tienda-admin.html`: **añadido `<link rel="stylesheet" href="auvro-design.css?v=12">`** (le faltaba el Design System; ahora los tokens `--bg/--surface/--green` resuelven en claro y oscuro, y su `<body>` ya arrancaba `light-mode`). `<body>` + script anti-FOUC, CSS links versionados, iconos Apple coregidos.
+- `login.html`, `politicas.html`, `offline.html`: añadido el script anti-FOUC temprano (antes aplicaban el tema tarde → flash). Iconos Apple de login coregidos.
+- `chat.html`, `editor.html`: CSS link → `auvro-design.css?v=12` (ya tenían el patrón anti-FOUC).
+- `sw.js`: `CACHE_NAME` `auvro-v11` → `auvro-v12`; precache actualizado con `dashboard.css?v=12`, `auvro-design.css?v=12`, `tienda-admin.html`; URL de Google Fonts corregida a Inter (`font-family=Inter...800;900`) en lugar de Syne/DM Sans que ya no se usan.
+- `manifest.json`: `theme_color`/`background_color` → `#0f1115` (el dark real de la app), en lugar del `#0ea5e9`/`#06090f` previos.
+- `tienda-admin.html` (z-index): `.toast` subido de `z-index:1000` → `9999` (corrige regresión: su `<style>` inline lo dejaba por DEBAJO de los modales `1001/9999`; ahora iguala a `dashboard.css` y siempre queda sobre las capas). Hovers hardcoded `rgba(...)` → `color-mix(in srgb, var(--text)/var(--green)/var(--muted) ...)` para que se adapten a claro y oscuro.
+
+**Verificado (render headless real con Chrome, herramienta del proyecto):** con `localStorage.auvrouter_theme='dark'` el `body` de dashboard, tienda-admin, login, chat, editor, politicas y offline renderiza con `class=""` (oscuro aplicado en primer render, sin FOUC); con default (light) renderiza `class="light-mode"`. Todos los bloques inline JS de `dashboard.html` y `tienda-admin.html` pasan `new Function` (0 errores). `node --check sw.js` OK.
+
+**Nota de diseño intencional:** las landings públicas de marketing (`index.html`, `agentes.html`, `paginas-web.html`) son el sitio público de la agencia (siempre claro, DM Sans, fuera del scope de la PWA de aplicación) y **no** siguen el tema de la app; diferencia deliberada por UX, no un bug.
+
 ## 30 Ago 2026 — Tienda: lightbox para abrir imágenes de productos en grande
 
 **Objetivo:** todas las tiendas generadas por Web Factory deben poder abrir la imagen del producto en grande cuando el usuario hace clic en ella, en lugar de verla solo dentro de la tarjeta del grid.

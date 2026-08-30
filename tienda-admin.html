@@ -29,10 +29,10 @@
     <link rel="icon" type="image/svg+xml" href="/icon-192.svg">
 
     <!-- Apple Touch Icons -->
-    <link rel="apple-touch-icon" href="/icon-180.png">
+    <link rel="apple-touch-icon" href="/apple-touch-icon-180.png">
     <link rel="apple-touch-icon" sizes="152x152" href="/icon-152.png">
-    <link rel="apple-touch-icon" sizes="167x167" href="/icon-167.png">
-    <link rel="apple-touch-icon" sizes="180x180" href="/icon-180.png">
+    <link rel="apple-touch-icon" sizes="167x167" href="/apple-touch-icon-167.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon-180.png">
 
     <!-- Apple Splash Screens -->
     <link rel="apple-touch-startup-image" media="screen and (device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="/splash/splash-430x932.png">
@@ -46,7 +46,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="dashboard.css">
+    <link rel="stylesheet" href="dashboard.css?v=12">
+    <link rel="stylesheet" href="auvro-design.css?v=12">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         body { background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, sans-serif; }
@@ -63,15 +64,16 @@
         .sel-box .attr-head input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--accent); }
         .sel-box .val-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 4px 8px; }
         .sel-box .val-list label { display: flex; align-items: center; gap: 6px; font-size: .8rem; padding: 4px 6px; border-radius: 6px; cursor: pointer; transition: background .15s; }
-        .sel-box .val-list label:hover { background: rgba(255,255,255,.05); }
+        .sel-box .val-list label:hover { background: color-mix(in srgb, var(--text) 8%, transparent); }
         .sel-box .val-list input[type="checkbox"] { width: 14px; height: 14px; accent-color: var(--accent); }
-        .toast { position: fixed; bottom: 18px; right: 18px; z-index: 1000; background: var(--surface); border: 1px solid var(--border2); border-left: 4px solid var(--green); padding: 12px 16px; border-radius: 10px; font-size: .86rem; box-shadow: var(--shadow-soft); opacity: 0; transform: translateY(8px); transition: .2s ease; }
+        .toast { position: fixed; bottom: 18px; right: 18px; z-index: 9999; background: var(--surface); border: 1px solid var(--border2); border-left: 4px solid var(--green); padding: 12px 16px; border-radius: 10px; font-size: .86rem; box-shadow: var(--shadow-soft); opacity: 0; transform: translateY(8px); transition: .2s ease; }
         .toast.show { opacity: 1; transform: translateY(0); }
         .toast.error { border-left-color: var(--red); }
         table input { width: auto; }
     </style>
 </head>
-<body>
+<body class="light-mode">
+    <script>try{if((localStorage.getItem('auvrouter_theme')||'light')!=='light'){document.body.classList.remove('light-mode')}}catch(_){}</script>
     <!-- Mobile overlay -->
     <div class="mobile-menu-overlay" id="mobile-menu-overlay" onclick="toggleMobileMenu(false)"></div>
 
@@ -866,11 +868,11 @@
                         ? 'Selecciona qué agente de IA responderá a los visitantes de esta tienda. El widget del chat se activará automáticamente en el sitio.'
                         : 'El agente de IA que responde a los visitantes de esta tienda.'}</p>
                     ${agenteActual
-                        ? `<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;padding:10px 14px;background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.2);border-radius:10px">
+                        ? `<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;padding:10px 14px;background:color-mix(in srgb,var(--green) 10%,transparent);border:1px solid color-mix(in srgb,var(--green) 25%,transparent);border-radius:10px">
                             <i class="fas fa-robot" style="color:var(--green);font-size:1.1rem"></i>
                             <div><div style="font-weight:600;font-size:.9rem">${esc(agenteActual.nombre_agente)}</div><div style="font-size:.75rem;color:var(--muted)">Chat activo en el sitio</div></div>
                            </div>`
-                        : `<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;padding:10px 14px;background:rgba(100,116,139,.08);border:1px solid var(--border);border-radius:10px">
+                        : `<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;padding:10px 14px;background:color-mix(in srgb,var(--muted) 8%,transparent);border:1px solid var(--border);border-radius:10px">
                             <i class="fas fa-robot" style="color:var(--muted);font-size:1.1rem"></i>
                             <div><div style="font-weight:600;font-size:.9rem;color:var(--muted)">Sin agente asignado</div><div style="font-size:.75rem;color:var(--muted)">El chat no está visible en el sitio</div></div>
                            </div>`
