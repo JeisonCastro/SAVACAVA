@@ -1009,6 +1009,16 @@ Multiusuario.
 
 # Changelog de Cambios Técnicos
 
+## 30 Ago 2026 — Sin redundancia de lógica/UI: agente con TIENDA captura leads y vende con la tienda por defecto
+
+- **Objetivo:** eliminar la redundancia en configuración y lógica: cuando un agente se asigna a una tienda (`agentes_ia.tienda_id`), el catálogo (productos y tours), la pasarela Wompi y las notificaciones comerciales son los **de la tienda**, y la captura de leads ocurre **por defecto**, sin depender del catálogo jsonb ni de activar `crm_activo`/conexiones manualmente.
+- **`netlify/functions/web-chat-messages.js`:** el widget web ahora obtiene los productos del catálogo de la tienda (`obtenerCatalogoTienda`) cuando `agentes_ia.tienda_id` está seteado (antes solo usaba el catálogo jsonb del agente). Alineado con `chat.js` (L1300-1303).
+- **`netlify/functions/chat.js` (L2592):** la captura post-chat `extraerDatosLead` ahora se dispara si `agente.tienda_id || agente.crm_activo` (antes solo si `crm_activo`). → agente con tienda captura leads por defecto.
+- **`netlify/functions/crm-helper.js` (`extraerDatosLead`):** `capturaActiva = agente.tienda_id || (config && config.crm_activo === true)`. El lead se crea/vincula con `proyecto_id = agente.tienda_id` (ya existía) → queda ligado a la tienda en el CRM.
+- **`dashboard.html` (config CRM):** nuevo **modo tienda**. Al abrir la config de un agente con `tienda_id`: se ocultan las secciones "Pasarela de pago", "Notificaciones comerciales" y "Catalogo de productos de este agente" (redundantes, las gestiona la tienda) y se muestra un aviso explicativo con el icono de tienda. Solo quedan campos de captura, CRM activo y pipeline.
+- **CRM filtrado por tienda:** ya muestra todo de la tienda (leads de los agentes vinculados + ventas cerradas vía `proyecto_id` / `tienda_id` del agente) sin config adicional — confirmado (no cambió).
+- **Cache bump a `v16`:** `dashboard.html` (`dashboard.css?v=16`, `auvro-design.css?v=16`) y `sw.js` (`auvro-v16`).
+
 ## 30 Ago 2026 — Migración de datos: tours de turismo a la TIENDA + eliminación del agente de turismo (PabloViajes)
 
 - **Objetivo:** eliminar la redundancia de catálogo turístico en `crm_config_agente.catalogo` (jsonb) migrando la lógica de tours a la tienda (`tienda_productos`), y **eliminar el agente de turismo** que ya no compone hechos duplicados.

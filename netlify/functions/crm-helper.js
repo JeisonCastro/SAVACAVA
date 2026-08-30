@@ -380,7 +380,10 @@ Reglas:
         if (!extraido || typeof extraido !== 'object') return;
 
         const config = await obtenerConfigCRM(agente.user_id, agente.id);
-        if (!config || config.crm_activo !== true) return;
+        // Captura por defecto si el agente está vinculado a una TIENDA (no requiere
+        // activar crm_activo ni configurar catálogo/conecciones); si no, depende de crm_activo.
+        const capturaActiva = agente.tienda_id || (config && config.crm_activo === true);
+        if (!capturaActiva) return;
 
         // Buscar lead existente para esta conversación / contacto
         const { data: leadExistente } = await supabase

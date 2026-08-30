@@ -2589,7 +2589,9 @@ Siempre responde en español.`;
 
         // ── CRM: captura post-chat (extracción de datos del lead) ──
         // No bloquea la respuesta; si falla, el chat sigue normal.
-        if (agente.crm_activo) {
+        // Si el agente está vinculado a una TIENDA, la captura de leads es por defecto
+        // (no requiere activar crm_activo ni configurar catálogo/conecciones).
+        if (agente.tienda_id || agente.crm_activo) {
             const tCRM = Date.now();
             try {
                 await extraerDatosLead({

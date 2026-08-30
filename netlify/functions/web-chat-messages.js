@@ -1,5 +1,5 @@
 const { supabase } = require('./supabase-admin');
-const { obtenerConfigCRM, productosParaCliente } = require('./crm-helper');
+const { obtenerConfigCRM, obtenerCatalogoTienda, productosParaCliente } = require('./crm-helper');
 
 function jsonResponse(statusCode, body) {
   return {
@@ -49,12 +49,28 @@ exports.handler = async (event) => {
       }
     }
 
-    // Catálogo del agente para renderizar tarjetas de producto en el chat.
+    // Catálogo para renderizar tarjetas de producto en el chat.
+    // Si el agente tiene tienda vinculada, el catálogo sale de la tienda
+    // (tienda_productos, incluye tours); si no, se usa el catálogo jsonb del agente.
     let productos = [];
     try {
-      const config = await obtenerConfigCRM(null, agenteId);
-      if (config?.crm_activo === true && Array.isArray(config.catalogo)) {
-        productos = productosParaCliente(config.catalogo);
+      const { data: agenteRow } = await supabase
+        .from('agentes_ia')
+        .select('tienda_id')
+        .eq('id', agenteId)
+        .maybeSingle();
+      const tiendaId = agenteRow?.tienda_id || null;
+
+      if (tiendaId) {
+        const catalogoTienda = await obtenerCatalogoTienda(tiendaId);
+        if (catalogoTienda && catalogoTienda.length) {
+          productos = productosParaCliente(catalogoTienda);
+        }
+      } else {
+        const config = await obtenerConfigCRM(null, agenteId);
+        if (config?.crm_activo === true && Array.isArray(config.catalogo)) {
+          productos = productosParaCliente(config.catalogo);
+        }
       }
     } catch (catalogErr) {
       console.error('web-chat-messages catalog error:', catalogErr.message);

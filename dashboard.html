@@ -72,8 +72,8 @@
             rel="stylesheet">
         <link rel="stylesheet"
             href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-        <link rel="stylesheet" href="dashboard.css?v=15">
-        <link rel="stylesheet" href="auvro-design.css?v=15">
+        <link rel="stylesheet" href="dashboard.css?v=16">
+        <link rel="stylesheet" href="auvro-design.css?v=16">
 
     </head>
     <body class="light-mode">
@@ -1097,6 +1097,14 @@
                     <input type="checkbox" id="cfg-crm-activo"> CRM activo (captura leads en todos tus canales)
                 </label>
 
+                <div id="cfg-tienda-nota" style="display:none;background:var(--bg2);border:1px dashed var(--border2);border-radius:10px;padding:.7rem .8rem;margin-bottom:1rem;font-size:.76rem;color:var(--muted);">
+                    <i class="fas fa-store" style="margin-right:.35rem;color:var(--green);"></i>
+                    Este agente está vinculado a una <b>TIENDA</b>. El catálogo (productos, tours), la pasarela de pago
+                    y las notificaciones comerciales se gestionan desde el <b>módulo TIENDA</b> de este agente, no aquí.
+                    Aquí solo configuras la captura de leads y los estados del pipeline; el agente toma los productos y
+                    cierra ventas con la pasarela de la tienda automáticamente.
+                </div>
+
                 <div class="field">
                     <label>Campos a capturar</label>
                     <div style="display:flex;flex-wrap:wrap;gap:.6rem;font-size:.8rem;">
@@ -1108,6 +1116,7 @@
                     </div>
                 </div>
 
+                <div id="cfg-sec-pasarela">
                 <h4 style="font-family:'Inter',sans-serif;font-size:.9rem;font-weight:700;margin:1.2rem 0 .5rem;">Pasarela de pago (Wompi) de este agente</h4>
                 <p style="font-size:.74rem;color:var(--muted);margin-bottom:.8rem;">
                     Conecta la cuenta Wompi de ESTE agente para que genere links de pago en el chat y cierre sus ventas.
@@ -1122,7 +1131,9 @@
                     <input type="checkbox" id="cfg-wompi-sandbox"> Usar entorno de pruebas (sandbox)
                 </label>
                 <div id="cfg-wompi-status" style="margin-top:.5rem;font-size:.74rem;"></div>
+                </div>
 
+                <div id="cfg-sec-notif">
                 <h4 style="font-family:'Inter',sans-serif;font-size:.9rem;font-weight:700;margin:1.2rem 0 .5rem;">Notificaciones comerciales</h4>
                 <p style="font-size:.72rem;color:var(--muted);margin-bottom:.6rem;">
                     Recibe avisos por correo (Gmail conectado en Integraciones de este agente) cuando tu agente genere un
@@ -1146,7 +1157,9 @@
                     <label>Webhook URL (opcional)</label>
                     <input type="text" id="cfg-notify-webhook" placeholder="https://..." autocomplete="off">
                 </div>
+                </div>
 
+                <div id="cfg-sec-catalogo">
                 <h4 style="font-family:'Inter',sans-serif;font-size:.9rem;font-weight:700;margin:1.2rem 0 .5rem;">Catalogo de productos de este agente (venta en chat)</h4>
                 <p style="font-size:.72rem;color:var(--muted);margin-bottom:.6rem;">
                     Tipos: <b>Físico</b>, <b>Digital</b>, <b>Servicio</b>, <b>Suscripción</b> (con variantes como 1/3 meses) y
@@ -1160,6 +1173,7 @@
                     <input type="text" id="cfg-prod-filtro" placeholder="Buscar por nombre o categoria..." style="flex:1;min-width:130px;padding:.45rem .6rem;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text);font-size:.76rem;" oninput="renderConfigCatalogo()">
                 </div>
                 <div id="cfg-catalogo-list"></div>
+                </div>
 
                 <h4 style="font-family:'Inter',sans-serif;font-size:.9rem;font-weight:700;margin:1.2rem 0 .5rem;">Pipeline de ventas (estados)</h4>
                 <p style="font-size:.74rem;color:var(--muted);margin-bottom:.6rem;">Crea tus estados. Marca cuál es el estado de venta cerrada para que el pago aprobado la cierre automáticamente.</p>
@@ -4232,6 +4246,12 @@
         const agenteSel = (crmData.agentes || []).find(a => String(a.id) === String(crmAgenteSeleccionado)) || null;
         document.getElementById('cfg-title-agente').textContent = agenteSel ? `Configurar CRM: ${agenteSel.nombre_agente}` : 'Configurar CRM';
         document.getElementById('cfg-crm-activo').checked = config.crm_activo === true;
+        const agenteTieneTienda = agenteSel ? Boolean(agenteSel.tienda_id) : false;
+        document.getElementById('cfg-tienda-nota').style.display = agenteTieneTienda ? 'block' : 'none';
+        ['cfg-sec-pasarela', 'cfg-sec-notif', 'cfg-sec-catalogo'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.style.display = agenteTieneTienda ? 'none' : 'block';
+        });
         document.getElementById('cfg-wompi-private').value = '';
         document.getElementById('cfg-wompi-secret').value = '';
         document.getElementById('cfg-wompi-sandbox').checked = config.wompi_sandbox === true;
