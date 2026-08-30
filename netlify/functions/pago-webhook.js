@@ -278,6 +278,80 @@ exports.handler = async (event) => {
                     } catch (notifErr) {
                         console.error('Error notificando venta de tienda:', notifErr.message);
                     }
+
+                    // ── Registrar la venta en el CRM del agente vinculado a la tienda ──
+                    // Si la tienda tiene un agente asignado, la compra pagada se refleja
+                    // como un lead CERRADO (venta) para que las métricas del CRM capturen
+                    // ingresos por tienda, agente y producto. Se deduplica: si ya existe
+                    // un lead del mismo cliente en ese agente, se cierra sin duplicar.
+                    if (orden.agente_id) {
+                        try {
+                            const { data: agenteLink } = await supabase
+                                .from('agentes_ia')
+                                .select('user_id, crm_activo')
+                                .eq('id', orden.agente_id)
+                                .maybeSingle();
+                            if (agenteLink?.crm_activo) {
+                                const userId = agenteLink.user_id;
+                                const emailBuscar = (orden.cliente_email || '').toLowerCase().trim();
+                                const nombreCliente = orden.cliente_nombre || null;
+                                const telefonoCliente = orden.cliente_telefono || null;
+
+                                // Buscar lead existente del cliente en este agente (por email)
+                                let leadId = null;
+                                if (emailBuscar) {
+                                    const { data: leadExistente } = await supabase
+                                        .from('crm_leads')
+                                        .select('id, estado_id')
+                                        .eq('user_id', userId)
+                                        .eq('agente_id', orden.agente_id)
+                                        .ilike('email', emailBuscar)
+                                        .limit(1)
+                                        .maybeSingle();
+                                    leadId = leadExistente?.id || null;
+                                }
+
+                                // Estado inicial y cerrada del pipeline para crear/cerrar el lead
+                                const { obtenerEstadoInicial, obtenerEstadoCerrada } = require('./crm-helper');
+                                const estadoCerrada = await obtenerEstadoCerrada(userId);
+                                const estadoInicial = await obtenerEstadoInicial(userId);
+
+                                if (!leadId) {
+                                    const { data: nuevo } = await supabase
+                                        .from('crm_leads')
+                                        .insert({
+                                            user_id: userId,
+                                            agente_id: orden.agente_id,
+                                            proyecto_id: orden.proyecto_id,
+                                            nombre: nombreCliente,
+                                            email: emailBuscar || null,
+                                            telefono: telefonoCliente || null,
+                                            interes: 'Compra en tienda',
+                                            notas: `Venta generada por compra en tienda (orden ${orden.id.slice(0, 8)}).`,
+                                            estado_id: estadoCerrada || estadoInicial,
+                                            etapa_generica: estadoCerrada ? 'ganado' : 'nuevo',
+                                            origen: 'tienda',
+                                            valor_venta_cents: orden.total_cents || null,
+                                            cerrado_en: estadoCerrada ? new Date().toISOString() : null
+                                        })
+                                        .select('id')
+                                        .single();
+                                    leadId = nuevo?.id || null;
+                                } else {
+                                    // Cerrar el lead existente como venta sin duplicar
+                                    await supabase.from('crm_leads').update({
+                                        estado_id: estadoCerrada || estadoInicial,
+                                        etapa_generica: 'ganado',
+                                        valor_venta_cents: orden.total_cents || null,
+                                        cerrado_en: estadoCerrada ? new Date().toISOString() : null,
+                                        updated_at: new Date().toISOString()
+                                    }).eq('id', leadId).select();
+                                }
+                            }
+                        } catch (crmErr) {
+                            console.error('Error sincronizando venta de tienda al CRM:', crmErr.message);
+                        }
+                    }
                 }
             }
         }

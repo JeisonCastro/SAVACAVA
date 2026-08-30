@@ -173,7 +173,7 @@
     }
 
     function tipoLabel(t) {
-        return { simple: 'Simple', fisico: 'Simple', variable: 'Variable', digital: 'Digital', servicio: 'Servicio', catalogo: 'Catálogo' }[t] || t || '—';
+        return { simple: 'Simple', fisico: 'Simple', variable: 'Variable', digital: 'Digital', servicio: 'Servicio', catalogo: 'Catálogo', tour: 'Tour' }[t] || t || '—';
     }
 
     function toggleTheme() {
@@ -364,6 +364,7 @@
                             <option value="simple"${tipo === 'simple' ? ' selected' : ''}>Simple (físico)</option>
                             <option value="variable"${tipo === 'variable' ? ' selected' : ''}>Variable (atributos)</option>
                             <option value="catalogo"${tipo === 'catalogo' ? ' selected' : ''}>Catálogo (sin precio)</option>
+                            <option value="tour"${tipo === 'tour' ? ' selected' : ''}>Tour / Actividad</option>
                             <option value="digital"${tipo === 'digital' ? ' selected' : ''}>Digital</option>
                             <option value="servicio"${tipo === 'servicio' ? ' selected' : ''}>Servicio</option>
                         </select></div></div>
@@ -383,6 +384,19 @@
                             Marca el atributo y los valores que apliquen. Se generan todas las combinaciones automáticamente.<br>
                             Ej: Color (Rojo, Azul) + Talla (S, M, L) = 6 variaciones, cada una con su stock, precio e imagen.
                         </div>
+                    </div>
+                </div>
+                <div id="wrap-tour" style="display:none">
+                    <div class="field"><label>Configuración del tour (JSON — tarifas por pasajero, descuentos por grupo y extras)</label>
+                        <textarea id="p-tourcfg" rows="6" placeholder='{
+  "categorias_pasajero": [{"nombre":"Adulto","edad_min":13,"edad_max":99,"precio_cents":150000},{"nombre":"Niño","edad_min":3,"edad_max":12,"precio_cents":90000}],
+  "requiere_adulto": true,
+  "min_participantes": 2,
+  "max_participantes": 15,
+  "escalas_cantidad": [{"desde":6,"hasta":10,"descuento_pct":10}],
+  "extras": [{"nombre":"Almuerzo","precio_cents":25000}]
+}'>${esc(prod && prod.atributos && typeof prod.atributos === 'object' ? JSON.stringify(prod.atributos, null, 2) : '')}</textarea>
+                        <div style="font-size:.72rem;color:var(--dim);margin-top:6px">El agente de IA lee estas tarifas para cotizar el tour por pasajero. Precios en centavos COP (1.500 = $15).</div>
                     </div>
                 </div>
                 <div class="field"><label>Imágenes (varias para colores/presentaciones; la primera es portada)</label>
@@ -413,6 +427,7 @@
         $('wrap-stock').style.display = t === 'simple' ? '' : 'none';
         $('wrap-digital').style.display = t === 'digital' ? '' : 'none';
         $('wrap-var').style.display = (t === 'variable' || t === 'catalogo') ? '' : 'none';
+        $('wrap-tour').style.display = t === 'tour' ? '' : 'none';
         $('wrap-precio').style.display = t === 'catalogo' ? 'none' : '';
         $('wrap-sku').style.display = t === 'catalogo' ? 'none' : '';
         $('wrap-wa').style.display = t === 'catalogo' ? '' : 'none';
@@ -475,7 +490,7 @@
         const tipo = $('p-tipo').value;
         const precio = Math.round(Number($('p-precio').value) || 0) * 100;
         if (!nombre) { msg.textContent = 'Escribe el nombre del producto'; msg.className = 'msg error'; return; }
-        if (tipo !== 'variable' && tipo !== 'catalogo' && precio <= 0) { msg.textContent = 'El precio debe ser mayor a 0'; msg.className = 'msg error'; return; }
+        if (tipo !== 'variable' && tipo !== 'catalogo' && tipo !== 'tour' && precio <= 0) { msg.textContent = 'El precio debe ser mayor a 0'; msg.className = 'msg error'; return; }
         let stock = null;
         if (tipo === 'simple') { const v = $('p-stock').value.trim(); stock = v === '' ? null : Math.max(0, Math.floor(Number(v) || 0)); }
         const desc = $('p-desc').value.trim();
@@ -483,7 +498,13 @@
         const sku = $('p-sku').value.trim() || null;
         const atributos = {};
         ($('p-attrs').value || '').split('\n').map(s => s.trim()).filter(Boolean).forEach(l => { const i = l.indexOf(':'); if (i > -1) atributos[l.slice(0, i).trim()] = l.slice(i + 1).trim(); });
-        const selector = [];
+        if (tipo === 'tour') {
+            try {
+                const cfg = JSON.parse($('p-tourcfg').value || '{}');
+                if (cfg && typeof cfg === 'object') Object.assign(atributos, cfg);
+            } catch (_) { msg.textContent = 'La configuración del tour debe ser JSON válido'; msg.className = 'msg error'; return; }
+        }
+        let selector = [];
         if (tipo === 'variable' || tipo === 'catalogo') {
             document.querySelectorAll('.sel-a:checked').forEach(chk => {
                 const aid = chk.getAttribute('data-aid');

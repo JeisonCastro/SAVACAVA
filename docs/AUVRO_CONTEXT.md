@@ -1009,6 +1009,46 @@ Multiusuario.
 
 # Changelog de Cambios Técnicos
 
+## 30 Ago 2026 — Reestructuración AUVRO: la TIENDA es la fuente única de catálogo/comercio, el AGENTE la consume, y el CRM integra las ventas de tienda
+
+**Objetivo:** avanzar la reestructuración del ecosistema: la tienda (`web_projects` + `tienda_*`) es el nodo comercial (catálogo, tipos de producto, pasarela), el agente IA la consume como fuente única, y el CRM (`crm_leads`) registra también las ventas pagadas de tienda para que la analítica capture ingresos por tienda/agente.
+
+### 1) Nuevo tipo de producto `tour` (turismo) en el modelo de tienda
+
+- `netlify/functions/tienda.js`: `TIPOS_VALIDOS` ahora incluye `'tour'`.
+- `accionCatalogo`: los tours se tratan como `catalogo` — exponen `atributos_selector` + `variaciones` para tarifas/escalas, `precio_desde` desde sus variaciones, y **nunca** `agotado`.
+- `accionCheckout`: un tour **no se compra directo** (devuelve error igual que `catalogo`); el agente cierra por WhatsApp/chat.
+- `accionGuardarProducto`: tour permite `precio_cents=0` (se tarifica por variaciones) y genera/sincroniza variaciones y selector como `variable`/`catalogo`.
+- `netlify/functions/crm-helper.js` → `obtenerCatalogoTienda`: para productos `tipo==='tour'` lee el JSON guardado en `tienda_productos.atributos` y lo mapea a los campos del formato CRM (`categorias_pasajero`, `escalas_cantidad`, `extras`, `requiere_adulto`, `min_participantes`, `max_participantes`, `pricing_basis:'por_persona'`). Así el catálogo de tienda se inyecta al prompt del agente con tarifas por pasajero (GetYourGuide/Viator) sin duplicar sistema turístico fuera de la tienda.
+- `tienda-admin.html`: opción **"Tour / Actividad"** en el selector de tipo; campo `wrap-tour` con editor JSON de config (tarifas por pasajero, descuentos por grupo, extras) que se guarda en `atributos`; `syncTipo` lo muestra; `guardarProducto` valida JSON y permite precio 0; `tipoLabel` muestra "Tour".
+
+### 2) Ventas de tienda integradas al CRM (cierre de venta automático)
+
+- `netlify/functions/pago-webhook.js` (rama `pago.tipo === 'tienda'`): al confirmarse pago APPROVED de una orden, si la tienda tiene un agente vinculado (`tienda_ordenes.agente_id`) y ese agente tiene `crm_activo`:
+  - Busca un lead existente del cliente (mismo agente + email, `ilike`) para **deduplicar**.
+  - Si no existe, **crea** un lead con `origen:'tienda'`, `proyecto_id` = la tienda, `valor_venta_cents` = total de la orden, y lo deja en estado CERRADA (ganado) con `cerrado_en`.
+  - Si existe, lo **cierra** como venta actualizando estado/valor sin duplicar.
+  - Usa `obtenerEstadoCerrada` / `obtenerEstadoInicial` de `crm-helper.js`; todo bajo try/catch best-effort (no rompe el webhook).
+- Resultado: las compras pagadas de tienda aparecen como leads ganados en el CRM → las métricas (embudo, valor cerrado, ticket) y la nueva vista "Ventas" las incluyen.
+
+### 3) CRM como centro de analítica: sub-pestañas + panel de ventas
+
+- `dashboard.html` `#view-crm`: se agrega barra de sub-pestañas **Dashboard / Pipeline / Ventas** con clases `.crm-tab`.
+  - Dashboard: estadísticas + embudo (como antes).
+  - Pipeline: kanban por estado (como antes).
+  - Ventas: nuevos paneles "Ventas por tienda", "Ventas por agente" y "Resumen de ventas" (`renderVentasCRM`), computados client-side desde `leads` cerrados con `valor_venta_cents`, cruzando `proyecto_id` con `_tiendas` y `agente_id` con `agentes`.
+- Nuevas funciones JS: `cambiarTabCRM(tab)`, `renderVentasCRM()`, estado `crmTab`; `renderCRM()` sincroniza la pestaña activa y refresca Ventas si está activa.
+- Selector de filtro "Origen" incluye la opción **"Tienda"** para filtrar leads de compras en tienda.
+- `dashboard.css`: estilos `.crm-tab` (activo/ligero según modo) y `.crm-ventas-*`.
+
+### Cache/PWA
+
+- `dashboard.html` + `sw.js` bump `?v=13` → `?v=14` y `auvro-v13` → `auvro-v14` (precache con `?v=14`) porque `dashboard.css` y `dashboard.html` cambiaron.
+
+**Archivos modificados:** `netlify/functions/tienda.js`, `netlify/functions/crm-helper.js`, `netlify/functions/pago-webhook.js`, `tienda-admin.html`, `dashboard.html`, `dashboard.css`, `sw.js`, `docs/AUVRO_CONTEXT.md`.
+
+**Nota de persistencia:** los campos de tour se guardan en `tienda_productos.atributos` (jsonb) reutilizando la columna existente — no se requirió migración de esquema para esta iteración. Pendiente de una siguiente iteración: migrar el catálogo turístico que hoy existe solo en `crm_config_agente.catalogo` (jsonb) hacia `tienda_productos` cuando el agente tenga `tienda_id`.
+
 ## 30 Ago 2026 — Dark mode negro puro `#000000` (se eliminó el tinte azul navy)
 
 **Objetivo:** el modo oscuro se veía "azul" porque los tokens dark eran negro-azulado (navy), no negro puro. El usuario pidió que el dark se vea `#000000`.

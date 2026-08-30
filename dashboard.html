@@ -72,8 +72,8 @@
             rel="stylesheet">
         <link rel="stylesheet"
             href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-        <link rel="stylesheet" href="dashboard.css?v=13">
-        <link rel="stylesheet" href="auvro-design.css?v=13">
+        <link rel="stylesheet" href="dashboard.css?v=14">
+        <link rel="stylesheet" href="auvro-design.css?v=14">
 
     </head>
     <body class="light-mode">
@@ -243,6 +243,7 @@
                         <option value="web">Web / widget</option>
                         <option value="whatsapp">WhatsApp</option>
                         <option value="dashboard">Manual</option>
+                        <option value="tienda">Tienda</option>
                     </select>
                     <button class="btn-main" onclick="aplicarFiltrosCRM()" style="padding:.45rem .8rem;font-size:.76rem;border-radius:10px;">
                         <i class="fas fa-filter" style="margin-right:.3rem;"></i>Aplicar
@@ -252,6 +253,13 @@
 
                 <div id="crm-banner" style="display:none"></div>
 
+                <div id="crm-tabs" style="display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:1rem;background:var(--surface);border:1px solid var(--border2);border-radius:12px;padding:.35rem;">
+                    <button class="crm-tab" data-tab="dashboard" onclick="cambiarTabCRM('dashboard')">Dashboard</button>
+                    <button class="crm-tab" data-tab="pipeline" onclick="cambiarTabCRM('pipeline')">Pipeline</button>
+                    <button class="crm-tab" data-tab="ventas" onclick="cambiarTabCRM('ventas')">Ventas</button>
+                </div>
+
+                <div id="crm-tab-dashboard">
                 <div id="crm-stats" style="display:flex;gap:.75rem;flex-wrap:wrap;margin-bottom:1rem;"></div>
 
                 <div class="card" style="margin-bottom:1rem;">
@@ -266,7 +274,9 @@
                         </div>
                     </div>
                 </div>
+                </div>
 
+                <div id="crm-tab-pipeline">
                 <div class="card">
                     <div class="card-header">
                         <div class="card-icon"><i class="fas fa-chart-simple"></i></div>
@@ -275,6 +285,15 @@
                     <div id="crm-pipeline" style="display:flex;gap:.9rem;overflow-x:auto;padding:.25rem 0 1rem 0;">
                         <div class="empty-state" style="width:100%"><i class="fas fa-inbox"></i>
                             <p style="margin-top:.5rem">Cargando CRM...</p>
+                        </div>
+                    </div>
+                </div>
+                </div>
+
+                <div id="crm-tab-ventas" style="display:none;">
+                    <div id="crm-ventas" style="display:flex;flex-direction:column;gap:1rem;">
+                        <div class="empty-state" style="width:100%"><i class="fas fa-coins"></i>
+                            <p style="margin-top:.5rem">Cargando ventas por tienda...</p>
                         </div>
                     </div>
                 </div>
@@ -3631,6 +3650,7 @@
     let crmCatalogo = [];
     let crmLeadActual = null;
     let crmAgenteSeleccionado = null;
+    let crmTab = 'dashboard';
     let crmFiltros = { desde: '', hasta: '', origen: '', tienda_id: '', agente_id: '' };
 
     function fmtPesos(cents) {
@@ -3733,6 +3753,74 @@
         cargarCRM();
     }
 
+    function cambiarTabCRM(tab) {
+        crmTab = tab;
+        const cont = document.getElementById('crm-tabs');
+        if (cont) {
+            const btns = cont.querySelectorAll('.crm-tab');
+            btns.forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+        }
+        const show = tab => {
+            const el = document.getElementById('crm-tab-' + tab);
+            if (el) el.style.display = (tab === crmTab) ? '' : 'none';
+        };
+        show('dashboard'); show('pipeline'); show('ventas');
+        if (tab === 'ventas') renderVentasCRM();
+    }
+
+    function renderVentasCRM() {
+        const cont = document.getElementById('crm-ventas');
+        if (!cont) return;
+        const agentes = crmData.agentes || [];
+        const leads = (crmData.leads || []).filter(l => !crmAgenteSeleccionado || String(l.agente_id) === String(crmAgenteSeleccionado));
+        // Ventas = leads cerrados (es_cerrada) con valor
+        const cerradas = (crmData.estados || []).filter(e => e.es_cerrada).map(e => String(e.id));
+        const ventas = leads.filter(l => l.valor_venta_cents && cerradas.includes(String(l.estado_id)));
+        const agenteNombre = id => { const a = agentes.find(x => String(x.id) === String(id)); return a ? a.nombre_agente : '—'; };
+        const tiendaNombre = id => { const t = (_tiendas || []).find(x => String(x.id) === String(id)); return t ? t.nombre : '—'; };
+
+        const porTienda = {};
+        const porAgente = {};
+        let totalVentas = 0, totalValor = 0;
+        for (const v of ventas) {
+            totalVentas++; totalValor += Number(v.valor_venta_cents) || 0;
+            const t = v.proyecto_id || (agentes.find(a => String(a.id) === String(v.agente_id))?.tienda_id || null);
+            porTienda[t || '__sin'] = (porTienda[t || '__sin'] || 0) + (Number(v.valor_venta_cents) || 0);
+            const a = v.agente_id || '__sin';
+            porAgente[a] = (porAgente[a] || 0) + (Number(v.valor_venta_cents) || 0);
+        }
+
+        const fmt = n => '$' + (Math.round((Number(n) || 0) / 100)).toLocaleString('es-CO');
+
+        const fila = (nombre, valor) => `
+            <div class="crm-ventas-row">
+                <div class="grow"><span style="font-size:.8rem;font-weight:600;color:var(--text);">${escapeHtml(nombre)}</span></div>
+                <div style="font-size:.8rem;font-weight:700;color:var(--green);">${fmt(valor)}</div>
+            </div>`;
+
+        const tarjetas = `
+            <div class="crm-ventas-card">
+                <h4><i class="fas fa-store" style="color:var(--accent)"></i> Ventas por tienda</h4>
+                ${Object.keys(porTienda).length ? Object.entries(porTienda).sort((a, b) => b[1] - a[1]).map(([id, val]) => fila(tiendaNombre(id), val)).join('') : '<div style="font-size:.78rem;color:var(--dim);padding:.4rem 0;">Sin ventas en este rango.</div>'}
+            </div>
+            <div class="crm-ventas-card">
+                <h4><i class="fas fa-robot" style="color:var(--accent)"></i> Ventas por agente</h4>
+                ${Object.keys(porAgente).length ? Object.entries(porAgente).sort((a, b) => b[1] - a[1]).map(([id, val]) => fila(agenteNombre(id), val)).join('') : '<div style="font-size:.78rem;color:var(--dim);padding:.4rem 0;">Sin ventas en este rango.</div>'}
+            </div>
+            <div class="crm-ventas-card">
+                <h4><i class="fas fa-receipt" style="color:var(--green)"></i> Resumen de ventas</h4>
+                <div class="crm-ventas-row">
+                    <div class="grow"><span style="font-size:.8rem;color:var(--muted);">Ventas cerradas</span></div>
+                    <div style="font-size:.8rem;font-weight:700;color:var(--text);">${totalVentas}</div>
+                </div>
+                <div class="crm-ventas-row">
+                    <div class="grow"><span style="font-size:.8rem;color:var(--muted);">Valor total</span></div>
+                    <div style="font-size:.8rem;font-weight:700;color:var(--green);">${fmt(totalValor)}</div>
+                </div>
+            </div>`;
+        cont.innerHTML = `<div style="display:flex;flex-direction:column;gap:1rem;">${tarjetas}</div>`;
+    }
+
     function onFiltroTiendaChange() {
         const tiendaId = document.getElementById('crm-filtro-tienda')?.value || '';
         const agenteSelect = document.getElementById('crm-filtro-agente');
@@ -3765,6 +3853,12 @@
         const agentes = crmData.agentes || [];
         const leads = (crmData.leads || []).filter(l => !crmAgenteSeleccionado || String(l.agente_id) === String(crmAgenteSeleccionado));
         const estados = crmData.estados || [];
+
+        // Sincronizar pestañas activas
+        const contTabs = document.getElementById('crm-tabs');
+        if (contTabs) {
+            contTabs.querySelectorAll('.crm-tab').forEach(b => b.classList.toggle('active', b.dataset.tab === crmTab));
+        }
 
         const agenteSel = agentes.find(a => String(a.id) === String(crmAgenteSeleccionado)) || null;
         const filterBox = document.getElementById('crm-agent-filter');
@@ -3840,6 +3934,8 @@
             </div>`).join('');
 
         renderEmbudo();
+
+        if (crmTab === 'ventas') renderVentasCRM();
 
         document.getElementById('crm-pipeline-title').textContent = estados.length
             ? 'Pipeline de ventas'

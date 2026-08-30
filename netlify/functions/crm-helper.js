@@ -141,7 +141,10 @@ async function obtenerCatalogoTienda(tiendaId) {
         varMap[v.producto_id].push(v);
     }
 
-    return productos.map(p => ({
+    return productos.map(p => {
+        const esTour = p.tipo === 'tour';
+        const tourConfig = esTour && p.atributos && typeof p.atributos === 'object' ? p.atributos : {};
+        return {
         id: p.id,
         nombre: p.nombre,
         tipo: p.tipo || 'fisico',
@@ -165,15 +168,18 @@ async function obtenerCatalogoTienda(tiendaId) {
                 stock: Number(v.stock) ?? null
             };
         }),
-        atributos: p.atributos || {},
-        categorias_pasajero: [],
-        escalas_cantidad: [],
-        extras: [],
-        requiere_adulto: false,
-        min_participantes: 1,
-        max_participantes: 0,
-        pricing_basis: 'por_unidad'
-    }));
+        // Para tours, el atributo JSON de la tienda se mapea a los campos de tarifas
+        // por pasajero que espera el formato CRM (GetYourGuide/Viator).
+        atributos: esTour ? {} : (p.atributos || {}),
+        categorias_pasajero: esTour ? (tourConfig.categorias_pasajero || []) : [],
+        escalas_cantidad: esTour ? (tourConfig.escalas_cantidad || []) : [],
+        extras: esTour ? (tourConfig.extras || []) : [],
+        requiere_adulto: esTour ? !!tourConfig.requiere_adulto : false,
+        min_participantes: esTour ? (Number(tourConfig.min_participantes) || 1) : 1,
+        max_participantes: esTour ? (Number(tourConfig.max_participantes) || 0) : 0,
+        pricing_basis: esTour ? 'por_persona' : 'por_unidad'
+        };
+    });
 }
 
 // Construye texto del catálogo de tienda para inyectar en el prompt del agente.

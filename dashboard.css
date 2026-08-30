@@ -4106,3 +4106,12 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
     .wf-btn-primary{font-size:.72rem;padding:.35rem .7rem}
 }
 
+.crm-tab{padding:.5rem .95rem;font-size:.8rem;font-weight:600;font-family:'Inter',sans-serif;background:transparent;color:var(--muted);border:1px solid transparent;border-radius:9px;cursor:pointer;transition:all .15s}
+.crm-tab:hover{color:var(--text);background:rgba(255,255,255,.04)}
+.crm-tab.active{background:rgba(14,165,233,.14);color:var(--accent);border-color:rgba(14,165,233,.3)}
+.light-mode .crm-tab:hover{background:rgba(0,0,0,.04)}
+.crm-ventas-card{background:var(--surface);border:1px solid var(--border2);border-radius:14px;padding:1rem}
+.crm-ventas-card h4{margin:0 0 .5rem 0;font-size:.85rem;font-weight:700;color:var(--text);display:flex;align-items:center;gap:.45rem}
+.crm-ventas-row{display:flex;align-items:center;gap:.7rem;padding:.5rem 0;border-bottom:1px solid var(--border)}
+.crm-ventas-row:last-child{border-bottom:none}
+.crm-ventas-row .grow{flex:1;min-width:0}
