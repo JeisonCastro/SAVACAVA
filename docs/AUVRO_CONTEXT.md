@@ -1009,6 +1009,18 @@ Multiusuario.
 
 # Changelog de Cambios Técnicos
 
+## 30 Ago 2026 — CRM orientado a TIENDA: se quita "Conectar/Configurar" del agente + agente auto-seleccionado por tienda + UX clara del pipeline
+
+- **Objetivo (decisión del usuario):** el CRM del dashboard deja de "configurar/conectar al agente" (pasarela, catálogo, pipeline) porque eso ahora vive en la **TIENDA**. Cada cliente con tienda tiene su CRM que mide las ventas de la tienda y del agente. Nutre la regla de que, al seleccionar una tienda en el CRM, el agente asignado a esa tienda se elige automáticamente ("tienda llama al agente"). Y en la administración de la tienda, la sección **Pipeline de ventas** explica de forma clara cómo el sistema entiende las ventas: **Inicial** (entra), **En proceso** (avanza), **Venta cerrada** (se pagó → venta ganada; el sistema la cierra solo al aprobarse el pago) y **Perdida** (no se pagó).
+- **`dashboard.html` (`renderCRM`):** se eliminó el flujo de "Conectar/Configurar" del agente para agentes con tienda y con filtro de tienda activo:
+  - Los 3 banners que pedían configurar/activar/conectar la pasarela del agente (`abrirConfigCRM`) ahora **no se muestran** cuando hay tienda en vista (filtro de tienda activo o agente con `tienda_id`); en su lugar se muestra un banner informativo verde con enlace **"Abrir tienda"** → `tienda-admin.html` indicando que pasarela/catálogo/pipeline se gestionan en el módulo TIENDA.
+  - El **botón "Configurar" de la topbar** (`#crm-topbar-config`) se oculta cuando hay tienda en vista. Se conserva solo para agentes sin tienda (transición segura de los 6 agentes activos).
+  - El modal `#crm-config-modal` y sus funciones permanecen pero quedan inaccesibles desde el CRM para agentes con tienda (no rompe a los agentes sin tienda).
+- **`dashboard.html` (`onFiltroTiendaChange`):** al cambiar la tienda, si esa tienda tiene agente asignado (`agentes_ia.tienda_id === tiendaId`), el CRM **selecciona automáticamente ese agente** (select + `crmAgenteSeleccionado` + `aplicarFiltrosCRM()` → recarga con el agente de la tienda de una vez). Si la tienda no tiene agente, queda "Todos" para ver toda la tienda.
+- **`tienda-admin.html` (`renderPipeline`):** nueva UX explicativa de los roles del estado, con leyenda de 4 tarjetas (Inicial / En proceso / Venta cerrada / Perdida), nota de comportamiento automático por pago, selector de rol con descripciones ("Inicial · donde entran los leads nuevos", "Venta cerrada · se pagó, cierra la venta", "Perdida · no se pagó"), y por cada estado un **badge** coloreado (Inicial / En proceso / Venta cerrada / Perdida) + nota corta del significado. Se **bloquea el borrado** de estados terminales (cerrada/perdida) en la UI (`disabled` con tooltip) y se mejoró el empty-state con una mini-guía de 3 pasos.
+- **Cache bump a `v18`:** `dashboard.html` (`dashboard.css?v=18`, `auvro-design.css?v=18`), `tienda-admin.html` (mismo que dashboard), y `sw.js` (`auvro-v18` + precache `?v=18`).
+- **Sin cambios de esquema en Supabase** (todo frontend): no se requiere migración SQL.
+
 ## 30 Ago 2026 — Pipeline por TIENDA (`tienda_pipeline`): CRM per-tienda multi-agente
 
 - **Objetivo:** completar el CRM per-tienda. El pipeline (estados) se define por TIENDA (tabla `tienda_pipeline`), no por agente. El agente asignado a una tienda toma catálogo, pasarela, notificaciones y **pipeline de la tienda**. Se mantiene el fallback a `crm_estados` (por usuario) para los agentes aún sin `tienda_id` (transición segura).

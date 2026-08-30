@@ -46,8 +46,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="dashboard.css?v=14">
-    <link rel="stylesheet" href="auvro-design.css?v=14">
+    <link rel="stylesheet" href="dashboard.css?v=18">
+    <link rel="stylesheet" href="auvro-design.css?v=18">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         body { background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, sans-serif; }
@@ -651,34 +651,82 @@
         const data = await api('listar_pipeline', { proyecto_id: ctx.proyecto_id });
         if (!data.ok) { main.innerHTML = '<div class="empty">' + esc(data.error) + '</div>'; return; }
         S.pipeline = data.estados || [];
+
+        const rolDe = e => e.es_inicial ? 'inicial' : (e.es_cerrada ? 'cerrada' : (e.es_perdida ? 'perdida' : 'proceso'));
+        const rolBadge = e => e.es_inicial
+            ? '<span class="badge" style="background:rgba(14,165,233,.16);color:var(--accent)"><i class="fas fa-flag-checkered"></i> Inicial</span>'
+            : (e.es_cerrada
+            ? '<span class="badge badge-green"><i class="fas fa-check-circle"></i> Venta cerrada</span>'
+            : (e.es_perdida
+            ? '<span class="badge badge-red"><i class="fas fa-xmark-circle"></i> Perdida</span>'
+            : '<span class="badge badge-yellow"><i class="fas fa-arrows-up-down"></i> En proceso</span>'));
+        const rolNota = e => e.es_inicial
+            ? '<div style="font-size:.7rem;color:var(--accent)">Los leads nuevos entran aquí.</div>'
+            : (e.es_cerrada
+            ? '<div style="font-size:.7rem;color:var(--green)">Se pagó → la venta se cierra y cuenta como ganada. El sistema la activa solo al aprobarse el pago.</div>'
+            : (e.es_perdida
+            ? '<div style="font-size:.7rem;color:var(--red)">No se pagó → la oportunidad se descarta.</div>'
+            : '<div style="font-size:.7rem;color:var(--dim)">Etapa intermedia del lead mientras avanza.</div>'));
+        const esTerminal = e => e.es_cerrada || e.es_perdida;
+
         main.innerHTML = `
             <h2 class="card-title" style="margin-bottom:14px">Pipeline de ventas (CRM)</h2>
+
+            <div class="card" style="margin-bottom:14px">
+                <p style="font-size:.82rem;color:var(--text);margin:0 0 10px"><b><i class="fas fa-circle-info" style="color:var(--accent)"></i> ¿Qué es un estado?</b></p>
+                <p style="font-size:.78rem;color:var(--dim);margin:0 0 12px">El pipeline es la ruta por la que pasan cada uno de los leads de esta tienda. Define la forma en que el sistema <b>entiende las ventas de forma inteligente</b> según el pago:</p>
+                <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:12px">
+                    <div style="flex:1;min-width:180px;border:1px solid rgba(14,165,233,.3);background:rgba(14,165,233,.08);border-radius:10px;padding:10px 12px">
+                        <div style="font-weight:700;font-size:.8rem;color:var(--accent)"><i class="fas fa-flag-checkered"></i> Inicial</div>
+                        <div style="font-size:.72rem;color:var(--dim)">El lead recién entra en el embudo. Todo pedido nuevo empieza aquí.</div>
+                    </div>
+                    <div style="flex:1;min-width:180px;border:1px solid rgba(245,158,11,.3);background:rgba(245,158,11,.08);border-radius:10px;padding:10px 12px">
+                        <div style="font-weight:700;font-size:.8rem;color:var(--yellow)"><i class="fas fa-arrows-up-down"></i> En proceso</div>
+                        <div style="font-size:.72rem;color:var(--dim)">Etapas intermedias mientras el cliente avanza (contactado, cotizado, etc.).</div>
+                    </div>
+                    <div style="flex:1;min-width:180px;border:1px solid rgba(34,197,94,.3);background:rgba(34,197,94,.08);border-radius:10px;padding:10px 12px">
+                        <div style="font-weight:700;font-size:.8rem;color:var(--green)"><i class="fas fa-check-circle"></i> Venta cerrada</div>
+                        <div style="font-size:.72rem;color:var(--dim)">Se pagó → la venta se cierra y cuenta como <b>ganada</b>.</div>
+                    </div>
+                    <div style="flex:1;min-width:180px;border:1px solid rgba(239,68,68,.3);background:rgba(239,68,68,.08);border-radius:10px;padding:10px 12px">
+                        <div style="font-weight:700;font-size:.8rem;color:var(--red)"><i class="fas fa-xmark-circle"></i> Perdida</div>
+                        <div style="font-size:.72rem;color:var(--dim)">No se pagó → la oportunidad se descarta.</div>
+                    </div>
+                </div>
+                <p style="font-size:.73rem;color:var(--dim);margin:0">💡 <b>Automático:</b> cuando un cliente paga, el lead salta solo al estado «Venta cerrada» y el importe se registra como venta. Si el pedido se cancela, el sistema lo puede mover a «Perdida». El avance entre etapas intermedias también lo hace el agente según la conversación.</p>
+            </div>
+
             <div class="card">
-                <p style="font-size:.8rem;color:var(--dim);margin-bottom:12px">
-                    Estados por los que pasan los leads de esta tienda. El agente captura leads y los mueve por este pipeline;
-                    el estado marcado como <b>Venta cerrada</b> cierra la venta automáticamente cuando se aprueba un pago.
-                </p>
+                <p style="font-size:.8rem;color:var(--dim);margin-bottom:12px">Agregar un nuevo estado a este pipeline.</p>
                 <div style="display:flex;gap:10px;flex-wrap:wrap">
                     <input id="pipe-nombre" placeholder="Estado (ej. Cotización)" style="flex:1;min-width:160px;padding:9px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text)">
                     <input id="pipe-color" type="color" value="#0ea5e9" title="Color" style="width:44px;height:38px;padding:2px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);cursor:pointer">
                     <select id="pipe-role" style="padding:9px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text)">
                         <option value="">— Rol —</option>
-                        <option value="inicial">Inicial</option>
-                        <option value="cerrada">Venta cerrada</option>
-                        <option value="perdida">Perdida</option>
+                        <option value="inicial">Inicial · donde entran los leads nuevos</option>
+                        <option value="cerrada">Venta cerrada · se pagó, cierra la venta</option>
+                        <option value="perdida">Perdida · no se pagó</option>
                     </select>
                     <button class="btn-main btn-green" onclick="guardarEstadoPipeline()"><i class="fas fa-plus"></i> Agregar</button>
                 </div>
             </div>
             ${(S.pipeline || []).length ? (S.pipeline || []).map(e => `
-                <div style="display:flex;align-items:center;gap:10px;background:var(--bg2);border:1px solid var(--border);border-radius:9px;padding:9px 12px;margin-bottom:6px;flex-wrap:wrap">
+                <div style="display:flex;align-items:center;gap:10px;background:var(--bg2);border:1px solid var(--border);border-radius:9px;padding:10px 12px;margin-bottom:6px;flex-wrap:wrap">
                     <span style="width:14px;height:14px;border-radius:50%;background:${esc(e.color || '#888')};flex:0 0 auto"></span>
-                    <span style="font-weight:700">${esc(e.nombre)}</span>
-                    <span style="font-size:.76rem;color:var(--dim)">${e.es_inicial ? '<span style="color:var(--accent)">inicial</span>' : ''}${e.es_cerrada ? '<span style="color:var(--green)"> · cerrada</span>' : ''}${e.es_perdida ? '<span style="color:var(--red)"> · perdida</span>' : ''}</span>
-                    <span style="font-size:.72rem;color:var(--dim)">orden ${e.orden}</span>
-                    <span style="flex:1"></span>
-                    <button class="btn-small danger" onclick="eliminarEstadoPipeline('${e.id}','${esc(e.nombre)}')"><i class="fas fa-trash"></i></button>
-                </div>`).join('') : '<div class="card"><div class="empty">Sin estados. Agrega el primero (el primer estado será el inicial por defecto).</div></div>'}
+                    <div style="min-width:120px">
+                        <div style="font-weight:700">${esc(e.nombre)}</div>
+                        <div style="font-size:.68rem;color:var(--dim)">orden ${e.orden}</div>
+                    </div>
+                    ${rolBadge(e)}
+                    <div style="flex:1;min-width:200px">${rolNota(e)}</div>
+                    <button class="btn-small danger" ${esTerminal(e) ? 'disabled title="No se puede eliminar un estado terminal (afecta el cálculo de ventas)"' : `onclick="eliminarEstadoPipeline('${e.id}','${esc(e.nombre)}')"`}><i class="fas fa-trash"></i></button>
+                </div>`).join('') : `<div class="card" style="margin-top:12px">
+                    <div class="empty" style="text-align:left;padding:16px">
+                        <p style="font-weight:700;margin:0 0 6px"><i class="fas fa-list-ol"></i> Crea tu primer estado</p>
+                        <p style="font-size:.76rem;color:var(--dim);margin:0 0 8px">1. Agrega el primer estado (ej. «Nuevo») y márcalo como <b>Inicial</b> — será donde entren los leads nuevos.<br>2. Agrega los intermedios (Contactado, Cotizado…) <b>sin rol</b>.<br>3. Marca uno como <b>Venta cerrada</b> (se pagó) y otro como <b>Perdida</b> (no se pagó).</p>
+                        <button class="btn-small" onclick="this.parentElement.scrollIntoView();document.getElementById('pipe-nombre').focus()"><i class="fas fa-plus"></i> Empezar</button>
+                    </div>
+                </div>`}
         `;
     }
     async function guardarEstadoPipeline() {

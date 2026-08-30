@@ -72,8 +72,8 @@
             rel="stylesheet">
         <link rel="stylesheet"
             href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-        <link rel="stylesheet" href="dashboard.css?v=17">
-        <link rel="stylesheet" href="auvro-design.css?v=17">
+        <link rel="stylesheet" href="dashboard.css?v=18">
+        <link rel="stylesheet" href="auvro-design.css?v=18">
 
     </head>
     <body class="light-mode">
@@ -211,7 +211,7 @@
                         <p class="page-sub">Leads capturados por tus agentes de IA, sea cual sea la fuente</p>
                     </div>
                     <div class="topbar-right">
-                        <button class="btn-main" onclick="abrirConfigCRM()"
+                        <button class="btn-main" id="crm-topbar-config" onclick="abrirConfigCRM()"
                             style="padding:.55rem 1rem;font-size:.82rem;border-radius:12px">
                             <i class="fas fa-gear" style="margin-right:.35rem"></i> Configurar
                         </button>
@@ -3989,6 +3989,15 @@
         const actual = agenteSelect.value;
         agenteSelect.innerHTML = '<option value="">Todos</option>' +
             filtrados.map(a => `<option value="${a.id}" ${String(a.id) === actual ? 'selected' : ''}>${escapeHtml(a.nombre_agente)}${a.crm_activo ? ' · CRM' : ''}</option>`).join('');
+        if (tiendaId) {
+            const agenteTienda = agentes.find(a => String(a.tienda_id) === tiendaId);
+            if (agenteTienda) {
+                agenteSelect.value = String(agenteTienda.id);
+                crmAgenteSeleccionado = String(agenteTienda.id);
+                aplicarFiltrosCRM();
+                return;
+            }
+        }
         if (filtrados.length && !filtrados.some(a => String(a.id) === actual)) {
             agenteSelect.value = '';
         }
@@ -4049,8 +4058,20 @@
                 _tiendas.map(t => `<option value="${t.id}" ${t.id === actual ? 'selected' : ''}>${escapeHtml(t.nombre)}</option>`).join('');
         }
 
+        const topbarConfig = document.getElementById('crm-topbar-config');
+        const agentesConTienda = (agentes || []).filter(a => a.tienda_id).map(a => String(a.id));
+        const esAgenteDeTienda = agenteSel && agenteSel.tienda_id;
+        const tiendaSelActiva = document.getElementById('crm-filtro-tienda')?.value || '';
+        const hayTiendaEnVista = !!tiendaSelActiva || esAgenteDeTienda;
+
         let bannerHtml = '';
-        if (!config) {
+        if (hayTiendaEnVista) {
+            const tiendaNombre = (_tiendas || []).find(t => String(t.id) === (tiendaSelActiva || agenteSel?.tienda_id))?.nombre || 'la tienda';
+            bannerHtml = `<div style="background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.25);color:var(--text);padding:.9rem 1rem;border-radius:12px;margin-bottom:1rem;font-size:.82rem;display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap;">
+                <span><i class="fas fa-store" style="margin-right:.4rem;color:var(--green)"></i>Las ventas aquí corresponden a la tienda <strong>${escapeHtml(tiendaNombre)}</strong>. La <strong>pasarela, el catálogo y el pipeline</strong> se configuran en el <strong>módulo TIENDA</strong> de ese negocio.</span>
+                <a class="btn-main" href="/tienda-admin.html" style="padding:.4rem .8rem;font-size:.76rem;white-space:nowrap;text-decoration:none;">Abrir tienda</a>
+            </div>`;
+        } else if (!config) {
             bannerHtml = `<div style="background:rgba(14,165,233,.1);border:1px solid rgba(14,165,233,.25);color:var(--text);padding:.9rem 1rem;border-radius:12px;margin-bottom:1rem;font-size:.82rem;display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap;">
                 <span><i class="fas fa-circle-info" style="margin-right:.4rem;color:var(--accent)"></i><strong>${escapeHtml(agenteSel?.nombre_agente || 'Este agente')}</strong> no tiene CRM configurado. Actívalo para capturar leads y ventas (WhatsApp, widget web, chat).</span>
                 <button class="btn-main" onclick="abrirConfigCRM()" style="padding:.4rem .8rem;font-size:.76rem;white-space:nowrap;">Configurar</button>
@@ -4067,6 +4088,7 @@
             </div>`;
         }
         banner.style.display = bannerHtml ? '' : 'none';
+        if (topbarConfig) topbarConfig.style.display = hayTiendaEnVista ? 'none' : '';
         banner.innerHTML = bannerHtml;
 
         // Stats (desde el resumen por estado, exacto pese al límite de filas del kanban)
