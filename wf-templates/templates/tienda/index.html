@@ -110,6 +110,16 @@
         </div>
     </div>
 
+    <div id="lightbox" class="lightbox" hidden aria-hidden="true" role="dialog" aria-modal="true">
+        <button class="lightbox-close" id="lightbox-close" aria-label="Cerrar imagen">&times;</button>
+        <button class="lightbox-nav lightbox-prev" id="lightbox-prev" aria-label="Imagen anterior">&#10094;</button>
+        <figure class="lightbox-body">
+            <img id="lightbox-img" src="" alt="">
+            <figcaption id="lightbox-caption" class="lightbox-caption"></figcaption>
+        </figure>
+        <button class="lightbox-nav lightbox-next" id="lightbox-next" aria-label="Imagen siguiente">&#10095;</button>
+    </div>
+
     <script>
 (function () {
     var API = 'https://auvro.netlify.app/.netlify/functions/tienda';
@@ -156,6 +166,51 @@
 
     function abrirCarrito() { qs('#cart-drawer').setAttribute('aria-hidden', 'false'); qs('#cart-overlay').hidden = false; document.body.classList.add('modal-open'); }
     function cerrarCarrito() { qs('#cart-drawer').setAttribute('aria-hidden', 'true'); qs('#cart-overlay').hidden = true; document.body.classList.remove('modal-open'); }
+
+    // ── Lightbox: abrir imágenes de productos en grande ──
+    var lbImgs = [];   // urls de las imágenes visibles del producto
+    var lbTxts = [];   // títulos (para el caption) acorde a lbImgs
+    var lbIndex = 0;
+
+    function lightboxOpen(imgs, txts, index) {
+        lbImgs = imgs || [];
+        lbTxts = txts || [];
+        lbIndex = index || 0;
+        if (!lbImgs.length) return;
+        lightboxRender();
+        qs('#lightbox').hidden = false;
+        qs('#lightbox').setAttribute('aria-hidden', 'false');
+        document.body.classList.add('modal-open');
+    }
+    function lightboxRender() {
+        var img = qs('#lightbox-img');
+        img.src = lbImgs[lbIndex];
+        qs('#lightbox-caption').textContent = lbTxts[lbIndex] || '';
+        qs('#lightbox-prev').style.display = lbImgs.length > 1 ? '' : 'none';
+        qs('#lightbox-next').style.display = lbImgs.length > 1 ? '' : 'none';
+    }
+    function lightboxClose() {
+        qs('#lightbox').hidden = true;
+        qs('#lightbox').setAttribute('aria-hidden', 'true');
+        document.body.classList.remove('modal-open');
+    }
+    function lightboxStep(dir) {
+        if (!lbImgs.length) return;
+        lbIndex = (lbIndex + dir + lbImgs.length) % lbImgs.length;
+        lightboxRender();
+    }
+    qs('#lightbox-close').addEventListener('click', lightboxClose);
+    qs('#lightbox-prev').addEventListener('click', function () { lightboxStep(-1); });
+    qs('#lightbox-next').addEventListener('click', function () { lightboxStep(1); });
+    qs('#lightbox').addEventListener('click', function (e) {
+        if (e.target === qs('#lightbox')) lightboxClose();
+    });
+    document.addEventListener('keydown', function (e) {
+        if (qs('#lightbox').hidden) return;
+        if (e.key === 'Escape') lightboxClose();
+        if (e.key === 'ArrowLeft') lightboxStep(-1);
+        if (e.key === 'ArrowRight') lightboxStep(1);
+    });
 
     // Estado de filtros duales
     var categoriaPrincipal = '';  // Filtro de categoría principal
@@ -280,15 +335,16 @@
         grid.innerHTML = lista.map(function (p) {
             var tipo = p.tipo;
             var imgs = (p.imagenes && p.imagenes.length) ? p.imagenes : (p.imagen ? [p.imagen] : []);
+            var galData = imgs.length ? ' data-gal="' + esc(JSON.stringify(imgs)) + '" data-pname="' + esc(p.nombre) + '"' : '';
             var img;
             if (imgs.length > 1) {
-                img = '<div class="galeria"><div class="gal-main"><img class="prod-img" src="' + esc(imgs[0]) + '" alt="' + esc(p.nombre) + '" loading="lazy"></div>' +
+                img = '<div class="galeria"><div class="gal-main"><img class="prod-img" src="' + esc(imgs[0]) + '" alt="' + esc(p.nombre) + '" loading="lazy"' + galData + '></div>' +
                     '<div class="gal-thumbs">' + imgs.map(function (src, i) {
                         return '<button type="button" class="gal-thumb' + (i === 0 ? ' gal-on' : '') + '" data-g="' + p.id + '" data-i="' + i + '" data-src="' + esc(src) + '" style="background-image:url(' + esc(src) + ')" title="Ver imagen"></button>';
                     }).join('') + '</div></div>';
             } else {
                 img = imgs[0]
-                    ? '<img class="prod-img" src="' + esc(imgs[0]) + '" alt="' + esc(p.nombre) + '" loading="lazy">'
+                    ? '<img class="prod-img" src="' + esc(imgs[0]) + '" alt="' + esc(p.nombre) + '" loading="lazy"' + galData + '>'
                     : '<div class="prod-img placeholder">' + esc((p.nombre || '?').charAt(0)).toUpperCase() + '</div>';
             }
             var badgeCat = p.categoria ? '<span class="badge badge-cat">' + esc(p.categoria) + '</span>' : '';
@@ -379,6 +435,18 @@
                 var gal = t.closest('.galeria');
                 var main = gal ? gal.querySelector('.gal-main img') : null;
                 if (main) main.src = t.getAttribute('data-src');
+            });
+        });
+
+        // Abrir imagen en grande (lightbox) al hacer clic en el producto
+        grid.querySelectorAll('img.prod-img[data-gal]').forEach(function (im) {
+            im.style.cursor = 'zoom-in';
+            im.addEventListener('click', function () {
+                var imgs, txts = [];
+                try { imgs = JSON.parse(im.getAttribute('data-gal')); } catch (e) { imgs = []; }
+                var pname = im.getAttribute('data-pname') || '';
+                txts = imgs.map(function () { return pname; });
+                lightboxOpen(imgs, txts, 0);
             });
         });
 

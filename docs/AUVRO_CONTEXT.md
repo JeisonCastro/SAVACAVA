@@ -1009,6 +1009,21 @@ Multiusuario.
 
 # Changelog de Cambios Técnicos
 
+## 30 Ago 2026 — Tienda: lightbox para abrir imágenes de productos en grande
+
+**Objetivo:** todas las tiendas generadas por Web Factory deben poder abrir la imagen del producto en grande cuando el usuario hace clic en ella, en lugar de verla solo dentro de la tarjeta del grid.
+
+**Cambios en `wf-templates/templates/tienda/` (plantilla reutilizable; aplica a cualquier tienda nueva y a las que se regeneren):**
+- `index.html`:
+  - Nuevo modal `#lightbox` (overlay oscuro + `<figure>` con `<img>` y caption) al final del body, con botones cerrar (`&times;`), anterior/`&#10094;` y siguiente/`&#10095;`.
+  - Cada imagen de producto (`img.prod-img`) ahora lleva `data-gal` (JSON con las URLs de todas las imágenes del producto) y `data-pname` (nombre del producto) para poder abrirlas desde el lightbox.
+  - Lógica JS nueva (dentro de la IIFE): `lightboxOpen/lightboxRender/lightboxClose/lightboxStep` con estado `lbImgs/lbTxts/lbIndex`. Se abre al hacer clic en la imagen del producto (cursor `zoom-in`), se navega con flechas ‹ ›, se cierra con X, clic en el overlay o tecla `Escape`, y las flechas del teclado (`ArrowLeft/ArrowRight`) cambian de imagen. Los controles ‹ › solo se muestran si el producto tiene más de una imagen.
+- `styles.css`: reglas `.lightbox`, `.lightbox-body`, `.lightbox-close`, `.lightbox-nav` (+ variante móvil). Fondo oscuro `rgba(10,14,22,.92)`, imagen `max-height: 80vh` con `object-fit: contain`, z-index 120 (por encima de los modales de carrito/checkout) y `body.modal-open` bloquea el scroll.
+
+**Verificado:** `node --check` del JS embebido (vale), estructura HTML coherente con los tokens de plantilla (`{{EMPRESA}}`, `{{SLUG}}`, etc.) intacta.
+
+**Nota:** requiere regenerar el template del sitio (botón reactivar/re-deploy desde GitHub) para que la tienda existente sirva el nuevo `index.html`. La lógica backend no cambia.
+
 ## 16 Ago 2026 — E-commerce en Web Factory (plantilla "tienda"): Ruta A serverless
 
 **Decisión:** e-commerce **propio y modular** sobre el stack actual (Supabase + Netlify Functions + Wompi). Descartados los motores externos (WooCommerce/Medusa/Magento) porque Netlify Functions son efímeras/sin estado y **no corren PHP ni servicios persistentes**; el costo es ~$0 (pay-as-you-go de Netlify + Supabase ya pagados) y el modelo de negocio es pago único por implementación (no suscripción). No compite con WooCommerce/Magento: es un módulo vertical igual que el CRM.
