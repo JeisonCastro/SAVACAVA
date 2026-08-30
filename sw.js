@@ -1,5 +1,5 @@
-/* ─── AUVRO Service Worker v3.1 (chat/editor precacheados) ──────── */
-const CACHE_NAME = 'auvro-v12';
+/* ─── AUVRO Service Worker v3.1 (dark negro #000000, cache v13) ─────────── */
+const CACHE_NAME = 'auvro-v13';
 const OFFLINE_URL = '/offline.html';
 const CACHE_MAX_ENTRIES = 100;
 
@@ -13,8 +13,8 @@ const PRECACHE_URLS = [
   '/login.html',
   '/offline.html',
   '/manifest.json',
-  '/dashboard.css?v=12',
-  '/auvro-design.css?v=12',
+  '/dashboard.css?v=13',
+  '/auvro-design.css?v=13',
   '/icon-192.svg',
   '/icon-512.svg',
   '/favicon.ico',

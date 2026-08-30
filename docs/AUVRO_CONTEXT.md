@@ -1009,6 +1009,27 @@ Multiusuario.
 
 # Changelog de Cambios Técnicos
 
+## 30 Ago 2026 — Dark mode negro puro `#000000` (se eliminó el tinte azul navy)
+
+**Objetivo:** el modo oscuro se veía "azul" porque los tokens dark eran negro-azulado (navy), no negro puro. El usuario pidió que el dark se vea `#000000`.
+
+**Cambios en `auvro-design.css` (tokens dark, `:root`):**
+- `--bg` `#0a0d14` → **`#000000`**
+- `--bg2` `#0f141c` → `#09090b`
+- `--bg3` `#151b26` → `#101013`
+- `--surface` `#131a24` → `#0c0c0f`
+- `--border`/`--border2` (slate) → `rgba(255,255,255,.10)` / `rgba(255,255,255,.22)` (gris neutro, sin tinte azul)
+- `--chat-bg`/`--chat-panel` → `#000000`/`#09090b`; burbujas → grises neutros
+- sombras más profundas para el negro puro
+
+**Cambios en `dashboard.css`:** las dos reglas `body{background: radial-gradient(... azul y verde ...), var(--bg)!important}` pasan a `body{background:var(--bg)!important}` — se elimina el glow radial azul que también teñía el fondo dark.
+
+**Cambio en `dashboard.html`:** `#loading-overlay` `background:rgba(2,6,23,.6)` → `rgba(0,0,0,.6)` (negro, sin navy).
+
+**Verificado (Chrome headless + servidor local, computed styles):** con dark activo, `--bg` → `#000000`, `--surface` → `#0c0c0f`, `--bg2` → `#09090b`. El campo claro no se toca.
+
+**Cascade:** `auvro-design.css` carga después de `dashboard.css` en dashboard/tienda-admin y es el único token source en chat/editor/login/politicas/offline, así que el negro puro gana en todas las páginas de la app. **Cache forcing para que el cambio llegue al instante: cache-busting de CSS **`?v=12` → `?v=13`** en dashboard/tienda-admin/chat/editor/login y SW **`auvro-v12` → `auvro-v13`** (precache con `?v=13`). El SW v13 en activate purga el cache v12 viejo, y los navegadores piden el CSS nuevo por el nuevo query param → los usuarios ven el negro puro de inmediato (sin esperar stale-while-revalidate).
+
 ## 30 Ago 2026 — SW v3.1: chat.html y editor.html añadidos al precache (offline completo del app shell)
 
 **Objetivo/fix:** `chat.html` y `editor.html` son documentos independientes a los que se navega desde el dashboard (`window.open('editor.html?...')` y `location='/chat.html?agente=...'`), pero NO estaban en `PRECACHE_URLS` — solo se cacheaban de forma runtime (stale-while-revalidate) tras la primera visita online. Si el usuario instalaba la PWA y luego abría esos flujos sin conexión (sin haberlos visitado antes), recibía fallback/404.

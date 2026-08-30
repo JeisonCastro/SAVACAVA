@@ -6,14 +6,14 @@
    Compartido por dashboard.html, chat.html, tienda-admin.html y demás páginas.
    ════════════════════════════════════════════════════════════════════════ */
 
-/* ── Tokens · Dark ─────────────────────────────────────────────────────── */
+/* ── Tokens · Dark · negro Puro #000000 (sin tinte azul) ─────────────────── */
 :root{
-    --bg:#0a0d14!important;
-    --bg2:#0f141c!important;
-    --bg3:#151b26!important;
-    --surface:#131a24!important;
-    --border:rgba(148,163,184,.14)!important;
-    --border2:rgba(148,163,184,.26)!important;
+    --bg:#000000!important;
+    --bg2:#09090b!important;
+    --bg3:#101013!important;
+    --surface:#0c0c0f!important;
+    --border:rgba(255,255,255,.10)!important;
+    --border2:rgba(255,255,255,.22)!important;
     --accent:#3b82f6!important;
     --accent2:#2563eb!important;
     --green:#10b981!important;
@@ -22,13 +22,13 @@
     --text:#eef2f8!important;
     --muted:#94a3b8!important;
     --dim:#64748b!important;
-    --chat-bg:#0a0d14!important;
-    --chat-panel:#0f141c!important;
-    --bubble-user:#1b2230!important;
-    --bubble-ai:#12263f!important;
-    --bubble-human:#12301f!important;
-    --shadow-soft:0 1px 2px rgba(0,0,0,.18),0 10px 28px rgba(0,0,0,.20)!important;
-    --shadow-lift:0 4px 16px rgba(0,0,0,.22)!important;
+    --chat-bg:#000000!important;
+    --chat-panel:#09090b!important;
+    --bubble-user:#141417!important;
+    --bubble-ai:#10151c!important;
+    --bubble-human:#0e1712!important;
+    --shadow-soft:0 1px 2px rgba(0,0,0,.60),0 10px 28px rgba(0,0,0,.55)!important;
+    --shadow-lift:0 4px 16px rgba(0,0,0,.55)!important;
 }
 
 /* ── Tokens · Light (blanco + azul) ────────────────────────────────────── */
