@@ -1009,6 +1009,18 @@ Multiusuario.
 
 # Changelog de Cambios Técnicos
 
+## 30 Ago 2026 — Migración de datos: tours de turismo a la TIENDA + eliminación del agente de turismo (PabloViajes)
+
+- **Objetivo:** eliminar la redundancia de catálogo turístico en `crm_config_agente.catalogo` (jsonb) migrando la lógica de tours a la tienda (`tienda_productos`), y **eliminar el agente de turismo** que ya no compone hechos duplicados.
+- **Datos ejecutados en producción (con backup local previo en `U:\...\backup_pabloviajes\`):**
+  - Se creó la tienda `web_projects` **PabloViajes** (`id=8f36a9b7-d7ac-4720-a7c4-143ba38ca0ae`, slug `pabloviajes`, plantilla `tienda`).
+  - Se migraron los **6 tours** de `crm_config_agente.catalogo` → `tienda_productos` (tipo `tour`):
+    - "Playa Blanca Barú – Pasadía" (tour por pasajero con `atributos`: `categorias_pasajero` Adulto/Niño/Infante, `escalas_cantidad` 10-20 con -10%, `min_participantes` 2, `max_participantes` 30) + 3 variaciones en `tienda_variaciones` y `atributos_selector` `PASAJERO`.
+    - Los otros 5 tours de tarifa única con `whatsapp_button=true` (no comprables directo).
+  - Se **eliminó el agente 35 (PabloViajes)** y sus dependencias: `pagos` de sus leads (por decisión explícita del usuario, ~8 ventas), `crm_leads` (4), `conversaciones` (CASCADE borra `mensajes_conversacion`), `agente_tools`, `crm_config_agente`, `whatsapp_connections`, `pending_tool_actions`. Verificado: 0 filas residuales y 0 pagos huérfanos.
+- **Lógica ya no redundante:** el catálogo de la tienda es la fuente única para los tours; `chat.js` prioriza `obtenerCatalogoTienda(tienda_id)` sobre el jsonb del agente; `pago-webhook` liga ventas de tienda al CRM con `proyecto_id=tienda`; `crm.js` filtra por `tienda_id` mostrando todo de la tienda (leads del agente asociado + ventas). No se requirió cambio de código: la arquitectura `agente.tienda_id` ya consumía la tienda.
+- **Backup de reversión:** `agente.json`, `config.json`, `tools.json`, `leads.json`, `pagos.json`, `conversaciones.json`, `mensajes.json` (en `Temp\opencode\backup_pabloviajes\`).
+
 ## 30 Ago 2026 — CRM: nueva sub-pestaña "Clientes" con historial de oportunidades por cliente
 
 - `dashboard.html` `#view-crm`: se agrega la sub-pestaña **Clientes** (junto a Dashboard/Pipeline/Ventas) y el contenedor `#crm-tab-clientes`.
@@ -1030,7 +1042,7 @@ Multiusuario.
   - `chat.js` (líneas 1300-1303): si `agente.tienda_id` está set, consume `obtenerCatalogoTienda(tiendaId)`; si la tienda no tiene productos, cae al catálogo CRM jsonb.
   - `crm-helper.js` `obtenerCatalogoTienda` mapea tours de tienda al formato por pasajero; `productosParaCliente` pasa `categorias_pasajero`/`escalas_cantidad`/`extras` al widget.
   - El admin crea los tours desde `tienda-admin` (tipo "Tour / Actividad") y las tarifas se guardan en `tienda_productos.atributos`.
-- **Migración del catálogo turístico jsonb → `tienda_productos`**: queda pendiente por decisión explícita (no ejecutar ahora), y solo tendrá sentido una vez se defina a qué tienda pertenece cada agente.
+- **Migración del catálogo turístico jsonb → `tienda_productos`**: **EJECUTADA** (ver entrada superior). Se creó la tienda "PabloViajes" en `web_projects`, se migraron los 6 tours a `tienda_productos` (tipo `tour`) y se eliminó el agente de turismo 35 + sus dependencias.
 
 ## 30 Ago 2026 — Reestructuración AUVRO: la TIENDA es la fuente única de catálogo/comercio, el AGENTE la consume, y el CRM integra las ventas de tienda
 
@@ -1070,7 +1082,7 @@ Multiusuario.
 
 **Archivos modificados:** `netlify/functions/tienda.js`, `netlify/functions/crm-helper.js`, `netlify/functions/pago-webhook.js`, `tienda-admin.html`, `dashboard.html`, `dashboard.css`, `sw.js`, `docs/AUVRO_CONTEXT.md`.
 
-**Nota de persistencia (actualizada 30 Ago):** los campos de tour se guardan en `tienda_productos.atributos` (jsonb). Esta iteración detectó que la restricción `tienda_productos_tipo_check` no incluía `tour`, por lo que se aplicó `20260830_tienda_tipo_tour.sql` (ver entrada superior). La migración del catálogo turístico `crm_config_agente.catalogo` → `tienda_productos` **queda pendiente por decisión explícita** (no se tocan datos; se hará manualmente enlazando agente→tienda cuando corresponda).
+**Nota de persistencia (actualizada 30 Ago):** los campos de tour se guardan en `tienda_productos.atributos` (jsonb). Se aplicó `20260830_tienda_tipo_tour.sql` para habilitar el tipo `tour` en la BD (ver entrada superior). La migración del catálogo turístico `crm_config_agente.catalogo` → `tienda_productos` **ya se ejecutó**: se creó la tienda "PabloViajes", se migraron los 6 tours y se eliminó el agente de turismo.
 
 ## 30 Ago 2026 — Dark mode negro puro `#000000` (se eliminó el tinte azul navy)
 
