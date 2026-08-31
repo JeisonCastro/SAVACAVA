@@ -170,7 +170,10 @@ function inyectarTema(html, accent, fuenteInfo) {
     const acc = validarAccent(accent) || '#2563eb';
     const dark = oscurecerHex(acc);
     const familia = (fuenteInfo && fuenteInfo.familia) || FUENTE_SISTEMA;
-    let bloque = `<style id="auvro-theme">:root{--accent:${acc}!important;--accent-dark:${dark}!important}*{font-family:${familia}!important}</style>`;
+    // Soporte Bootstrap 5: las plantillas Bootstrap usan --bs-primary (y --bs-link-color /
+    // --bs-btn-*) en vez de --accent. Las mapeamos a la misma variable para que el color
+    // principal del panel se aplique también a plantillas MIT/Bootstrap.
+    let bloque = `<style id="auvro-theme">:root{--accent:${acc}!important;--accent-dark:${dark}!important;--bs-primary:${acc}!important;--bs-link-color:${acc}!important;--bs-link-hover-color:${dark}!important;--bs-btn-primary-bg:${acc}!important;--bs-btn-primary-border-color:${acc}!important;--bs-btn-primary-hover-bg:${dark}!important;--bs-btn-primary-hover-border-color:${dark}!important;--bs-btn-primary-active-bg:${dark}!important;--bs-btn-primary-active-border-color:${dark}!important}*{font-family:${familia}!important}</style>`;
     if (fuenteInfo && fuenteInfo.css) {
         bloque = `<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="${fuenteInfo.css}" rel="stylesheet">` + bloque;
     }

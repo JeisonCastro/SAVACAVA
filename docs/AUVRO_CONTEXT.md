@@ -1009,6 +1009,15 @@ Multiusuario.
 
 # Changelog de Cambios Técnicos
 
+## 30 Ago 2026 — Plantilla MIT "Landing Premium" (Start Bootstrap) + soporte tema Bootstrap (v29-b)
+
+- **Objetivo (decisión del usuario):** validar la importación de plantillas gratuitas **MIT** al Web Factory (Start Bootstrap free, que permite uso comercial/SaaS; BootstrapMade NO lo permite). Primera plantilla importada: `landing-mit` (Landing Page - Start Bootstrap v6.0.6, MIT).
+- **`wf-templates/templates/landing-mit/`:** plantilla Bootstrap 5 adaptada al sistema de tokens (`{{EMPRESA}}`, `{{DESCRIPCION}}`, `{{SLOGAN}}`, `{{WHATSAPP}}`, `{{LOGO}}`). Reemplaza el formulario SB Forms (requiere token externo de StartBootstrap, no funciona) por **botón de CTA por WhatsApp** (se oculta si `{{WHATSAPP}}` queda vacío vía `data-wa`). Las imágenes binarias de la plantilla se sustituyeron por gradientes (el pipeline de AUVRO lee archivos como texto, no maneja binarios). Incluye `LICENSE-MIT.txt`, `netlify.toml`, `robots.txt`, `README.md`.
+- **`manifest.json`:** entrada nueva `landing-mit` → aparece automáticamente en el dropdown de plantillas del Web Factory.
+- **`netlify/functions/web-factory.js` (`inyectarTema`):** ahora también mapea `--accent` a las variables de **Bootstrap 5** (`--bs-primary`, `--bs-link-color`, `--bs-btn-primary-*`) para que el color principal del panel se aplique a plantillas MIT/Bootstrap, no solo a las custom.
+- **Privacidad/licencia:** se mantiene el encabezado MIT en `styles.css`/`scripts.js` y `LICENSE-MIT.txt` (obligatorio).
+- **Verificado localmente:** tokens → 0 restantes, empresa/whatsapp aplicados, tema Bootstrap + widget inyectados.
+
 ## 30 Ago 2026 — Web Factory: diseño asistido por IA con OpenCode Zen (modelos gratuitos) (v29)
 
 - **Objetivo (decisión del usuario):** poder crear sitios bien diseñados rápido desde el Web Factory sin bajar el repo ni editar a mano. El admin pega el **contexto del negocio** en el modal "Nuevo sitio web" y la IA (OpenCode Zen, modelos gratuitos) propone contenido, slogan, color y tipografía sobre la plantilla MIT elegida. El contexto se guarda como `docs/CONTEXT.md` en el repo para que el editor AI (`site-editor.js`) lo reutilice después.

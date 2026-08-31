@@ -54,6 +54,11 @@
       "slug": "tienda",
       "nombre": "Tienda / E-commerce",
       "descripcion": "Catálogo con carrito y pago seguro por Wompi (PSE, tarjeta, Nequi). Productos físicos, digitales y servicios. Se administra desde el dashboard. Tokens: {{EMPRESA}}, {{DESCRIPCION}}, {{SLOGAN}}, {{LOGO}}, {{WHATSAPP}}, {{SLUG}}."
+    },
+    {
+      "slug": "landing-mit",
+      "nombre": "Landing Premium (Bootstrap/MIT)",
+      "descripcion": "Landing page profesional basada en Start Bootstrap (licencia MIT). Hero, características, secciones de valor y CTA por WhatsApp. Tokens: {{EMPRESA}}, {{DESCRIPCION}}, {{SLOGAN}}, {{LOGO}}, {{WHATSAPP}}."
     }
   ]
 }
