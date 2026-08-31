@@ -1009,6 +1009,21 @@ Multiusuario.
 
 # Changelog de Cambios Técnicos
 
+## 30 Ago 2026 — Mis Agentes: eliminado el check "Agente para CRM" (captura por defecto al vincular a tienda) (v27)
+
+- **Objetivo (decisión del usuario):** en la sección Mis Agentes, los modales de crear/editar agente tenían un check "Agente para CRM (captura leads y ventas automáticamente)" (`crm_activo`). Como ahora el agente captura leads **por defecto** al conectarse/vincularse a una tienda, ese check ya no es necesario y se elimina su lógica sin afectar la captura.
+- **`dashboard.html`:**
+  - **Modal Crear agente**: eliminado el checkbox `create-crm-activo` y su label; los campos de captura (`crm-campo-box`) quedan **siempre visibles** (antes ocultos hasta marcar el check).
+  - **Modal Editar agente**: eliminado el checkbox `edit-crm-activo` y su label; los campos de captura (`crm-campo-edit-box`) quedan siempre visibles.
+  - **Eliminadas** las funciones `toggleCreateCampos()` y `toggleEditCampos()` y sus `onchange`.
+  - **`guardarCreacion()`**: envía `crm_activo: true` fijo (en vez de leer el check).
+  - **`guardarEdicion()`**: actualiza `agentes_ia` con `crm_activo: true` fijo y ya no condiciona el `sembrar_estados`/`config` CRM al check (siempre se sincroniza).
+  - **`abrirCrearAgente()`/`abrirEdicion()`**: ya no referencian los checkboxes.
+  - **CRM view**: eliminados los sufijos "· CRM" de los selects de agente (filtros y "Agente activo") y el aviso "CRM desactivado en este agente" (obsoleto). `cargarCRM()` ya no usa `crm_activo` para elegir el agente por defecto (usa el primero).
+  - La columna `crm_activo` en la BD se mantiene (siempre `true` al crear/editar desde el panel; el backend sigue soportándola para agentes legacy).
+- **Cache bump a `v27`:** `dashboard.html` (`dashboard.css?v=27`, `auvro-design.css?v=27`) y `sw.js` (`auvro-v27` + precache `?v=27`).
+- **Sin cambios de esquema ni de backend** (solo frontend).
+
 ## 30 Ago 2026 — Enrutamiento del dashboard: volver a la pestaña anterior (no siempre agentes) + hash routing (v26)
 
 - **Problema reportado (usuario):** al volver al dashboard desde tienda-admin con el botón "Panel AUVRO" (o el back del navegador), siempre regresaba a la pestaña "Agentes" en vez de a la pestaña anterior (ej. Web Factory, CRM).
