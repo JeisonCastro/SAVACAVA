@@ -1009,6 +1009,20 @@ Multiusuario.
 
 # Changelog de Cambios Técnicos
 
+## 30 Ago 2026 — Enrutamiento del dashboard: volver a la pestaña anterior (no siempre agentes) + hash routing (v26)
+
+- **Problema reportado (usuario):** al volver al dashboard desde tienda-admin con el botón "Panel AUVRO" (o el back del navegador), siempre regresaba a la pestaña "Agentes" en vez de a la pestaña anterior (ej. Web Factory, CRM).
+- **Causa raíz:** `mostrarVista(vista)` no persistía la pestaña activa ni usaba el hash; `verificarSesion()` solo restauraba la vista si la URL traía `#vista`, y el botón "Panel AUVRO" apuntaba a `dashboard.html` plano → el HTML dejaba la vista por defecto `view-agentes`.
+- **Cambios en `dashboard.html`:**
+  - `mostrarVista(vista, desdeHash)` ahora: guarda la vista activa en `localStorage` (`auvro_last_vista`) y actualiza el hash (`#vista`) vía `location.hash` (solo en navegación normal, no al restaurar por hash). Se agrega guard `_vistaMostrada` para evitar re-renders/loops con el `hashchange`.
+  - Nuevo listener `hashchange`: al cambiar el hash (botón atrás/adelante del navegador) llama `window.mostrarVista(v, true)` → restaura la pestaña anterior.
+  - `verificarSesion()`: si no hay hash válido en la URL, restaura la última vista guardada en `localStorage` (si es válida), en vez de quedarse en agentes.
+  - Patch final de `mostrarVista` (bloque UI PRO): reenvía `arguments` al original para que `desdeHash` llegue correctamente.
+  - `vistasValidas` incluye ahora también `admin`.
+- **Cambios en `tienda-admin.html`:** botón "Panel AUVRO" (`#back-panel-auvro`) ahora, al cargar la tienda, apunta a `dashboard.html#<ultima vista>` leída de `localStorage` (compartido con el dashboard), para que el regreso caiga en la pestaña exacta donde estaba el usuario.
+- **Cache bump a `v26`:** `dashboard.html` y `tienda-admin.html` (`dashboard.css?v=26`, `auvro-design.css?v=26`) y `sw.js` (`auvro-v26` + precache `?v=26`).
+- **Sin cambios de esquema ni de backend.**
+
 ## 30 Ago 2026 — FIX CRÍTICO: tienda-admin.html se quedaba en "Cargando tienda…" (ReferenceError salir) (v25)
 
 - **Problema reportado (usuario):** al ingresar a `tienda-admin.html?proyecto=...` la página se quedaba en "Cargando tienda…" y no cargaba nada.

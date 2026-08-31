@@ -72,8 +72,8 @@
             rel="stylesheet">
         <link rel="stylesheet"
             href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-        <link rel="stylesheet" href="dashboard.css?v=25">
-        <link rel="stylesheet" href="auvro-design.css?v=25">
+        <link rel="stylesheet" href="dashboard.css?v=26">
+        <link rel="stylesheet" href="auvro-design.css?v=26">
 
     </head>
     <body class="light-mode">
@@ -1334,7 +1334,10 @@
     }
 
     // ── NAVEGACION ──
-    function mostrarVista(vista) {
+    let _vistaMostrada = '';
+    function mostrarVista(vista, desdeHash) {
+        if (_vistaMostrada === vista && desdeHash) return;
+        _vistaMostrada = vista;
         document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
         document.querySelectorAll('nav a').forEach(a => a.classList.remove('active'));
         document.getElementById('view-' + vista).classList.add('active');
@@ -1347,7 +1350,18 @@
         if (vista === 'crm') cargarCRM();
         if (vista === 'admin') cargarAdmin();
         if (vista === 'webfactory') cargarWebFactory();
+        try { localStorage.setItem('auvro_last_vista', vista); } catch (_) {}
+        if (!desdeHash && window.location.hash !== '#' + vista) {
+            try { window.location.hash = vista; } catch (_) {}
+        }
     }
+
+    window.addEventListener('hashchange', function() {
+        const v = (window.location.hash || '').replace('#', '').toLowerCase();
+        if (v && document.getElementById('view-' + v)) {
+            window.mostrarVista(v, true);
+        }
+    });
 
     // ── PANEL ADMIN ──
     let _isAdmin = false;
@@ -3278,8 +3292,15 @@
         cargarAgentes();
         cargarTiendasParaSelect();
         const vistaHash = (window.location.hash || '').replace('#', '').toLowerCase();
-        const vistasValidas = ['bandeja', 'agentes', 'crm', 'tokens', 'config', 'integraciones', 'webfactory'];
-        if (vistasValidas.includes(vistaHash)) mostrarVista(vistaHash);
+        const vistasValidas = ['bandeja', 'agentes', 'crm', 'tokens', 'config', 'integraciones', 'webfactory', 'admin'];
+        if (vistasValidas.includes(vistaHash)) {
+            mostrarVista(vistaHash);
+        } else {
+            const ultima = (localStorage.getItem('auvro_last_vista') || '').toLowerCase();
+            if (vistasValidas.includes(ultima) && document.getElementById('view-' + ultima)) {
+                mostrarVista(ultima);
+            }
+        }
         if (new URLSearchParams(window.location.search).has('pago')) {
             showToast('Pago registrado. Tu saldo se actualizo.', 'success');
             history.replaceState({}, '', window.location.pathname);
@@ -6849,7 +6870,7 @@ async function debugPush() {
 
     window.mostrarVista = function(vista){
         if (typeof originalMostrarVista === 'function') {
-            originalMostrarVista(vista);
+            originalMostrarVista.apply(this, arguments);
         }
         window.syncMobileBottomNav(vista);
         window.toggleMobileMenu(false);
