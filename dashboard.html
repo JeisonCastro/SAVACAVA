@@ -72,8 +72,8 @@
             rel="stylesheet">
         <link rel="stylesheet"
             href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-        <link rel="stylesheet" href="dashboard.css?v=27">
-        <link rel="stylesheet" href="auvro-design.css?v=27">
+        <link rel="stylesheet" href="dashboard.css?v=28">
+        <link rel="stylesheet" href="auvro-design.css?v=28">
 
     </head>
     <body class="light-mode">
@@ -1019,21 +1019,11 @@
                         coma)</label><input type="text" id="edit-domains"
                         placeholder="ej: midominio.com, cliente.com"></div>
                 <div id="edit-crm-block" style="margin-top:.25rem;padding-top:.5rem;border-top:1px solid var(--border2)">
-                    <div style="font-size:.74rem;color:var(--muted);margin-bottom:.35rem;">Campos a capturar:</div>
-                    <div id="edit-crm-campos" style="margin-top:.35rem;display:flex;flex-wrap:wrap;gap:.6rem;font-size:.8rem;">
-                        <label style="display:flex;align-items:center;gap:.3rem;cursor:pointer"><input type="checkbox" class="crm-campo-edit-box" value="nombre" checked> Nombre</label>
-                        <label style="display:flex;align-items:center;gap:.3rem;cursor:pointer"><input type="checkbox" class="crm-campo-edit-box" value="telefono" checked> Teléfono</label>
-                        <label style="display:flex;align-items:center;gap:.3rem;cursor:pointer"><input type="checkbox" class="crm-campo-edit-box" value="email" checked> Email</label>
-                        <label style="display:flex;align-items:center;gap:.3rem;cursor:pointer"><input type="checkbox" class="crm-campo-edit-box" value="interes" checked> Interés</label>
-                        <label style="display:flex;align-items:center;gap:.3rem;cursor:pointer"><input type="checkbox" class="crm-campo-edit-box" value="preferencias" checked> Preferencias</label>
-                    </div>
-                    <div style="margin-top:.6rem;padding-top:.5rem;border-top:1px solid var(--border2);">
-                        <label style="display:block;font-size:.78rem;color:var(--muted);margin-bottom:.35rem;">Vincular a tienda (opcional):</label>
+                    <label style="display:block;font-size:.78rem;color:var(--muted);margin-bottom:.35rem;">Vincular a tienda (opcional):</label>
                         <select id="edit-tienda-select" style="width:100%;background:var(--bg2);border:1px solid var(--border2);border-radius:10px;padding:.5rem .7rem;font-size:.82rem;color:var(--text);">
                             <option value="">Sin tienda (catálogo CRM manual)</option>
                         </select>
                         <div style="font-size:.72rem;color:var(--muted);margin-top:.25rem;">Si seleccionas una tienda, el agente usará su catálogo automáticamente.</div>
-                    </div>
                 </div>
                 <div style="display:flex;gap:10px;margin-top:1rem;">
                     <button class="btn-main btn-green"
@@ -1057,21 +1047,11 @@
                         id="create-prompt" rows="8" style="min-height:160px;resize:vertical;"
                         placeholder="Eres un asistente que..."></textarea></div>
                 <div id="create-crm-block" style="margin-top:.25rem;padding-top:.5rem;border-top:1px solid var(--border2)">
-                    <label class="crm-campo" style="display:block;font-size:.78rem;color:var(--muted);margin-bottom:.35rem;">Campos a capturar:</label>
-                    <div id="create-crm-campos" style="display:flex;flex-wrap:wrap;gap:.5rem;font-size:.78rem;">
-                        <label style="display:flex;align-items:center;gap:.3rem;cursor:pointer"><input type="checkbox" class="crm-campo-box" value="nombre" checked> Nombre</label>
-                        <label style="display:flex;align-items:center;gap:.3rem;cursor:pointer"><input type="checkbox" class="crm-campo-box" value="telefono" checked> Teléfono</label>
-                        <label style="display:flex;align-items:center;gap:.3rem;cursor:pointer"><input type="checkbox" class="crm-campo-box" value="email" checked> Email</label>
-                        <label style="display:flex;align-items:center;gap:.3rem;cursor:pointer"><input type="checkbox" class="crm-campo-box" value="interes" checked> Interés</label>
-                        <label style="display:flex;align-items:center;gap:.3rem;cursor:pointer"><input type="checkbox" class="crm-campo-box" value="preferencias" checked> Preferencias</label>
-                    </div>
-                    <div style="margin-top:.6rem;padding-top:.5rem;border-top:1px solid var(--border2);">
-                        <label style="display:block;font-size:.78rem;color:var(--muted);margin-bottom:.35rem;">Vincular a tienda (opcional):</label>
+                    <label style="display:block;font-size:.78rem;color:var(--muted);margin-bottom:.35rem;">Vincular a tienda (opcional):</label>
                         <select id="create-tienda-select" style="width:100%;background:var(--bg2);border:1px solid var(--border2);border-radius:10px;padding:.5rem .7rem;font-size:.82rem;color:var(--text);">
                             <option value="">Sin tienda (catálogo CRM manual)</option>
                         </select>
                         <div style="font-size:.72rem;color:var(--muted);margin-top:.25rem;">Si seleccionas una tienda, el agente usará su catálogo automáticamente.</div>
-                    </div>
                 </div>
                 <div class="loading-dots" id="create-loading"><span
                         class="loading-dot"></span><span
@@ -3423,7 +3403,6 @@
         document.getElementById('create-name').value = '';
         document.getElementById('create-prompt').value = '';
         document.getElementById('create-tienda-select').value = '';
-        document.querySelectorAll('.crm-campo-box').forEach(c => c.checked = true);
         document.getElementById('create-msg').className = 'msg';
         document.getElementById('create-loading').style.display = 'none';
         document.getElementById('create-modal').style.display = 'flex';
@@ -3451,7 +3430,7 @@
                     nombre_agente: name,
                     prompt_sistema: prompt,
                     crm_activo: true,
-                    crm_campos: Array.from(document.querySelectorAll('.crm-campo-box:checked')).map(c => c.value),
+                    crm_campos: ['nombre', 'telefono', 'email', 'interes', 'preferencias'],
                     tienda_id: document.getElementById('create-tienda-select').value || null
                 })
             });
@@ -4167,7 +4146,6 @@
         document.getElementById('edit-name').value = a.name;
         document.getElementById('edit-prompt').value = a.prompt;
         document.getElementById('edit-domains').value = Array.isArray(a.dominios) ? a.dominios.join(', ') : (a.dominios || '');
-        document.querySelectorAll('.crm-campo-edit-box').forEach(c => c.checked = a.crm_campos.includes(c.value));
         document.getElementById('edit-tienda-select').value = a.tienda_id || '';
         document.getElementById('edit-modal').style.display = 'flex';
     }
@@ -4709,13 +4687,13 @@
         btn.disabled = true; btn.innerText = 'Guardando...';
         mostrarOverlayCarga('Guardando cambios...');
         const id = parseInt(document.getElementById('edit-id').value);
-        const crmCampos = Array.from(document.querySelectorAll('.crm-campo-edit-box:checked')).map(c => c.value);
+        const crmCampos = ['nombre', 'telefono', 'email', 'interes', 'preferencias'];
         const { error } = await _supabase.from('agentes_ia').update({
             nombre_agente: document.getElementById('edit-name').value,
             prompt_sistema: document.getElementById('edit-prompt').value,
             dominios_permitidos: document.getElementById('edit-domains').value.split(',').map(d => d.trim()).filter(d => d.length > 0),
             crm_activo: true,
-            crm_campos: crmCampos.length ? crmCampos : null,
+            crm_campos: crmCampos,
             tienda_id: document.getElementById('edit-tienda-select').value || null
         }).eq('id', id);
         btn.disabled = false; btn.innerText = orig;
@@ -4753,7 +4731,7 @@
             await llamarCRM('config', {
                 agente_id: id,
                 crm_activo: true,
-                campos_captura: crmCampos.length ? crmCampos : ['nombre', 'telefono', 'email', 'interes', 'preferencias']
+                campos_captura: crmCampos
             });
         } catch (_) {}
         document.getElementById('edit-modal').style.display = 'none';

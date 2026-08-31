@@ -1009,6 +1009,19 @@ Multiusuario.
 
 # Changelog de Cambios Técnicos
 
+## 30 Ago 2026 — Mis Agentes: eliminada por completo la sección "Campos a capturar" de los modales (v28)
+
+- **Objetivo (decisión del usuario):** tras quitar el check "Agente para CRM", la sección "Campos a capturar" (checkboxes Nombre/Teléfono/Email/Interés/Preferencias) quedó siempre visible en los modales Crear/Editar agente, encima de "Vincular a tienda". El usuario pidió **eliminarla por completo**.
+- **`dashboard.html`:**
+  - **Modal Crear agente** (`create-crm-block`): eliminados el label "Campos a capturar:" y el div `#create-crm-campos` (checkboxes `crm-campo-box`). Quedan solo Nombre, Instrucciones y "Vincular a tienda (opcional)".
+  - **Modal Editar agente** (`edit-crm-block`): eliminados el label "Campos a capturar:" y el div `#edit-crm-campos` (checkboxes `crm-campo-edit-box`). Quedan solo Nombre, Instrucciones, Dominios y "Vincular a tienda (opcional)".
+  - **`guardarCreacion()`**: `crm_campos` ahora es fijo `['nombre','telefono','email','interes','preferencias']` (antes leía los checkboxes).
+  - **`guardarEdicion()`**: `crm_campos` fijo al array completo de campos (captura completa por defecto).
+  - **`abrirCrearAgente()`/`abrirEdicion()`**: eliminados los resets de checkboxes `.crm-campo-box`/`.crm-campo-edit-box`.
+  - La captura de leads sigue funcionando por defecto (backend inalterado); los agentes existentes conservan sus `crm_campos` guardados.
+- **Cache bump a `v28`:** `dashboard.html` (`dashboard.css?v=28`, `auvro-design.css?v=28`) y `sw.js` (`auvro-v28` + precache `?v=28`).
+- **Sin cambios de esquema ni de backend** (solo frontend).
+
 ## 30 Ago 2026 — Mis Agentes: eliminado el check "Agente para CRM" (captura por defecto al vincular a tienda) (v27)
 
 - **Objetivo (decisión del usuario):** en la sección Mis Agentes, los modales de crear/editar agente tenían un check "Agente para CRM (captura leads y ventas automáticamente)" (`crm_activo`). Como ahora el agente captura leads **por defecto** al conectarse/vincularse a una tienda, ese check ya no es necesario y se elimina su lógica sin afectar la captura.
