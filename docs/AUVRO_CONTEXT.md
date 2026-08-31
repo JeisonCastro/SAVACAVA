@@ -1009,6 +1009,19 @@ Multiusuario.
 
 # Changelog de Cambios Técnicos
 
+## 30 Ago 2026 — Menús laterales reordenados de forma lógica (dashboard + tienda-admin) (v21)
+
+- **Objetivo (decisión del usuario):** reordenar de forma lógica el menú lateral del dashboard y de tienda-admin.html.
+- **`dashboard.html` (sidebar):** nuevo orden del menú principal: **Mis Agentes → CRM → Web Factory → Bandeja → Integraciones → Tokens y Planes → Configuracion → Admin**. El CRM y Web Factory (tiendas) suben de posición (antes estaban después de Bandeja/Tokens), priorizando la gestión de ventas y tiendas.
+- **`tienda-admin.html` (sidebar):** menú reorganizado en **secciones agrupadas** con labels `.nav-label`:
+  - **Ventas:** Pipeline de ventas, Órdenes, Clientes.
+  - **Catálogo:** Productos, Categorías, Atributos.
+  - **Configuración:** Pasarela, Notificaciones, Agente IA.
+  - El **Resumen** queda arriba como entrada principal.
+- **`dashboard.css`:** `.sidebar nav .nav-label` con `margin-top:1rem` para separar visualmente las secciones del menú de tienda-admin.
+- **Cache bump a `v21`:** `dashboard.html` y `tienda-admin.html` (`dashboard.css?v=21`, `auvro-design.css?v=21`) y `sw.js` (`auvro-v21` + precache `?v=21`).
+- **Sin cambios de esquema en Supabase** (todo frontend).
+
 ## 30 Ago 2026 — Filtro del CRM de ventas rediseñado: tarjeta premium en 3 columnas (v20)
 
 - **Objetivo (decisión del usuario):** el filtro del módulo **CRM de ventas** se veía amontonado en una sola fila; se rediseña como una **tarjeta premium en 3 columnas** con labels claros para cada campo.

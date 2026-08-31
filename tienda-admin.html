@@ -46,8 +46,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="dashboard.css?v=19">
-    <link rel="stylesheet" href="auvro-design.css?v=19">
+    <link rel="stylesheet" href="dashboard.css?v=21">
+    <link rel="stylesheet" href="auvro-design.css?v=21">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         body { background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, sans-serif; }
@@ -89,12 +89,15 @@
         </div>
         <nav>
             <a href="#" data-sec="dashboard" class="active" onclick="return nav('dashboard')"><i class="fas fa-chart-pie"></i> Resumen</a>
-            <a href="#" data-sec="productos" onclick="return nav('productos')"><i class="fas fa-box"></i> Productos</a>
-            <a href="#" data-sec="categorias" onclick="return nav('categorias')"><i class="fas fa-tags"></i> Categorías</a>
+            <div class="nav-label">Ventas</div>
             <a href="#" data-sec="pipeline" onclick="return nav('pipeline')"><i class="fas fa-sitemap"></i> Pipeline de ventas</a>
-            <a href="#" data-sec="atributos" onclick="return nav('atributos')"><i class="fas fa-sliders-h"></i> Atributos</a>
             <a href="#" data-sec="ordenes" onclick="return nav('ordenes')"><i class="fas fa-receipt"></i> Órdenes</a>
             <a href="#" data-sec="clientes" onclick="return nav('clientes')"><i class="fas fa-users"></i> Clientes</a>
+            <div class="nav-label">Catálogo</div>
+            <a href="#" data-sec="productos" onclick="return nav('productos')"><i class="fas fa-box"></i> Productos</a>
+            <a href="#" data-sec="categorias" onclick="return nav('categorias')"><i class="fas fa-tags"></i> Categorías</a>
+            <a href="#" data-sec="atributos" onclick="return nav('atributos')"><i class="fas fa-sliders-h"></i> Atributos</a>
+            <div class="nav-label">Configuración</div>
             <a href="#" data-sec="pasarela" onclick="return nav('pasarela')"><i class="fas fa-credit-card"></i> Pasarela</a>
             <a href="#" data-sec="notificaciones" onclick="return nav('notificaciones')"><i class="fas fa-bell"></i> Notificaciones</a>
             <a href="#" data-sec="agentes" onclick="return nav('agentes')"><i class="fas fa-robot"></i> Agente IA</a>
