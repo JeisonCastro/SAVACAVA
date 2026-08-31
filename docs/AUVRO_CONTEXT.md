@@ -1009,6 +1009,19 @@ Multiusuario.
 
 # Changelog de Cambios Técnicos
 
+## 30 Ago 2026 — Eliminación total del "Configurar CRM" del agente en el dashboard + opción "En proceso" en pipeline de tienda (v19)
+
+- **Objetivo (decisión del usuario):** el CRM del dashboard ya NO gestiona la configuración del agente (pasarela, catálogo, pipeline, "Conectar"). Toda esa lógica vive ahora en la TIENDA. Se elimina por completo el modal "Configurar CRM: <agente>" y sus puntos de entrada; además, en la administración de la tienda, el select de rol del pipeline ahora incluye la opción explícita **"En proceso"** (etapa intermedia), quedando los 4 roles claros: Inicial / En proceso / Venta cerrada / Perdida.
+- **`dashboard.html`:**
+  - **Eliminado el botón "Configurar" de la topbar del CRM** (`#crm-topbar-config`).
+  - **Eliminado el modal completo `#crm-config-modal`** y sus modales asociados (`#producto-modal`, `#importar-modal`, `#cat-preview-modal`) junto con todo su HTML (catálogo, pasarela Wompi, notificaciones, pipeline de estados del agente, campos a capturar).
+  - **Eliminadas todas las funciones JS del flujo de config**: `abrirConfigCRM`, `cerrarConfigCRM`, `guardarConfigCRM`, `renderConfigCatalogo`, `renderConfigEstados`, `agregarEstado`, `eliminarEstado`, editor de catálogo enriquecido (`abrirProductoModal`, `guardarProducto`, `duplicarProducto`, `eliminarProducto`, `abrirImportarModal`, `guardarImportar`, `abrirVistaPrevia`, `renderCamposTipo`, `agregarFila`, `quitarFila`, etc.), y las variables/helper huérfanos (`crmCatalogo`, `aplicarConfigAgente`, `crmData.config`).
+  - **Banners del CRM reescritos**: ya no hay botones "Configurar"/"Conectar" del agente. Con tienda en vista → banner informativo verde "gestionado en el módulo TIENDA" con enlace "Abrir tienda". Agente sin tienda → banner neutral indicando que debe vincularse a una tienda (pasarela/catálogo/pipeline se gestionan allí). Sin tienda en vista y sin agente → sin banner.
+  - `renderCRM` y `cargarCRM` simplificados (sin `config`/`crmCatalogo`).
+- **`tienda-admin.html` (`renderPipeline`):** nueva opción `value="proceso"` → **"En proceso · etapa intermedia"** en el select `#pipe-role` (junto a Inicial / Venta cerrada / Perdida). `guardarEstadoPipeline` la guarda con `es_inicial=false, es_cerrada=false, es_perdida=false` (el backend `guardar_pipeline_estado` ya lo soporta). La leyenda y los badges ya existentes cubren los 4 roles.
+- **Cache bump a `v19`:** `dashboard.html` y `tienda-admin.html` (`dashboard.css?v=19`, `auvro-design.css?v=19`) y `sw.js` (`auvro-v19` + precache `?v=19`).
+- **Sin cambios de esquema en Supabase** (todo frontend).
+
 ## 30 Ago 2026 — CRM orientado a TIENDA: se quita "Conectar/Configurar" del agente + agente auto-seleccionado por tienda + UX clara del pipeline
 
 - **Objetivo (decisión del usuario):** el CRM del dashboard deja de "configurar/conectar al agente" (pasarela, catálogo, pipeline) porque eso ahora vive en la **TIENDA**. Cada cliente con tienda tiene su CRM que mide las ventas de la tienda y del agente. Nutre la regla de que, al seleccionar una tienda en el CRM, el agente asignado a esa tienda se elige automáticamente ("tienda llama al agente"). Y en la administración de la tienda, la sección **Pipeline de ventas** explica de forma clara cómo el sistema entiende las ventas: **Inicial** (entra), **En proceso** (avanza), **Venta cerrada** (se pagó → venta ganada; el sistema la cierra solo al aprobarse el pago) y **Perdida** (no se pagó).
