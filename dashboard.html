@@ -72,8 +72,8 @@
             rel="stylesheet">
         <link rel="stylesheet"
             href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-        <link rel="stylesheet" href="dashboard.css?v=29">
-        <link rel="stylesheet" href="auvro-design.css?v=29">
+        <link rel="stylesheet" href="dashboard.css?v=30">
+        <link rel="stylesheet" href="auvro-design.css?v=30">
 
     </head>
     <body class="light-mode">
@@ -936,7 +936,7 @@
 
                 <!-- MODAL: Crear sitio web -->
                 <div id="wf-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;align-items:center;justify-content:center">
-                    <div style="background:var(--surface);border:1px solid var(--border2);border-radius:14px;padding:1.5rem;width:90%;max-width:460px;box-shadow:var(--shadow-soft)">
+                    <div style="background:var(--surface);border:1px solid var(--border2);border-radius:14px;padding:1.5rem;width:94%;max-width:960px;box-shadow:var(--shadow-soft);max-height:92vh;overflow-y:auto">
                         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
                             <h3 style="font-family:'Inter',sans-serif;font-weight:700;font-size:1rem" id="wf-modal-title">Nuevo sitio web</h3>
                             <button onclick="cerrarWfModal()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1.1rem"><i class="fas fa-times"></i></button>
@@ -2269,13 +2269,15 @@ let _wfPropuestaIA = null;
         document.getElementById('wf-modal-title').textContent = 'Nuevo sitio web';
         document.getElementById('wf-modal-body').innerHTML = `
             <style>
-                .wf-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: .8rem; margin-top: .6rem; }
+                .wf-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: .8rem; margin-top: .6rem; }
                 .wf-field label { display: block; font-size: .78rem; font-weight: 600; color: var(--dim); margin-bottom: .3rem; }
                 .wf-field input, .wf-field select { width: 100%; padding: 8px; border: 1px solid var(--border2); border-radius: 8px; background: var(--bg); color: var(--text); }
                 .wf-field input[type=color] { width: 46px; height: 38px; padding: 3px; cursor: pointer; border-radius: 10px; }
                 .wf-field .wf-accent-row { display: flex; align-items: center; gap: .5rem; }
                 .wf-field .wf-accent-row input[type=text] { flex: 1; text-transform: uppercase; }
+                .wf-field textarea { width: 100%; padding: 8px; border: 1px solid var(--border2); border-radius: 8px; background: var(--bg); color: var(--text); font-size: .8rem; resize: vertical; }
                 .wf-preview { margin-top: .7rem; padding: .65rem .95rem; border: 1px solid var(--border2); border-radius: 12px; background: var(--bg2); color: var(--text); font-size: .95rem; font-weight: 700; letter-spacing: -.01em; }
+                @media (max-width: 900px) { .wf-grid { grid-template-columns: repeat(2, 1fr); } }
                 @media (max-width: 600px) { .wf-grid { grid-template-columns: 1fr; } }
             </style>
             <div class="wf-grid">

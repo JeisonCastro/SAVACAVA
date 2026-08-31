@@ -1009,6 +1009,14 @@ Multiusuario.
 
 # Changelog de Cambios Técnicos
 
+## 30 Ago 2026 — Modal "Nuevo sitio web": más ancho y grid de 3 columnas (UX) + cache v30
+
+- **Objetivo (decisión del usuario):** mejorar la UX del modal de creación del Web Factory haciéndolo más ancho y organizando los campos en 3 columnas.
+- **`dashboard.html`:**
+  - Contenedor del modal `#wf-modal`: `width:94%; max-width:960px` (antes 460px) + `max-height:92vh; overflow-y:auto` (para pantallas bajas).
+  - `.wf-grid` (estilos inyectados en `abrirModalCrearWeb`): `repeat(3, 1fr)` en escritorio, `repeat(2, 1fr)` hasta 900px, `1fr` hasta 600px (mobile). Añadido `.wf-field textarea` y utilidad `.wf-full` (grid-column 1/-1).
+- **PWA:** cache bump **v29 → v30** (`dashboard.html` → `dashboard.css?v=30`, `auvro-design.css?v=30`; `sw.js` → `auvro-v30` + precache `?v=30`).
+
 ## 30 Ago 2026 — Fix crítico: Web Factory vacío (ReferenceError en action `list`) (v29-d)
 
 - **Síntoma (reportado por el usuario):** el Web Factory mostraba 0 sitios.
