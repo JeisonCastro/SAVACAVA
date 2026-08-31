@@ -4106,9 +4106,11 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
 .wf-card-section-label{font-size:.68rem;font-weight:600;color:var(--dim);text-transform:uppercase;letter-spacing:.04em;display:flex;align-items:center;gap:.3rem}
 .wf-card-section-label i{font-size:.6rem;opacity:.7}
 .wf-card-slug{font-size:.8rem;color:var(--text);font-weight:500;font-family:'Inter',monospace}
-.wf-card-domain{font-size:.8rem;color:var(--text);font-weight:500;display:flex;align-items:center;gap:.3rem}
+.wf-card-domain{font-size:.8rem;color:var(--text);font-weight:500;display:flex;align-items:center;gap:.3rem;margin-top:.2rem;word-break:break-word}
 .wf-card-domain .wf-check{color:var(--green);font-size:.7rem}
 .wf-card-domain .wf-pending{color:var(--yellow);font-size:.7rem}
+.wf-card-domain-note{font-size:.68rem;color:var(--dim);display:flex;align-items:flex-start;gap:.3rem;margin-top:.25rem;line-height:1.4;padding:.3rem .5rem;background:rgba(251,191,36,.06);border:1px solid rgba(251,191,36,.15);border-radius:6px}
+.wf-card-domain-note i{font-size:.62rem;margin-top:.12rem;flex-shrink:0}
 .wf-card-error{font-size:.72rem;color:var(--red);padding:.35rem .5rem;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.15);border-radius:6px;line-height:1.4;word-break:break-word;display:flex;align-items:flex-start;gap:.3rem}
 .wf-card-error i{font-size:.65rem;margin-top:.1rem;flex-shrink:0}
 

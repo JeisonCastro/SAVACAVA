@@ -1009,6 +1009,17 @@ Multiusuario.
 
 # Changelog de Cambios Técnicos
 
+## 30 Ago 2026 — Web Factory: card rediseñada, dominio externo sin errores de auth Netlify (v23)
+
+- **Objetivo (decisión del usuario):** en el Dashboard → Web Factory, las cards de proyectos se veían desordenadas y anchas porque cada una mostraba una sección "Dominio" con un **error de autenticación de Netlify** (`dominio_error`). El usuario aclaró el flujo correcto: **el dominio se compra por fuera y se agrega directamente en Netlify** (DNS + verificación allí), NO desde AUVRO. Por eso se rediseña la card para que sea compacta y no muestre errores de auth.
+- **`dashboard.html`:**
+  - **Sección "Dominio" rediseñada** (`renderWebFactory`/cards): ya no muestra `dominio_error` (mensaje de auth de Netlify) como error alarmista. Ahora, si el dominio está verificado → check verde; si está pendiente/externo → icono de reloj + hint suave **"Dominio externo: gestiona DNS y verificacion en Netlify"** (amarillo informativo, no error rojo).
+  - **Card más compacta**: se **fusionaron** las secciones "Identificador" (slug) y "Dominio" en una sola sección con label "Identificador" (slug + cliente + dominio inline + error real de proyecto si existe). Se elimina la sección de dominio separada → card menos alta y menos ancha.
+  - **`wfEstadoBadge`**: `dominio_pendiente` ahora muestra **badge verde "Publicado"** (en vez de amarillo "Dominio pendiente"), porque el sitio ya está desplegado y el dominio se gestiona externamente; ya no parece un error.
+- **`dashboard.css`:** `.wf-card-domain` con `margin-top` y `word-break:break-word`; nueva clase `.wf-card-domain-note` (aviso informativo suave del dominio externo, badge amarillo tenue con icono info).
+- **Cache bump a `v23`:** `dashboard.html` (`dashboard.css?v=23`, `auvro-design.css?v=23`) y `sw.js` (`auvro-v23` + precache `?v=23`).
+- **Sin cambios de esquema ni de backend** (se mantiene `registrarDominio` en `web-factory.js`; solo el front deja de exponer el error de auth).
+
 ## 30 Ago 2026 — tienda-admin: botones con diseño ("Panel AUVRO" y "Ver tienda") y eliminado el botón "Salir" (v22)
 
 - **Objetivo (decisión del usuario):** en `tienda-admin.html`, el enlace "Panel AUVRO" y el enlace "Ver tienda" pasan a ser **botones con diseño** (ya no son enlaces de texto planos); se **elimina el botón "Salir"** de la topbar porque cerraba la sesión.

@@ -72,8 +72,8 @@
             rel="stylesheet">
         <link rel="stylesheet"
             href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-        <link rel="stylesheet" href="dashboard.css?v=22">
-        <link rel="stylesheet" href="auvro-design.css?v=22">
+        <link rel="stylesheet" href="dashboard.css?v=23">
+        <link rel="stylesheet" href="auvro-design.css?v=23">
 
     </head>
     <body class="light-mode">
@@ -2080,7 +2080,7 @@
             case 'deploying': return { cls: 'badge-yellow', label: 'Desplegando' };
             case 'suspending': return { cls: 'badge-red', label: 'Apagando' };
             case 'inactivo': return { cls: 'badge-red', label: 'Suspendido' };
-            case 'dominio_pendiente': return { cls: 'badge-yellow', label: 'Dominio pendiente' };
+            case 'dominio_pendiente': return { cls: 'badge-green', label: 'Publicado' };
             case 'error': return { cls: '', label: 'Error' };
             default: return { cls: 'badge', label: estado || '—' };
         }
@@ -2211,26 +2211,19 @@
                         dangerBtns += '<button class="icon-btn danger" onclick="eliminarProyectoWeb(\'' + p.id + '\',\'' + wfEscapeHtml(p.nombre) + '\')" title="Eliminar proyecto"><i class="fas fa-trash"></i></button>';
                     }
 
-                    // Error block
+                    // Error block (solo errores reales del proyecto, no dominio)
                     var errorBlock = '';
                     if (p.error) {
                         errorBlock = '<div class="wf-card-error" title="' + wfEscapeHtml(p.error) + '"><i class="fas fa-triangle-exclamation"></i> ' + wfEscapeHtml(p.error.length > 80 ? p.error.substring(0, 80) + '...' : p.error) + '</div>';
                     }
-                    if (p.dominio_error) {
-                        errorBlock += '<div class="wf-card-error" style="color:var(--yellow);background:rgba(251,191,36,.08);border-color:rgba(251,191,36,.15)" title="' + wfEscapeHtml(p.dominio_error) + '"><i class="fas fa-triangle-exclamation"></i> ' + wfEscapeHtml(p.dominio_error.length > 80 ? p.dominio_error.substring(0, 80) + '...' : p.dominio_error) + '</div>';
-                    }
 
-                    // Domain section
-                    var domainSection = '';
+                    // Domain line (dominio se gestiona externamente en Netlify)
+                    var domainLine = '';
                     if (p.dominio) {
-                        var dominioIcon = p.dominio_estado === 'verificado' ? '<span class="wf-check"><i class="fas fa-check-circle"></i></span>' : '<span class="wf-pending"><i class="fas fa-clock"></i></span>';
-                        domainSection = '<div class="wf-card-section">' +
-                            '<div class="wf-card-section-label"><i class="fas fa-globe"></i> Dominio</div>' +
-                            '<div class="wf-card-domain">' + dominioIcon + ' ' + wfEscapeHtml(p.dominio) + '</div>' +
-                            errorBlock +
-                            '</div>';
-                    } else if (errorBlock) {
-                        domainSection = '<div class="wf-card-section">' + errorBlock + '</div>';
+                        var dominioVerificado = p.dominio_estado === 'verificado';
+                        var dominioIcon = dominioVerificado ? '<span class="wf-check"><i class="fas fa-check-circle"></i></span>' : '<span class="wf-pending"><i class="fas fa-clock"></i></span>';
+                        domainLine = '<div class="wf-card-domain">' + dominioIcon + ' ' + wfEscapeHtml(p.dominio) + '</div>' +
+                            (dominioVerificado ? '' : '<div class="wf-card-domain-note"><i class="fas fa-info-circle"></i> Dominio externo: gestiona DNS y verificacion en Netlify</div>');
                     }
 
                     return '<div class="wf-card' + (inactivo ? ' inactive' : '') + '">' +
@@ -2250,8 +2243,9 @@
                             '<div class="wf-card-section-label"><i class="fas fa-hashtag"></i> Identificador</div>' +
                             '<div class="wf-card-slug">' + wfEscapeHtml(p.slug) + '</div>' +
                             (p.cliente ? '<div style="font-size:.72rem;color:var(--dim);margin-top:.1rem">' + wfEscapeHtml(p.cliente) + '</div>' : '') +
+                            domainLine +
+                            errorBlock +
                         '</div>' +
-                        domainSection +
                         '<div class="wf-card-section">' +
                             '<div class="wf-card-section-label"><i class="fas fa-robot"></i> Agente</div>' +
                             '<select class="wf-card-agent-select" onchange="wfAsignarAgente(\'' + p.id + '\', this.value)" title="Asignar agente IA a este proyecto">' + optsAgente + '</select>' +
