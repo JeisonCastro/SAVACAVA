@@ -1009,6 +1009,13 @@ Multiusuario.
 
 # Changelog de Cambios Técnicos
 
+## 30 Ago 2026 — Web Factory: nombre del sitio con salto de línea (card sin estirarse) (v24)
+
+- **Objetivo (decisión del usuario):** en las cards de Web Factory, cuando el nombre del sitio era muy largo se veía mal y estiraba el ancho de la card. Ahora el nombre **hace salto de línea** (máx. 2 líneas con ellipsis) en vez de truncar en una línea.
+- **`dashboard.css`:** `.wf-card-title` cambia de `white-space:nowrap;text-overflow:ellipsis` a **`-webkit-line-clamp:2`** (`display:-webkit-box`, `-webkit-box-orient:vertical`, `overflow:hidden`, `word-break:break-word`): el nombre largo se parte en hasta 2 líneas y la card mantiene el ancho del grid.
+- **Cache bump a `v24`:** `dashboard.html` (`dashboard.css?v=24`, `auvro-design.css?v=24`) y `sw.js` (`auvro-v24` + precache `?v=24`).
+- **Sin cambios de esquema ni de backend** (todo CSS).
+
 ## 30 Ago 2026 — Web Factory: card rediseñada, dominio externo sin errores de auth Netlify (v23)
 
 - **Objetivo (decisión del usuario):** en el Dashboard → Web Factory, las cards de proyectos se veían desordenadas y anchas porque cada una mostraba una sección "Dominio" con un **error de autenticación de Netlify** (`dominio_error`). El usuario aclaró el flujo correcto: **el dominio se compra por fuera y se agrega directamente en Netlify** (DNS + verificación allí), NO desde AUVRO. Por eso se rediseña la card para que sea compacta y no muestre errores de auth.
