@@ -1009,6 +1009,14 @@ Multiusuario.
 
 # Changelog de Cambios Técnicos
 
+## 30 Ago 2026 — FIX CRÍTICO: tienda-admin.html se quedaba en "Cargando tienda…" (ReferenceError salir) (v25)
+
+- **Problema reportado (usuario):** al ingresar a `tienda-admin.html?proyecto=...` la página se quedaba en "Cargando tienda…" y no cargaba nada.
+- **Causa raíz:** en el cambio v22 se eliminó la función `salir()` (botón "Salir"), pero quedó la referencia `salir` dentro del `Object.assign(window, { ... salir ... })` del IIFE (tienda-admin.html ~línea 1069). Al ejecutar el script, `salir is not defined` lanzaba un **ReferenceError que rompía todo el IIFE**, por lo que `init()` nunca se ejecutaba → la topbar quedaba en "Cargando tienda…" y el `main` vacío.
+- **Fix:** eliminada la referencia `salir` de `Object.assign(window, ...)`. Verificado que no quede ninguna otra referencia a `salir` en tienda-admin.html.
+- **Cache bump a `v25`** en los 3 archivos (dashboard.html y tienda-admin.html estaban desincronizados en v24/v22): `dashboard.html` y `tienda-admin.html` (`dashboard.css?v=25`, `auvro-design.css?v=25`) y `sw.js` (`auvro-v25` + precache `?v=25`).
+- **Sin cambios de esquema ni de backend.**
+
 ## 30 Ago 2026 — Web Factory: nombre del sitio con salto de línea (card sin estirarse) (v24)
 
 - **Objetivo (decisión del usuario):** en las cards de Web Factory, cuando el nombre del sitio era muy largo se veía mal y estiraba el ancho de la card. Ahora el nombre **hace salto de línea** (máx. 2 líneas con ellipsis) en vez de truncar en una línea.
