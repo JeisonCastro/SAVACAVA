@@ -1188,6 +1188,10 @@ exports.handler = async (event) => {
 
         // ── LIST: proyectos + plantillas ──
         if (!action || action === 'list') {
+            const { data: proyectos, error } = await supabase
+                .from('web_projects')
+                .select('*')
+                .order('created_at', { ascending: false });
             if (error) return { statusCode: 500, body: JSON.stringify({ error: error.message }) };
 
             // Reconciliación: si un sitio tiene agente, garantiza que su dominio
