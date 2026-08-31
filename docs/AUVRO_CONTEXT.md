@@ -1009,6 +1009,12 @@ Multiusuario.
 
 # Changelog de Cambios Técnicos
 
+## 30 Ago 2026 — Fix crítico: Web Factory vacío (ReferenceError en action `list`) (v29-d)
+
+- **Síntoma (reportado por el usuario):** el Web Factory mostraba 0 sitios.
+- **Causa raíz:** al insertar el bloque `generar_diseno` (v29), la edición eliminó por accidente la consulta Supabase del action `list` (`const { data: proyectos, error } = await supabase.from('web_projects').select('*').order(...)`). El `if (error) return {...}` quedaba con `error` indefinido → `ReferenceError` en runtime → `list` respondía 500 → el dashboard lanzaba "Error cargando proyectos" y no mostraba la lista (la vista aparecía vacía). La sintaxis era válida, por eso pasó los checks de `vm.Script`.
+- **Fix:** restaurada la consulta Supabase en el action `list`. Verificado: no hay otras líneas perdidas (diff contra `c28f0c8`), y las dos declaraciones `const { data: proyectos, error }` están en scopes distintos (`list_tienda_para_usuario` y `list`).
+
 ## 30 Ago 2026 — 4 plantillas MIT adicionales (Start Bootstrap) + tienda Premium (v29-c)
 
 - **Objetivo (decisión del usuario):** ampliar el catálogo de plantillas gratuitas MIT del Web Factory (Start Bootstrap free, permitido comercialmente) con nuevas opciones por nicho y una tienda con estética Bootstrap.
