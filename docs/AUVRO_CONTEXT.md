@@ -1009,6 +1009,25 @@ Multiusuario.
 
 # Changelog de Cambios Técnicos
 
+## 30 Ago 2026 — Web Factory: diseño asistido por IA con OpenCode Zen (modelos gratuitos) (v29)
+
+- **Objetivo (decisión del usuario):** poder crear sitios bien diseñados rápido desde el Web Factory sin bajar el repo ni editar a mano. El admin pega el **contexto del negocio** en el modal "Nuevo sitio web" y la IA (OpenCode Zen, modelos gratuitos) propone contenido, slogan, color y tipografía sobre la plantilla MIT elegida. El contexto se guarda como `docs/CONTEXT.md` en el repo para que el editor AI (`site-editor.js`) lo reutilice después.
+- **`netlify/functions/web-factory.js`:**
+  - Nuevo helper `llamarIAWebFactory(mensajes, maxTokens)`: intenta **OpenCode Zen** (`https://opencode.ai/zen/v1/chat/completions`, modelo configurable `ZEN_MODEL`, por defecto `big-pickle`) con `ZEN_API_KEY` (o `OPENCODE_ZEN_API_KEY`); fallback automático a DeepSeek (`deepseek-v4-flash`) y luego OpenAI (`gpt-4o-mini`).
+  - Nueva constante `PROMPT_DISENO_UXUI`: prompt de sistema fijo (metodología UX/UI del producto, en español, JSON estricto). Vive en el backend, no se escribe por sitio.
+  - Nuevo `generarPropuestaDiseno(body)` y action `generar_diseno` (solo admin): devuelve propuesta JSON (resumen, descripcion, slogan, accent_color, fuente, secciones) sin modificar nada.
+  - `pipelineCrear`: acepta `contexto` y `propuesta_ia` (aprobada). Si hay propuesta, sus valores de descripcion/slogan/color/fuente se aplican (editables antes de aprobar). Si hay contexto, genera `docs/CONTEXT.md` en el repo.
+- **`netlify/functions/web-factory-background.js`:** no requiere cambios (usa `pipelineCrear`).
+- **`dashboard.html`** (modal "Nuevo sitio web"):
+  - Bloque **"Diseño asistido por IA"** con textarea `wf-contexto` (contexto del negocio), botón `wfGenerarDiseno()` y área `wf-ia-result`.
+  - `wfGenerarDiseno()`: llama a `generar_diseno`, aplica la propuesta a los campos (Descripción, Slogan, Color, Fuente — editables) y muestra resumen + secciones. Variable `_wfPropuestaIA`.
+  - `crearProyectoWeb()`: envía `contexto` y `propuesta_ia`.
+  - `cerrarWfModal()`/apertura: limpian `_wfPropuestaIA` y el resultado.
+- **`netlify.toml`:** `[functions."web-factory"] timeout = 30` y `[functions."web-factory-background"] timeout = 900`.
+- **Configuración en Netlify (env):** `ZEN_API_KEY` (ya creada por el usuario) y opcional `ZEN_MODEL` (por defecto `big-pickle`). Los modelos free de Zen son por tiempo limitado; el fallback DeepSeek/OpenAI evita que la creación se caiga.
+- **Privacidad:** aviso en el modal de no enviar datos personales/confidenciales de terceros (los modelos free de NVIDIA/contributor pueden usar los datos para mejora).
+- **Cache bump a `v29`:** `dashboard.html` (`dashboard.css?v=29`, `auvro-design.css?v=29`) y `sw.js` (`auvro-v29` + precache `?v=29`).
+
 ## 30 Ago 2026 — Mis Agentes: eliminada por completo la sección "Campos a capturar" de los modales (v28)
 
 - **Objetivo (decisión del usuario):** tras quitar el check "Agente para CRM", la sección "Campos a capturar" (checkboxes Nombre/Teléfono/Email/Interés/Preferencias) quedó siempre visible en los modales Crear/Editar agente, encima de "Vincular a tienda". El usuario pidió **eliminarla por completo**.

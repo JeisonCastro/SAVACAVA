@@ -72,8 +72,8 @@
             rel="stylesheet">
         <link rel="stylesheet"
             href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-        <link rel="stylesheet" href="dashboard.css?v=28">
-        <link rel="stylesheet" href="auvro-design.css?v=28">
+        <link rel="stylesheet" href="dashboard.css?v=29">
+        <link rel="stylesheet" href="auvro-design.css?v=29">
 
     </head>
     <body class="light-mode">
@@ -1958,12 +1958,16 @@
     }
 
     // ── WEB FACTORY ──
-    let _wfPlantillas = [];
-    let _wfEnv = {};
-    let _wfSlugAuto = true;
+let _wfPlantillas = [];
+let _wfEnv = {};
+let _wfSlugAuto = true;
+let _wfPropuestaIA = null;
 
     function cerrarWfModal() {
         document.getElementById('wf-modal').style.display = 'none';
+        _wfPropuestaIA = null;
+        const r = document.getElementById('wf-ia-result');
+        if (r) { r.style.display = 'none'; r.innerHTML = ''; }
     }
 
     function wfEscapeHtml(str) {
@@ -2289,6 +2293,19 @@
                 <div class="wf-field"><label>Estilo de fuente</label><select id="wf-fuente" onchange="wfPreviewTheme()">${opcionesFuentes}</select></div>
             </div>
             <div class="wf-preview" id="wf-preview">Aa · Asi se vera el sitio con tu color y fuente</div>
+            <div id="wf-ia-block" style="margin-top:1.1rem;padding-top:.9rem;border-top:1px solid var(--border2)">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:.6rem;flex-wrap:wrap;margin-bottom:.45rem;">
+                    <label style="font-size:.8rem;font-weight:700;color:var(--text);display:flex;align-items:center;gap:.4rem;"><i class="fas fa-wand-magic-sparkles" style="color:var(--accent)"></i>Diseño asistido por IA</label>
+                    <span style="font-size:.68rem;color:var(--dim);">OpenCode Zen · gratis para el admin</span>
+                </div>
+                <label style="display:block;font-size:.74rem;font-weight:600;color:var(--dim);margin-bottom:.3rem;">Contexto del negocio <span style="font-weight:400;color:var(--muted)">(qué hace, qué vende, público, tono, objetivo)</span></label>
+                <textarea id="wf-contexto" rows="5" style="width:100%;padding:8px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text);font-size:.8rem;resize:vertical;" placeholder="Ej: Restaurante familiar de cocina criolla en Bogotá. Vende platos típicos, menú ejecutivo y servicio de domicilios. Público: familias y oficinistas. Tono: cálido y acogedor. Objetivo: reservas y pedidos por WhatsApp."></textarea>
+                <button class="btn-main" style="width:100%;margin-top:.55rem" onclick="wfGenerarDiseno()" id="wf-ia-btn">
+                    <i class="fas fa-sparkles" style="margin-right:.3rem"></i> Generar propuesta de diseño
+                </button>
+                <div id="wf-ia-result" style="display:none;margin-top:.6rem;border:1px solid var(--border2);border-radius:12px;background:var(--bg2);padding:.7rem .85rem;font-size:.8rem;color:var(--text);"></div>
+                <p style="font-size:.68rem;color:var(--muted);margin-top:.5rem;line-height:1.5"><i class="fas fa-circle-info" style="margin-right:.25rem"></i>Opcional. Al generar, la IA propone contenido, slogan, color y tipografía usando el contexto y la plantilla elegida; luego puedes editarlos antes de crear. <strong>No envíes datos personales ni confidenciales de terceros</strong> (los modelos gratuitos pueden usarlos con fines de mejora).</p>
+            </div>
             <p style="font-size:.72rem;color:var(--dim);margin-top:.6rem">Logo, slogan y WhatsApp aparecen en el sitio (el botón de WhatsApp se oculta si lo dejas vacío). Si eliges un agente, su chat de IA se incrusta en la página para atender a los visitantes. El color y la fuente se aplican a toda la plantilla.</p>
             <button class="btn-main" style="width:100%;margin-top:1.2rem" onclick="crearProyectoWeb()">
                 <i class="fas fa-rocket" style="margin-right:.3rem"></i> Crear sitio
@@ -2296,6 +2313,7 @@
             <p style="font-size:.72rem;color:var(--dim);margin-top:.8rem">El proceso crea un repo privado en GitHub, un sitio en Netlify y dispara el deploy. Puede tardar unos minutos; el estado se actualiza solo.</p>
         `;
         _wfSlugAuto = true;
+        _wfPropuestaIA = null;
         document.getElementById('wf-modal').style.display = 'flex';
     }
 
@@ -2305,6 +2323,68 @@
         const slug = nombre.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
             .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 63);
         document.getElementById('wf-slug').value = slug;
+    }
+
+    async function wfGenerarDiseno() {
+        const contexto = document.getElementById('wf-contexto').value.trim();
+        if (!contexto) return showToast('Escribe primero el contexto del negocio', 'error');
+        const btn = document.getElementById('wf-ia-btn');
+        const resultado = document.getElementById('wf-ia-result');
+        btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin" style="margin-right:.3rem"></i> Generando propuesta...';
+        try {
+            const token = currentSession?.access_token || '';
+            const res = await fetch('/.netlify/functions/web-factory', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({
+                    action: 'generar_diseno',
+                    contexto,
+                    nombre: document.getElementById('wf-nombre').value.trim(),
+                    descripcion: document.getElementById('wf-descripcion').value.trim(),
+                    slogan: document.getElementById('wf-slogan').value.trim(),
+                    plantilla: document.getElementById('wf-plantilla').value
+                })
+            });
+            const data = await res.json();
+            if (!res.ok || !data.ok) throw new Error(data.error || ('HTTP ' + res.status));
+            _wfPropuestaIA = data.propuesta;
+
+            // Aplicar la propuesta a los campos del modal (editables)
+            if (data.propuesta.descripcion) document.getElementById('wf-descripcion').value = data.propuesta.descripcion;
+            if (data.propuesta.slogan) document.getElementById('wf-slogan').value = data.propuesta.slogan;
+            if (data.propuesta.accent_color) {
+                document.getElementById('wf-accent').value = data.propuesta.accent_color;
+                const txt = document.getElementById('wf-accent-text');
+                if (txt) txt.value = data.propuesta.accent_color;
+                wfPreviewTheme();
+            }
+            if (data.propuesta.fuente) {
+                const sel = document.getElementById('wf-fuente');
+                if (sel && [...sel.options].some(o => o.value === data.propuesta.fuente)) sel.value = data.propuesta.fuente;
+                wfPreviewTheme();
+            }
+
+            const secciones = (data.propuesta.secciones || []).map(s =>
+                '<div style="padding:.5rem 0;border-bottom:1px solid var(--border2)">' +
+                '<strong style="display:block;font-size:.78rem;margin-bottom:.15rem">' + wfEscapeHtml(s.titulo) + '</strong>' +
+                '<span style="font-size:.76rem;color:var(--dim)">' + wfEscapeHtml(s.contenido) + '</span>' +
+                '</div>').join('');
+            resultado.innerHTML =
+                '<div style="display:flex;gap:.5rem;align-items:flex-start;margin-bottom:.4rem;">' +
+                '<i class="fas fa-circle-check" style="color:var(--green);margin-top:.15rem"></i>' +
+                '<div><strong style="font-size:.8rem">Propuesta generada</strong>' +
+                '<div style="font-size:.76rem;color:var(--muted);margin-top:.15rem">' + wfEscapeHtml(data.propuesta.resumen || '') + '</div></div></div>' +
+                (secciones ? secciones : '') +
+                '<div style="font-size:.7rem;color:var(--dim);margin-top:.55rem"><i class="fas fa-pen-to-square" style="margin-right:.25rem"></i>Los campos Descripción, Slogan, Color y Fuente ya se rellenaron arriba. Puedes ajustarlos antes de crear. El contexto se guardará en docs/CONTEXT.md del sitio.</div>';
+            resultado.style.display = 'block';
+            showToast('Propuesta de diseño lista', 'ok');
+        } catch (err) {
+            resultado.style.display = 'block';
+            resultado.innerHTML = '<div style="color:var(--red);font-size:.78rem"><i class="fas fa-triangle-exclamation" style="margin-right:.3rem"></i>' + wfEscapeHtml(err.message) + '</div>';
+            _wfPropuestaIA = null;
+        } finally {
+            btn.disabled = false; btn.innerHTML = '<i class="fas fa-sparkles" style="margin-right:.3rem"></i> Generar propuesta de diseño';
+        }
     }
 
     async function crearProyectoWeb() {
@@ -2320,6 +2400,8 @@
         const agenteId = document.getElementById('wf-agente') ? document.getElementById('wf-agente').value.trim() : '';
         const accentColor = (document.getElementById('wf-accent') ? document.getElementById('wf-accent').value : '#2563eb').trim();
         const fuente = (document.getElementById('wf-fuente') ? document.getElementById('wf-fuente').value : 'inter').trim();
+        const contexto = (document.getElementById('wf-contexto') ? document.getElementById('wf-contexto').value.trim() : '');
+        const propuestaIA = _wfPropuestaIA;
 
         if (!cliente || !nombre || !slug) return showToast('Completa Cliente, Nombre y Slug', 'error');
         if (!/^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$/.test(slug)) return showToast('Slug invalido (solo minusculas, numeros y guiones)', 'error');
@@ -2347,7 +2429,7 @@
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`
                 },
-                body: JSON.stringify({ action: 'create', cliente, nombre, slug, plantilla, dominio, descripcion, slogan, logo, whatsapp, agente_id: agenteId || null, accent_color: accentColor, fuente })
+                body: JSON.stringify({ action: 'create', cliente, nombre, slug, plantilla, dominio, descripcion, slogan, logo, whatsapp, agente_id: agenteId || null, accent_color: accentColor, fuente, contexto: contexto || null, propuesta_ia: propuestaIA })
             });
             // Verificar si la background function rechazó inmediatamente (4xx/5xx antes del 202)
             if (res.status >= 400) {

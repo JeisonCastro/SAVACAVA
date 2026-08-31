@@ -9,6 +9,12 @@
 [functions."site-editor"]
   timeout = 30
 
+[functions."web-factory"]
+  timeout = 30
+
+[functions."web-factory-background"]
+  timeout = 900
+
 [functions."chat"]
   timeout = 30
 

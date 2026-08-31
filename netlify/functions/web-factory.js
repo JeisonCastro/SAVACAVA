@@ -220,6 +220,137 @@ async function garantizarDominiosAgente(agenteId, hostnames) {
         .eq('id', agente.id);
 }
 
+// ── IA para Web Factory: propuesta de diseño asistido (OpenCode Zen free) ──
+// Proveedor principal: OpenCode Zen (modelos "Free", por tiempo limitado).
+// Fallback automático: DeepSeek → OpenAI (misma infraestructura que chat.js/site-editor.js).
+async function llamarIAWebFactory(mensajes, maxTokens = 3000) {
+    const zenKey = process.env.ZEN_API_KEY || process.env.OPENCODE_ZEN_API_KEY;
+    const zenModel = process.env.ZEN_MODEL || 'big-pickle';
+    const errores = [];
+
+    if (zenKey) {
+        try {
+            const res = await fetch('https://opencode.ai/zen/v1/chat/completions', {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${zenKey}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ model: zenModel, messages: mensajes, temperature: 0.3, max_tokens: maxTokens }),
+                signal: AbortSignal.timeout(45000)
+            });
+            const data = await res.json();
+            if (data.choices?.[0]?.message?.content) return data.choices[0].message.content.trim();
+            errores.push('Zen: ' + (data.error?.message || `HTTP ${res.status}`));
+        } catch (e) { errores.push('Zen: ' + e.message); }
+    }
+
+    if (process.env.DEEPSEEK_API_KEY) {
+        try {
+            const res = await fetch('https://api.deepseek.com/v1/chat/completions', {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${process.env.DEEPSEEK_API_KEY}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ model: 'deepseek-v4-flash', messages: mensajes, temperature: 0.2, max_tokens: maxTokens, thinking: { type: 'disabled' } }),
+                signal: AbortSignal.timeout(45000)
+            });
+            const data = await res.json();
+            if (data.choices?.[0]?.message?.content) return data.choices[0].message.content.trim();
+            errores.push('DeepSeek: ' + (data.error?.message || `HTTP ${res.status}`));
+        } catch (e) { errores.push('DeepSeek: ' + e.message); }
+    }
+
+    const fallbackKey = process.env.FALLBACK_API_KEY || process.env.OPENIA_KEY;
+    if (fallbackKey) {
+        try {
+            const res = await fetch('https://api.openai.com/v1/chat/completions', {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${fallbackKey}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ model: 'gpt-4o-mini', messages: mensajes, temperature: 0.3, max_tokens: maxTokens }),
+                signal: AbortSignal.timeout(60000)
+            });
+            const data = await res.json();
+            if (data.choices?.[0]?.message?.content) return data.choices[0].message.content.trim();
+            errores.push('OpenAI: ' + (data.error?.message || `HTTP ${res.status}`));
+        } catch (e) { errores.push('OpenAI: ' + e.message); }
+    }
+
+    throw new Error('No hay proveedor de IA disponible: ' + (errores.join(' | ') || 'sin claves configuradas'));
+}
+
+// Prompt de sistema fijo (vive en el backend, no se escribe por sitio): condensa la
+// metodología UX/UI del producto. Se combina con el contexto del negocio para producir
+// una propuesta de contenido + dirección visual en JSON estricto.
+const PROMPT_DISENO_UXUI = `Eres un Senior UX/UI Designer + Product Designer + Art Director. Diseñas experiencias digitales personalizadas para cada negocio, NO plantillas reutilizadas.
+
+Metodología:
+1. PRIMERO entiende el negocio, su público y su objetivo comercial (usa SOLO el contexto proporcionado; NO inventes datos: ni precios, productos, testimonios, certificaciones, estadísticas ni ubicaciones).
+2. Define la dirección visual que encaje con ESE negocio específico (editorial, premium, minimalista, tecnológico, cálido, inmersivo...). No todas las marcas usan el mismo hero/colores/estilo.
+3. Propón contenido real por sección (hero, propuesta de valor, servicios/productos, prueba de confianza, CTA, contacto), jerarquía clara, CTA principal + secundarios que correspondan al negocio (no siempre "Comprar"/"Contactar").
+4. Elige paleta (accent en hex) y tipografía (fuente: inter|poppins|montserrat|roboto|lora|playfair|oswald) coherentes con la marca.
+5. Aplica: jerarquía visual, mobile-first, accesibilidad, estados de interfaz, escaneabilidad. Evita sobrecarga (demasiados gradientes, sombras o animaciones).
+
+Responde SOLO JSON estricto (sin markdown), con este esquema:
+{
+  "resumen": "2-3 líneas: qué propone y por qué encaja con este negocio",
+  "descripcion": "Descripción comercial corta (1-2 frases) del negocio",
+  "slogan": "Slogan corto y memorable",
+  "accent_color": "#RRGGBB",
+  "fuente": "inter|poppins|montserrat|roboto|lora|playfair|oswald",
+  "secciones": [
+    {"titulo": "Título de la sección", "contenido": "Contenido breve (1-3 frases) que puede usarse en esa sección"}
+  ]
+}
+Siempre en español.`;
+
+async function generarPropuestaDiseno(body) {
+    const { contexto, nombre, descripcion, slogan, plantilla } = body;
+    if (!contexto || !String(contexto).trim()) throw new Error('Falta el contexto del negocio');
+
+    let plantillaNombre = plantilla || 'landing';
+    try {
+        const pl = leerPlantillas().find(p => p.slug === plantilla);
+        if (pl) plantillaNombre = pl.nombre;
+    } catch (_) {}
+
+    const userPrompt = `NEGOCIO: ${nombre || '(sin nombre)'}
+PLANTILLA BASE: ${plantillaNombre}
+DESCRIPCION ACTUAL: ${descripcion || '(vacía)'}
+SLOGAN ACTUAL: ${slogan || '(vacío)'}
+
+CONTEXTO DEL NEGOCIO:
+${String(contexto).slice(0, 6000)}
+
+Analiza el negocio y responde el JSON:`;
+
+    const raw = await llamarIAWebFactory([
+        { role: 'system', content: PROMPT_DISENO_UXUI },
+        { role: 'user', content: userPrompt }
+    ], 3000);
+
+    const limpio = String(raw).replace(/^```json?\s*/i, '').replace(/\s*```$/i, '').trim();
+    let parsed;
+    try {
+        parsed = JSON.parse(limpio);
+    } catch (_) {
+        throw new Error('La IA no devolvió JSON válido');
+    }
+
+    const accent = validarAccent(parsed.accent_color || null) || null;
+    const fuente = fuenteElegida(parsed.fuente || '') ? String(parsed.fuente).trim() : null;
+    const secciones = Array.isArray(parsed.secciones)
+        ? parsed.secciones.slice(0, 12).map(s => ({
+            titulo: sanearTexto(s && s.titulo),
+            contenido: sanearTexto(s && s.contenido)
+        })).filter(s => s.titulo)
+        : [];
+
+    return {
+        resumen: sanearTexto(parsed.resumen) || 'Propuesta generada.',
+        descripcion: sanearTexto(parsed.descripcion),
+        slogan: sanearTexto(parsed.slogan),
+        accent_color: accent,
+        fuente,
+        secciones
+    };
+}
+
 // ── Helpers GitHub ──
 async function detalleErrorGitHub(res) {
     let detalle = '';
@@ -658,11 +789,19 @@ async function refrescarYGuardar(proyecto) {
 
 // ── Pipeline de creación (background) ──
 async function pipelineCrear(body, adminId) {
-    const { cliente, nombre, slug, plantilla, dominio, descripcion, logo, slogan, whatsapp, agente_id, accent_color, fuente } = body;
+    const { cliente, nombre, slug, plantilla, dominio, descripcion, logo, slogan, whatsapp, agente_id, accent_color, fuente, contexto, propuesta_ia } = body;
 
-    const accent = validarAccent(accent_color);
+    // Si el admin aprobó una propuesta de IA, los valores de contenido/diseño provienen de ella
+    // (el usuario puede editarlos en el modal antes de aprobar; aquí solo se aplican).
+    const diseno = (propuesta_ia && typeof propuesta_ia === 'object') ? propuesta_ia : null;
+    const descripcionFinal = (diseno && diseno.descripcion) ? String(diseno.descripcion) : (descripcion || '');
+    const sloganFinal = (diseno && diseno.slogan) ? String(diseno.slogan) : (slogan || '');
+    const accentFinal = (diseno && diseno.accent_color && validarAccent(diseno.accent_color)) ? diseno.accent_color : accent_color;
+    const fuenteFinal = (diseno && diseno.fuente && fuenteElegida(diseno.fuente)) ? diseno.fuente : (fuente || '');
+
+    const accent = validarAccent(accentFinal);
     if (accent === null) throw new Error('Color principal inválido (usa #RRGGBB)');
-    const fuenteInfo = fuenteElegida(fuente);
+    const fuenteInfo = fuenteElegida(fuenteFinal);
 
     const plantillas = leerPlantillas();
     const plantillaElegida = plantillas.find(p => p.slug === plantilla) || plantillas[0];
@@ -685,9 +824,9 @@ async function pipelineCrear(body, adminId) {
 
     const valores = {
         EMPRESA: nombre,
-        DESCRIPCION: descripcion || nombre,
+        DESCRIPCION: descripcionFinal || nombre,
         SLUG: slug,
-        SLOGAN: sanearTexto(slogan),
+        SLOGAN: sanearTexto(sloganFinal),
         LOGO: sanearUrlLogo(logo),
         WHATSAPP: normalizarWhatsapp(whatsapp),
         ACCENT: accent,
@@ -700,7 +839,7 @@ async function pipelineCrear(body, adminId) {
     // 1) Registrar en Supabase (estado: creando)
     const insDatos = {
         cliente, nombre, slug, plantilla: plantillaElegida.slug,
-        descripcion: descripcion || null, dominio: dominio || null,
+        descripcion: descripcionFinal || null, dominio: dominio || null,
         logo: valores.LOGO || null, slogan: valores.SLOGAN || null, whatsapp: valores.WHATSAPP || null,
         agente_id: agenteRow ? agenteRow.id : null,
         accent_color: accent, fuente: (fuenteInfo ? fuenteInfo.key : 'sistema'),
@@ -737,7 +876,25 @@ async function pipelineCrear(body, adminId) {
                 if (/\.html$/i.test(f.path)) content = inyectarTema(content, accent, fuenteInfo);
                 return { ...f, content };
             });
-        datosRepo = await crearRepoGitHub(owner, slug, (descripcion || plantillaElegida.nombre).slice(0, 350), archivos);
+
+        // docs/CONTEXT.md: contexto del negocio (+ propuesta aprobada) para el editor AI
+        const contextoTxt = contexto && String(contexto).trim() ? String(contexto).trim() : '';
+        if (contextoTxt) {
+            let md = `# CONTEXTO DEL NEGOCIO — ${nombre}\n\n${contextoTxt}\n`;
+            if (diseno) {
+                md += `\n## Propuesta de diseño aprobada (generada con IA)\n`;
+                if (diseno.resumen) md += `\n${diseno.resumen}\n`;
+                if (Array.isArray(diseno.secciones) && diseno.secciones.length) {
+                    md += `\n### Secciones\n`;
+                    diseno.secciones.forEach(s => {
+                        if (s && s.titulo) md += `\n#### ${s.titulo}\n${s.contenido || ''}\n`;
+                    });
+                }
+            }
+            archivos.push({ path: 'docs/CONTEXT.md', content: md });
+        }
+
+        datosRepo = await crearRepoGitHub(owner, slug, (descripcionFinal || plantillaElegida.nombre).slice(0, 350), archivos);
         await actualizarProyecto(id, {
             github_owner: datosRepo.owner,
             github_repo: slug,
@@ -1009,12 +1166,25 @@ exports.handler = async (event) => {
             if (!acceso.ok) return { statusCode: acceso.statusCode || 403, body: JSON.stringify({ error: acceso.error }) };
         }
 
+        // ── GENERAR_DISENO: propuesta de diseño asistido por IA (OpenCode Zen free) ──
+        // Requiere admin (se controla arriba). Devuelve JSON con propuesta de contenido,
+        // paleta y tipografía, SIN modificar nada todavía. El admin aprueba y el create
+        // la usa (se pasa via propuesta_ia en el body del create).
+        if (action === 'generar_diseno') {
+            const { contexto } = body;
+            if (!contexto || !String(contexto).trim()) {
+                return { statusCode: 400, body: JSON.stringify({ error: 'Falta el contexto del negocio' }) };
+            }
+            try {
+                const propuesta = await generarPropuestaDiseno(body);
+                return { statusCode: 200, body: JSON.stringify({ ok: true, propuesta }) };
+            } catch (err) {
+                return { statusCode: 502, body: JSON.stringify({ error: 'IA no disponible: ' + (err.message || err) }) };
+            }
+        }
+
         // ── LIST: proyectos + plantillas ──
         if (!action || action === 'list') {
-            const { data: proyectos, error } = await supabase
-                .from('web_projects')
-                .select('*')
-                .order('created_at', { ascending: false });
             if (error) return { statusCode: 500, body: JSON.stringify({ error: error.message }) };
 
             // Reconciliación: si un sitio tiene agente, garantiza que su dominio
@@ -1176,6 +1346,7 @@ module.exports.helpers = Object.freeze({
     hostnameDeUrl,
     hostnamesParaSitio,
     pipelineCrear,
+    generarPropuestaDiseno,
     actualizarProyecto,
     dispararBuild,
     paginaSuspension,
