@@ -1,5 +1,5 @@
-/* ─── AUVRO Service Worker v3.1 (dark negro #000000, cache v19) ─────────── */
-const CACHE_NAME = 'auvro-v19';
+/* ─── AUVRO Service Worker v3.1 (dark negro #000000, cache v20) ─────────── */
+const CACHE_NAME = 'auvro-v20';
 const OFFLINE_URL = '/offline.html';
 const CACHE_MAX_ENTRIES = 100;
 
@@ -13,8 +13,8 @@ const PRECACHE_URLS = [
   '/login.html',
   '/offline.html',
   '/manifest.json',
-  '/dashboard.css?v=19',
-  '/auvro-design.css?v=19',
+  '/dashboard.css?v=20',
+  '/auvro-design.css?v=20',
   '/icon-192.svg',
   '/icon-512.svg',
   '/favicon.ico',

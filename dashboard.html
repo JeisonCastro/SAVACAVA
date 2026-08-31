@@ -72,8 +72,8 @@
             rel="stylesheet">
         <link rel="stylesheet"
             href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-        <link rel="stylesheet" href="dashboard.css?v=19">
-        <link rel="stylesheet" href="auvro-design.css?v=19">
+        <link rel="stylesheet" href="dashboard.css?v=20">
+        <link rel="stylesheet" href="auvro-design.css?v=20">
 
     </head>
     <body class="light-mode">
@@ -218,33 +218,53 @@
                     </div>
                 </div>
 
-                <div id="crm-agent-filter" style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;margin-bottom:1rem;"></div>
+                <div id="crm-agent-filter" style="margin-bottom:0;"></div>
 
-                <div id="crm-date-filter" style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;margin-bottom:1rem;background:var(--surface);border:1px solid var(--border2);border-radius:12px;padding:.6rem .8rem;">
-                    <span style="font-size:.78rem;color:var(--muted);"><i class="fas fa-robot" style="margin-right:.35rem;"></i>Agente:</span>
-                    <select id="crm-filtro-agente" onchange="onFiltroAgenteChange()" style="background:var(--bg2);border:1px solid var(--border2);border-radius:10px;padding:.4rem .6rem;font-size:.78rem;color:var(--text);max-width:200px;">
-                        <option value="">Todos</option>
-                    </select>
-                    <span style="font-size:.78rem;color:var(--muted);margin-left:.5rem;"><i class="fas fa-store" style="margin-right:.35rem;"></i>Tienda:</span>
-                    <select id="crm-filtro-tienda" onchange="onFiltroTiendaChange()" style="background:var(--bg2);border:1px solid var(--border2);border-radius:10px;padding:.4rem .6rem;font-size:.78rem;color:var(--text);">
-                        <option value="">Todas</option>
-                    </select>
-                    <span style="font-size:.78rem;color:var(--muted);margin-left:.5rem;"><i class="fas fa-calendar-days" style="margin-right:.35rem;"></i>Desde:</span>
-                    <input type="date" id="crm-filtro-desde" style="color-scheme:dark;background:var(--bg2);border:1px solid var(--border2);border-radius:10px;padding:.4rem .6rem;font-size:.78rem;color:var(--text);">
-                    <span style="font-size:.78rem;color:var(--muted);">Hasta:</span>
-                    <input type="date" id="crm-filtro-hasta" style="color-scheme:dark;background:var(--bg2);border:1px solid var(--border2);border-radius:10px;padding:.4rem .6rem;font-size:.78rem;color:var(--text);">
-                    <span style="font-size:.78rem;color:var(--muted);"><i class="fas fa-arrow-right-arrow-left" style="margin:0 .35rem;"></i>Origen:</span>
-                    <select id="crm-filtro-origen" style="background:var(--bg2);border:1px solid var(--border2);border-radius:10px;padding:.4rem .6rem;font-size:.78rem;color:var(--text);">
-                        <option value="">Todos</option>
-                        <option value="web">Web / widget</option>
-                        <option value="whatsapp">WhatsApp</option>
-                        <option value="dashboard">Manual</option>
-                        <option value="tienda">Tienda</option>
-                    </select>
-                    <button class="btn-main" onclick="aplicarFiltrosCRM()" style="padding:.45rem .8rem;font-size:.76rem;border-radius:10px;">
-                        <i class="fas fa-filter" style="margin-right:.3rem;"></i>Aplicar
-                    </button>
-                    <button class="btn-ghost" onclick="limpiarFiltrosCRM()" style="padding:.45rem .8rem;font-size:.76rem;border-radius:10px;">Limpiar</button>
+                <div id="crm-filter-bar" style="background:var(--surface);border:1px solid var(--border2);border-radius:16px;padding:1.1rem 1.2rem;margin-bottom:1.1rem;">
+                    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;">
+                        <div style="display:flex;flex-direction:column;gap:.85rem;">
+                            <div class="crm-fld">
+                                <label><i class="fas fa-store" style="margin-right:.35rem;color:var(--green)"></i>Tienda</label>
+                                <select id="crm-filtro-tienda" onchange="onFiltroTiendaChange()">
+                                    <option value="">Todas</option>
+                                </select>
+                            </div>
+                            <div class="crm-fld">
+                                <label><i class="fas fa-robot" style="margin-right:.35rem;color:var(--accent)"></i>Agente</label>
+                                <select id="crm-filtro-agente" onchange="onFiltroAgenteChange()">
+                                    <option value="">Todos</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div style="display:flex;flex-direction:column;gap:.85rem;">
+                            <div class="crm-fld">
+                                <label><i class="fas fa-calendar-days" style="margin-right:.35rem;color:var(--yellow)"></i>Desde</label>
+                                <input type="date" id="crm-filtro-desde">
+                            </div>
+                            <div class="crm-fld">
+                                <label><i class="fas fa-flag-checkered" style="margin-right:.35rem;color:var(--green)"></i>Hasta</label>
+                                <input type="date" id="crm-filtro-hasta">
+                            </div>
+                        </div>
+                        <div style="display:flex;flex-direction:column;gap:.85rem;">
+                            <div class="crm-fld">
+                                <label><i class="fas fa-arrow-right-arrow-left" style="margin-right:.35rem;color:var(--accent2)"></i>Origen</label>
+                                <select id="crm-filtro-origen">
+                                    <option value="">Todos</option>
+                                    <option value="web">Web / widget</option>
+                                    <option value="whatsapp">WhatsApp</option>
+                                    <option value="dashboard">Manual</option>
+                                    <option value="tienda">Tienda</option>
+                                </select>
+                            </div>
+                            <div style="display:flex;gap:.5rem;align-items:flex-end;margin-top:auto;">
+                                <button class="btn-main" onclick="aplicarFiltrosCRM()" style="flex:1;padding:.5rem .8rem;font-size:.78rem;border-radius:10px;">
+                                    <i class="fas fa-filter" style="margin-right:.3rem;"></i>Aplicar
+                                </button>
+                                <button class="btn-ghost" onclick="limpiarFiltrosCRM()" style="padding:.5rem .9rem;font-size:.78rem;border-radius:10px;">Limpiar</button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <div id="crm-banner" style="display:none"></div>
@@ -3825,11 +3845,15 @@
         const filterBox = document.getElementById('crm-agent-filter');
         if (filterBox) {
             filterBox.innerHTML = `
-                <span style="font-size:.78rem;color:var(--muted);"><i class="fas fa-robot" style="margin-right:.35rem;"></i>Agente:</span>
-                <select id="crm-agente-select" onchange="cambiarAgenteCRM(this.value)" style="background:var(--surface);border:1px solid var(--border2);border-radius:10px;padding:.45rem .7rem;font-size:.8rem;color:var(--text);max-width:280px;">
-                    ${agentes.map(a => `<option value="${a.id}" ${String(a.id) === String(crmAgenteSeleccionado) ? 'selected' : ''}>${escapeHtml(a.nombre_agente)}${a.crm_activo ? ' · CRM' : ''}</option>`).join('')}
-                </select>
-                ${agenteSel && !agenteSel.crm_activo ? `<span style="font-size:.72rem;color:var(--yellow);"><i class="fas fa-triangle-exclamation" style="margin-right:.25rem;"></i>CRM desactivado en este agente</span>` : ''}
+                <div style="display:flex;align-items:center;gap:.7rem;flex-wrap:wrap;background:var(--surface);border:1px solid var(--border2);border-radius:16px;padding:.55rem .9rem;margin-bottom:1.1rem;">
+                    <span style="font-size:.74rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);"><i class="fas fa-bullseye" style="margin-right:.35rem;color:var(--accent)"></i>Agente activo</span>
+                    <select id="crm-agente-select" onchange="cambiarAgenteCRM(this.value)" style="background:var(--bg2);border:1px solid var(--border2);border-radius:10px;padding:.45rem .7rem;font-size:.8rem;color:var(--text);min-width:220px;">
+                        ${agentes.map(a => `<option value="${a.id}" ${String(a.id) === String(crmAgenteSeleccionado) ? 'selected' : ''}>${escapeHtml(a.nombre_agente)}${a.crm_activo ? ' · CRM' : ''}</option>`).join('')}
+                    </select>
+                    ${agenteSel && !agenteSel.crm_activo ? `<span style="font-size:.72rem;color:var(--yellow);"><i class="fas fa-triangle-exclamation" style="margin-right:.25rem;"></i>CRM desactivado en este agente</span>` : ''}
+                    <span style="flex:1"></span>
+                    <span style="font-size:.72rem;color:var(--dim);">Los leads, ventas y clientes mostrados corresponden a este agente.</span>
+                </div>
             `;
         }
 

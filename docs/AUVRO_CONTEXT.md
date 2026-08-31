@@ -1009,6 +1009,19 @@ Multiusuario.
 
 # Changelog de Cambios Técnicos
 
+## 30 Ago 2026 — Filtro del CRM de ventas rediseñado: tarjeta premium en 3 columnas (v20)
+
+- **Objetivo (decisión del usuario):** el filtro del módulo **CRM de ventas** se veía amontonado en una sola fila; se rediseña como una **tarjeta premium en 3 columnas** con labels claros para cada campo.
+- **`dashboard.html` (`#view-crm`):** el bloque `#crm-date-filter` (fila única con muchos controles inline) se reemplaza por `#crm-filter-bar`: tarjeta `surface` con `border-radius:16px` y grid `repeat(3,1fr)`:
+  - Columna 1: **Tienda** y **Agente** (selects apilados).
+  - Columna 2: **Desde** y **Hasta** (inputs de fecha).
+  - Columna 3: **Origen** + botones **Aplicar** / **Limpiar**.
+  - Cada campo usa la clase `.crm-fld` (label uppercase con icono a color + control a ancho completo).
+- **`dashboard.html` (`renderCRM`):** el selector "Agente activo" (`#crm-agent-filter` / `crm-agente-select`) ahora se renderiza como barra premium con encabezado "Agente activo" (icono `fa-bullseye`), selector `min-width:220px` y nota contextual a la derecha; el contenedor estático ya no duplica estilos.
+- **`dashboard.css`:** nuevas clases `.crm-fld` (label y control full-width con focus/hover highlight), `color-scheme` correcto para inputs de fecha según modo, y media query `max-width:760px` → `grid-template-columns:1fr` (las 3 columnas se apilan en móvil).
+- **Cache bump a `v20`:** `dashboard.html` (`dashboard.css?v=20`, `auvro-design.css?v=20`) y `sw.js` (`auvro-v20` + precache `?v=20`).
+- **Sin cambios de esquema en Supabase** (todo frontend).
+
 ## 30 Ago 2026 — Eliminación total del "Configurar CRM" del agente en el dashboard + opción "En proceso" en pipeline de tienda (v19)
 
 - **Objetivo (decisión del usuario):** el CRM del dashboard ya NO gestiona la configuración del agente (pasarela, catálogo, pipeline, "Conectar"). Toda esa lógica vive ahora en la TIENDA. Se elimina por completo el modal "Configurar CRM: <agente>" y sus puntos de entrada; además, en la administración de la tienda, el select de rol del pipeline ahora incluye la opción explícita **"En proceso"** (etapa intermedia), quedando los 4 roles claros: Inicial / En proceso / Venta cerrada / Perdida.

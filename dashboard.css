@@ -4118,6 +4118,15 @@ body.light-mode .mob-toggle{background:var(--surface)!important}
 .crm-cliente{display:flex;align-items:center;gap:.8rem;background:var(--surface);border:1px solid var(--border2);border-radius:14px;padding:.75rem .8rem;cursor:pointer;transition:border-color .15s,transform .1s}
 .crm-cliente:hover{border-color:var(--accent);transform:translateY(-1px)}
 .crm-cliente .grow{flex:1;min-width:0}
+.crm-fld{display:flex;flex-direction:column;gap:.3rem}
+.crm-fld label{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);display:flex;align-items:center}
+.crm-fld select,.crm-fld input[type="date"]{width:100%;box-sizing:border-box;background:var(--bg2);border:1px solid var(--border2);border-radius:10px;padding:.5rem .65rem;font-size:.8rem;color:var(--text);font-family:'Inter',system-ui,sans-serif;transition:border-color .15s}
+.crm-fld select:hover,.crm-fld input[type="date"]:hover{border-color:var(--accent)}
+.crm-fld select:focus,.crm-fld input[type="date"]:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(14,165,233,.12)}
+.crm-fld input[type="date"]{color-scheme:dark}
+.light-mode .crm-fld input[type="date"]{color-scheme:light}
+@media(max-width:760px){#crm-filter-bar>div{grid-template-columns:1fr!important}}
+
 .crm-chip{display:inline-flex;align-items:center;gap:.3rem;background:var(--bg2);border:1px solid var(--border2);border-radius:20px;padding:.2rem .6rem;font-size:.72rem;font-weight:600;white-space:nowrap}
 .crm-cliente-detalle{background:var(--surface);border:1px solid var(--border2);border-radius:14px;padding:1rem}
 .light-mode .crm-cliente:hover{border-color:rgba(14,165,233,.6)}
