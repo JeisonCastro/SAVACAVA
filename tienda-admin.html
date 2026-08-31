@@ -46,8 +46,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="dashboard.css?v=21">
-    <link rel="stylesheet" href="auvro-design.css?v=21">
+    <link rel="stylesheet" href="dashboard.css?v=22">
+    <link rel="stylesheet" href="auvro-design.css?v=22">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         body { background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, sans-serif; }
@@ -103,7 +103,7 @@
             <a href="#" data-sec="agentes" onclick="return nav('agentes')"><i class="fas fa-robot"></i> Agente IA</a>
         </nav>
         <div class="sidebar-bottom">
-            <a href="dashboard.html"><i class="fas fa-arrow-left"></i> Panel AUVRO</a>
+            <a href="dashboard.html" class="sidebar-back-btn"><i class="fas fa-arrow-left"></i> Panel AUVRO</a>
         </div>
     </aside>
 
@@ -112,12 +112,11 @@
             <div class="topbar">
                 <div>
                     <h1 style="font-size:1.15rem;font-weight:800;letter-spacing:-.02em" id="tb-nombre">Cargando tienda…</h1>
-                    <a id="tb-ver" href="#" target="_blank" rel="noopener" style="display:none;font-size:.8rem"><i class="fas fa-external-link-alt"></i> Ver tienda</a>
+                    <a id="tb-ver" href="#" target="_blank" rel="noopener" class="btn-small tienda-ver-btn" style="display:none"><i class="fas fa-external-link-alt"></i> Ver tienda</a>
                 </div>
                 <div class="topbar-right">
                     <span id="tb-email" style="font-size:.8rem;color:var(--muted)"></span>
                     <button class="btn-small" id="theme-toggle" onclick="toggleTheme()" title="Cambiar tema"><i class="fas fa-moon"></i></button>
-                    <button class="btn-small" onclick="salir()"><i class="fas fa-sign-out-alt"></i> Salir</button>
                 </div>
             </div>
             <div id="main"></div>
@@ -258,8 +257,6 @@
             pipeline: renderPipeline })[sec]();
         return false;
     }
-
-    function salir() { _supabase.auth.signOut().then(() => window.location.href = 'login.html'); }
 
     // ── RESUMEN ──
     async function renderDashboard() {

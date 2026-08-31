@@ -1009,6 +1009,17 @@ Multiusuario.
 
 # Changelog de Cambios Técnicos
 
+## 30 Ago 2026 — tienda-admin: botones con diseño ("Panel AUVRO" y "Ver tienda") y eliminado el botón "Salir" (v22)
+
+- **Objetivo (decisión del usuario):** en `tienda-admin.html`, el enlace "Panel AUVRO" y el enlace "Ver tienda" pasan a ser **botones con diseño** (ya no son enlaces de texto planos); se **elimina el botón "Salir"** de la topbar porque cerraba la sesión.
+- **`tienda-admin.html`:**
+  - **"Panel AUVRO"** (`sidebar-bottom`): ahora usa la clase `.sidebar-back-btn` (botón full-width con borde, fondo `surface`, hover con accent y `translateY(-1px)`).
+  - **"Ver tienda"** (`#tb-ver`): ahora usa `class="btn-small tienda-ver-btn"` (botón con icono externo y hover accent).
+  - **Eliminado** el botón "Salir" de la topbar y la función `salir()` (ya no referenciada). Se mantienen tema e email.
+- **`dashboard.css`:** nuevas clases `.sidebar-back-btn` (botón de regreso al panel) y `.tienda-ver-btn` (botón "Ver tienda").
+- **Cache bump a `v22`:** `dashboard.html` y `tienda-admin.html` (`dashboard.css?v=22`, `auvro-design.css?v=22`) y `sw.js` (`auvro-v22` + precache `?v=22`).
+- **Sin cambios de esquema en Supabase** (todo frontend).
+
 ## 30 Ago 2026 — Menús laterales reordenados de forma lógica (dashboard + tienda-admin) (v21)
 
 - **Objetivo (decisión del usuario):** reordenar de forma lógica el menú lateral del dashboard y de tienda-admin.html.
