@@ -59,6 +59,26 @@
       "slug": "landing-mit",
       "nombre": "Landing Premium (Bootstrap/MIT)",
       "descripcion": "Landing page profesional basada en Start Bootstrap (licencia MIT). Hero, características, secciones de valor y CTA por WhatsApp. Tokens: {{EMPRESA}}, {{DESCRIPCION}}, {{SLOGAN}}, {{LOGO}}, {{WHATSAPP}}."
+    },
+    {
+      "slug": "creative-mit",
+      "nombre": "Creativo / Agencia (Bootstrap/MIT)",
+      "descripcion": "Landing creativa tipo agencia/estudio basada en Start Bootstrap Creative (MIT). Hero llamativo, servicios, galería y CTA por WhatsApp. Tokens: {{EMPRESA}}, {{DESCRIPCION}}, {{SLOGAN}}, {{LOGO}}, {{WHATSAPP}}."
+    },
+    {
+      "slug": "business-mit",
+      "nombre": "Negocio Corporativo (Bootstrap/MIT)",
+      "descripcion": "Sitio de negocio/servicios basado en Start Bootstrap Business Frontpage (MIT). Features, testimonios y contacto por WhatsApp. Tokens: {{EMPRESA}}, {{DESCRIPCION}}, {{SLOGAN}}, {{LOGO}}, {{WHATSAPP}}."
+    },
+    {
+      "slug": "onepage-mit",
+      "nombre": "One Page (Bootstrap/MIT)",
+      "descripcion": "Landing de una sola página basada en Start Bootstrap One Page Wonder (MIT). Hero con círculos de color, secciones alternadas y CTA por WhatsApp. Tokens: {{EMPRESA}}, {{DESCRIPCION}}, {{SLOGAN}}, {{LOGO}}, {{WHATSAPP}}."
+    },
+    {
+      "slug": "tienda-mit",
+      "nombre": "Tienda Premium (Bootstrap/MIT)",
+      "descripcion": "Tienda e-commerce con estética Bootstrap (Start Bootstrap Shop Homepage, MIT) y el motor AUVRO: catálogo, carrito y pago seguro Wompi (PSE, tarjeta, Nequi). Tokens: {{EMPRESA}}, {{DESCRIPCION}}, {{SLOGAN}}, {{LOGO}}, {{WHATSAPP}}, {{SLUG}}."
     }
   ]
 }

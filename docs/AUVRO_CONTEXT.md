@@ -1009,6 +1009,18 @@ Multiusuario.
 
 # Changelog de Cambios Técnicos
 
+## 30 Ago 2026 — 4 plantillas MIT adicionales (Start Bootstrap) + tienda Premium (v29-c)
+
+- **Objetivo (decisión del usuario):** ampliar el catálogo de plantillas gratuitas MIT del Web Factory (Start Bootstrap free, permitido comercialmente) con nuevas opciones por nicho y una tienda con estética Bootstrap.
+- **Nuevas plantillas en `wf-templates/templates/`** (todas Bootstrap 5, estáticas, sin build, con `LICENSE-MIT.txt` + header MIT en CSS/JS):
+  - `creative-mit` — "Creativo / Agencia" (Start Bootstrap Creative v7.0.7). Hero llamativo, servicios, galería con gradientes (sin imágenes binarias) y CTA WhatsApp.
+  - `business-mit` — "Negocio Corporativo" (Start Bootstrap Business Frontpage). Features, testimonios y contacto por WhatsApp. Sin precios de ejemplo ni formulario SB Forms.
+  - `onepage-mit` — "One Page" (Start Bootstrap One Page Wonder). Hero con círculos de color y secciones alternadas; imágenes binarias reemplazadas por gradientes circulares.
+  - `tienda-mit` — "Tienda Premium" (Start Bootstrap Shop Homepage como estética + **motor AUVRO intacto**): navbar Bootstrap con carrito, header hero, footer; mantiene TODAS las IDs que el motor consulta (`#btn-cart`, `#grid-productos`, `#cart-drawer`, `#checkout-form`, `#lightbox`, etc.) y el JS de catálogo/carrito/checkout Wompi. Carga Bootstrap 5 + Bootstrap Icons desde CDN antes de `styles.css`.
+- **`manifest.json`:** entradas nuevas para las 4 plantillas → aparecen en el dropdown del Web Factory.
+- **Adaptaciones comunes:** formularios SB Forms (requieren token externo de StartBootstrap, no funcionan) → reemplazados por **CTA por WhatsApp**; imágenes binarias (jpg/png/mp4) → **gradientes** (el pipeline de AUVRO lee archivos como texto); ocultamiento automático de botones WhatsApp si `{{WHATSAPP}}` queda vacío (`data-wa`).
+- **Verificado localmente (script `verify-all`):** para cada plantilla MIT: 0 tokens restantes, tema Bootstrap (`--bs-primary`) inyectado, widget IA inyectado, WhatsApp aplicado, CSS/licencia MIT presentes. En `tienda-mit`, las 20 IDs críticas del motor de comercio verificadas.
+
 ## 30 Ago 2026 — Plantilla MIT "Landing Premium" (Start Bootstrap) + soporte tema Bootstrap (v29-b)
 
 - **Objetivo (decisión del usuario):** validar la importación de plantillas gratuitas **MIT** al Web Factory (Start Bootstrap free, que permite uso comercial/SaaS; BootstrapMade NO lo permite). Primera plantilla importada: `landing-mit` (Landing Page - Start Bootstrap v6.0.6, MIT).
