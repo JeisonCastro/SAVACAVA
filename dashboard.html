@@ -72,8 +72,8 @@
             rel="stylesheet">
         <link rel="stylesheet"
             href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-        <link rel="stylesheet" href="dashboard.css?v=31">
-        <link rel="stylesheet" href="auvro-design.css?v=31">
+        <link rel="stylesheet" href="dashboard.css?v=32">
+        <link rel="stylesheet" href="auvro-design.css?v=32">
 
     </head>
     <body class="light-mode">
@@ -2330,7 +2330,7 @@ let _wfPropuestaIA = null;
                 <div class="wf-field"><label>Cliente</label><input type="text" id="wf-cliente" placeholder="Ej: Restaurante El Buen Sabor"></div>
                 <div class="wf-field"><label>Nombre del sitio</label><input type="text" id="wf-nombre" oninput="wfAutogenSlug()" placeholder="Ej: Restaurante El Buen Sabor"></div>
                 <div class="wf-field"><label>Slug (subdominio/repo)</label><input type="text" id="wf-slug" oninput="_wfSlugAuto=false" placeholder="Ej: el-buen-sabor"></div>
-                <div class="wf-field"><label>Plantilla</label><select id="wf-plantilla">${opciones}</select></div>
+                <div class="wf-field"><label>Plantilla</label><select id="wf-plantilla" onchange="wfToggleModuloDeportes()">${opciones}</select></div>
                 <div class="wf-field"><label>Dominio (opcional)</label><input type="text" id="wf-dominio" placeholder="Ej: elbueensabor.com"></div>
                 <div class="wf-field"><label>Descripcion (opcional)</label><input type="text" id="wf-descripcion" placeholder="Ej: Cocina criolla y atención familiar"></div>
                 <div class="wf-field"><label>Slogan (opcional)</label><input type="text" id="wf-slogan" placeholder="Ej: Sabor casero que enamora"></div>
@@ -2339,6 +2339,12 @@ let _wfPropuestaIA = null;
                 <div class="wf-field"><label>Agente de IA (opcional)</label><select id="wf-agente"><option value="">Sin agente de IA</option>${opcionesAgentes}</select></div>
                 <div class="wf-field"><label>Color principal</label><div class="wf-accent-row"><input type="color" id="wf-accent" value="#2563eb" oninput="wfPreviewTheme()" title="Elige el color principal del sitio"><input type="text" id="wf-accent-text" value="#2563eb" oninput="wfAccentFromText()" maxlength="7" spellcheck="false" placeholder="#RRGGBB"></div></div>
                 <div class="wf-field"><label>Estilo de fuente</label><select id="wf-fuente" onchange="wfPreviewTheme()">${opcionesFuentes}</select></div>
+                <div class="wf-field wf-full" id="wf-modulo-deportes-wrap" style="display:none">
+                    <label style="display:flex;align-items:center;gap:.5rem;margin-top:.4rem;cursor:pointer">
+                        <input type="checkbox" id="wf-modulo-deportes" style="width:auto">
+                        <span><i class="fas fa-futbol" style="color:var(--accent);margin-right:.3rem"></i>Activar módulo Deportes <span style="font-weight:400;color:var(--muted);font-size:.72rem">(deportistas, club, visorías, torneos, noticias, galería, consentimientos)</span></span>
+                    </label>
+                </div>
             </div>
             <div class="wf-preview" id="wf-preview">Aa · Asi se vera el sitio con tu color y fuente</div>
             <div id="wf-ia-block" style="margin-top:1.1rem;padding-top:.9rem;border-top:1px solid var(--border2)">
@@ -2371,6 +2377,18 @@ let _wfPropuestaIA = null;
         const slug = nombre.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
             .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 63);
         document.getElementById('wf-slug').value = slug;
+    }
+
+    function wfToggleModuloDeportes() {
+        const sel = document.getElementById('wf-plantilla');
+        const wrap = document.getElementById('wf-modulo-deportes-wrap');
+        if (!sel || !wrap) return;
+        const esTienda = sel.value === 'tienda';
+        wrap.style.display = esTienda ? '' : 'none';
+        if (!esTienda) {
+            const chk = document.getElementById('wf-modulo-deportes');
+            if (chk) chk.checked = false;
+        }
     }
 
     async function wfGenerarDiseno() {
@@ -2450,6 +2468,7 @@ let _wfPropuestaIA = null;
         const fuente = (document.getElementById('wf-fuente') ? document.getElementById('wf-fuente').value : 'inter').trim();
         const contexto = (document.getElementById('wf-contexto') ? document.getElementById('wf-contexto').value.trim() : '');
         const propuestaIA = _wfPropuestaIA;
+        const modulos = (document.getElementById('wf-modulo-deportes') && document.getElementById('wf-modulo-deportes').checked) ? ['deportes'] : [];
 
         if (!cliente || !nombre || !slug) return showToast('Completa Cliente, Nombre y Slug', 'error');
         if (!/^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$/.test(slug)) return showToast('Slug invalido (solo minusculas, numeros y guiones)', 'error');
@@ -2477,7 +2496,7 @@ let _wfPropuestaIA = null;
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`
                 },
-                body: JSON.stringify({ action: 'create', cliente, nombre, slug, plantilla, dominio, descripcion, slogan, logo, whatsapp, agente_id: agenteId || null, accent_color: accentColor, fuente, contexto: contexto || null, propuesta_ia: propuestaIA })
+                body: JSON.stringify({ action: 'create', cliente, nombre, slug, plantilla, dominio, descripcion, slogan, logo, whatsapp, agente_id: agenteId || null, accent_color: accentColor, fuente, contexto: contexto || null, propuesta_ia: propuestaIA, modulos })
             });
             // Verificar si la background function rechazó inmediatamente (4xx/5xx antes del 202)
             if (res.status >= 400) {

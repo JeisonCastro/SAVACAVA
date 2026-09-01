@@ -46,8 +46,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="dashboard.css?v=26">
-    <link rel="stylesheet" href="auvro-design.css?v=26">
+    <link rel="stylesheet" href="dashboard.css?v=32">
+    <link rel="stylesheet" href="auvro-design.css?v=32">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         body { background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, sans-serif; }
@@ -70,6 +70,9 @@
         .toast.show { opacity: 1; transform: translateY(0); }
         .toast.error { border-left-color: var(--red); }
         table input { width: auto; }
+        .field select { width: 100%; padding: 9px 12px; background: var(--bg2); border: 1px solid var(--border2); border-radius: 8px; color: var(--text); font-size: .88rem; }
+        .btn-small.dep-active, .btn-main.dep-active { background: var(--accent); color: #fff; border-color: var(--accent); }
+        .card-title { font-size: 1.05rem; font-weight: 800; letter-spacing: -.01em; }
     </style>
 </head>
 <body class="light-mode">
@@ -101,6 +104,8 @@
             <a href="#" data-sec="pasarela" onclick="return nav('pasarela')"><i class="fas fa-credit-card"></i> Pasarela</a>
             <a href="#" data-sec="notificaciones" onclick="return nav('notificaciones')"><i class="fas fa-bell"></i> Notificaciones</a>
             <a href="#" data-sec="agentes" onclick="return nav('agentes')"><i class="fas fa-robot"></i> Agente IA</a>
+            <div class="nav-label">Deportes</div>
+            <a href="#" data-sec="deportes" onclick="return nav('deportes')"><i class="fas fa-futbol"></i> Deportes</a>
         </nav>
         <div class="sidebar-bottom">
             <a href="dashboard.html" class="sidebar-back-btn" id="back-panel-auvro"><i class="fas fa-arrow-left"></i> Panel AUVRO</a>
@@ -152,7 +157,7 @@
 
     let session = null;
     let isAdmin = false;
-    const ctx = { proyecto_id: '', slug: '' };
+    const ctx = { proyecto_id: '', slug: '', modulos: [] };
     const S = { productos: [], categorias: [], atributos: [], ordenes: [], clientes: [], editandoId: null, imagenes: [], archivoDigital: null, _varsIds: [] };
 
     const $ = (id) => document.getElementById(id);
@@ -232,8 +237,14 @@
             const info = await api('info', { proyecto_id: ctx.proyecto_id });
             if (!info.ok) throw new Error(info.error || 'Sin acceso a la tienda');
             const t = info.tienda;
+            ctx.modulos = Array.isArray(info.modulos) ? info.modulos : [];
             ctx.slug = t.slug || ctx.slug;
             $('tb-nombre').textContent = (t.nombre || 'Mi tienda') + ' · Tienda';
+            // Mostrar la sección Deportes solo si el proyecto tiene el módulo activo
+            const navDep = document.querySelector('.sidebar nav a[data-sec="deportes"]');
+            const tieneDeportes = ctx.modulos.includes('deportes');
+            if (navDep) navDep.style.display = tieneDeportes ? '' : 'none';
+            if (!tieneDeportes) depTab = 'deportistas';
             const u = $('tb-ver');
             if (t.netlify_url) { u.href = t.netlify_url; u.style.display = ''; }
             else if (t.slug) { u.href = 'https://' + t.slug + '.netlify.app'; u.style.display = ''; }
@@ -261,7 +272,7 @@
         ({ dashboard: renderDashboard, productos: renderProductos, categorias: renderCategorias,
             atributos: renderAtributos, ordenes: renderOrdenes, clientes: renderClientes,
             pasarela: renderPasarela, notificaciones: renderNotificaciones, agentes: renderAgentesTienda,
-            pipeline: renderPipeline })[sec]();
+            pipeline: renderPipeline, deportes: renderDeportes })[sec]();
         return false;
     }
 
@@ -1035,6 +1046,578 @@
             toast(data.agente_id ? `Agente "${data.agente_nombre}" asignado` : 'Agente desasignado');
             renderAgentesTienda();
         } catch (err) { msg.textContent = 'Error: ' + err.message; msg.className = 'msg error'; }
+    }
+
+    // ── DEPORTES (módulos genéricos nicho deportivo) ──
+    let depTab = 'deportistas';
+    let depModalGuardarFn = null;
+
+    async function deportesApi(action, body = {}) {
+        const res = await fetch('/.netlify/functions/deportes', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (session ? session.access_token : '') },
+            body: JSON.stringify({ action, ...body })
+        });
+        return res.json();
+    }
+
+    async function renderDeportes() {
+        const main = $('main');
+        if (!ctx.modulos.includes('deportes')) {
+            main.innerHTML = '<div class="card"><div class="empty">Este proyecto no tiene el módulo Deportes activado. Se activa al crear el sitio (Web Factory → marcar "Activar módulo Deportes" con plantilla Tienda).</div></div>';
+            return;
+        }
+        main.innerHTML = `
+            <h2 class="card-title" style="margin-bottom:14px">Deportes</h2>
+            <p style="font-size:.8rem;color:var(--muted);margin-bottom:14px">Deportistas, Club (planes y horarios), Visorías, Inscripciones, Torneos, Noticias, Galería y Consentimientos de esta tienda.</p>
+            <div style="display:flex;gap:.45rem;flex-wrap:wrap;margin-bottom:1rem">
+                <button class="btn-small" id="dep-tab-deportistas" onclick="depNav('deportistas')"><i class="fas fa-user"></i> Deportistas</button>
+                <button class="btn-small" id="dep-tab-club" onclick="depNav('club')"><i class="fas fa-shield-halved"></i> Club</button>
+                <button class="btn-small" id="dep-tab-visorias" onclick="depNav('visorias')"><i class="fas fa-stopwatch"></i> Visorías</button>
+                <button class="btn-small" id="dep-tab-inscripciones" onclick="depNav('inscripciones')"><i class="fas fa-clipboard-list"></i> Inscripciones</button>
+                <button class="btn-small" id="dep-tab-torneos" onclick="depNav('torneos')"><i class="fas fa-trophy"></i> Torneos</button>
+                <button class="btn-small" id="dep-tab-noticias" onclick="depNav('noticias')"><i class="fas fa-newspaper"></i> Noticias</button>
+                <button class="btn-small" id="dep-tab-galeria" onclick="depNav('galeria')"><i class="fas fa-images"></i> Galería</button>
+                <button class="btn-small" id="dep-tab-consentimientos" onclick="depNav('consentimientos')"><i class="fas fa-file-signature"></i> Consentimientos</button>
+            </div>
+            <div id="dep-panel"><div class="empty">Cargando…</div></div>
+        `;
+        depNav(depTab);
+    }
+
+    function depNav(tab) {
+        depTab = tab;
+        const ids = ['deportistas', 'club', 'visorias', 'inscripciones', 'torneos', 'noticias', 'galeria', 'consentimientos'];
+        ids.forEach(id => {
+            const b = $('dep-tab-' + id);
+            if (b) b.classList.toggle('dep-active', id === tab);
+        });
+        const loaders = {
+            deportistas: depRenderDeportistas, club: depRenderClub, visorias: depRenderVisorias,
+            inscripciones: depRenderInscripciones, torneos: depRenderTorneos,
+            noticias: depRenderNoticias, galeria: depRenderGaleria, consentimientos: depRenderConsentimientos
+        };
+        loaders[tab]();
+    }
+
+    async function depLista(fn, panelId, etiqueta) {
+        try {
+            const data = await deportesApi(fn, { proyecto_id: ctx.proyecto_id });
+            if (!data.ok) throw new Error(data.error || 'Error');
+            return data;
+        } catch (err) {
+            $(panelId).innerHTML = '<div class="empty">Error: ' + esc(err.message) + '</div>';
+            return null;
+        }
+    }
+
+    function depSubir(input, cb) {
+        const file = input.files && input.files[0];
+        if (!file) return;
+        if (file.size > 12 * 1024 * 1024) { toast('El archivo supera 12 MB', true); input.value = ''; return; }
+        const reader = new FileReader();
+        reader.onload = async () => {
+            try {
+                const res = await fetch('/.netlify/functions/subir-imagen-deporte', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (session ? session.access_token : '') },
+                    body: JSON.stringify({ proyecto_id: ctx.proyecto_id, data_url: String(reader.result), filename: file.name })
+                });
+                const data = await res.json();
+                if (!data.ok) throw new Error(data.error || 'No se pudo subir');
+                toast('Archivo subido');
+                cb && cb(data.url);
+            } catch (err) { toast('Error: ' + err.message, true); }
+        };
+        reader.readAsDataURL(file);
+    }
+
+    // DEPORTISTAS
+    async function depRenderDeportistas() {
+        const panel = $('dep-panel');
+        panel.innerHTML = '<div class="empty">Cargando…</div>';
+        const data = await depLista('listar_deportistas', 'dep-panel');
+        if (!data) return;
+        const lista = data.deportistas || [];
+        panel.innerHTML = `
+            <div style="display:flex;justify-content:flex-end;margin-bottom:12px">
+                <button class="btn-main" onclick="depFormDeportista(null)"><i class="fas fa-plus"></i> Nuevo deportista</button>
+            </div>
+            ${lista.length ? `<div class="table-wrap"><table>
+                <thead><tr><th>Foto</th><th>Nombre</th><th>Edad</th><th>Categoría</th><th>Posición</th><th>Club</th><th>Público</th><th></th></tr></thead>
+                <tbody>${lista.map(d => `
+                    <tr>
+                        <td>${d.fotografia_url ? `<img src="${esc(d.fotografia_url)}" alt="" style="width:38px;height:38px;border-radius:8px;object-fit:cover;border:1px solid var(--border)">` : '—'}</td>
+                        <td style="font-weight:600">${esc(d.nombre)}</td>
+                        <td>${d.edad != null ? d.edad : '—'}</td>
+                        <td>${esc(d.categoria || '—')}</td>
+                        <td>${esc(d.posicion || '—')}</td>
+                        <td>${esc(d.club || '—')}</td>
+                        <td>${d.publico ? 'Sí' : 'No'}</td>
+                        <td style="white-space:nowrap">
+                            <button class="btn-small" onclick="depFormDeportista('${d.id}')"><i class="fas fa-pen"></i></button>
+                            <button class="btn-small danger" onclick="depEliminarDeportista('${d.id}','${esc(d.nombre)}')"><i class="fas fa-trash"></i></button>
+                        </td>
+                    </tr>`).join('')}</tbody>
+            </table></div>` : '<div class="empty">No hay deportistas. Crea el primero.</div>'}
+        `;
+    }
+
+    async function depFormDeportista(id) {
+        const main = $('main');
+        let d = {};
+        if (id) {
+            const data = await depLista('get_deportista', 'dep-panel');
+            if (!data) return;
+            d = data.deportista || {};
+        }
+        main.innerHTML = `
+            <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:12px">
+                <button class="btn-small" onclick="renderDeportes()"><i class="fas fa-arrow-left"></i> Volver</button>
+                <span style="font-weight:700;font-size:.95rem">${id ? 'Editar deportista' : 'Nuevo deportista'}</span>
+            </div>
+            <div class="card"><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:.7rem">
+                <div class="field"><label>Nombre *</label><input id="dp-nombre" value="${esc(d.nombre || '')}"></div>
+                <div class="field"><label>Fecha nacimiento</label><input id="dp-fecha" type="date" value="${d.fecha_nacimiento || ''}"></div>
+                <div class="field"><label>Edad</label><input id="dp-edad" type="number" min="0" value="${d.edad ?? ''}"></div>
+                <div class="field"><label>Categoría</label><input id="dp-categoria" value="${esc(d.categoria || '')}"></div>
+                <div class="field"><label>Posición</label><select id="dp-posicion">${['','Arquero','Defensa','Mediocampista','Delantero'].map(p=>`<option value="${p}"${p===(d.posicion||'')?' selected':''}>${p||'—'}</option>`).join('')}</select></div>
+                <div class="field"><label>Pierna</label><select id="dp-pierna">${['Derecha','Izquierda'].map(p=>`<option${p===(d.pierna||'Derecha')?' selected':''}>${p}</option>`).join('')}</select></div>
+                <div class="field"><label>Altura (cm)</label><input id="dp-altura" type="number" min="0" value="${d.altura_cm ?? ''}"></div>
+                <div class="field"><label>Peso (kg)</label><input id="dp-peso" type="number" min="0" step="0.1" value="${d.peso_kg ?? ''}"></div>
+                <div class="field"><label>Club actual</label><input id="dp-club" value="${esc(d.club || '')}"></div>
+                <div class="field"><label>País</label><input id="dp-pais" value="${esc(d.pais || '')}"></div>
+                <div class="field"><label>Ciudad</label><input id="dp-ciudad" value="${esc(d.ciudad || '')}"></div>
+                <div class="field"><label>Nivel</label><select id="dp-nivel">${['','Formativo','Competitivo','Élite'].map(p=>`<option value="${p}"${p===(d.nivel||'')?' selected':''}>${p||'—'}</option>`).join('')}</select></div>
+                <div class="field" style="grid-column:1/-1"><label>Experiencia / Perfil</label><textarea id="dp-experiencia" rows="2">${esc(d.experiencia || '')}</textarea></div>
+                <div class="field" style="grid-column:1/-1"><label>Fotografía</label>
+                    <div style="display:flex;gap:.5rem;align-items:center">
+                        <input id="dp-foto" value="${esc(d.fotografia_url || '')}" placeholder="URL o sube una...">
+                        <input type="file" accept="image/*" style="display:none" id="dp-foto-file" onchange="depSubir(this,function(u){$('dp-foto').value=u})">
+                        <button class="btn-small" onclick="$('dp-foto-file').click()"><i class="fas fa-upload"></i></button>
+                    </div>
+                </div>
+                <div class="field" style="grid-column:1/-1"><label>Logros <span style="font-weight:400;color:var(--muted)">(uno por línea)</span></label><textarea id="dp-logros" rows="3">${(d.logros||[]).join('\n')}</textarea></div>
+                <div class="field" style="grid-column:1/-1"><label>Videos <span style="font-weight:400;color:var(--muted)">(URLs, uno por línea)</span></label><textarea id="dp-videos" rows="2">${(d.videos||[]).join('\n')}</textarea></div>
+                <div class="field"><label>Ficha técnica (JSON)</label><textarea id="dp-ficha" rows="3" style="font-family:monospace">${esc(JSON.stringify(d.ficha||{},null,2))}</textarea></div>
+                <div class="field"><label>Estadísticas (JSON)</label><textarea id="dp-estadisticas" rows="3" style="font-family:monospace">${esc(JSON.stringify(d.estadisticas||{},null,2))}</textarea></div>
+                <div style="display:flex;gap:1rem;align-items:center">
+                    <label style="font-size:.82rem"><input type="checkbox" id="dp-publico" ${d.publico !== false ? 'checked' : ''}> Perfil público</label>
+                    <label style="font-size:.82rem"><input type="checkbox" id="dp-activo" ${d.activo !== false ? 'checked' : ''}> Activo</label>
+                </div>
+            </div>
+            <div style="display:flex;gap:.5rem;margin-top:1rem">
+                <button class="btn-main btn-green" onclick="depGuardarDeportista('${id || ''}')"><i class="fas fa-save"></i> Guardar</button>
+                <button class="btn-small" onclick="renderDeportes()">Cancelar</button>
+            </div></div>
+        `;
+    }
+
+    async function depGuardarDeportista(id) {
+        let ficha = {}, estadisticas = {};
+        try { ficha = JSON.parse($('dp-ficha').value || '{}'); } catch (_) { toast('Ficha: JSON inválido', true); return; }
+        try { estadisticas = JSON.parse($('dp-estadisticas').value || '{}'); } catch (_) { toast('Estadísticas: JSON inválido', true); return; }
+        const data = await deportesApi('guardar_deportista', {
+            proyecto_id: ctx.proyecto_id, id: id || null,
+            nombre: $('dp-nombre').value.trim(), fecha_nacimiento: $('dp-fecha').value || null,
+            edad: $('dp-edad').value || null, categoria: $('dp-categoria').value.trim(),
+            posicion: $('dp-posicion').value, pierna: $('dp-pierna').value,
+            altura_cm: $('dp-altura').value || null, peso_kg: $('dp-peso').value || null,
+            club: $('dp-club').value.trim(), pais: $('dp-pais').value.trim(), ciudad: $('dp-ciudad').value.trim(),
+            nivel: $('dp-nivel').value, experiencia: $('dp-experiencia').value.trim(),
+            fotografia_url: $('dp-foto').value.trim(),
+            logros: $('dp-logros').value.split('\n').map(s => s.trim()).filter(Boolean),
+            videos: $('dp-videos').value.split('\n').map(s => s.trim()).filter(Boolean),
+            ficha, estadisticas, publico: $('dp-publico').checked, activo: $('dp-activo').checked
+        });
+        if (!data.ok) return toast('Error: ' + data.error, true);
+        toast('Deportista guardado');
+        renderDeportes();
+    }
+
+    async function depEliminarDeportista(id, nombre) {
+        if (!confirm('¿Eliminar a ' + nombre + '?')) return;
+        const data = await deportesApi('eliminar_deportista', { proyecto_id: ctx.proyecto_id, id });
+        if (!data.ok) return toast('Error: ' + data.error, true);
+        toast('Eliminado');
+        renderDeportes();
+    }
+
+    // CLUB (planes + horarios)
+    async function depRenderClub() {
+        const panel = $('dep-panel');
+        panel.innerHTML = '<div class="empty">Cargando…</div>';
+        const [planes, horarios] = await Promise.all([
+            deportesApi('listar_planes', { proyecto_id: ctx.proyecto_id }),
+            deportesApi('listar_horarios', { proyecto_id: ctx.proyecto_id })
+        ]);
+        const lp = (planes.ok && planes.planes) || [];
+        const lh = (horarios.ok && horarios.horarios) || [];
+        panel.innerHTML = `
+            <h3 style="font-size:.9rem;font-weight:700;margin-bottom:8px">Planes del Club</h3>
+            <div style="display:flex;justify-content:flex-end;margin-bottom:8px"><button class="btn-main" onclick="depFormPlan(null)"><i class="fas fa-plus"></i> Nuevo plan</button></div>
+            ${lp.length ? `<div class="table-wrap"><table>
+                <thead><tr><th>Nombre</th><th>Descripción</th><th>Precio</th><th>Periodo</th><th></th></tr></thead>
+                <tbody>${lp.map(p => `<tr><td style="font-weight:600">${esc(p.nombre)}</td><td>${esc(p.descripcion||'—')}</td><td>${fmtCOP(p.precio_cents)}</td><td>${esc(p.periodo||'mensual')}</td>
+                    <td style="white-space:nowrap"><button class="btn-small" onclick="depFormPlan('${p.id}')"><i class="fas fa-pen"></i></button><button class="btn-small danger" onclick="depEliminarPlan('${p.id}','${esc(p.nombre)}')"><i class="fas fa-trash"></i></button></td></tr>`).join('')}</tbody>
+            </table></div>` : '<div class="empty">Sin planes. Crea el primero.</div>'}
+            <h3 style="font-size:.9rem;font-weight:700;margin:1.2rem 0 8px">Horarios</h3>
+            <div style="display:flex;justify-content:flex-end;margin-bottom:8px"><button class="btn-main" onclick="depFormHorario(null)"><i class="fas fa-plus"></i> Nuevo horario</button></div>
+            ${lh.length ? `<div class="table-wrap"><table>
+                <thead><tr><th>Categoría</th><th>Día</th><th>Inicio</th><th>Fin</th><th></th></tr></thead>
+                <tbody>${lh.map(h => `<tr><td>${esc(h.categoria||'—')}</td><td>${esc(h.dia||'—')}</td><td>${esc(h.hora_inicio||'—')}</td><td>${esc(h.hora_fin||'—')}</td>
+                    <td style="white-space:nowrap"><button class="btn-small" onclick="depFormHorario('${h.id}')"><i class="fas fa-pen"></i></button><button class="btn-small danger" onclick="depEliminarHorario('${h.id}')"><i class="fas fa-trash"></i></button></td></tr>`).join('')}</tbody>
+            </table></div>` : '<div class="empty">Sin horarios.</div>'}
+        `;
+    }
+
+    function depModalCampos(campos, titulo, onSave, idsExtra) {
+        const main = $('main');
+        main.innerHTML = `
+            <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:12px">
+                <button class="btn-small" onclick="renderDeportes()"><i class="fas fa-arrow-left"></i> Volver</button>
+                <span style="font-weight:700;font-size:.95rem">${titulo}</span>
+            </div>
+            <div class="card"><div style="display:grid;gap:.7rem">
+                ${campos.map(c => `<div class="field"><label>${c.label}${c.required ? ' *' : ''}</label>
+                    ${c.type === 'textarea'
+                        ? `<textarea id="${c.id}" rows="${c.rows||3}">${esc(c.value||'')}</textarea>`
+                        : c.type === 'select'
+                            ? `<select id="${c.id}">${c.options.map(o => `<option value="${o}"${o===c.value?' selected':''}>${o}</option>`).join('')}</select>`
+                            : `<input id="${c.id}" type="${c.type||'text'}" value="${esc(c.value??'')}">`}
+                </div>`).join('')}
+                ${idsExtra || ''}
+            </div>
+            <div style="display:flex;gap:.5rem;margin-top:1rem">
+                <button class="btn-main btn-green" onclick="${onSave}()"><i class="fas fa-save"></i> Guardar</button>
+                <button class="btn-small" onclick="renderDeportes()">Cancelar</button>
+            </div></div>
+        `;
+    }
+
+    async function depFormPlan(id) {
+        let p = {};
+        if (id) {
+            const data = await depLista('listar_planes', 'dep-panel');
+            if (data) p = (data.planes||[]).find(x => x.id === id) || {};
+        }
+        depModalCampos([
+            { id: 'plan-nombre', label: 'Nombre del plan', value: p.nombre, required: true },
+            { id: 'plan-desc', label: 'Descripción', value: p.descripcion, type: 'textarea' },
+            { id: 'plan-precio', label: 'Precio mensual (COP)', value: p.precio_cents ? Math.round(p.precio_cents/100) : '', type: 'number' }
+        ], id ? 'Editar plan' : 'Nuevo plan', 'depGuardarPlan');
+        window._depPlanId = id || '';
+    }
+
+    async function depGuardarPlan() {
+        const data = await deportesApi('guardar_plan', {
+            proyecto_id: ctx.proyecto_id, id: window._depPlanId || null,
+            nombre: $('plan-nombre').value.trim(), descripcion: $('plan-desc').value.trim(),
+            precio_cents: Math.round(Number($('plan-precio').value)||0)*100, periodo: 'mensual', activo: true
+        });
+        if (!data.ok) return toast('Error: ' + data.error, true);
+        toast('Plan guardado'); renderDeportes();
+    }
+
+    async function depEliminarPlan(id, nombre) {
+        if (!confirm('¿Eliminar el plan ' + nombre + '?')) return;
+        const data = await deportesApi('eliminar_plan', { proyecto_id: ctx.proyecto_id, id });
+        if (!data.ok) return toast('Error: ' + data.error, true);
+        toast('Eliminado'); renderDeportes();
+    }
+
+    async function depFormHorario(id) {
+        let h = {};
+        if (id) {
+            const data = await depLista('listar_horarios', 'dep-panel');
+            if (data) h = (data.horarios||[]).find(x => x.id === id) || {};
+        }
+        depModalCampos([
+            { id: 'hor-categoria', label: 'Categoría', value: h.categoria, required: true },
+            { id: 'hor-dia', label: 'Día', value: h.dia || 'Lunes', type: 'select', options: ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'] },
+            { id: 'hor-inicio', label: 'Hora inicio', value: h.hora_inicio || '16:00' },
+            { id: 'hor-fin', label: 'Hora fin', value: h.hora_fin || '18:00' }
+        ], id ? 'Editar horario' : 'Nuevo horario', 'depGuardarHorario');
+        window._depHorarioId = id || '';
+    }
+
+    async function depGuardarHorario() {
+        const data = await deportesApi('guardar_horario', {
+            proyecto_id: ctx.proyecto_id, id: window._depHorarioId || null,
+            categoria: $('hor-categoria').value.trim(), dia: $('hor-dia').value,
+            hora_inicio: $('hor-inicio').value.trim(), hora_fin: $('hor-fin').value.trim()
+        });
+        if (!data.ok) return toast('Error: ' + data.error, true);
+        toast('Horario guardado'); renderDeportes();
+    }
+
+    async function depEliminarHorario(id) {
+        if (!confirm('¿Eliminar este horario?')) return;
+        const data = await deportesApi('eliminar_horario', { proyecto_id: ctx.proyecto_id, id });
+        if (!data.ok) return toast('Error: ' + data.error, true);
+        toast('Eliminado'); renderDeportes();
+    }
+
+    // VISORÍAS
+    async function depRenderVisorias() {
+        const panel = $('dep-panel');
+        panel.innerHTML = '<div class="empty">Cargando…</div>';
+        const data = await depLista('listar_visorias', 'dep-panel');
+        if (!data) return;
+        const lista = data.visorias || [];
+        panel.innerHTML = `
+            <div style="display:flex;justify-content:flex-end;margin-bottom:8px"><button class="btn-main" onclick="depFormVisoria(null)"><i class="fas fa-plus"></i> Nueva visoría</button></div>
+            ${lista.length ? `<div class="table-wrap"><table>
+                <thead><tr><th>Título</th><th>Fecha</th><th>Costo</th><th>Cupo</th><th>Lugar</th><th></th></tr></thead>
+                <tbody>${lista.map(v => `<tr><td style="font-weight:600">${esc(v.titulo)}</td><td>${v.fecha ? new Date(v.fecha).toLocaleDateString('es-CO') : '—'}</td><td>${fmtCOP(v.costo_cents)}</td><td>${v.cupo != null ? v.cupo : '—'}</td><td>${esc(v.lugar||'—')}</td>
+                    <td style="white-space:nowrap"><button class="btn-small" onclick="depFormVisoria('${v.id}')"><i class="fas fa-pen"></i></button><button class="btn-small danger" onclick="depEliminarVisoria('${v.id}','${esc(v.titulo)}')"><i class="fas fa-trash"></i></button></td></tr>`).join('')}</tbody>
+            </table></div>` : '<div class="empty">Sin visorías.</div>'}
+        `;
+    }
+
+    async function depFormVisoria(id) {
+        let v = {};
+        if (id) {
+            const data = await depLista('listar_visorias', 'dep-panel');
+            if (data) v = (data.visorias||[]).find(x => x.id === id) || {};
+        }
+        depModalCampos([
+            { id: 'vis-titulo', label: 'Título', value: v.titulo, required: true },
+            { id: 'vis-desc', label: 'Descripción', value: v.descripcion, type: 'textarea' },
+            { id: 'vis-fecha', label: 'Fecha', value: v.fecha ? v.fecha.slice(0,16) : '', type: 'datetime-local' },
+            { id: 'vis-costo', label: 'Costo (COP)', value: v.costo_cents ? Math.round(v.costo_cents/100) : 60000, type: 'number' },
+            { id: 'vis-cupo', label: 'Cupo', value: v.cupo ?? '', type: 'number' },
+            { id: 'vis-lugar', label: 'Lugar', value: v.lugar }
+        ], id ? 'Editar visoría' : 'Nueva visoría', 'depGuardarVisoria');
+        window._depVisoriaId = id || '';
+    }
+
+    async function depGuardarVisoria() {
+        const data = await deportesApi('guardar_visoria', {
+            proyecto_id: ctx.proyecto_id, id: window._depVisoriaId || null,
+            titulo: $('vis-titulo').value.trim(), descripcion: $('vis-desc').value.trim(),
+            fecha: $('vis-fecha').value || null, costo_cents: Math.round(Number($('vis-costo').value)||0)*100,
+            cupo: $('vis-cupo').value || null, lugar: $('vis-lugar').value.trim()
+        });
+        if (!data.ok) return toast('Error: ' + data.error, true);
+        toast('Visoría guardada'); renderDeportes();
+    }
+
+    async function depEliminarVisoria(id, nombre) {
+        if (!confirm('¿Eliminar la visoría ' + nombre + '?')) return;
+        const data = await deportesApi('eliminar_visoria', { proyecto_id: ctx.proyecto_id, id });
+        if (!data.ok) return toast('Error: ' + data.error, true);
+        toast('Eliminada'); renderDeportes();
+    }
+
+    // INSCRIPCIONES
+    async function depRenderInscripciones() {
+        const panel = $('dep-panel');
+        panel.innerHTML = '<div class="empty">Cargando…</div>';
+        const data = await depLista('listar_inscripciones', 'dep-panel');
+        if (!data) return;
+        const lista = data.inscripciones || [];
+        panel.innerHTML = lista.length ? `<div class="table-wrap"><table>
+            <thead><tr><th>Tipo</th><th>Deportista</th><th>Responsable</th><th>Contacto</th><th>Consent.</th><th>Estado</th><th></th></tr></thead>
+            <tbody>${lista.map(i => `<tr><td>${esc(i.tipo||'—')}</td><td style="font-weight:600">${esc(i.deportista_nombre||'—')}</td><td>${esc(i.responsable_nombre||'—')}</td><td>${esc(i.responsable_email||i.responsable_telefono||'—')}</td><td>${i.consentimiento ? 'Sí' : 'No'}</td>
+                <td>
+                    <select onchange="depEstadoInscripcion('${i.id}',this.value)" style="padding:4px 6px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);font-size:.78rem">
+                        ${['solicitada','programada','pagada','evaluada','cancelada'].map(e=>`<option value="${e}"${e===(i.estado||'solicitada')?' selected':''}>${e}</option>`).join('')}
+                    </select>
+                </td>
+                <td style="white-space:nowrap">
+                    <button class="btn-small" onclick="depPagarInscripcion('${i.id}')" title="Generar pago Wompi"><i class="fas fa-credit-card"></i></button>
+                </td></tr>`).join('')}</tbody>
+        </table></div>` : '<div class="empty">Sin inscripciones.</div>';
+    }
+
+    async function depEstadoInscripcion(id, estado) {
+        const data = await deportesApi('cambiar_estado_inscripcion', { proyecto_id: ctx.proyecto_id, id, estado });
+        if (!data.ok) return toast('Error: ' + data.error, true);
+        toast('Estado actualizado'); depRenderInscripciones();
+    }
+
+    async function depPagarInscripcion(id) {
+        if (!confirm('¿Generar el link de pago (Wompi) para esta inscripción?')) return;
+        try {
+            const data = await deportesApi('pago_inscripcion', { proyecto_id: ctx.proyecto_id, inscripcion_id: id });
+            if (!data.ok) return toast('Error: ' + data.error, true);
+            toast('Link generado (' + fmtCOP(data.monto_cents || 0) + ')');
+            if (data.url && confirm('¿Abrir el link de pago?')) window.open(data.url, '_blank');
+            depRenderInscripciones();
+        } catch (err) { toast('Error: ' + err.message, true); }
+    }
+
+    // TORNEOS
+    async function depRenderTorneos() {
+        const panel = $('dep-panel');
+        panel.innerHTML = '<div class="empty">Cargando…</div>';
+        const data = await depLista('listar_torneos', 'dep-panel');
+        if (!data) return;
+        const lista = data.torneos || [];
+        panel.innerHTML = `
+            <div style="display:flex;justify-content:flex-end;margin-bottom:8px"><button class="btn-main" onclick="depFormTorneo(null)"><i class="fas fa-plus"></i> Nuevo torneo</button></div>
+            ${lista.length ? `<div class="table-wrap"><table>
+                <thead><tr><th>Título</th><th>Categoría</th><th>Inicio</th><th>Fin</th><th>Lugar</th><th></th></tr></thead>
+                <tbody>${lista.map(t => `<tr><td style="font-weight:600">${esc(t.titulo)}</td><td>${esc(t.categoria||'—')}</td><td>${t.fecha_inicio ? new Date(t.fecha_inicio).toLocaleDateString('es-CO') : '—'}</td><td>${t.fecha_fin ? new Date(t.fecha_fin).toLocaleDateString('es-CO') : '—'}</td><td>${esc(t.lugar||'—')}</td>
+                    <td style="white-space:nowrap"><button class="btn-small" onclick="depFormTorneo('${t.id}')"><i class="fas fa-pen"></i></button><button class="btn-small danger" onclick="depEliminarTorneo('${t.id}','${esc(t.titulo)}')"><i class="fas fa-trash"></i></button></td></tr>`).join('')}</tbody>
+            </table></div>` : '<div class="empty">Sin torneos.</div>'}
+        `;
+    }
+
+    async function depFormTorneo(id) {
+        let t = {};
+        if (id) {
+            const data = await depLista('listar_torneos', 'dep-panel');
+            if (data) t = (data.torneos||[]).find(x => x.id === id) || {};
+        }
+        depModalCampos([
+            { id: 'tor-titulo', label: 'Título', value: t.titulo, required: true },
+            { id: 'tor-categoria', label: 'Categoría', value: t.categoria },
+            { id: 'tor-inicio', label: 'Inicio', value: t.fecha_inicio ? t.fecha_inicio.slice(0,16) : '', type: 'datetime-local' },
+            { id: 'tor-fin', label: 'Fin', value: t.fecha_fin ? t.fecha_fin.slice(0,16) : '', type: 'datetime-local' },
+            { id: 'tor-lugar', label: 'Lugar', value: t.lugar },
+            { id: 'tor-desc', label: 'Descripción', value: t.descripcion, type: 'textarea' }
+        ], id ? 'Editar torneo' : 'Nuevo torneo', 'depGuardarTorneo');
+        window._depTorneoId = id || '';
+    }
+
+    async function depGuardarTorneo() {
+        const data = await deportesApi('guardar_torneo', {
+            proyecto_id: ctx.proyecto_id, id: window._depTorneoId || null,
+            titulo: $('tor-titulo').value.trim(), categoria: $('tor-categoria').value.trim(),
+            fecha_inicio: $('tor-inicio').value || null, fecha_fin: $('tor-fin').value || null,
+            lugar: $('tor-lugar').value.trim(), descripcion: $('tor-desc').value.trim()
+        });
+        if (!data.ok) return toast('Error: ' + data.error, true);
+        toast('Torneo guardado'); renderDeportes();
+    }
+
+    async function depEliminarTorneo(id, nombre) {
+        if (!confirm('¿Eliminar el torneo ' + nombre + '?')) return;
+        const data = await deportesApi('eliminar_torneo', { proyecto_id: ctx.proyecto_id, id });
+        if (!data.ok) return toast('Error: ' + data.error, true);
+        toast('Eliminado'); renderDeportes();
+    }
+
+    // NOTICIAS
+    async function depRenderNoticias() {
+        const panel = $('dep-panel');
+        panel.innerHTML = '<div class="empty">Cargando…</div>';
+        const data = await depLista('listar_noticias', 'dep-panel');
+        if (!data) return;
+        const lista = data.noticias || [];
+        panel.innerHTML = `
+            <div style="display:flex;justify-content:flex-end;margin-bottom:8px"><button class="btn-main" onclick="depFormNoticia(null)"><i class="fas fa-plus"></i> Nueva noticia</button></div>
+            ${lista.length ? `<div class="table-wrap"><table>
+                <thead><tr><th>Título</th><th>Categoría</th><th>Fecha</th><th></th></tr></thead>
+                <tbody>${lista.map(n => `<tr><td style="font-weight:600">${esc(n.titulo)}</td><td>${esc(n.categoria||'General')}</td><td>${n.fecha_publicacion ? new Date(n.fecha_publicacion).toLocaleDateString('es-CO') : '—'}</td>
+                    <td style="white-space:nowrap"><button class="btn-small" onclick="depFormNoticia('${n.id}')"><i class="fas fa-pen"></i></button><button class="btn-small danger" onclick="depEliminarNoticia('${n.id}','${esc(n.titulo)}')"><i class="fas fa-trash"></i></button></td></tr>`).join('')}</tbody>
+            </table></div>` : '<div class="empty">Sin noticias.</div>'}
+        `;
+    }
+
+    async function depFormNoticia(id) {
+        let n = {};
+        if (id) {
+            const data = await depLista('listar_noticias', 'dep-panel');
+            if (data) n = (data.noticias||[]).find(x => x.id === id) || {};
+        }
+        depModalCampos([
+            { id: 'not-titulo', label: 'Título', value: n.titulo, required: true },
+            { id: 'not-categoria', label: 'Categoría', value: n.categoria || 'General', type: 'select', options: ['Convocatorias','Resultados','Torneos','Visorías','Jugadores','Giras','Institucional'] },
+            { id: 'not-contenido', label: 'Contenido', value: n.contenido, type: 'textarea', rows: 8 },
+            { id: 'not-imagen', label: 'URL de imagen', value: n.imagen_url }
+        ], id ? 'Editar noticia' : 'Nueva noticia', 'depGuardarNoticia');
+        window._depNoticiaId = id || '';
+    }
+
+    async function depGuardarNoticia() {
+        const data = await deportesApi('guardar_noticia', {
+            proyecto_id: ctx.proyecto_id, id: window._depNoticiaId || null,
+            titulo: $('not-titulo').value.trim(), categoria: $('not-categoria').value,
+            contenido: $('not-contenido').value.trim(), imagen_url: $('not-imagen').value.trim()
+        });
+        if (!data.ok) return toast('Error: ' + data.error, true);
+        toast('Noticia guardada'); renderDeportes();
+    }
+
+    async function depEliminarNoticia(id, nombre) {
+        if (!confirm('¿Eliminar la noticia ' + nombre + '?')) return;
+        const data = await deportesApi('eliminar_noticia', { proyecto_id: ctx.proyecto_id, id });
+        if (!data.ok) return toast('Error: ' + data.error, true);
+        toast('Eliminada'); renderDeportes();
+    }
+
+    // GALERÍA
+    async function depRenderGaleria() {
+        const panel = $('dep-panel');
+        panel.innerHTML = '<div class="empty">Cargando…</div>';
+        const data = await depLista('listar_galeria', 'dep-panel');
+        if (!data) return;
+        const lista = data.galeria || [];
+        panel.innerHTML = `
+            <div style="display:flex;justify-content:flex-end;margin-bottom:8px"><button class="btn-main" onclick="depFormGaleria(null)"><i class="fas fa-plus"></i> Nuevo item</button></div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:.8rem">
+                ${lista.map(g => `<div style="border:1px solid var(--border);border-radius:10px;overflow:hidden;background:var(--surface)">
+                    ${g.tipo === 'video' ? `<video src="${esc(g.url)}" style="width:100%;height:110px;object-fit:cover" controls></video>` : `<img src="${esc(g.url)}" alt="" style="width:100%;height:110px;object-fit:cover">`}
+                    <div style="padding:.5rem"><div style="font-size:.78rem;font-weight:600">${esc(g.titulo||g.categoria||'Item')}</div>
+                    <div style="display:flex;gap:.3rem;margin-top:.4rem">
+                        <button class="btn-small" onclick="depFormGaleria('${g.id}')"><i class="fas fa-pen"></i></button>
+                        <button class="btn-small danger" onclick="depEliminarItemGaleria('${g.id}')"><i class="fas fa-trash"></i></button>
+                    </div></div></div>`).join('')}
+            </div>
+            ${lista.length ? '' : '<div class="empty">Sin items.</div>'}
+        `;
+    }
+
+    async function depFormGaleria(id) {
+        let g = {};
+        if (id) {
+            const data = await depLista('listar_galeria', 'dep-panel');
+            if (data) g = (data.galeria||[]).find(x => x.id === id) || {};
+        }
+        depModalCampos([
+            { id: 'gal-categoria', label: 'Categoría', value: g.categoria || 'Club', type: 'select', options: ['Club','Agency','Giras','Torneos','General'] },
+            { id: 'gal-titulo', label: 'Título', value: g.titulo },
+            { id: 'gal-url', label: 'URL', value: g.url, required: true },
+            { id: 'gal-tipo', label: 'Tipo', value: g.tipo === 'video' ? 'video' : 'imagen', type: 'select', options: ['imagen','video'] }
+        ], id ? 'Editar item' : 'Nuevo item', 'depGuardarGaleria', `
+            <div><label>&nbsp;</label>
+                <input type="file" accept="image/*,video/*" style="display:none" id="gal-file" onchange="depSubir(this,function(u){$('gal-url').value=u})">
+                <button class="btn-small" onclick="$('gal-file').click()"><i class="fas fa-upload"></i> Subir archivo</button>
+            </div>`);
+        window._depGaleriaId = id || '';
+    }
+
+    async function depGuardarGaleria() {
+        const data = await deportesApi('guardar_item_galeria', {
+            proyecto_id: ctx.proyecto_id, id: window._depGaleriaId || null,
+            categoria: $('gal-categoria').value, titulo: $('gal-titulo').value.trim(),
+            url: $('gal-url').value.trim(), tipo: $('gal-tipo').value
+        });
+        if (!data.ok) return toast('Error: ' + data.error, true);
+        toast('Item guardado'); renderDeportes();
+    }
+
+    async function depEliminarItemGaleria(id) {
+        if (!confirm('¿Eliminar este item?')) return;
+        const data = await deportesApi('eliminar_item_galeria', { proyecto_id: ctx.proyecto_id, id });
+        if (!data.ok) return toast('Error: ' + data.error, true);
+        toast('Eliminado'); renderDeportes();
+    }
+
+    // CONSENTIMIENTOS
+    async function depRenderConsentimientos() {
+        const panel = $('dep-panel');
+        panel.innerHTML = '<div class="empty">Cargando…</div>';
+        const data = await depLista('listar_consentimientos', 'dep-panel');
+        if (!data) return;
+        const lista = data.consentimientos || [];
+        panel.innerHTML = lista.length ? `<div class="table-wrap"><table>
+            <thead><tr><th>Sujeto</th><th>Responsable</th><th>Uso imagen</th><th>Tratamiento</th><th>Versión</th><th>Fecha</th><th>Estado</th></tr></thead>
+            <tbody>${lista.map(c => `<tr><td style="font-weight:600">${esc(c.sujeto_nombre||'—')}</td><td>${esc(c.responsable||'—')}</td><td>${c.uso_imagen?'Sí':'No'}</td><td>${c.tratamiento_datos?'Sí':'No'}</td><td>${esc(c.documento_version||'v1')}</td><td>${c.fecha ? new Date(c.fecha).toLocaleDateString('es-CO') : '—'}</td><td>${esc(c.estado||'aceptado')}</td></tr>`).join('')}</tbody>
+        </table></div>` : '<div class="empty">Sin consentimientos. Se registran automáticamente al inscribirse.</div>';
     }
 
     // ── Mobile menu toggle ──

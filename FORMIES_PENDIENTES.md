@@ -6,6 +6,7 @@
 ## Pendientes de implementación (loop)
 
 - [x] Migración DB `deportes_*` + seeds planes (ELITE/FORMATIVO) — **aplicada** (CLI linked).
+- [x] `web_projects.modulos` (columna) + flag "Activar módulo Deportes" en creación (plantilla Tienda). Proyecto FORMIES: `["deportes"]`. tienda-admin muestra la sección Deportes solo si el módulo está activo.
 - [x] Backend `deportes.js` + `subir-imagen-deporte.js` + bucket `deportes`.
 - [x] Dashboard: sección "Deportes" (deportistas, club, visorías, torneos, noticias, galería, consentimientos).
 - [x] Pagos visoría/club vía `pago_inscripcion` (orden tienda + Wompi) + botón en panel.

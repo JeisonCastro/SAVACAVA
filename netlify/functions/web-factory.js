@@ -792,7 +792,7 @@ async function refrescarYGuardar(proyecto) {
 
 // ── Pipeline de creación (background) ──
 async function pipelineCrear(body, adminId) {
-    const { cliente, nombre, slug, plantilla, dominio, descripcion, logo, slogan, whatsapp, agente_id, accent_color, fuente, contexto, propuesta_ia } = body;
+    const { cliente, nombre, slug, plantilla, dominio, descripcion, logo, slogan, whatsapp, agente_id, accent_color, fuente, contexto, propuesta_ia, modulos } = body;
 
     // Si el admin aprobó una propuesta de IA, los valores de contenido/diseño provienen de ella
     // (el usuario puede editarlos en el modal antes de aprobar; aquí solo se aplican).
@@ -846,6 +846,7 @@ async function pipelineCrear(body, adminId) {
         logo: valores.LOGO || null, slogan: valores.SLOGAN || null, whatsapp: valores.WHATSAPP || null,
         agente_id: agenteRow ? agenteRow.id : null,
         accent_color: accent, fuente: (fuenteInfo ? fuenteInfo.key : 'sistema'),
+        modulos: Array.isArray(modulos) ? modulos.filter(m => ['deportes'].includes(m)) : [],
         estado: 'creando', created_by: adminId
     };
     let { data: fila, error: insError } = await supabase

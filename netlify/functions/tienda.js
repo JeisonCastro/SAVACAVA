@@ -1018,11 +1018,11 @@ async function accionInfoTienda(adminId, params) {
     if (acceso) return acceso;
     const { data: proyecto } = await supabase
         .from('web_projects')
-        .select('id, slug, nombre, descripcion, slogan, logo, accent_color, fuente, netlify_url')
+        .select('id, slug, nombre, descripcion, slogan, logo, accent_color, fuente, netlify_url, modulos')
         .eq('id', proyecto_id)
         .maybeSingle();
     if (!proyecto) return ok({ ok: false, error: 'Sitio no encontrado' }, 404);
-    return ok({ ok: true, tienda: proyecto });
+    return ok({ ok: true, tienda: proyecto, modulos: Array.isArray(proyecto.modulos) ? proyecto.modulos : [] });
 }
 
 async function accionEstadoNotificaciones(adminId, params) {

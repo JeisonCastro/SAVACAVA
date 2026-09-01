@@ -1009,6 +1009,16 @@ Multiusuario.
 
 # Changelog de Cambios Técnicos
 
+## 1 Sep 2026 — Módulo Deportes seleccionable al crear el sitio + sección en tienda-admin (v32)
+
+- **Objetivo (decisión del usuario):** el módulo Deportes es un módulo **genérico** que se activa al crear un sitio (plantilla Tienda) y solo aparece en las tiendas que lo activen; diseño estándar en todo el sitio.
+- **DB (`supabase/migrations/20260901_web_projects_modulos.sql`, aplicada):** columna `web_projects.modulos jsonb default '[]'`. Proyecto FORMIES actualizado a `["deportes"]`.
+- **Web Factory (`web-factory.js` `pipelineCrear`):** acepta `modulos` (array) y lo guarda al insertar (filtrado a valores válidos: `deportes`). `web-factory-background` ya pasa el body completo.
+- **Dashboard (`dashboard.html`):** en el modal de creación, checkbox **"Activar módulo Deportes"** que aparece solo cuando la plantilla es `tienda` (`wfToggleModuloDeportes`); se envía `modulos` en `crearProyectoWeb`.
+- **tienda-admin.html:** la sección **"Deportes"** (nav + `renderDeportes` con tabs: Deportistas, Club, Visorías, Inscripciones, Torneos, Noticias, Galería, Consentimientos) se muestra **solo si `web_projects.modulos` incluye `deportes`** (se lee de `tienda.js info` → `ctx.modulos`). Si no está activo, muestra aviso con cómo activarlo. Reutiliza `ctx.proyecto_id`, `fmtCOP`, `api`/`deportesApi`, `$`, `esc`.
+- **tienda.js (`info`):** devuelve `modulos` del proyecto.
+- **PWA:** cache bump **v31 → v32** (`tienda-admin.html` y `dashboard.html` → `dashboard.css?v=32`, `auvro-design.css?v=32`; `sw.js` → `auvro-v32` + precache `?v=32`).
+
 ## 1 Sep 2026 — Webhook de pagos marca inscripción deportiva como `pagada` (v31-c)
 
 - **`netlify/functions/pago-webhook.js`:** cuando una orden de tienda vinculada a una `deportes_inscripciones` (visoría/club) se marca pagada por Wompi, la inscripción pasa automáticamente de `solicitada` a `pagada` (mejor que cambiarla a mano en el panel). La generación del link de pago sigue siendo manual (botón "Pagar" por inscripción), pero la confirmación y el cambio de estado son automáticos.
