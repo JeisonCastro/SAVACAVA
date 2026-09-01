@@ -240,6 +240,85 @@ async function construirTextoCatalogoTienda(tiendaId) {
     return construirTextoCatalogo({ catalogo });
 }
 
+// ── Datos deportivos (nicho deportivo) para el agente IA ──
+// Consulta deportistas públicos, planes del club, horarios, visorías, torneos,
+// noticias y galería del proyecto (tienda_id del agente) y devuelve texto para
+// inyectar en el prompt del agente. Devuelve '' si no hay datos deportivos.
+async function construirTextoDeportesTienda(tiendaId) {
+    if (!tiendaId) return '';
+    const supabase = require('./supabase-admin').supabase;
+
+    const [deportistas, planes, horarios, visorias, torneos, noticias] = await Promise.all([
+        supabase.from('deportes_deportistas').select('id,nombre,edad,categoria,posicion,pierna,altura_cm,club,pais,ciudad,nivel,perfil,logros,estadisticas')
+            .eq('proyecto_id', tiendaId).eq('publico', true).eq('activo', true).order('nombre').limit(100),
+        supabase.from('deportes_club_planes').select('id,nombre,descripcion,precio_cents,periodo')
+            .eq('proyecto_id', tiendaId).eq('activo', true).order('precio_cents'),
+        supabase.from('deportes_club_horarios').select('categoria,dia,hora_inicio,hora_fin')
+            .eq('proyecto_id', tiendaId).eq('activo', true).order('dia'),
+        supabase.from('deportes_visorias').select('id,titulo,descripcion,fecha,costo_cents,cupo,lugar')
+            .eq('proyecto_id', tiendaId).eq('activo', true).order('fecha'),
+        supabase.from('deportes_torneos').select('id,titulo,categoria,fecha_inicio,fecha_fin,lugar,descripcion')
+            .eq('proyecto_id', tiendaId).eq('activo', true).order('fecha_inicio'),
+        supabase.from('deportes_noticias').select('titulo,categoria,contenido,fecha_publicacion')
+            .eq('proyecto_id', tiendaId).eq('activo', true).order('fecha_publicacion', { ascending: false }).limit(20)
+    ]);
+
+    const hayAlgo = [deportistas.data, planes.data, horarios.data, visorias.data, torneos.data, noticias.data]
+        .some(a => Array.isArray(a) && a.length);
+    if (!hayAlgo) return '';
+
+    const lineas = [];
+    lineas.push('INFORMACIÓN DEL CLUB / AGENCIA (datos reales del sitio):');
+
+    if (deportistas.data?.length) {
+        lineas.push('DEPORTISTAS:');
+        for (const d of deportistas.data) {
+            const datos = [d.posicion, d.categoria, d.edad != null ? d.edad + ' años' : null, d.pierna, d.altura_cm ? d.altura_cm + ' cm' : null, d.club, d.ciudad, d.pais, d.nivel]
+                .filter(Boolean).join(' · ');
+            lineas.push(`- ${d.nombre}${datos ? ' (' + datos + ')' : ''}${d.perfil ? ': ' + d.perfil : ''}`);
+            if (d.logros?.length) lineas.push(`  Logros: ${d.logros.join(', ')}`);
+        }
+    }
+
+    if (planes.data?.length) {
+        lineas.push('PLANES DEL CLUB:');
+        for (const p of planes.data) {
+            lineas.push(`- ${p.nombre} (${p.periodo || 'mensual'}): ${formatearPesos(p.precio_cents)} COP${p.descripcion ? ' — ' + p.descripcion : ''} (id: ${p.id})`);
+        }
+    }
+
+    if (horarios.data?.length) {
+        lineas.push('HORARIOS:');
+        for (const h of horarios.data) {
+            lineas.push(`- ${h.dia || '?'}${h.categoria ? ' (' + h.categoria + ')' : ''}: ${h.hora_inicio || ''}–${h.hora_fin || ''}`);
+        }
+    }
+
+    if (visorias.data?.length) {
+        lineas.push('VISORÍAS:');
+        for (const v of visorias.data) {
+            const fecha = v.fecha ? new Date(v.fecha).toLocaleDateString('es-CO') : 'por definir';
+            lineas.push(`- ${v.titulo} (${fecha})${v.lugar ? ' — ' + v.lugar : ''}: ${formatearPesos(v.costo_cents)} COP${v.cupo ? ' · cupo ' + v.cupo : ''} (id: ${v.id})`);
+        }
+    }
+
+    if (torneos.data?.length) {
+        lineas.push('TORNEOS/EVENTOS:');
+        for (const t of torneos.data) {
+            lineas.push(`- ${t.titulo}${t.categoria ? ' (' + t.categoria + ')' : ''}${t.lugar ? ' — ' + t.lugar : ''}${t.descripcion ? ': ' + t.descripcion : ''} (id: ${t.id})`);
+        }
+    }
+
+    if (noticias.data?.length) {
+        lineas.push('NOTICIAS:');
+        for (const n of noticias.data) {
+            lineas.push(`- [${n.categoria || 'General'}] ${n.titulo}${n.contenido ? ': ' + n.contenido.slice(0, 140) : ''}`);
+        }
+    }
+
+    return lineas.join('\n');
+}
+
 // Texto del catálogo para inyectar en el prompt del agente.
 // Agrupa por categoría y renderiza según el tipo (tarifas por pasajero,
 // variantes, escalas por cantidad, extras y atributos).
@@ -923,6 +1002,7 @@ module.exports = {
     calcularPrecioProducto,
     construirTextoCatalogo,
     construirTextoCatalogoTienda,
+    construirTextoDeportesTienda,
     obtenerCatalogoTienda,
     productosParaCliente,
     deepseekJSON,

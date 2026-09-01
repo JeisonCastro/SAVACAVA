@@ -3130,6 +3130,7 @@ let _wfPropuestaIA = null;
                             <select onchange="depCambiarEstadoInscripcion('${i.id}', this.value)" style="padding:5px;border:1px solid var(--border2);border-radius:6px;background:var(--bg);color:var(--text);font-size:.72rem">
                                 ${['solicitada','programada','pagada','evaluada','cancelada'].map(e=>`<option value="${e}"${e===(i.estado||'solicitada')?' selected':''}>${e}</option>`).join('')}
                             </select>
+                            <button class="icon-btn" style="color:var(--accent)" onclick="depPagarInscripcion('${i.id}')" title="Generar pago Wompi"><i class="fas fa-credit-card"></i></button>
                             <button class="icon-btn" onclick='depFormInscripcion(${JSON.stringify(i).replace(/'/g, "&#39;")})' title="Editar"><i class="fas fa-pen"></i></button>
                             <button class="icon-btn" style="color:var(--red)" onclick="depEliminarInscripcion('${i.id}')" title="Eliminar"><i class="fas fa-trash"></i></button>
                         </td>
@@ -3181,6 +3182,21 @@ let _wfPropuestaIA = null;
         if (!data.ok) return showToast('Error: ' + data.error, 'error');
         showToast('Estado actualizado');
         depCargarInscripciones();
+    }
+
+    async function depPagarInscripcion(id) {
+        if (!confirm('¿Generar el link de pago (Wompi) para esta inscripción?')) return;
+        try {
+            const data = await deportesApi('pago_inscripcion', { proyecto_id: _depProyectoId, inscripcion_id: id });
+            if (!data.ok) return showToast('Error: ' + data.error, 'error');
+            showToast('Link de pago generado (' + fmtPesos(data.monto_cents || 0) + ')');
+            if (data.url && confirm('Abrir el link de pago de Wompi en una pestaña nueva?')) {
+                window.open(data.url, '_blank');
+            }
+            depCargarInscripciones();
+        } catch (err) {
+            showToast('Error: ' + err.message, 'error');
+        }
     }
 
     async function depEliminarInscripcion(id) {

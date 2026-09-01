@@ -1009,6 +1009,15 @@ Multiusuario.
 
 # Changelog de Cambios Técnicos
 
+## 1 Sep 2026 — Módulos deportivos: pagos inscripción (Wompi), agente IA deportivo y sitio público (v31-b)
+
+- **Pago de inscripciones (`netlify/functions/deportes.js` `pago_inscripcion`):** genera `tienda_ordenes` (estado pendiente) con el monto del plan/visoría, crea link de pago Wompi con la pasarela del proyecto (`tienda_pasarela`), registra `pagos` y vincula `orden_id`/`pago_id` a la inscripción. Dashboard: botón "Pagar" (icono tarjeta) por inscripción → abre el link.
+- **Agente IA deportivo:**
+  - `netlify/functions/crm-helper.js` `construirTextoDeportesTienda(tiendaId)` (exportada): consulta deportistas públicos, planes, horarios, visorías, torneos y noticias reales del proyecto y genera texto para el prompt.
+  - `netlify/functions/chat.js`: si el agente tiene `tienda_id`, inyecta ese texto al system prompt como "INFORMACIÓN DEL CLUB / AGENCIA" con reglas (no inventar datos, capturar datos para inscribir/reservar).
+- **Sitio público (plantilla `tienda`):** secciones nuevas que se renderizan **solo si hay datos** desde `deportes.js catalogo_publico` (por slug): Deportistas (foto, posición, categoría, edad, logros), Planes del Club (precio/periodo, CTA WhatsApp), Visorías (fecha, lugar, cupo, costo, CTA), Noticias. Estilos `.card-deporte`/`.plan-card` añadidos en `styles.css`. Motor e-commerce intacto (IDs `#grid-productos`, `#cart-drawer`, `#checkout-form`, etc. sin cambios).
+- **Nota:** la columna `tienda_ordenes.datos_extra` no existe en la BD → el insert NO la usa (la trazabilidad queda en `deportes_inscripciones.orden_id`).
+
 ## 1 Sep 2026 — Módulos deportivos GENÉRICOS (nicho deportivo) en AUVRO (v31)
 
 - **Objetivo (decisión del usuario):** AUVRO es la plataforma base; FORMIES S.A.S. es el primer tenant de un ecosistema deportivo. Los módulos se construyen **genéricos y particionados por `proyecto_id`** para servir a cualquier cliente del nicho (deportistas, club, visorías, torneos, noticias, galería, consentimientos). Sitio público FORMIES = plantilla `tienda` existente.

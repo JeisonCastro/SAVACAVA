@@ -16,6 +16,7 @@ const {
     obtenerConfigCRM,
     construirTextoCatalogo,
     construirTextoCatalogoTienda,
+    construirTextoDeportesTienda,
     obtenerCatalogoTienda,
     productosParaCliente,
     calcularPrecioProducto,
@@ -1385,6 +1386,19 @@ Eres el primer punto de contacto del negocio y DEBES capturar datos del cliente 
 - Si el cliente muestra intención de compra, avanza el flujo hacia el cierre (precio, disponibilidad, forma de pago).
 - No inventes datos ni presiones; sé natural y breve.
 `;
+            if (tiendaId) {
+                const textoDeportes = await construirTextoDeportesTienda(tiendaId);
+                if (textoDeportes) {
+                    systemFinal += `
+${truncarMensaje(textoDeportes, 4000)}
+
+REGLAS SOBRE INFORMACIÓN DEPORTIVA:
+- Usa SOLO los datos reales listados arriba (deportistas, planes, horarios, visorías, torneos, noticias). NO inventes jugadores, precios, fechas ni logros.
+- Si te preguntan por un deportista/plan/visoría que no está en la lista, responde que un asesor te ayuda con más detalle.
+- Para inscribir o reservar (visoría, plan del club, clase de cortesía), captura el nombre del interesado/responsable, teléfono/email y, si aplica, la edad, y dilo para que un asesor lo confirme.
+`;
+                }
+            }
             if (catalogoCRM.length > 0) {
                 const textoCatalogo = tiendaId && catalogoTienda.length
                     ? truncarMensaje(construirTextoCatalogo({ catalogo: catalogoTienda }), 4000)

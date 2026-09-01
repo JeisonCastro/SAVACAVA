@@ -51,6 +51,41 @@
         </div>
     </section>
 
+    <!-- DEPORTISTAS (se muestra solo si el proyecto tiene deportistas públicos) -->
+    <section id="deportistas" class="section section-alt" hidden>
+        <div class="container">
+            <h2 class="section-title">Nuestros deportistas</h2>
+            <p class="section-sub">Talento que se forma y se proyecta.</p>
+            <div id="grid-deportistas" class="grid"></div>
+        </div>
+    </section>
+
+    <!-- PLANES DEL CLUB (se muestra solo si hay planes) -->
+    <section id="planes" class="section" hidden>
+        <div class="container">
+            <h2 class="section-title">Planes del Club</h2>
+            <p class="section-sub">Formación deportiva integral.</p>
+            <div id="grid-planes" class="grid"></div>
+        </div>
+    </section>
+
+    <!-- VISORÍAS (se muestra solo si hay visorías) -->
+    <section id="visorias" class="section section-alt" hidden>
+        <div class="container">
+            <h2 class="section-title">Visorías</h2>
+            <p class="section-sub">Tu oportunidad de mostrar tu talento.</p>
+            <div id="grid-visorias" class="grid"></div>
+        </div>
+    </section>
+
+    <!-- NOTICIAS (se muestra solo si hay noticias) -->
+    <section id="noticias" class="section" hidden>
+        <div class="container">
+            <h2 class="section-title">Noticias</h2>
+            <div id="grid-noticias" class="grid"></div>
+        </div>
+    </section>
+
     <section id="contacto" class="section section-alt">
         <div class="container">
             <h2 class="section-title">¿Necesitas ayuda?</h2>
@@ -631,6 +666,79 @@
     cargarCatalogo();
     verificarOrdenPendiente();
 })();
+    </script>
+    <script>
+    (function () {
+        var slug = document.body.getAttribute('data-slug') || '';
+        if (!slug) return;
+        var fmt = function (c) { return '$' + Math.round(Number(c) || 0 / 1) / 100; };
+        var fmtPesos = function (c) { return '$' + (Number(c) || 0).toLocaleString('es-CO').replace(/,/g, '.') + ''; };
+        var esc = function (s) { return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); };
+        function mostrar(seccion) { var el = document.getElementById(seccion); if (el) el.hidden = false; }
+        function waLink(num, texto) {
+            var d = String(document.body.getAttribute('data-wa') || '').replace(/\D/g, '');
+            return d ? '<a class="btn btn-wa" href="https://wa.me/' + d + '" target="_blank" rel="noopener">' + (texto || 'Inscribirme') + '</a>' : '';
+        }
+        fetch('https://auvro.netlify.app/.netlify/functions/deportes', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'catalogo_publico', slug: slug })
+        }).then(function (r) { return r.json(); }).then(function (d) {
+            if (!d.ok) return;
+            // Deportistas
+            if (d.deportistas && d.deportistas.length) {
+                document.getElementById('grid-deportistas').innerHTML = d.deportistas.map(function (p) {
+                    return '<div class="card-deporte">'
+                        + (p.fotografia_url ? '<img class="card-img" src="' + esc(p.fotografia_url) + '" alt="' + esc(p.nombre) + '" loading="lazy">' : '')
+                        + '<div class="card-body"><h3>' + esc(p.nombre) + '</h3>'
+                        + '<p class="card-meta">' + [p.posicion, p.categoria, p.edad ? p.edad + ' años' : null, p.pierna, p.club, p.ciudad].filter(Boolean).join(' · ') + '</p>'
+                        + (p.perfil ? '<p>' + esc(p.perfil) + '</p>' : '')
+                        + (p.logros && p.logros.length ? '<p class="card-meta">🏆 ' + esc(p.logros.join(' · ')) + '</p>' : '')
+                        + '</div></div>';
+                }).join('');
+                mostrar('deportistas');
+            }
+            // Planes
+            if (d.planes && d.planes.length) {
+                document.getElementById('grid-planes').innerHTML = d.planes.map(function (p) {
+                    return '<div class="card-deporte plan-card">'
+                        + '<div class="card-body"><h3>' + esc(p.nombre) + '</h3>'
+                        + (p.descripcion ? '<p>' + esc(p.descripcion) + '</p>' : '')
+                        + '<p class="precio">' + fmtPesos(p.precio_cents) + ' <span style="font-size:.75rem">/ ' + esc(p.periodo || 'mes') + '</span></p>'
+                        + waLink(null, 'Consultar por WhatsApp')
+                        + '</div></div>';
+                }).join('');
+                mostrar('planes');
+            }
+            // Visorías
+            if (d.visorias && d.visorias.length) {
+                document.getElementById('grid-visorias').innerHTML = d.visorias.map(function (v) {
+                    var fecha = v.fecha ? new Date(v.fecha).toLocaleDateString('es-CO') : 'Por definir';
+                    return '<div class="card-deporte">'
+                        + '<div class="card-body"><h3>' + esc(v.titulo) + '</h3>'
+                        + '<p class="card-meta">' + fecha + (v.lugar ? ' · ' + esc(v.lugar) : '') + (v.cupo ? ' · Cupo ' + v.cupo : '') + '</p>'
+                        + (v.descripcion ? '<p>' + esc(v.descripcion) + '</p>' : '')
+                        + '<p class="precio">' + fmtPesos(v.costo_cents) + '</p>'
+                        + waLink(null, 'Inscribirme')
+                        + '</div></div>';
+                }).join('');
+                mostrar('visorias');
+            }
+            // Noticias
+            if (d.noticias && d.noticias.length) {
+                document.getElementById('grid-noticias').innerHTML = d.noticias.slice(0, 6).map(function (n) {
+                    var fecha = n.fecha_publicacion ? new Date(n.fecha_publicacion).toLocaleDateString('es-CO') : '';
+                    return '<div class="card-deporte">'
+                        + (n.imagen_url ? '<img class="card-img" src="' + esc(n.imagen_url) + '" alt="' + esc(n.titulo) + '" loading="lazy">' : '')
+                        + '<div class="card-body"><h3>' + esc(n.titulo) + '</h3>'
+                        + '<p class="card-meta">' + esc(n.categoria || 'General') + (fecha ? ' · ' + fecha : '') + '</p>'
+                        + (n.contenido ? '<p>' + esc(n.contenido.slice(0, 140)) + '…</p>' : '')
+                        + '</div></div>';
+                }).join('');
+                mostrar('noticias');
+            }
+        }).catch(function () {});
+    })();
     </script>
 </body>
 </html>

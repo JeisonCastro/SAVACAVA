@@ -573,6 +573,137 @@ async function eliminarConsentimiento(userId, body) {
 }
 
 // ============================================================
+//  PAGO DE INSCRIPCIÓN (visoría/club) — reutiliza orden de tienda + Wompi
+//  Crea una tienda_ordenes (estado pendiente) con el monto del plan/visoría,
+//  genera el link de pago Wompi de la pasarela del proyecto y vincula
+//  orden_id/pago_id a la inscripción.
+// ============================================================
+async function pagoInscripcion(userId, body) {
+    const { proyecto_id, inscripcion_id } = body;
+    if (!inscripcion_id) return pagerror('Falta la inscripción');
+
+    const { data: insc, error: insErr } = await supabase
+        .from('deportes_inscripciones')
+        .select('*')
+        .eq('id', inscripcion_id)
+        .eq('proyecto_id', proyecto_id)
+        .maybeSingle();
+    if (insErr) return pagerror(insErr.message, 500);
+    if (!insc) return pagerror('Inscripción no encontrada', 404);
+    if (insc.orden_id) return pagerror('Esta inscripción ya tiene una orden de pago');
+
+    const { data: proyecto, error: proyErr } = await supabase
+        .from('web_projects').select('*').eq('id', proyecto_id).maybeSingle();
+    if (proyErr || !proyecto) return pagerror('Proyecto no encontrado', 404);
+
+    // Determinar monto y concepto
+    let montoCents = 0;
+    let concepto = 'Inscripción';
+    if (insc.tipo === 'visoria' && insc.visoria_id) {
+        const { data: vis } = await supabase.from('deportes_visorias').select('titulo, costo_cents').eq('id', insc.visoria_id).maybeSingle();
+        montoCents = vis?.costo_cents || 0;
+        concepto = 'Visoría: ' + (vis?.titulo || '') || concepto;
+    } else if (insc.plan_id) {
+        const { data: plan } = await supabase.from('deportes_club_planes').select('nombre, precio_cents').eq('id', insc.plan_id).maybeSingle();
+        montoCents = plan?.precio_cents || 0;
+        concepto = 'Plan Club: ' + (plan?.nombre || '') || concepto;
+    } else {
+        const costo = Number(insc.datos?.monto_cents) || 0;
+        montoCents = costo;
+        concepto = 'Inscripción (' + insc.tipo + ')';
+    }
+    if (!montoCents || montoCents <= 0) return pagerror('No se pudo determinar el monto de pago para esta inscripción');
+
+    // Pasarela Wompi del proyecto
+    const { data: pasarela, error: pasarelaErr } = await supabase
+        .from('tienda_pasarela').select('*').eq('proyecto_id', proyecto_id).maybeSingle();
+    if (pasarelaErr && !/does not exist/i.test(pasarelaErr.message || '')) return pagerror('Error leyendo pasarela', 500);
+    if (!pasarela?.wompi_private_key) return pagerror('Este proyecto no tiene pasarela de pago (Wompi) configurada', 402);
+
+    const WOMPI_BASE = pasarela.wompi_sandbox
+        ? 'https://sandbox.wompi.co/v1'
+        : 'https://production.wompi.co/v1';
+    const SITE_URL = process.env.URL || 'https://auvro.netlify.app';
+    const email = insc.responsable_email || '';
+    const nombre = insc.responsable_nombre || insc.deportista_nombre || 'Cliente';
+
+    // Orden + línea (producto ficticio de la inscripción, sin tocar tienda_productos)
+    const { data: orden, error: ordenErr } = await supabase.from('tienda_ordenes').insert({
+        proyecto_id,
+        cliente_nombre: nombre,
+        cliente_email: email,
+        cliente_telefono: insc.responsable_telefono || null,
+        total_cents: montoCents,
+        estado: 'pendiente',
+        estado_pago: 'pendiente',
+        metodo_pago: 'wompi'
+    }).select().single();
+    if (ordenErr) return pagerror('No se pudo crear la orden: ' + ordenErr.message, 500);
+
+    const { error: itemsErr } = await supabase.from('tienda_orden_items').insert({
+        orden_id: orden.id,
+        nombre: concepto,
+        precio_cents: montoCents,
+        cantidad: 1
+    });
+    if (itemsErr) {
+        await supabase.from('tienda_ordenes').delete().eq('id', orden.id).catch(() => {});
+        return pagerror('No se pudo guardar la línea de la orden', 500);
+    }
+
+    // Link de pago Wompi
+    const redirect = (proyecto.netlify_url || SITE_URL).replace(/\/+$/, '') + `/?orden=${orden.id}`;
+    const wompiRes = await fetch(`${WOMPI_BASE}/payment_links`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${pasarela.wompi_private_key}` },
+        body: JSON.stringify({
+            name: `AUVRO - ${concepto}`,
+            description: concepto,
+            single_use: true,
+            collect_shipping: false,
+            currency: 'COP',
+            amount_in_cents: montoCents,
+            redirect_url: redirect
+        })
+    });
+    const wompi = await wompiRes.json();
+    if (!wompiRes.ok || !wompi?.data?.id) {
+        await supabase.from('tienda_ordenes').delete().eq('id', orden.id).catch(() => {});
+        return pagerror(wompi?.error?.message || 'Error creando el pago en Wompi.', 502);
+    }
+    const paymentLinkId = wompi.data.id;
+
+    await supabase.from('tienda_ordenes').update({ payment_link_id: paymentLinkId }).eq('id', orden.id).catch(() => {});
+
+    const { error: pagosErr } = await supabase.from('pagos').insert({
+        user_id: proyecto.created_by || null,
+        tipo: 'tienda',
+        concepto,
+        monto_cents: montoCents,
+        payment_link_id: paymentLinkId,
+        orden_id: orden.id,
+        estado: 'pendiente'
+    });
+    if (pagosErr) {
+        await supabase.from('tienda_ordenes').delete().eq('id', orden.id).catch(() => {});
+        await fetch(`${WOMPI_BASE}/payment_links/${paymentLinkId}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${pasarela.wompi_private_key}` }
+        }).catch(() => {});
+        return pagerror('No se pudo registrar el pago.', 500);
+    }
+
+    // Vincular a la inscripción
+    await supabase.from('deportes_inscripciones').update({
+        orden_id: orden.id,
+        pago_id: paymentLinkId,
+        updated_at: new Date().toISOString()
+    }).eq('id', insc.id).catch(() => {});
+
+    return ok({ ok: true, url: `https://checkout.wompi.co/l/${paymentLinkId}`, orden_id: orden.id, monto_cents: montoCents });
+}
+
+// ============================================================
 //  HANDLER
 // ============================================================
 exports.handler = async (event) => {
@@ -623,6 +754,7 @@ exports.handler = async (event) => {
             case 'cambiar_estado_inscripcion': return await cambiarEstadoInscripcion(userId, body);
             case 'evaluar_inscripcion': return await evaluarInscripcion(userId, body);
             case 'eliminar_inscripcion': return await eliminarInscripcion(userId, body);
+            case 'pago_inscripcion': return await pagoInscripcion(userId, body);
 
             case 'listar_torneos': return await listarTorneos(userId, body);
             case 'guardar_torneo': return await guardarTorneo(userId, body);
