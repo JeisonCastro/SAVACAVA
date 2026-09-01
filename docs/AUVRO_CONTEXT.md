@@ -1009,6 +1009,18 @@ Multiusuario.
 
 # Changelog de Cambios Técnicos
 
+## 1 Sep 2026 — Módulos deportivos GENÉRICOS (nicho deportivo) en AUVRO (v31)
+
+- **Objetivo (decisión del usuario):** AUVRO es la plataforma base; FORMIES S.A.S. es el primer tenant de un ecosistema deportivo. Los módulos se construyen **genéricos y particionados por `proyecto_id`** para servir a cualquier cliente del nicho (deportistas, club, visorías, torneos, noticias, galería, consentimientos). Sitio público FORMIES = plantilla `tienda` existente.
+- **Documentación nueva (raíz):** `FORMIES_AUVRO_MAP.md` (matriz de reutilización real), `FORMIES_IMPLEMENTACION.md` (plan + decisiones D1–D5), `FORMIES_PENDIENTES.md` (pendientes y configs externas).
+- **DB (`supabase/migrations/20260901_deportes_modulos.sql`, idempotente):** tablas `deportes_deportistas`, `deportes_club_planes` (+ seed ELITE $180.000 / FORMATIVO $150.000 para tiendas), `deportes_club_horarios`, `deportes_visorias`, `deportes_inscripciones`, `deportes_torneos`, `deportes_noticias`, `deportes_galeria`, `deportes_consentimientos`. RLS habilitada con policies por admin/permiso de proyecto (patrón `tienda_pipeline`). *Aplicar manualmente (CLI sin ACCESS_TOKEN).*
+- **Backend nuevo:**
+  - `netlify/functions/deportes.js` — acciones públicas (`catalogo_publico`, `inscribir_publico` con consentimientos) y de admin (CRUD deportistas/buscador, club planes/horarios, visorías, inscripciones con cambio de estado/evaluación, torneos, noticias, galería, consentimientos). Auth Bearer + admin o `tienda_permisos`.
+  - `netlify/functions/subir-imagen-deporte.js` — bucket público `deportes` (imágenes + videos, ≤12MB), auth por proyecto.
+- **Frontend (`dashboard.html`):** nueva vista **"Deportes"** (`view-deportes` + nav, visible para admin y usuarios con permisos de tienda). Selector de proyecto + sub-tabs: Deportistas (con buscador por nombre/categoría/posición y ficha completa), Club (planes + horarios), Visorías, Inscripciones (cambio de estado), Torneos, Noticias, Galería (imagen/video con subida), Consentimientos. Reutiliza `fmtPesos`, `showToast`, `badge-*`, `currentSession`.
+- **PWA:** cache bump **v30 → v31** (`dashboard.html` → `dashboard.css?v=31`, `auvro-design.css?v=31`; `sw.js` → `auvro-v31` + precache `?v=31`).
+- **Pendiente:** aplicar migración; conectar catálogo FORMIES (balones, uniformes, servicios, tour Gira US$1.300, perfil $350K, visoría $60K) y agente IA deportivo.
+
 ## 30 Ago 2026 — Retirada plantilla `tienda-mit` (redundante con `tienda`)
 
 - **Objetivo (decisión del usuario):** eliminar la plantilla MIT de tienda porque aporta poco frente a la plantilla custom `tienda` (que ya incluye el motor AUVRO completo de e-commerce: catálogo, carrito y pago Wompi).

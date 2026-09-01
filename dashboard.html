@@ -72,8 +72,8 @@
             rel="stylesheet">
         <link rel="stylesheet"
             href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-        <link rel="stylesheet" href="dashboard.css?v=30">
-        <link rel="stylesheet" href="auvro-design.css?v=30">
+        <link rel="stylesheet" href="dashboard.css?v=31">
+        <link rel="stylesheet" href="auvro-design.css?v=31">
 
     </head>
     <body class="light-mode">
@@ -166,6 +166,8 @@
                             class="fas fa-users-gear"></i> CRM</a>
                     <a onclick="mostrarVista('webfactory')" id="nav-webfactory" style="display:none"><i
                             class="fas fa-globe"></i> Web Factory</a>
+                    <a onclick="mostrarVista('deportes')" id="nav-deportes" style="display:none"><i
+                            class="fas fa-futbol"></i> Deportes</a>
                     <a onclick="mostrarVista('bandeja')" id="nav-bandeja"><i
                             class="fas fa-inbox"></i> Bandeja</a>
                     <a onclick="mostrarVista('integraciones')"
@@ -978,6 +980,46 @@
             </div>
         </div>
 
+        <!-- VISTA DEPORTES (módulos genéricos nicho deportivo) -->
+        <div class="view" id="view-deportes">
+            <div class="topbar">
+                <div>
+                    <h2 class="page-title">Deportes</h2>
+                    <p class="page-sub">Deportistas, Club, Visorías, Torneos, Noticias, Galería y Consentimientos de tu proyecto</p>
+                </div>
+                <div class="topbar-right" style="gap:.6rem;flex-wrap:wrap">
+                    <select id="dep-proyecto" onchange="deportesTab('deportistas')" style="padding:8px 10px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text);font-size:.8rem;max-width:260px">
+                        <option value="">Selecciona un proyecto</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="dep-body" style="display:flex;align-items:center;justify-content:center;padding:2.5rem">
+                <div class="empty-state"><i class="fas fa-futbol"></i> Selecciona un proyecto para gestionar sus módulos deportivos.</div>
+            </div>
+
+            <div id="dep-contenido" style="display:none">
+                <div style="display:flex;gap:.5rem;margin-bottom:1.2rem;flex-wrap:wrap">
+                    <button class="btn-main" style="padding:.45rem .9rem;font-size:.78rem" id="dep-tab-deportistas" onclick="deportesTab('deportistas')"><i class="fas fa-user" style="margin-right:.25rem"></i>Deportistas</button>
+                    <button class="btn-main" style="padding:.45rem .9rem;font-size:.78rem" id="dep-tab-club" onclick="deportesTab('club')"><i class="fas fa-shield-halved" style="margin-right:.25rem"></i>Club</button>
+                    <button class="btn-main" style="padding:.45rem .9rem;font-size:.78rem" id="dep-tab-visorias" onclick="deportesTab('visorias')"><i class="fas fa-stopwatch" style="margin-right:.25rem"></i>Visorías</button>
+                    <button class="btn-main" style="padding:.45rem .9rem;font-size:.78rem" id="dep-tab-inscripciones" onclick="deportesTab('inscripciones')"><i class="fas fa-clipboard-list" style="margin-right:.25rem"></i>Inscripciones</button>
+                    <button class="btn-main" style="padding:.45rem .9rem;font-size:.78rem" id="dep-tab-torneos" onclick="deportesTab('torneos')"><i class="fas fa-trophy" style="margin-right:.25rem"></i>Torneos</button>
+                    <button class="btn-main" style="padding:.45rem .9rem;font-size:.78rem" id="dep-tab-noticias" onclick="deportesTab('noticias')"><i class="fas fa-newspaper" style="margin-right:.25rem"></i>Noticias</button>
+                    <button class="btn-main" style="padding:.45rem .9rem;font-size:.78rem" id="dep-tab-galeria" onclick="deportesTab('galeria')"><i class="fas fa-images" style="margin-right:.25rem"></i>Galería</button>
+                    <button class="btn-main" style="padding:.45rem .9rem;font-size:.78rem" id="dep-tab-consentimientos" onclick="deportesTab('consentimientos')"><i class="fas fa-file-signature" style="margin-right:.25rem"></i>Consentimientos</button>
+                </div>
+                <div id="dep-panel-deportistas"></div>
+                <div id="dep-panel-club" style="display:none"></div>
+                <div id="dep-panel-visorias" style="display:none"></div>
+                <div id="dep-panel-inscripciones" style="display:none"></div>
+                <div id="dep-panel-torneos" style="display:none"></div>
+                <div id="dep-panel-noticias" style="display:none"></div>
+                <div id="dep-panel-galeria" style="display:none"></div>
+                <div id="dep-panel-consentimientos" style="display:none"></div>
+            </div>
+        </div>
+
         <!-- CHAT MODAL -->
         <div id="chat-modal"
             style="display:none;position:fixed;bottom:20px;right:20px;width:350px;height:500px;background:var(--surface);border:1px solid var(--border);border-radius:15px;flex-direction:column;z-index:1000;box-shadow:var(--shadow-soft);">
@@ -1318,6 +1360,7 @@
         if (vista === 'crm') cargarCRM();
         if (vista === 'admin') cargarAdmin();
         if (vista === 'webfactory') cargarWebFactory();
+        if (vista === 'deportes') cargarVistaDeportes();
         try { localStorage.setItem('auvro_last_vista', vista); } catch (_) {}
         if (!desdeHash && window.location.hash !== '#' + vista) {
             try { window.location.hash = vista; } catch (_) {}
@@ -1351,6 +1394,7 @@
             _isAdmin = !!data.isAdmin;
             document.getElementById('nav-admin').style.display = _isAdmin ? '' : 'none';
             document.getElementById('nav-webfactory').style.display = _isAdmin ? '' : 'none';
+            document.getElementById('nav-deportes').style.display = _isAdmin ? '' : 'none';
 
             // Si no es admin, verificar permisos de tienda para mostrar Web Factory
             if (!_isAdmin) {
@@ -1367,6 +1411,7 @@
                     _tiendaPermisos = dataPermisos.permisos || [];
                     if (_tiendaPermisos.length > 0) {
                         document.getElementById('nav-webfactory').style.display = '';
+                        document.getElementById('nav-deportes').style.display = '';
                     }
                 } catch (_) {
                     _tiendaPermisos = [];
@@ -1377,6 +1422,7 @@
             _tiendaPermisos = [];
             document.getElementById('nav-admin').style.display = 'none';
             document.getElementById('nav-webfactory').style.display = 'none';
+            document.getElementById('nav-deportes').style.display = 'none';
         }
     }
 
@@ -2560,6 +2606,885 @@ let _wfPropuestaIA = null;
         } catch (_) {
             prompt('Copia el comando:', cmd);
         }
+    }
+
+    // ── DEPORTES (módulos genéricos nicho deportivo) ──
+    let _depProyectoId = '';
+    let _depTabActual = 'deportistas';
+
+    function depEscape(s) {
+        return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    async function deportesApi(action, body = {}) {
+        const res = await fetch('/.netlify/functions/deportes', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${currentSession?.access_token || ''}` },
+            body: JSON.stringify({ action, ...body })
+        });
+        return res.json();
+    }
+
+    async function cargarVistaDeportes() {
+        const activa = document.getElementById('view-deportes').classList.contains('active');
+        if (!activa) return;
+        const sel = document.getElementById('dep-proyecto');
+        if (!sel || sel.options.length > 1) { if (_depProyectoId) deportesTab(_depTabActual); return; }
+        try {
+            const action = esAdmin() ? 'list' : 'list_tienda_para_usuario';
+            const res = await fetch('/.netlify/functions/web-factory', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${currentSession?.access_token || ''}` },
+                body: JSON.stringify({ action })
+            });
+            const data = await res.json();
+            const proyectos = data.proyectos || [];
+            sel.innerHTML = '<option value="">Selecciona un proyecto</option>' + proyectos.map(p =>
+                `<option value="${p.id}">${depEscape(p.nombre || p.slug)}</option>`).join('');
+            if (proyectos.length === 1) {
+                sel.value = proyectos[0].id;
+                _depProyectoId = proyectos[0].id;
+                document.getElementById('dep-body').style.display = 'none';
+                document.getElementById('dep-contenido').style.display = '';
+                deportesTab('deportistas');
+            } else if (proyectos.length === 0) {
+                document.getElementById('dep-body').innerHTML = '<div class="empty-state"><i class="fas fa-futbol"></i> No tienes proyectos. Crea uno en Web Factory.</div>';
+            }
+        } catch (err) {
+            document.getElementById('dep-body').innerHTML = '<div class="empty-state">Error cargando proyectos: ' + depEscape(err.message) + '</div>';
+        }
+    }
+
+    function deportesTab(tab) {
+        _depTabActual = tab;
+        const pid = document.getElementById('dep-proyecto').value;
+        if (!pid) return showToast('Selecciona un proyecto', 'error');
+        _depProyectoId = pid;
+        document.getElementById('dep-body').style.display = 'none';
+        document.getElementById('dep-contenido').style.display = '';
+        const ids = ['deportistas', 'club', 'visorias', 'inscripciones', 'torneos', 'noticias', 'galeria', 'consentimientos'];
+        const loaders = {
+            deportistas: depCargarDeportistas,
+            club: depCargarClub,
+            visorias: depCargarVisorias,
+            inscripciones: depCargarInscripciones,
+            torneos: depCargarTorneos,
+            noticias: depCargarNoticias,
+            galeria: depCargarGaleria,
+            consentimientos: depCargarConsentimientos
+        };
+        ids.forEach(function (id) {
+            const p = document.getElementById('dep-panel-' + id);
+            const b = document.getElementById('dep-tab-' + id);
+            if (id === tab) {
+                p.style.display = '';
+                b.style.background = 'var(--accent)';
+                b.style.color = '#fff';
+                loaders[id]();
+            } else {
+                p.style.display = 'none';
+                b.style.background = '';
+                b.style.color = '';
+            }
+        });
+    }
+
+    function depSubir(pid, input, cb) {
+        const file = input.files && input.files[0];
+        if (!file) return;
+        if (file.size > 12 * 1024 * 1024) { showToast('El archivo supera 12 MB', 'error'); input.value = ''; return; }
+        const reader = new FileReader();
+        reader.onload = async () => {
+            try {
+                const res = await fetch('/.netlify/functions/subir-imagen-deporte', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${currentSession?.access_token || ''}` },
+                    body: JSON.stringify({ proyecto_id: pid, data_url: String(reader.result), filename: file.name })
+                });
+                const data = await res.json();
+                if (!data.ok) throw new Error(data.error || 'No se pudo subir');
+                showToast('Archivo subido');
+                cb && cb(data.url, data.es_video);
+            } catch (err) {
+                showToast('Error: ' + err.message, 'error');
+            }
+        };
+        reader.readAsDataURL(file);
+    }
+
+    // ── DEPORTISTAS ──
+    async function depCargarDeportistas() {
+        const panel = document.getElementById('dep-panel-deportistas');
+        panel.innerHTML = '<div class="empty-state"><i class="fas fa-spinner fa-spin"></i> Cargando...</div>';
+        try {
+            const data = await deportesApi('listar_deportistas', { proyecto_id: _depProyectoId });
+            if (!data.ok) throw new Error(data.error || 'Error');
+            const lista = data.deportistas || [];
+            panel.innerHTML = `
+                <div style="display:flex;justify-content:space-between;align-items:center;gap:.6rem;margin-bottom:1rem;flex-wrap:wrap">
+                    <div style="display:flex;gap:.4rem;flex-wrap:wrap">
+                        <input id="dep-buscar" placeholder="Buscar por nombre..." oninput="depBuscarDeportistas()" style="padding:7px 10px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text);font-size:.78rem">
+                        <select id="dep-f-categoria" onchange="depBuscarDeportistas()" style="padding:7px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text);font-size:.78rem"><option value="">Categoría</option>${['Sub-8','Sub-10','Sub-12','Sub-14','Sub-16','Sub-18','Sub-20','Senior'].map(c=>`<option>${c}</option>`).join('')}</select>
+                        <select id="dep-f-posicion" onchange="depBuscarDeportistas()" style="padding:7px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text);font-size:.78rem"><option value="">Posición</option>${['Arquero','Defensa','Mediocampista','Delantero'].map(c=>`<option>${c}</option>`).join('')}</select>
+                        <button class="btn-main" style="padding:.4rem .8rem;font-size:.76rem" onclick="depBuscarDeportistas()"><i class="fas fa-magnifying-glass" style="margin-right:.25rem"></i>Buscar</button>
+                        <button class="btn-main" style="padding:.4rem .8rem;font-size:.76rem" onclick="depLimpiarBusqueda()">Limpiar</button>
+                    </div>
+                    <button class="btn-main" style="padding:.4rem .8rem;font-size:.76rem" onclick="depFormDeportista()"><i class="fas fa-plus" style="margin-right:.25rem"></i>Nuevo deportista</button>
+                </div>
+                ${lista.length ? `<div class="table-wrap"><table>
+                    <thead><tr><th>Foto</th><th>Nombre</th><th>Edad</th><th>Categoría</th><th>Posición</th><th>Club</th><th>Público</th><th>Activo</th><th></th></tr></thead>
+                    <tbody>${lista.map(d => `
+                        <tr>
+                            <td>${d.fotografia_url ? `<img src="${depEscape(d.fotografia_url)}" alt="" style="width:38px;height:38px;border-radius:8px;object-fit:cover;border:1px solid var(--border2)">` : '<span style="color:var(--dim)">—</span>'}</td>
+                            <td style="font-weight:600">${depEscape(d.nombre)}</td>
+                            <td>${d.edad != null ? d.edad : '—'}</td>
+                            <td>${depEscape(d.categoria || '—')}</td>
+                            <td>${depEscape(d.posicion || '—')}</td>
+                            <td>${depEscape(d.club || '—')}</td>
+                            <td>${d.publico ? '<span class="badge-green">Sí</span>' : '<span class="badge-red">No</span>'}</td>
+                            <td>${d.activo ? '<span class="badge-green">Sí</span>' : '<span class="badge-red">No</span>'}</td>
+                            <td style="white-space:nowrap">
+                                <button class="icon-btn" onclick='depFormDeportista(${JSON.stringify(d).replace(/'/g, "&#39;")})' title="Editar"><i class="fas fa-pen"></i></button>
+                                <button class="icon-btn" style="color:var(--red)" onclick="depEliminarDeportista('${d.id}')" title="Eliminar"><i class="fas fa-trash"></i></button>
+                            </td>
+                        </tr>`).join('')}</tbody>
+                </table></div>` : '<div class="empty-state"><i class="fas fa-user"></i> No hay deportistas. Crea el primero.</div>'}
+            `;
+        } catch (err) {
+            panel.innerHTML = '<div class="empty-state">Error: ' + depEscape(err.message) + '</div>';
+        }
+    }
+
+    async function depBuscarDeportistas() {
+        const q = document.getElementById('dep-buscar')?.value || '';
+        const categoria = document.getElementById('dep-f-categoria')?.value || '';
+        const posicion = document.getElementById('dep-f-posicion')?.value || '';
+        const panel = document.getElementById('dep-panel-deportistas');
+        try {
+            const data = await deportesApi('buscar_deportistas', { proyecto_id: _depProyectoId, q, categoria, posicion });
+            const lista = (data.ok && data.deportistas) || [];
+            panel.innerHTML = lista.length ? `<div class="table-wrap"><table>
+                <thead><tr><th>Foto</th><th>Nombre</th><th>Edad</th><th>Categoría</th><th>Posición</th><th>Club</th><th></th></tr></thead>
+                <tbody>${lista.map(d => `
+                    <tr>
+                        <td>${d.fotografia_url ? `<img src="${depEscape(d.fotografia_url)}" alt="" style="width:38px;height:38px;border-radius:8px;object-fit:cover;border:1px solid var(--border2)">` : '<span style="color:var(--dim)">—</span>'}</td>
+                        <td style="font-weight:600">${depEscape(d.nombre)}</td>
+                        <td>${d.edad != null ? d.edad : '—'}</td>
+                        <td>${depEscape(d.categoria || '—')}</td>
+                        <td>${depEscape(d.posicion || '—')}</td>
+                        <td>${depEscape(d.club || '—')}</td>
+                        <td><button class="icon-btn" onclick='depFormDeportista(${JSON.stringify(d).replace(/'/g, "&#39;")})' title="Editar"><i class="fas fa-pen"></i></button></td>
+                    </tr>`).join('')}</tbody>
+            </table></div>` : '<div class="empty-state"><i class="fas fa-user"></i> Sin resultados</div>';
+        } catch (err) {
+            panel.innerHTML = '<div class="empty-state">Error: ' + depEscape(err.message) + '</div>';
+        }
+    }
+
+    function depLimpiarBusqueda() {
+        depCargarDeportistas();
+    }
+
+    function depFormDeportista(d) {
+        d = d || {};
+        const modal = document.createElement('div');
+        modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;display:flex;align-items:center;justify-content:center';
+        modal.innerHTML = `
+            <div style="background:var(--surface);border:1px solid var(--border2);border-radius:14px;padding:1.5rem;width:94%;max-width:760px;max-height:92vh;overflow-y:auto">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+                    <h3 style="font-weight:700;font-size:1rem">${d.id ? 'Editar deportista' : 'Nuevo deportista'}</h3>
+                    <button onclick="this.closest('div').parentElement.remove()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1.1rem"><i class="fas fa-times"></i></button>
+                </div>
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:.7rem">
+                    <div><label style="font-size:.75rem;font-weight:600;color:var(--dim)">Nombre *</label><input id="dp-nombre" value="${depEscape(d.nombre || '')}" style="width:100%;padding:7px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text);font-size:.8rem"></div>
+                    <div><label style="font-size:.75rem;font-weight:600;color:var(--dim)">Fecha nacimiento</label><input id="dp-fecha" type="date" value="${d.fecha_nacimiento || ''}" style="width:100%;padding:7px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text);font-size:.8rem"></div>
+                    <div><label style="font-size:.75rem;font-weight:600;color:var(--dim)">Edad</label><input id="dp-edad" type="number" min="0" value="${d.edad ?? ''}" style="width:100%;padding:7px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text);font-size:.8rem"></div>
+                    <div><label style="font-size:.75rem;font-weight:600;color:var(--dim)">Categoría</label><input id="dp-categoria" value="${depEscape(d.categoria || '')}" style="width:100%;padding:7px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text);font-size:.8rem"></div>
+                    <div><label style="font-size:.75rem;font-weight:600;color:var(--dim)">Posición</label><select id="dp-posicion" style="width:100%;padding:7px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text);font-size:.8rem">${['','Arquero','Defensa','Mediocampista','Delantero'].map(p=>`<option value="${p}"${p===(d.posicion||'')?' selected':''}>${p||'—'}</option>`).join('')}</select></div>
+                    <div><label style="font-size:.75rem;font-weight:600;color:var(--dim)">Pierna</label><select id="dp-pierna" style="width:100%;padding:7px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text);font-size:.8rem">${['Derecha','Izquierda'].map(p=>`<option${p===(d.pierna||'Derecha')?' selected':''}>${p}</option>`).join('')}</select></div>
+                    <div><label style="font-size:.75rem;font-weight:600;color:var(--dim)">Altura (cm)</label><input id="dp-altura" type="number" min="0" value="${d.altura_cm ?? ''}" style="width:100%;padding:7px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text);font-size:.8rem"></div>
+                    <div><label style="font-size:.75rem;font-weight:600;color:var(--dim)">Peso (kg)</label><input id="dp-peso" type="number" min="0" step="0.1" value="${d.peso_kg ?? ''}" style="width:100%;padding:7px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text);font-size:.8rem"></div>
+                    <div><label style="font-size:.75rem;font-weight:600;color:var(--dim)">Club actual</label><input id="dp-club" value="${depEscape(d.club || '')}" style="width:100%;padding:7px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text);font-size:.8rem"></div>
+                    <div><label style="font-size:.75rem;font-weight:600;color:var(--dim)">País</label><input id="dp-pais" value="${depEscape(d.pais || '')}" style="width:100%;padding:7px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text);font-size:.8rem"></div>
+                    <div><label style="font-size:.75rem;font-weight:600;color:var(--dim)">Ciudad</label><input id="dp-ciudad" value="${depEscape(d.ciudad || '')}" style="width:100%;padding:7px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text);font-size:.8rem"></div>
+                    <div><label style="font-size:.75rem;font-weight:600;color:var(--dim)">Nivel</label><select id="dp-nivel" style="width:100%;padding:7px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text);font-size:.8rem">${['','Formativo','Competitivo','Élite'].map(p=>`<option value="${p}"${p===(d.nivel||'')?' selected':''}>${p||'—'}</option>`).join('')}</select></div>
+                    <div style="grid-column:1/-1"><label style="font-size:.75rem;font-weight:600;color:var(--dim)">Experiencia / Perfil</label><textarea id="dp-experiencia" rows="2" style="width:100%;padding:7px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text);font-size:.8rem;resize:vertical">${depEscape(d.experiencia || '')}</textarea></div>
+                    <div style="grid-column:1/-1"><label style="font-size:.75rem;font-weight:600;color:var(--dim)">Fotografía</label>
+                        <div style="display:flex;gap:.5rem;align-items:center">
+                            <input id="dp-foto" value="${depEscape(d.fotografia_url || '')}" placeholder="URL de imagen o sube una..." style="flex:1;padding:7px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text);font-size:.8rem">
+                            <input type="file" accept="image/*" style="display:none" id="dp-foto-file" onchange="depSubir('${_depProyectoId}', this, function(u){document.getElementById('dp-foto').value=u})">
+                            <button class="btn-main" style="padding:.4rem .7rem;font-size:.72rem" onclick="document.getElementById('dp-foto-file').click()"><i class="fas fa-upload" style="margin-right:.25rem"></i>Subir</button>
+                        </div>
+                    </div>
+                    <div style="grid-column:1/-1">
+                        <label style="font-size:.75rem;font-weight:600;color:var(--dim)">Logros <span style="font-weight:400;color:var(--muted)">(uno por línea)</span></label>
+                        <textarea id="dp-logros" rows="3" style="width:100%;padding:7px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text);font-size:.8rem;resize:vertical">${(d.logros || []).join('\n')}</textarea>
+                    </div>
+                    <div style="grid-column:1/-1">
+                        <label style="font-size:.75rem;font-weight:600;color:var(--dim)">Videos <span style="font-weight:400;color:var(--muted)">(URLs, uno por línea)</span></label>
+                        <textarea id="dp-videos" rows="2" style="width:100%;padding:7px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text);font-size:.8rem;resize:vertical">${(d.videos || []).join('\n')}</textarea>
+                    </div>
+                    <div><label style="font-size:.75rem;font-weight:600;color:var(--dim)">Ficha técnica (JSON)</label><textarea id="dp-ficha" rows="3" style="width:100%;padding:7px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text);font-size:.8rem;resize:vertical;font-family:monospace">${depEscape(JSON.stringify(d.ficha || {}, null, 2))}</textarea></div>
+                    <div><label style="font-size:.75rem;font-weight:600;color:var(--dim)">Estadísticas (JSON)</label><textarea id="dp-estadisticas" rows="3" style="width:100%;padding:7px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text);font-size:.8rem;resize:vertical;font-family:monospace">${depEscape(JSON.stringify(d.estadisticas || {}, null, 2))}</textarea></div>
+                    <div style="display:flex;gap:1rem;align-items:center">
+                        <label style="font-size:.78rem"><input type="checkbox" id="dp-publico" ${d.publico !== false ? 'checked' : ''}> Perfil público</label>
+                        <label style="font-size:.78rem"><input type="checkbox" id="dp-activo" ${d.activo !== false ? 'checked' : ''}> Activo</label>
+                    </div>
+                </div>
+                <div style="display:flex;gap:.5rem;margin-top:1rem">
+                    <button class="btn-main" style="padding:.5rem 1rem;font-size:.8rem" onclick="depGuardarDeportista('${d.id || ''}')"><i class="fas fa-save" style="margin-right:.3rem"></i>Guardar</button>
+                    <button class="btn-main" style="padding:.5rem 1rem;font-size:.8rem" onclick="this.closest('div').parentElement.parentElement.remove()">Cancelar</button>
+                </div>
+            </div>`;
+        document.body.appendChild(modal);
+    }
+
+    async function depGuardarDeportista(id) {
+        let ficha = {}, estadisticas = {};
+        try { ficha = JSON.parse(document.getElementById('dp-ficha').value || '{}'); } catch (_) { return showToast('Ficha: JSON inválido', 'error'); }
+        try { estadisticas = JSON.parse(document.getElementById('dp-estadisticas').value || '{}'); } catch (_) { return showToast('Estadísticas: JSON inválido', 'error'); }
+        const body = {
+            proyecto_id: _depProyectoId, id: id || null,
+            nombre: document.getElementById('dp-nombre').value.trim(),
+            fecha_nacimiento: document.getElementById('dp-fecha').value || null,
+            edad: document.getElementById('dp-edad').value || null,
+            categoria: document.getElementById('dp-categoria').value.trim(),
+            posicion: document.getElementById('dp-posicion').value,
+            pierna: document.getElementById('dp-pierna').value,
+            altura_cm: document.getElementById('dp-altura').value || null,
+            peso_kg: document.getElementById('dp-peso').value || null,
+            club: document.getElementById('dp-club').value.trim(),
+            pais: document.getElementById('dp-pais').value.trim(),
+            ciudad: document.getElementById('dp-ciudad').value.trim(),
+            nivel: document.getElementById('dp-nivel').value,
+            experiencia: document.getElementById('dp-experiencia').value.trim(),
+            fotografia_url: document.getElementById('dp-foto').value.trim(),
+            logros: document.getElementById('dp-logros').value.split('\n').map(s => s.trim()).filter(Boolean),
+            videos: document.getElementById('dp-videos').value.split('\n').map(s => s.trim()).filter(Boolean),
+            ficha, estadisticas,
+            publico: document.getElementById('dp-publico').checked,
+            activo: document.getElementById('dp-activo').checked
+        };
+        const data = await deportesApi('guardar_deportista', body);
+        if (!data.ok) return showToast('Error: ' + data.error, 'error');
+        showToast('Deportista guardado');
+        document.querySelector('#view-deportes [style*="inset:0"]')?.remove();
+        depCargarDeportistas();
+    }
+
+    async function depEliminarDeportista(id) {
+        if (!confirm('¿Eliminar este deportista?')) return;
+        const data = await deportesApi('eliminar_deportista', { proyecto_id: _depProyectoId, id });
+        if (!data.ok) return showToast('Error: ' + data.error, 'error');
+        showToast('Eliminado');
+        depCargarDeportistas();
+    }
+
+    // ── CLUB (planes + horarios) ──
+    async function depCargarClub() {
+        const panel = document.getElementById('dep-panel-club');
+        panel.innerHTML = '<div class="empty-state"><i class="fas fa-spinner fa-spin"></i> Cargando...</div>';
+        try {
+            const [planes, horarios] = await Promise.all([
+                deportesApi('listar_planes', { proyecto_id: _depProyectoId }),
+                deportesApi('listar_horarios', { proyecto_id: _depProyectoId })
+            ]);
+            panel.innerHTML = `
+                <h3 style="font-size:.95rem;font-weight:700;margin-bottom:.6rem">Planes del Club</h3>
+                <div style="display:flex;justify-content:flex-end;margin-bottom:.6rem">
+                    <button class="btn-main" style="padding:.4rem .8rem;font-size:.76rem" onclick="depFormPlan()"><i class="fas fa-plus" style="margin-right:.25rem"></i>Nuevo plan</button>
+                </div>
+                ${(planes.ok && planes.planes.length) ? `<div class="table-wrap"><table>
+                    <thead><tr><th>Nombre</th><th>Descripción</th><th>Precio</th><th>Periodo</th><th>Activo</th><th></th></tr></thead>
+                    <tbody>${planes.planes.map(p => `
+                        <tr>
+                            <td style="font-weight:600">${depEscape(p.nombre)}</td>
+                            <td>${depEscape(p.descripcion || '—')}</td>
+                            <td>${fmtPesos(p.precio_cents || 0)}</td>
+                            <td>${depEscape(p.periodo || 'mensual')}</td>
+                            <td>${p.activo ? '<span class="badge-green">Sí</span>' : '<span class="badge-red">No</span>'}</td>
+                            <td style="white-space:nowrap">
+                                <button class="icon-btn" onclick='depFormPlan(${JSON.stringify(p).replace(/'/g, "&#39;")})' title="Editar"><i class="fas fa-pen"></i></button>
+                                <button class="icon-btn" style="color:var(--red)" onclick="depEliminarPlan('${p.id}')" title="Eliminar"><i class="fas fa-trash"></i></button>
+                            </td>
+                        </tr>`).join('')}</tbody>
+                </table></div>` : '<div class="empty-state"><i class="fas fa-shield-halved"></i> Sin planes. Crea el primero.</div>'}
+                <h3 style="font-size:.95rem;font-weight:700;margin:1.2rem 0 .6rem">Horarios</h3>
+                <div style="display:flex;justify-content:flex-end;margin-bottom:.6rem">
+                    <button class="btn-main" style="padding:.4rem .8rem;font-size:.76rem" onclick="depFormHorario()"><i class="fas fa-plus" style="margin-right:.25rem"></i>Nuevo horario</button>
+                </div>
+                ${(horarios.ok && horarios.horarios.length) ? `<div class="table-wrap"><table>
+                    <thead><tr><th>Categoría</th><th>Día</th><th>Inicio</th><th>Fin</th><th>Activo</th><th></th></tr></thead>
+                    <tbody>${horarios.horarios.map(h => `
+                        <tr>
+                            <td>${depEscape(h.categoria || '—')}</td>
+                            <td>${depEscape(h.dia || '—')}</td>
+                            <td>${depEscape(h.hora_inicio || '—')}</td>
+                            <td>${depEscape(h.hora_fin || '—')}</td>
+                            <td>${h.activo ? '<span class="badge-green">Sí</span>' : '<span class="badge-red">No</span>'}</td>
+                            <td style="white-space:nowrap">
+                                <button class="icon-btn" onclick='depFormHorario(${JSON.stringify(h).replace(/'/g, "&#39;")})' title="Editar"><i class="fas fa-pen"></i></button>
+                                <button class="icon-btn" style="color:var(--red)" onclick="depEliminarHorario('${h.id}')" title="Eliminar"><i class="fas fa-trash"></i></button>
+                            </td>
+                        </tr>`).join('')}</tbody>
+                </table></div>` : '<div class="empty-state"><i class="fas fa-clock"></i> Sin horarios.</div>'}
+            `;
+        } catch (err) {
+            panel.innerHTML = '<div class="empty-state">Error: ' + depEscape(err.message) + '</div>';
+        }
+    }
+
+    function depModalCampos(campos, titulo, onSave) {
+        const modal = document.createElement('div');
+        modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;display:flex;align-items:center;justify-content:center';
+        modal.innerHTML = `
+            <div style="background:var(--surface);border:1px solid var(--border2);border-radius:14px;padding:1.5rem;width:94%;max-width:480px">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+                    <h3 style="font-weight:700;font-size:1rem">${titulo}</h3>
+                    <button onclick="this.closest('div').parentElement.remove()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1.1rem"><i class="fas fa-times"></i></button>
+                </div>
+                <div style="display:grid;gap:.7rem">
+                    ${campos.map(c => `
+                        <div><label style="font-size:.75rem;font-weight:600;color:var(--dim)">${c.label}${c.required ? ' *' : ''}</label>
+                        ${c.type === 'textarea'
+                            ? `<textarea id="${c.id}" rows="${c.rows || 3}" style="width:100%;padding:7px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text);font-size:.8rem;resize:vertical">${depEscape(c.value || '')}</textarea>`
+                            : c.type === 'select'
+                                ? `<select id="${c.id}" style="width:100%;padding:7px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text);font-size:.8rem">${c.options.map(o => `<option value="${o}"${o === c.value ? ' selected' : ''}>${o}</option>`).join('')}</select>`
+                                : `<input id="${c.id}" type="${c.type || 'text'}" value="${depEscape(c.value ?? '')}" style="width:100%;padding:7px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text);font-size:.8rem">`}
+                        </div>`).join('')}
+                </div>
+                <div style="display:flex;gap:.5rem;margin-top:1rem">
+                    <button class="btn-main" style="padding:.5rem 1rem;font-size:.8rem" onclick="depModalGuardar(this)"><i class="fas fa-save" style="margin-right:.3rem"></i>Guardar</button>
+                    <button class="btn-main" style="padding:.5rem 1rem;font-size:.8rem" onclick="this.closest('div').parentElement.parentElement.remove()">Cancelar</button>
+                </div>
+            </div>`;
+        modal.dataset.onSave = onSave;
+        document.body.appendChild(modal);
+    }
+    window.depModalGuardar = async function (btn) {
+        const modal = btn.closest('div').parentElement.parentElement;
+        const fn = window[modal.dataset.onSave];
+        if (fn) await fn(modal);
+    };
+
+    function depFormPlan(p) {
+        p = p || {};
+        depModalCampos([
+            { id: 'plan-nombre', label: 'Nombre del plan', value: p.nombre, required: true },
+            { id: 'plan-descripcion', label: 'Descripción', value: p.descripcion, type: 'textarea' },
+            { id: 'plan-precio', label: 'Precio mensual (COP)', value: p.precio_cents ? Math.round(p.precio_cents / 100) : '', type: 'number' },
+            { id: 'plan-activo', label: 'Activo', value: p.activo === false ? 'No' : 'Sí', type: 'select', options: ['Sí', 'No'] }
+        ], (p.id ? 'Editar plan' : 'Nuevo plan'), 'depGuardarPlan');
+        document.body.lastElementChild.dataset.planId = p.id || '';
+    }
+
+    async function depGuardarPlan(modal) {
+        const body = {
+            proyecto_id: _depProyectoId,
+            id: modal.dataset.planId || null,
+            nombre: modal.querySelector('#plan-nombre').value.trim(),
+            descripcion: modal.querySelector('#plan-descripcion').value.trim(),
+            precio_cents: Math.round(Number(modal.querySelector('#plan-precio').value) || 0) * 100,
+            activo: modal.querySelector('#plan-activo').value !== 'No'
+        };
+        const data = await deportesApi('guardar_plan', body);
+        if (!data.ok) return showToast('Error: ' + data.error, 'error');
+        showToast('Plan guardado');
+        modal.remove();
+        depCargarClub();
+    }
+
+    async function depEliminarPlan(id) {
+        if (!confirm('¿Eliminar este plan?')) return;
+        const data = await deportesApi('eliminar_plan', { proyecto_id: _depProyectoId, id });
+        if (!data.ok) return showToast('Error: ' + data.error, 'error');
+        showToast('Eliminado');
+        depCargarClub();
+    }
+
+    function depFormHorario(h) {
+        h = h || {};
+        depModalCampos([
+            { id: 'hor-categoria', label: 'Categoría', value: h.categoria, required: true },
+            { id: 'hor-dia', label: 'Día', value: h.dia || 'Lunes', type: 'select', options: ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'] },
+            { id: 'hor-inicio', label: 'Hora inicio', value: h.hora_inicio || '16:00' },
+            { id: 'hor-fin', label: 'Hora fin', value: h.hora_fin || '18:00' }
+        ], (h.id ? 'Editar horario' : 'Nuevo horario'), 'depGuardarHorario');
+        document.body.lastElementChild.dataset.horarioId = h.id || '';
+    }
+
+    async function depGuardarHorario(modal) {
+        const body = {
+            proyecto_id: _depProyectoId,
+            id: modal.dataset.horarioId || null,
+            categoria: modal.querySelector('#hor-categoria').value.trim(),
+            dia: modal.querySelector('#hor-dia').value,
+            hora_inicio: modal.querySelector('#hor-inicio').value.trim(),
+            hora_fin: modal.querySelector('#hor-fin').value.trim()
+        };
+        const data = await deportesApi('guardar_horario', body);
+        if (!data.ok) return showToast('Error: ' + data.error, 'error');
+        showToast('Horario guardado');
+        modal.remove();
+        depCargarClub();
+    }
+
+    async function depEliminarHorario(id) {
+        if (!confirm('¿Eliminar este horario?')) return;
+        const data = await deportesApi('eliminar_horario', { proyecto_id: _depProyectoId, id });
+        if (!data.ok) return showToast('Error: ' + data.error, 'error');
+        showToast('Eliminado');
+        depCargarClub();
+    }
+
+    // ── VISORÍAS ──
+    async function depCargarVisorias() {
+        const panel = document.getElementById('dep-panel-visorias');
+        panel.innerHTML = '<div class="empty-state"><i class="fas fa-spinner fa-spin"></i> Cargando...</div>';
+        try {
+            const data = await deportesApi('listar_visorias', { proyecto_id: _depProyectoId });
+            const lista = (data.ok && data.visorias) || [];
+            panel.innerHTML = `
+                <div style="display:flex;justify-content:flex-end;margin-bottom:.6rem">
+                    <button class="btn-main" style="padding:.4rem .8rem;font-size:.76rem" onclick="depFormVisoria()"><i class="fas fa-plus" style="margin-right:.25rem"></i>Nueva visoría</button>
+                </div>
+                ${lista.length ? `<div class="table-wrap"><table>
+                    <thead><tr><th>Título</th><th>Fecha</th><th>Costo</th><th>Cupo</th><th>Lugar</th><th>Activo</th><th></th></tr></thead>
+                    <tbody>${lista.map(v => `
+                        <tr>
+                            <td style="font-weight:600">${depEscape(v.titulo)}</td>
+                            <td>${v.fecha ? new Date(v.fecha).toLocaleDateString('es-CO') : '—'}</td>
+                            <td>${fmtPesos(v.costo_cents || 0)}</td>
+                            <td>${v.cupo != null ? v.cupo : '—'}</td>
+                            <td>${depEscape(v.lugar || '—')}</td>
+                            <td>${v.activo ? '<span class="badge-green">Sí</span>' : '<span class="badge-red">No</span>'}</td>
+                            <td style="white-space:nowrap">
+                                <button class="icon-btn" onclick='depFormVisoria(${JSON.stringify(v).replace(/'/g, "&#39;")})' title="Editar"><i class="fas fa-pen"></i></button>
+                                <button class="icon-btn" style="color:var(--red)" onclick="depEliminarVisoria('${v.id}')" title="Eliminar"><i class="fas fa-trash"></i></button>
+                            </td>
+                        </tr>`).join('')}</tbody>
+                </table></div>` : '<div class="empty-state"><i class="fas fa-stopwatch"></i> Sin visorías.</div>'}
+            `;
+        } catch (err) {
+            panel.innerHTML = '<div class="empty-state">Error: ' + depEscape(err.message) + '</div>';
+        }
+    }
+
+    function depFormVisoria(v) {
+        v = v || {};
+        depModalCampos([
+            { id: 'vis-titulo', label: 'Título', value: v.titulo, required: true },
+            { id: 'vis-descripcion', label: 'Descripción', value: v.descripcion, type: 'textarea' },
+            { id: 'vis-fecha', label: 'Fecha', value: v.fecha ? v.fecha.slice(0, 16) : '', type: 'datetime-local' },
+            { id: 'vis-costo', label: 'Costo (COP)', value: v.costo_cents ? Math.round(v.costo_cents / 100) : 60000, type: 'number' },
+            { id: 'vis-cupo', label: 'Cupo', value: v.cupo ?? '', type: 'number' },
+            { id: 'vis-lugar', label: 'Lugar', value: v.lugar }
+        ], (v.id ? 'Editar visoría' : 'Nueva visoría'), 'depGuardarVisoria');
+        document.body.lastElementChild.dataset.visoriaId = v.id || '';
+    }
+
+    async function depGuardarVisoria(modal) {
+        const body = {
+            proyecto_id: _depProyectoId,
+            id: modal.dataset.visoriaId || null,
+            titulo: modal.querySelector('#vis-titulo').value.trim(),
+            descripcion: modal.querySelector('#vis-descripcion').value.trim(),
+            fecha: modal.querySelector('#vis-fecha').value || null,
+            costo_cents: Math.round(Number(modal.querySelector('#vis-costo').value) || 0) * 100,
+            cupo: modal.querySelector('#vis-cupo').value || null,
+            lugar: modal.querySelector('#vis-lugar').value.trim()
+        };
+        const data = await deportesApi('guardar_visoria', body);
+        if (!data.ok) return showToast('Error: ' + data.error, 'error');
+        showToast('Visoría guardada');
+        modal.remove();
+        depCargarVisorias();
+    }
+
+    async function depEliminarVisoria(id) {
+        if (!confirm('¿Eliminar esta visoría?')) return;
+        const data = await deportesApi('eliminar_visoria', { proyecto_id: _depProyectoId, id });
+        if (!data.ok) return showToast('Error: ' + data.error, 'error');
+        showToast('Eliminada');
+        depCargarVisorias();
+    }
+
+    // ── INSCRIPCIONES ──
+    async function depCargarInscripciones() {
+        const panel = document.getElementById('dep-panel-inscripciones');
+        panel.innerHTML = '<div class="empty-state"><i class="fas fa-spinner fa-spin"></i> Cargando...</div>';
+        try {
+            const data = await deportesApi('listar_inscripciones', { proyecto_id: _depProyectoId });
+            const lista = (data.ok && data.inscripciones) || [];
+            panel.innerHTML = lista.length ? `<div class="table-wrap"><table>
+                <thead><tr><th>Tipo</th><th>Deportista</th><th>Responsable</th><th>Contacto</th><th>Consent.</th><th>Estado</th><th></th></tr></thead>
+                <tbody>${lista.map(i => `
+                    <tr>
+                        <td>${depEscape(i.tipo || '—')}</td>
+                        <td style="font-weight:600">${depEscape(i.deportista_nombre || '—')}</td>
+                        <td>${depEscape(i.responsable_nombre || '—')}</td>
+                        <td>${depEscape(i.responsable_email || i.responsable_telefono || '—')}</td>
+                        <td>${i.consentimiento ? '<span class="badge-green">Sí</span>' : '<span class="badge-red">No</span>'}</td>
+                        <td>${depEscape(i.estado || 'solicitada')}</td>
+                        <td style="white-space:nowrap">
+                            <select onchange="depCambiarEstadoInscripcion('${i.id}', this.value)" style="padding:5px;border:1px solid var(--border2);border-radius:6px;background:var(--bg);color:var(--text);font-size:.72rem">
+                                ${['solicitada','programada','pagada','evaluada','cancelada'].map(e=>`<option value="${e}"${e===(i.estado||'solicitada')?' selected':''}>${e}</option>`).join('')}
+                            </select>
+                            <button class="icon-btn" onclick='depFormInscripcion(${JSON.stringify(i).replace(/'/g, "&#39;")})' title="Editar"><i class="fas fa-pen"></i></button>
+                            <button class="icon-btn" style="color:var(--red)" onclick="depEliminarInscripcion('${i.id}')" title="Eliminar"><i class="fas fa-trash"></i></button>
+                        </td>
+                    </tr>`).join('')}</tbody>
+            </table></div>` : '<div class="empty-state"><i class="fas fa-clipboard-list"></i> Sin inscripciones.</div>';
+        } catch (err) {
+            panel.innerHTML = '<div class="empty-state">Error: ' + depEscape(err.message) + '</div>';
+        }
+    }
+
+    function depFormInscripcion(i) {
+        i = i || {};
+        depModalCampos([
+            { id: 'ins-tipo', label: 'Tipo', value: i.tipo || 'club', type: 'select', options: ['club', 'visoria', 'torneo', 'gira'] },
+            { id: 'ins-deportista', label: 'Nombre del deportista', value: i.deportista_nombre },
+            { id: 'ins-fecha', label: 'Fecha nacimiento', value: i.fecha_nacimiento || '', type: 'date' },
+            { id: 'ins-deporte', label: 'Deporte', value: i.deporte },
+            { id: 'ins-horario', label: 'Horario', value: i.horario },
+            { id: 'ins-responsable', label: 'Responsable *', value: i.responsable_nombre, required: true },
+            { id: 'ins-email', label: 'Email', value: i.responsable_email },
+            { id: 'ins-tel', label: 'Teléfono', value: i.responsable_telefono }
+        ], (i.id ? 'Editar inscripción' : 'Nueva inscripción'), 'depGuardarInscripcion');
+        document.body.lastElementChild.dataset.inscripcionId = i.id || '';
+    }
+
+    async function depGuardarInscripcion(modal) {
+        const body = {
+            proyecto_id: _depProyectoId,
+            id: modal.dataset.inscripcionId || null,
+            tipo: modal.querySelector('#ins-tipo').value,
+            deportista_nombre: modal.querySelector('#ins-deportista').value.trim(),
+            fecha_nacimiento: modal.querySelector('#ins-fecha').value || null,
+            deporte: modal.querySelector('#ins-deporte').value.trim(),
+            horario: modal.querySelector('#ins-horario').value.trim(),
+            responsable_nombre: modal.querySelector('#ins-responsable').value.trim(),
+            responsable_email: modal.querySelector('#ins-email').value.trim(),
+            responsable_telefono: modal.querySelector('#ins-tel').value.trim(),
+            consentimiento: true, consentimiento_uso_imagen: true, consentimiento_tratamiento: true
+        };
+        const data = await deportesApi('guardar_inscripcion', body);
+        if (!data.ok) return showToast('Error: ' + data.error, 'error');
+        showToast('Inscripción guardada');
+        modal.remove();
+        depCargarInscripciones();
+    }
+
+    async function depCambiarEstadoInscripcion(id, estado) {
+        const data = await deportesApi('cambiar_estado_inscripcion', { proyecto_id: _depProyectoId, id, estado });
+        if (!data.ok) return showToast('Error: ' + data.error, 'error');
+        showToast('Estado actualizado');
+        depCargarInscripciones();
+    }
+
+    async function depEliminarInscripcion(id) {
+        if (!confirm('¿Eliminar esta inscripción?')) return;
+        const data = await deportesApi('eliminar_inscripcion', { proyecto_id: _depProyectoId, id });
+        if (!data.ok) return showToast('Error: ' + data.error, 'error');
+        showToast('Eliminada');
+        depCargarInscripciones();
+    }
+
+    // ── TORNEOS ──
+    async function depCargarTorneos() {
+        const panel = document.getElementById('dep-panel-torneos');
+        panel.innerHTML = '<div class="empty-state"><i class="fas fa-spinner fa-spin"></i> Cargando...</div>';
+        try {
+            const data = await deportesApi('listar_torneos', { proyecto_id: _depProyectoId });
+            const lista = (data.ok && data.torneos) || [];
+            panel.innerHTML = `
+                <div style="display:flex;justify-content:flex-end;margin-bottom:.6rem">
+                    <button class="btn-main" style="padding:.4rem .8rem;font-size:.76rem" onclick="depFormTorneo()"><i class="fas fa-plus" style="margin-right:.25rem"></i>Nuevo torneo</button>
+                </div>
+                ${lista.length ? `<div class="table-wrap"><table>
+                    <thead><tr><th>Título</th><th>Categoría</th><th>Inicio</th><th>Fin</th><th>Lugar</th><th>Activo</th><th></th></tr></thead>
+                    <tbody>${lista.map(t => `
+                        <tr>
+                            <td style="font-weight:600">${depEscape(t.titulo)}</td>
+                            <td>${depEscape(t.categoria || '—')}</td>
+                            <td>${t.fecha_inicio ? new Date(t.fecha_inicio).toLocaleDateString('es-CO') : '—'}</td>
+                            <td>${t.fecha_fin ? new Date(t.fecha_fin).toLocaleDateString('es-CO') : '—'}</td>
+                            <td>${depEscape(t.lugar || '—')}</td>
+                            <td>${t.activo ? '<span class="badge-green">Sí</span>' : '<span class="badge-red">No</span>'}</td>
+                            <td style="white-space:nowrap">
+                                <button class="icon-btn" onclick='depFormTorneo(${JSON.stringify(t).replace(/'/g, "&#39;")})' title="Editar"><i class="fas fa-pen"></i></button>
+                                <button class="icon-btn" style="color:var(--red)" onclick="depEliminarTorneo('${t.id}')" title="Eliminar"><i class="fas fa-trash"></i></button>
+                            </td>
+                        </tr>`).join('')}</tbody>
+                </table></div>` : '<div class="empty-state"><i class="fas fa-trophy"></i> Sin torneos.</div>'}
+            `;
+        } catch (err) {
+            panel.innerHTML = '<div class="empty-state">Error: ' + depEscape(err.message) + '</div>';
+        }
+    }
+
+    function depFormTorneo(t) {
+        t = t || {};
+        depModalCampos([
+            { id: 'tor-titulo', label: 'Título', value: t.titulo, required: true },
+            { id: 'tor-categoria', label: 'Categoría', value: t.categoria },
+            { id: 'tor-inicio', label: 'Inicio', value: t.fecha_inicio ? t.fecha_inicio.slice(0, 16) : '', type: 'datetime-local' },
+            { id: 'tor-fin', label: 'Fin', value: t.fecha_fin ? t.fecha_fin.slice(0, 16) : '', type: 'datetime-local' },
+            { id: 'tor-lugar', label: 'Lugar', value: t.lugar },
+            { id: 'tor-descripcion', label: 'Descripción', value: t.descripcion, type: 'textarea' }
+        ], (t.id ? 'Editar torneo' : 'Nuevo torneo'), 'depGuardarTorneo');
+        document.body.lastElementChild.dataset.torneoId = t.id || '';
+    }
+
+    async function depGuardarTorneo(modal) {
+        const body = {
+            proyecto_id: _depProyectoId,
+            id: modal.dataset.torneoId || null,
+            titulo: modal.querySelector('#tor-titulo').value.trim(),
+            categoria: modal.querySelector('#tor-categoria').value.trim(),
+            fecha_inicio: modal.querySelector('#tor-inicio').value || null,
+            fecha_fin: modal.querySelector('#tor-fin').value || null,
+            lugar: modal.querySelector('#tor-lugar').value.trim(),
+            descripcion: modal.querySelector('#tor-descripcion').value.trim()
+        };
+        const data = await deportesApi('guardar_torneo', body);
+        if (!data.ok) return showToast('Error: ' + data.error, 'error');
+        showToast('Torneo guardado');
+        modal.remove();
+        depCargarTorneos();
+    }
+
+    async function depEliminarTorneo(id) {
+        if (!confirm('¿Eliminar este torneo?')) return;
+        const data = await deportesApi('eliminar_torneo', { proyecto_id: _depProyectoId, id });
+        if (!data.ok) return showToast('Error: ' + data.error, 'error');
+        showToast('Eliminado');
+        depCargarTorneos();
+    }
+
+    // ── NOTICIAS / CMS ──
+    async function depCargarNoticias() {
+        const panel = document.getElementById('dep-panel-noticias');
+        panel.innerHTML = '<div class="empty-state"><i class="fas fa-spinner fa-spin"></i> Cargando...</div>';
+        try {
+            const data = await deportesApi('listar_noticias', { proyecto_id: _depProyectoId });
+            const lista = (data.ok && data.noticias) || [];
+            panel.innerHTML = `
+                <div style="display:flex;justify-content:flex-end;margin-bottom:.6rem">
+                    <button class="btn-main" style="padding:.4rem .8rem;font-size:.76rem" onclick="depFormNoticia()"><i class="fas fa-plus" style="margin-right:.25rem"></i>Nueva noticia</button>
+                </div>
+                ${lista.length ? `<div class="table-wrap"><table>
+                    <thead><tr><th>Imagen</th><th>Título</th><th>Categoría</th><th>Fecha</th><th>Activo</th><th></th></tr></thead>
+                    <tbody>${lista.map(n => `
+                        <tr>
+                            <td>${n.imagen_url ? `<img src="${depEscape(n.imagen_url)}" alt="" style="width:48px;height:32px;border-radius:6px;object-fit:cover;border:1px solid var(--border2)">` : '—'}</td>
+                            <td style="font-weight:600">${depEscape(n.titulo)}</td>
+                            <td>${depEscape(n.categoria || 'General')}</td>
+                            <td>${n.fecha_publicacion ? new Date(n.fecha_publicacion).toLocaleDateString('es-CO') : '—'}</td>
+                            <td>${n.activo ? '<span class="badge-green">Sí</span>' : '<span class="badge-red">No</span>'}</td>
+                            <td style="white-space:nowrap">
+                                <button class="icon-btn" onclick='depFormNoticia(${JSON.stringify(n).replace(/'/g, "&#39;")})' title="Editar"><i class="fas fa-pen"></i></button>
+                                <button class="icon-btn" style="color:var(--red)" onclick="depEliminarNoticia('${n.id}')" title="Eliminar"><i class="fas fa-trash"></i></button>
+                            </td>
+                        </tr>`).join('')}</tbody>
+                </table></div>` : '<div class="empty-state"><i class="fas fa-newspaper"></i> Sin noticias.</div>'}
+            `;
+        } catch (err) {
+            panel.innerHTML = '<div class="empty-state">Error: ' + depEscape(err.message) + '</div>';
+        }
+    }
+
+    function depFormNoticia(n) {
+        n = n || {};
+        depModalCampos([
+            { id: 'not-titulo', label: 'Título', value: n.titulo, required: true },
+            { id: 'not-categoria', label: 'Categoría', value: n.categoria || 'General', type: 'select', options: ['Convocatorias', 'Resultados', 'Torneos', 'Visorías', 'Jugadores', 'Giras', 'Institucional'] },
+            { id: 'not-contenido', label: 'Contenido', value: n.contenido, type: 'textarea', rows: 8 },
+            { id: 'not-imagen', label: 'URL de imagen', value: n.imagen_url }
+        ], (n.id ? 'Editar noticia' : 'Nueva noticia'), 'depGuardarNoticia');
+        document.body.lastElementChild.dataset.noticiaId = n.id || '';
+    }
+
+    async function depGuardarNoticia(modal) {
+        const body = {
+            proyecto_id: _depProyectoId,
+            id: modal.dataset.noticiaId || null,
+            titulo: modal.querySelector('#not-titulo').value.trim(),
+            categoria: modal.querySelector('#not-categoria').value,
+            contenido: modal.querySelector('#not-contenido').value.trim(),
+            imagen_url: modal.querySelector('#not-imagen').value.trim()
+        };
+        const data = await deportesApi('guardar_noticia', body);
+        if (!data.ok) return showToast('Error: ' + data.error, 'error');
+        showToast('Noticia guardada');
+        modal.remove();
+        depCargarNoticias();
+    }
+
+    async function depEliminarNoticia(id) {
+        if (!confirm('¿Eliminar esta noticia?')) return;
+        const data = await deportesApi('eliminar_noticia', { proyecto_id: _depProyectoId, id });
+        if (!data.ok) return showToast('Error: ' + data.error, 'error');
+        showToast('Eliminada');
+        depCargarNoticias();
+    }
+
+    // ── GALERÍA ──
+    async function depCargarGaleria() {
+        const panel = document.getElementById('dep-panel-galeria');
+        panel.innerHTML = '<div class="empty-state"><i class="fas fa-spinner fa-spin"></i> Cargando...</div>';
+        try {
+            const data = await deportesApi('listar_galeria', { proyecto_id: _depProyectoId });
+            const lista = (data.ok && data.galeria) || [];
+            panel.innerHTML = `
+                <div style="display:flex;justify-content:flex-end;margin-bottom:.6rem">
+                    <button class="btn-main" style="padding:.4rem .8rem;font-size:.76rem" onclick="depFormGaleria()"><i class="fas fa-plus" style="margin-right:.25rem"></i>Nuevo item</button>
+                </div>
+                <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:.8rem">
+                    ${lista.map(g => `
+                        <div style="border:1px solid var(--border2);border-radius:10px;overflow:hidden;background:var(--bg2)">
+                            ${g.tipo === 'video'
+                                ? `<video src="${depEscape(g.url)}" style="width:100%;height:110px;object-fit:cover" controls></video>`
+                                : `<img src="${depEscape(g.url)}" alt="" style="width:100%;height:110px;object-fit:cover">`}
+                            <div style="padding:.5rem">
+                                <div style="font-size:.78rem;font-weight:600">${depEscape(g.titulo || g.categoria || 'Item')}</div>
+                                <div style="font-size:.68rem;color:var(--dim)">${depEscape(g.categoria || 'General')}</div>
+                                <div style="display:flex;gap:.3rem;margin-top:.4rem">
+                                    <button class="icon-btn" onclick='depFormGaleria(${JSON.stringify(g).replace(/'/g, "&#39;")})' title="Editar"><i class="fas fa-pen"></i></button>
+                                    <button class="icon-btn" style="color:var(--red)" onclick="depEliminarItemGaleria('${g.id}')" title="Eliminar"><i class="fas fa-trash"></i></button>
+                                </div>
+                            </div>
+                        </div>`).join('')}
+                </div>
+                ${lista.length ? '' : '<div class="empty-state"><i class="fas fa-images"></i> Sin items.</div>'}
+            `;
+        } catch (err) {
+            panel.innerHTML = '<div class="empty-state">Error: ' + depEscape(err.message) + '</div>';
+        }
+    }
+
+    function depFormGaleria(g) {
+        g = g || {};
+        depModalCampos([
+            { id: 'gal-categoria', label: 'Categoría', value: g.categoria || 'Club', type: 'select', options: ['Club', 'Agency', 'Giras', 'Torneos', 'General'] },
+            { id: 'gal-titulo', label: 'Título', value: g.titulo },
+            { id: 'gal-url', label: 'URL', value: g.url, required: true },
+            { id: 'gal-tipo', label: 'Tipo', value: g.tipo === 'video' ? 'video' : 'imagen', type: 'select', options: ['imagen', 'video'] }
+        ], (g.id ? 'Editar item' : 'Nuevo item'), 'depGuardarGaleria');
+        const modal = document.body.lastElementChild;
+        modal.dataset.galeriaId = g.id || '';
+        const urlInput = modal.querySelector('#gal-url');
+        const row = urlInput.closest('div');
+        const subBtn = document.createElement('button');
+        subBtn.className = 'btn-main';
+        subBtn.style.cssText = 'padding:.4rem .7rem;font-size:.72rem;margin-top:.3rem';
+        subBtn.innerHTML = '<i class="fas fa-upload" style="margin-right:.25rem"></i>Subir archivo';
+        subBtn.onclick = () => { const f = document.createElement('input'); f.type = 'file'; f.accept = 'image/*,video/*'; f.style.display = 'none'; f.onchange = () => depSubir(_depProyectoId, f, u => { urlInput.value = u; }); document.body.appendChild(f); f.click(); };
+        row.appendChild(subBtn);
+    }
+
+    async function depGuardarGaleria(modal) {
+        const body = {
+            proyecto_id: _depProyectoId,
+            id: modal.dataset.galeriaId || null,
+            categoria: modal.querySelector('#gal-categoria').value,
+            titulo: modal.querySelector('#gal-titulo').value.trim(),
+            url: modal.querySelector('#gal-url').value.trim(),
+            tipo: modal.querySelector('#gal-tipo').value
+        };
+        const data = await deportesApi('guardar_item_galeria', body);
+        if (!data.ok) return showToast('Error: ' + data.error, 'error');
+        showToast('Item guardado');
+        modal.remove();
+        depCargarGaleria();
+    }
+
+    async function depEliminarItemGaleria(id) {
+        if (!confirm('¿Eliminar este item?')) return;
+        const data = await deportesApi('eliminar_item_galeria', { proyecto_id: _depProyectoId, id });
+        if (!data.ok) return showToast('Error: ' + data.error, 'error');
+        showToast('Eliminado');
+        depCargarGaleria();
+    }
+
+    // ── CONSENTIMIENTOS ──
+    async function depCargarConsentimientos() {
+        const panel = document.getElementById('dep-panel-consentimientos');
+        panel.innerHTML = '<div class="empty-state"><i class="fas fa-spinner fa-spin"></i> Cargando...</div>';
+        try {
+            const data = await deportesApi('listar_consentimientos', { proyecto_id: _depProyectoId });
+            const lista = (data.ok && data.consentimientos) || [];
+            panel.innerHTML = `
+                <div style="display:flex;justify-content:flex-end;margin-bottom:.6rem">
+                    <button class="btn-main" style="padding:.4rem .8rem;font-size:.76rem" onclick="depFormConsentimiento()"><i class="fas fa-plus" style="margin-right:.25rem"></i>Nuevo consentimiento</button>
+                </div>
+                ${lista.length ? `<div class="table-wrap"><table>
+                    <thead><tr><th>Sujeto</th><th>Responsable</th><th>Uso de imagen</th><th>Tratamiento datos</th><th>Versión</th><th>Fecha</th><th>Estado</th><th></th></tr></thead>
+                    <tbody>${lista.map(c => `
+                        <tr>
+                            <td style="font-weight:600">${depEscape(c.sujeto_nombre || '—')}</td>
+                            <td>${depEscape(c.responsable || '—')}</td>
+                            <td>${c.uso_imagen ? '<span class="badge-green">Sí</span>' : '<span class="badge-red">No</span>'}</td>
+                            <td>${c.tratamiento_datos ? '<span class="badge-green">Sí</span>' : '<span class="badge-red">No</span>'}</td>
+                            <td>${depEscape(c.documento_version || 'v1')}</td>
+                            <td>${c.fecha ? new Date(c.fecha).toLocaleDateString('es-CO') : '—'}</td>
+                            <td>${depEscape(c.estado || 'aceptado')}</td>
+                            <td style="white-space:nowrap">
+                                <button class="icon-btn" onclick='depFormConsentimiento(${JSON.stringify(c).replace(/'/g, "&#39;")})' title="Editar"><i class="fas fa-pen"></i></button>
+                                <button class="icon-btn" style="color:var(--red)" onclick="depEliminarConsentimiento('${c.id}')" title="Eliminar"><i class="fas fa-trash"></i></button>
+                            </td>
+                        </tr>`).join('')}</tbody>
+                </table></div>` : '<div class="empty-state"><i class="fas fa-file-signature"></i> Sin consentimientos.</div>'}
+            `;
+        } catch (err) {
+            panel.innerHTML = '<div class="empty-state">Error: ' + depEscape(err.message) + '</div>';
+        }
+    }
+
+    function depFormConsentimiento(c) {
+        c = c || {};
+        depModalCampos([
+            { id: 'con-sujeto', label: 'Sujeto (nombre)', value: c.sujeto_nombre },
+            { id: 'con-responsable', label: 'Responsable', value: c.responsable },
+            { id: 'con-version', label: 'Versión', value: c.documento_version || 'v1' },
+            { id: 'con-estado', label: 'Estado', value: c.estado || 'aceptado', type: 'select', options: ['aceptado', 'revocado', 'pendiente'] }
+        ], (c.id ? 'Editar consentimiento' : 'Nuevo consentimiento'), 'depGuardarConsentimiento');
+        const modal = document.body.lastElementChild;
+        modal.dataset.consentimientoId = c.id || '';
+        const extra = document.createElement('div');
+        extra.style.cssText = 'display:flex;gap:1rem;margin-top:.6rem';
+        extra.innerHTML = `
+            <label style="font-size:.78rem"><input type="checkbox" id="con-imagen" ${c.uso_imagen ? 'checked' : ''}> Uso de imagen</label>
+            <label style="font-size:.78rem"><input type="checkbox" id="con-datos" ${c.tratamiento_datos ? 'checked' : ''}> Tratamiento de datos</label>
+        `;
+        modal.querySelector('[style*="display:grid"]').appendChild(extra);
+    }
+
+    async function depGuardarConsentimiento(modal) {
+        const body = {
+            proyecto_id: _depProyectoId,
+            id: modal.dataset.consentimientoId || null,
+            sujeto_nombre: modal.querySelector('#con-sujeto').value.trim(),
+            responsable: modal.querySelector('#con-responsable').value.trim(),
+            documento_version: modal.querySelector('#con-version').value.trim(),
+            estado: modal.querySelector('#con-estado').value,
+            uso_imagen: modal.querySelector('#con-imagen').checked,
+            tratamiento_datos: modal.querySelector('#con-datos').checked
+        };
+        const data = await deportesApi('guardar_consentimiento', body);
+        if (!data.ok) return showToast('Error: ' + data.error, 'error');
+        showToast('Consentimiento guardado');
+        modal.remove();
+        depCargarConsentimientos();
+    }
+
+    async function depEliminarConsentimiento(id) {
+        if (!confirm('¿Eliminar este consentimiento?')) return;
+        const data = await deportesApi('eliminar_consentimiento', { proyecto_id: _depProyectoId, id });
+        if (!data.ok) return showToast('Error: ' + data.error, 'error');
+        showToast('Eliminado');
+        depCargarConsentimientos();
     }
 
     // ── TIENDA (e-commerce en Web Factory) ──
