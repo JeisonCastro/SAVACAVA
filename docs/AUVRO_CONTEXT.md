@@ -1009,6 +1009,10 @@ Multiusuario.
 
 # Changelog de Cambios Técnicos
 
+## 1 Sep 2026 — Webhook de pagos marca inscripción deportiva como `pagada` (v31-c)
+
+- **`netlify/functions/pago-webhook.js`:** cuando una orden de tienda vinculada a una `deportes_inscripciones` (visoría/club) se marca pagada por Wompi, la inscripción pasa automáticamente de `solicitada` a `pagada` (mejor que cambiarla a mano en el panel). La generación del link de pago sigue siendo manual (botón "Pagar" por inscripción), pero la confirmación y el cambio de estado son automáticos.
+
 ## 1 Sep 2026 — Módulos deportivos: pagos inscripción (Wompi), agente IA deportivo y sitio público (v31-b)
 
 - **Pago de inscripciones (`netlify/functions/deportes.js` `pago_inscripcion`):** genera `tienda_ordenes` (estado pendiente) con el monto del plan/visoría, crea link de pago Wompi con la pasarela del proyecto (`tienda_pasarela`), registra `pagos` y vincula `orden_id`/`pago_id` a la inscripción. Dashboard: botón "Pagar" (icono tarjeta) por inscripción → abre el link.

@@ -171,6 +171,16 @@ exports.handler = async (event) => {
                         .eq('id', orden.id);
                     if (ordErr) throw new Error('Error marcando orden pagada: ' + ordErr.message);
 
+                    // Si la orden está vinculada a una inscripción deportiva (visoría/club),
+                    // marcarla como pagada automáticamente.
+                    try {
+                        await supabase
+                            .from('deportes_inscripciones')
+                            .update({ estado: 'pagada', updated_at: new Date().toISOString() })
+                            .eq('orden_id', orden.id)
+                            .eq('estado', 'solicitada');
+                    } catch (_) {}
+
                     // Descontar stock (variación para productos variables; producto para simples)
                     const { data: lineas } = await supabase
                         .from('tienda_orden_items')
