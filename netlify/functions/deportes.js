@@ -64,6 +64,13 @@ async function autenticarAdmin(event, proyectoId) {
     if (miPerfil?.is_admin) return userId;
     const ROLES = ['admin_tienda', 'editor_tienda', 'admin_sitio', 'editor_sitio'];
     if (proyectoId) {
+        // Dueño del proyecto (web_projects.created_by) tiene acceso completo.
+        const { data: proyecto } = await supabase
+            .from('web_projects')
+            .select('created_by')
+            .eq('id', proyectoId)
+            .maybeSingle();
+        if (proyecto?.created_by === userId) return userId;
         const { data: permiso } = await supabase
             .from('tienda_permisos')
             .select('rol')

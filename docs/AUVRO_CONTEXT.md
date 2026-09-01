@@ -1009,6 +1009,17 @@ Multiusuario.
 
 # Changelog de Cambios Técnicos
 
+## 1 Sep 2026 — Fix módulo Deportes en tienda-admin: funciones expuestas + permisos de dueño (v33)
+
+- **Síntoma (reportado por el usuario):** la sección Deportes aparecía en tienda-admin pero no se podía crear nada.
+- **Causa 1:** `tienda-admin.html` usa un IIFE; las funciones del módulo Deportes usadas en `onclick` (depNav, depFormDeportista, depGuardarPlan, depFormVisoria, depPagarInscripcion, depSubir, etc.) **no estaban en el `Object.assign(window, {...})`** → los botones lanzaban ReferenceError y no hacían nada.
+  - **Fix:** añadidas todas las funciones deportivas al `Object.assign(window, ...)` de `tienda-admin.html`.
+- **Causa 2 (permisos):** `deportes.js autenticarAdmin` y `subir-imagen-deporte.js` **no permitían al dueño del proyecto** (`web_projects.created_by`), solo a admin de plataforma o con `tienda_permisos`. El dueño de la tienda (ej. formies, creada por `jeison19ca@gmail.com`) abría tienda-admin (donde `tienda.js info` sí valida por dueño) pero `deportes` respondía 403 → "no deja crear nada".
+  - **Fix:** ambos admiten ahora al dueño del proyecto (mismo criterio que `tienda.js validarAcceso`).
+- **Causa 3:** `depFormDeportista(id)` (edición) llamaba a `get_deportista` **sin pasar el `id`** → devolvía 404. Corregido para pasar `{ proyecto_id, id }`.
+- **PWA:** cache bump **v32 → v33** (dashboard, tienda-admin → `dashboard.css?v=33`, `auvro-design.css?v=33`; `sw.js` → `auvro-v33`).
+- **Nota:** al crear un sitio con plantilla Tienda + checkbox "Activar módulo Deportes", tienda-admin muestra la sección Deportes junto a Productos/Órdenes/etc. (todo lo de la tienda + deportes). El proyecto FORMIES tiene `modulos=["deportes"]` activo.
+
 ## 1 Sep 2026 — Módulo Deportes seleccionable al crear el sitio + sección en tienda-admin (v32)
 
 - **Objetivo (decisión del usuario):** el módulo Deportes es un módulo **genérico** que se activa al crear un sitio (plantilla Tienda) y solo aparece en las tiendas que lo activen; diseño estándar en todo el sitio.

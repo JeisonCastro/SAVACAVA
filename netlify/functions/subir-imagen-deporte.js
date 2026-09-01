@@ -75,17 +75,21 @@ exports.handler = async (event) => {
       return jsonResponse(400, { error: 'Faltan proyecto_id o data_url.' });
     }
 
-    // Acceso al proyecto: admin de plataforma o permiso de tienda/sitio.
+    // Acceso al proyecto: admin de plataforma, dueño del proyecto o permiso de tienda/sitio.
     const { data: perfil } = await supabase.from('perfiles').select('is_admin').eq('id', userId).maybeSingle();
     if (!perfil?.is_admin) {
-      const ROLES = ['admin_tienda', 'editor_tienda', 'admin_sitio', 'editor_sitio'];
-      const { data: permiso } = await supabase
-        .from('tienda_permisos').select('rol')
-        .eq('proyecto_id', proyectoId).eq('user_id', userId)
-        .maybeSingle();
-      if (!permiso || !ROLES.includes(permiso.rol)) {
-        return jsonResponse(403, { error: 'No tienes permiso sobre este proyecto.' });
-      }
+        const { data: proyecto } = await supabase
+            .from('web_projects').select('created_by').eq('id', proyectoId).maybeSingle();
+        if (proyecto?.created_by !== userId) {
+            const ROLES = ['admin_tienda', 'editor_tienda', 'admin_sitio', 'editor_sitio'];
+            const { data: permiso } = await supabase
+                .from('tienda_permisos').select('rol')
+                .eq('proyecto_id', proyectoId).eq('user_id', userId)
+                .maybeSingle();
+            if (!permiso || !ROLES.includes(permiso.rol)) {
+                return jsonResponse(403, { error: 'No tienes permiso sobre este proyecto.' });
+            }
+        }
     }
 
     const match = dataUrl.match(/^data:(image\/[a-zA-Z0-9.+-]+|video\/[a-zA-Z0-9.+-]+);base64,(.+)$/);

@@ -46,8 +46,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="dashboard.css?v=32">
-    <link rel="stylesheet" href="auvro-design.css?v=32">
+    <link rel="stylesheet" href="dashboard.css?v=33">
+    <link rel="stylesheet" href="auvro-design.css?v=33">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         body { background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, sans-serif; }
@@ -1167,9 +1167,14 @@
         const main = $('main');
         let d = {};
         if (id) {
-            const data = await depLista('get_deportista', 'dep-panel');
-            if (!data) return;
-            d = data.deportista || {};
+            try {
+                const data = await deportesApi('get_deportista', { proyecto_id: ctx.proyecto_id, id });
+                if (!data.ok) throw new Error(data.error || 'Error');
+                d = data.deportista || {};
+            } catch (err) {
+                main.innerHTML = '<div class="empty">Error: ' + esc(err.message) + '</div>';
+                return;
+            }
         }
         main.innerHTML = `
             <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:12px">
@@ -1664,6 +1669,14 @@
         renderOrdenes, cambiarEstado, renderClientes,
         renderPasarela, guardarPasarela, renderNotificaciones, conectarGmail, desconectarGmail, guardarNotif,
         renderAgentesTienda, guardarAgenteTienda,
+        renderDeportes, depNav, depFormDeportista, depGuardarDeportista, depEliminarDeportista,
+        depFormPlan, depGuardarPlan, depEliminarPlan, depFormHorario, depGuardarHorario, depEliminarHorario,
+        depFormVisoria, depGuardarVisoria, depEliminarVisoria,
+        depEstadoInscripcion, depPagarInscripcion,
+        depFormTorneo, depGuardarTorneo, depEliminarTorneo,
+        depFormNoticia, depGuardarNoticia, depEliminarNoticia,
+        depFormGaleria, depGuardarGaleria, depEliminarItemGaleria,
+        depSubir,
         toggleTheme, actualizarBotonTema
     });
 
