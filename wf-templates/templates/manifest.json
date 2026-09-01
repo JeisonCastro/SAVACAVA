@@ -74,11 +74,6 @@
       "slug": "onepage-mit",
       "nombre": "One Page (Bootstrap/MIT)",
       "descripcion": "Landing de una sola página basada en Start Bootstrap One Page Wonder (MIT). Hero con círculos de color, secciones alternadas y CTA por WhatsApp. Tokens: {{EMPRESA}}, {{DESCRIPCION}}, {{SLOGAN}}, {{LOGO}}, {{WHATSAPP}}."
-    },
-    {
-      "slug": "tienda-mit",
-      "nombre": "Tienda Premium (Bootstrap/MIT)",
-      "descripcion": "Tienda e-commerce con estética Bootstrap (Start Bootstrap Shop Homepage, MIT) y el motor AUVRO: catálogo, carrito y pago seguro Wompi (PSE, tarjeta, Nequi). Tokens: {{EMPRESA}}, {{DESCRIPCION}}, {{SLOGAN}}, {{LOGO}}, {{WHATSAPP}}, {{SLUG}}."
     }
   ]
 }

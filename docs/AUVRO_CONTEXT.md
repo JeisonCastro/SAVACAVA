@@ -1009,6 +1009,14 @@ Multiusuario.
 
 # Changelog de Cambios Técnicos
 
+## 30 Ago 2026 — Retirada plantilla `tienda-mit` (redundante con `tienda`)
+
+- **Objetivo (decisión del usuario):** eliminar la plantilla MIT de tienda porque aporta poco frente a la plantilla custom `tienda` (que ya incluye el motor AUVRO completo de e-commerce: catálogo, carrito y pago Wompi).
+- **Eliminado:**
+  - Directorio `wf-templates/templates/tienda-mit/` (index.html, styles.css, LICENSE-MIT.txt, netlify.toml, robots.txt, README.md).
+  - Entrada `tienda-mit` del `wf-templates/templates/manifest.json` → ya no aparece en el dropdown del Web Factory. Quedan **15 plantillas** (11 custom + 4 MIT: landing-mit, creative-mit, business-mit, onepage-mit).
+- **Nota:** los sitios ya creados con `tienda-mit` no se ven afectados (su código ya está en su propio repo/site Netlify); solo desaparece la opción para sitios nuevos.
+
 ## 30 Ago 2026 — Modal "Nuevo sitio web": más ancho y grid de 3 columnas (UX) + cache v30
 
 - **Objetivo (decisión del usuario):** mejorar la UX del modal de creación del Web Factory haciéndolo más ancho y organizando los campos en 3 columnas.
@@ -1030,7 +1038,7 @@ Multiusuario.
   - `creative-mit` — "Creativo / Agencia" (Start Bootstrap Creative v7.0.7). Hero llamativo, servicios, galería con gradientes (sin imágenes binarias) y CTA WhatsApp.
   - `business-mit` — "Negocio Corporativo" (Start Bootstrap Business Frontpage). Features, testimonios y contacto por WhatsApp. Sin precios de ejemplo ni formulario SB Forms.
   - `onepage-mit` — "One Page" (Start Bootstrap One Page Wonder). Hero con círculos de color y secciones alternadas; imágenes binarias reemplazadas por gradientes circulares.
-  - `tienda-mit` — "Tienda Premium" (Start Bootstrap Shop Homepage como estética + **motor AUVRO intacto**): navbar Bootstrap con carrito, header hero, footer; mantiene TODAS las IDs que el motor consulta (`#btn-cart`, `#grid-productos`, `#cart-drawer`, `#checkout-form`, `#lightbox`, etc.) y el JS de catálogo/carrito/checkout Wompi. Carga Bootstrap 5 + Bootstrap Icons desde CDN antes de `styles.css`.
+  - `tienda-mit` — "Tienda Premium" (Start Bootstrap Shop Homepage como estética + **motor AUVRO intacto**): navbar Bootstrap con carrito, header hero, footer; mantiene TODAS las IDs que el motor consulta (`#btn-cart`, `#grid-productos`, `#cart-drawer`, `#checkout-form`, `#lightbox`, etc.) y el JS de catálogo/carrito/checkout Wompi. Carga Bootstrap 5 + Bootstrap Icons desde CDN antes de `styles.css`. *(Retirada posteriormente: redundante con la plantilla custom `tienda` — ver changelog.)*
 - **`manifest.json`:** entradas nuevas para las 4 plantillas → aparecen en el dropdown del Web Factory.
 - **Adaptaciones comunes:** formularios SB Forms (requieren token externo de StartBootstrap, no funcionan) → reemplazados por **CTA por WhatsApp**; imágenes binarias (jpg/png/mp4) → **gradientes** (el pipeline de AUVRO lee archivos como texto); ocultamiento automático de botones WhatsApp si `{{WHATSAPP}}` queda vacío (`data-wa`).
 - **Verificado localmente (script `verify-all`):** para cada plantilla MIT: 0 tokens restantes, tema Bootstrap (`--bs-primary`) inyectado, widget IA inyectado, WhatsApp aplicado, CSS/licencia MIT presentes. En `tienda-mit`, las 20 IDs críticas del motor de comercio verificadas.
