@@ -1111,22 +1111,25 @@
         }
     }
 
-    // Subida de medios a Storage de inmediato (patrón Productos): convierte a
-    // data-URL y lo sube a /.netlify/functions/subir-imagen-deporte; el callback
-    // recibe la URL PÚBLICA final (no un data-URL). Así "Guardar" envía solo URLs
-    // (cuerpo pequeño) y cualquier error de subida se ve al instante.
+    // Subida de medios a Storage de inmediato: convierte a data-URL y lo sube a
+    // /.netlify/functions/subir-imagen-deporte; el callback recibe la URL PÚBLICA
+    // final. Si la subida directa falla (MIME raro, red, etc.) se deja pasar el
+    // data-URL como FALLBACK para que el backend lo intente al guardar; así la
+    // imagen SIEMPRE queda persistida si el archivo es válido.
     function depSubir(input, cb) {
         const file = input.files && input.files[0];
         if (!file) return;
         if (file.size > 12 * 1024 * 1024) { toast('El archivo supera 12 MB', true); input.value = ''; return; }
         const reader = new FileReader();
         reader.onload = async () => {
+            const dataUrl = String(reader.result);
             try {
-                const url = await depSubirServidor(String(reader.result), file.name);
+                const url = await depSubirServidor(dataUrl, file.name);
                 cb && cb(url);
             } catch (err) {
-                input.value = '';
-                toast('Error al subir: ' + err.message, true);
+                console.warn('Subida directa falló, se reintentará al guardar:', err.message);
+                toast('Aviso: la subida directa falló y se intentará al guardar (' + err.message + ')', true);
+                cb && cb(dataUrl);
             }
         };
         reader.readAsDataURL(file);
@@ -1159,11 +1162,14 @@
             }
             const reader = new FileReader();
             reader.onload = async () => {
+                const dataUrl = String(reader.result);
                 try {
-                    const url = await depSubirServidor(String(reader.result), f.name);
+                    const url = await depSubirServidor(dataUrl, f.name);
                     window.__depGaleria = (window.__depGaleria || []).concat([url]);
                 } catch (err) {
-                    toast('Error al subir: ' + err.message, true);
+                    console.warn('Subida directa falló, se usará el data-URL:', err.message);
+                    toast('Aviso: subida falló y se usará al guardar (' + err.message + ')', true);
+                    window.__depGaleria = (window.__depGaleria || []).concat([dataUrl]);
                 }
                 subir(i + 1);
             };
@@ -1758,7 +1764,7 @@
         depFormTorneo, depGuardarTorneo, depEliminarTorneo,
         depFormNoticia, depGuardarNoticia, depEliminarNoticia,
         depFormGaleria, depGuardarGaleria, depEliminarItemGaleria,
-        depSubir,
+        depSubir, depSubirVarias, depQuitarGaleria, depSubirServidor,
         toggleTheme, actualizarBotonTema
     });
 

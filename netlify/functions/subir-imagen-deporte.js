@@ -119,15 +119,21 @@ exports.handler = async (event) => {
       return jsonResponse(400, { error: `El archivo supera ${TAMANO_MAX / 1024 / 1024} MB.` });
     }
 
-    // Cierre de inventario: solo MIME conocidos (rechaza image/svg+xml y otros
-    // formatos no permitidos; los .mp4/.webm/.mov se validan por extensión).
-    if (!MIMES_PERMITIDOS.has(mimeDeclarado) && !(mimeDeclarado.startsWith('video/') && mimeDeclarado.includes('mp4'))) {
-      return jsonResponse(400, { error: 'Tipo de archivo no permitido. Usa JPG, PNG, WebP, GIF, AVIF, MP4, WebM o MOV.' });
+    // Gate de tipo: acepta cualquier image/* (excepto image/svg+xml) y cualquier
+    // video/*. Los alias reales (image/jpg, image/pjpeg, image/x-png, image/heic,
+    // video/x-m4v, etc.) pasan sin fricción: el contenido se valida debajo.
+    const esImagen = mimeDeclarado.startsWith('image/');
+    const esVideo = mimeDeclarado.startsWith('video/');
+    if (!esImagen && !esVideo) {
+      return jsonResponse(400, { error: 'Tipo de archivo no permitido. Usa una imagen o un video.' });
+    }
+    if (esImagen && mimeDeclarado === 'image/svg+xml') {
+      return jsonResponse(400, { error: 'El formato SVG no está permitido. Usa JPG, PNG, WebP, GIF o AVIF.' });
     }
     // Seguridad de contenido: rechaza archivos que claramente NO son imagen/video
-    // (SVG/HTML u otros disfrazados con MIME de imagen). NO se exige coincidencia
-    // exacta de magic-bytes para evitar falsos rechazos de JPG/PNG mal etiquetados.
-    if (mimeDeclarado.startsWith('image/')) {
+    // (HTML/SVG/PDF disfrazados con MIME de imagen). NO se exige coincidencia exacta
+    // de magic-bytes para evitar falsos rechazos de JPG/PNG mal etiquetados.
+    if (esImagen) {
       const b0 = buffer[0];
       const esTextoDisfrazado = b0 === 0x3c || // '<'
         (buffer.length >= 5 && buffer[0] === 0x25 && buffer[1] === 0x50); // '%PDF'
