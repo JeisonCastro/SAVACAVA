@@ -301,7 +301,12 @@ const SNIPPET_DEPORTES_JS = `    <script>
 // Idempotente: si el HTML ya renderiza el módulo de Deportes, no cambia nada.
 function inyectarDeportesEnHtml(html) {
     if (!html) return html;
-    if (/grid-deportistas/.test(html) || /catalogo_publico/.test(html) || /d\.deportistas/.test(html)) return html;
+    if (/grid-deportistas/.test(html) || /catalogo_publico/.test(html) || /d\.deportistas/.test(html)) {
+        // Ya tiene el módulo: si el JS del catálogo quedó corrupto en el repo
+        // (p. ej. un resync viejo grabó cierres como '</html>' dentro del string,
+        // rompiendo el parseo y dejando las secciones ocultas), repararlo.
+        return repararJsCatalogo(html);
+    }
 
     // 1) Secciones (antes del footer o de la página de suspensión si existe).
     let conSecciones = html;
@@ -311,19 +316,40 @@ function inyectarDeportesEnHtml(html) {
     }
 
     // 2) CSS del módulo (idempotente para los selectores que lo requieren).
+    //    Nota: se usa callback (no string) en replace() porque el snippet contiene
+    //    '$' (signo de pesos del precio); un string replacement interpreta '$'' como
+    //    "el resto tras la coincidencia" y corrompe el JS. Un callback se inserta tal cual.
     let conCss = conSecciones;
     if (!/#grid-deportistas/.test(conCss)) {
-        if (/<\/head>/i.test(conCss)) conCss = conCss.replace(/<\/head>/i, SNIPPET_DEPORTES_CSS + '\n</head>');
-        else if (/<\/body>/i.test(conCss)) conCss = conCss.replace(/<\/body>/i, SNIPPET_DEPORTES_CSS + '\n</body>');
+        if (/<\/head>/i.test(conCss)) conCss = conCss.replace(/<\/head>/i, () => SNIPPET_DEPORTES_CSS + '\n</head>');
+        else if (/<\/body>/i.test(conCss)) conCss = conCss.replace(/<\/body>/i, () => SNIPPET_DEPORTES_CSS + '\n</body>');
     }
 
-    // 3) JS de carga pública.
+    // 3) JS de carga pública. Misma precaución con '$' → callback de replace.
     let conJs = conCss;
     if (!/catalogo_publico/.test(conJs)) {
-        if (/<\/body>/i.test(conJs)) conJs = conJs.replace(/<\/body>/i, SNIPPET_DEPORTES_JS + '\n</body>');
+        if (/<\/body>/i.test(conJs)) conJs = conJs.replace(/<\/body>/i, () => SNIPPET_DEPORTES_JS + '\n</body>');
         else conJs = conJs + '\n' + SNIPPET_DEPORTES_JS + '\n</body>';
     }
-    return conJs;
+    return repararJsCatalogo(conJs);
+}
+
+// El fragmento del catálogo público debe parsear como JS. Si un resync viejo
+// grabó el bloque con cierres sueltos (p. ej. '</html>' incrustado en una cadena,
+// típico de scripts generados desde PowerShell/shell), el navegador aborta el <script>
+// y las secciones quedan ocultas aunque el módulo esté presente. Este paso detecta ese
+// daño y sustituye el bloque completo por el snippet limpio, conservando el resto del HTML.
+function repararJsCatalogo(html) {
+    if (!html) return html;
+    const m = /<script>[\s\S]*?var fmtPesos = function[\s\S]*?<\/script>/i.exec(html);
+    if (!m) return html;
+    // Marca de corrupción: la cadena del formateador de precios quedó con un cierre suelto
+    // ('</html>' incrustado dentro del string), lo que rompe el parseo JS y deja las
+    // secciones ocultas aunque el módulo esté presente en el HTML.
+    if (/<\/html>\s*\+ \(Number\(/.test(m[0])) {
+        return html.replace(m[0], () => SNIPPET_DEPORTES_JS);
+    }
+    return html;
 }
 
 // ── Seguridad por dominio del agente ──
