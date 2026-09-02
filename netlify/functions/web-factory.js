@@ -224,9 +224,74 @@ const SNIPPET_DEPORTES_SECCIONES = `<!-- DEPORTISTAS (se muestra solo si el proy
             <div id="grid-noticias" class="grid"></div>
         </div>
     </section>
+
+    <!-- TORNEOS (se muestra solo si hay torneos) -->
+    <section id="torneos" class="section section-alt" hidden>
+        <div class="container">
+            <h2 class="section-title">Torneos</h2>
+            <div id="grid-torneos" class="grid"></div>
+        </div>
+    </section>
+
+    <!-- GALERIA (se muestra solo si hay galeria) -->
+    <section id="galeria" class="section" hidden>
+        <div class="container">
+            <h2 class="section-title">Galería</h2>
+            <div id="grid-galeria" class="grid"></div>
+        </div>
+    </section>
+
+    <!-- MODAL DE INSCRIPCION PUBLICA -->
+    <div id="inscripcion-modal" class="modal" hidden>
+        <div class="modal-card">
+            <div class="drawer-head">
+                <h3>Inscripción</h3>
+                <button class="drawer-close" id="inscripcion-close" aria-label="Cerrar">&times;</button>
+            </div>
+            <form id="inscripcion-form">
+                <input type="hidden" id="ins-tipo">
+                <input type="hidden" id="ins-plan-id">
+                <input type="hidden" id="ins-visor-id">
+                <input type="hidden" id="ins-torneo-id">
+                <p id="ins-descripcion" style="margin:0 0 12px;font-size:.9rem"></p>
+
+                <h4 style="margin:.2rem 0 .6rem;font-size:.85rem;color:var(--text)">Deportista</h4>
+                <label>Nombre del deportista *<input type="text" id="ins-nombre" required></label>
+                <label>Fecha de nacimiento<input type="date" id="ins-fecha"></label>
+                <label>Género<select id="ins-genero"><option value="">Selecciona</option><option>Niña</option><option>Niño</option><option>Otros</option></select></label>
+                <label>¿Ya es jugador del club?<select id="ins-antiguo"><option value="nuevo">Nuevo</option><option value="antiguo">Antiguo</option><option value="renueva">Renueva inscripción</option></select></label>
+                <label>Deporte / posición<input type="text" id="ins-deporte" placeholder="Ej. Fútbol / Delantero"></label>
+                <label>Horario preferido<input type="text" id="ins-horario" placeholder="Ej. Martes y jueves 4pm"></label>
+
+                <h4 style="margin:.6rem 0 .6rem;font-size:.85rem;color:var(--text)">Datos físicos y salud</h4>
+                <label>Peso (kg)<input type="number" id="ins-peso" min="0" step="0.1"></label>
+                <label>Talla / talla de prenda<input type="text" id="ins-talla" placeholder="Ej. 6, M"></label>
+                <label>Estatura (cm)<input type="number" id="ins-estatura" min="0"></label>
+                <label>Grupo sanguíneo<input type="text" id="ins-sangre" placeholder="Ej. O+" style="text-transform:uppercase"></label>
+                <label>Medicamentos que toma<input type="text" id="ins-medicamentos" placeholder="Si ninguno, déjalo vacío"></label>
+                <label>Cuidados y alergias<input type="text" id="ins-alergias" placeholder="Ej. alergia al maní"></label>
+                <label>Fracturas o lesiones previas<textarea id="ins-lesiones" rows="2" placeholder="Describe fracturas, lesiones o cirugías"></textarea></label>
+
+                <h4 style="margin:.6rem 0 .6rem;font-size:.85rem;color:var(--text)">Responsable (padre / madre / acudiente)</h4>
+                <label>Nombre del responsable *<input type="text" id="ins-responsable" required></label>
+                <label>Teléfono *<input type="tel" id="ins-telefono" required placeholder="Para contactarte"></label>
+                <label>Correo electrónico<input type="email" id="ins-email"></label>
+                <label>Parentesco / relación<input type="text" id="ins-parentesco" placeholder="Ej. Madre, padre, tío"></label>
+
+                <h4 style="margin:.6rem 0 .6rem;font-size:.85rem;color:var(--text)">Documentos y autorizaciones</h4>
+                <label>Foto del deportista (opcional)<input type="file" id="ins-foto" accept="image/*"></label>
+                <label style="font-size:.8rem;margin:.4rem 0"><input type="checkbox" id="ins-uso-imagen"> Autorizo el uso de imágenes del deportista</label>
+                <label style="font-size:.8rem;margin:.4rem 0"><input type="checkbox" id="ins-tratamiento"> Acepto el tratamiento de datos personales *</label>
+
+                <div class="cart-total" style="margin-top:.8rem">Inscripción: <strong id="ins-monto">$0</strong></div>
+                <p id="ins-msg" class="msg" style="display:none"></p>
+                <button type="submit" class="btn btn-primary btn-block" id="btn-inscripcion">Enviar inscripción</button>
+            </form>
+        </div>
+    </div>
 `;
 
-const SNIPPET_DEPORTES_CSS = `<style>\n    #grid-deportistas, #grid-planes, #grid-visorias, #grid-noticias { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 18px; margin-top: 22px; }\n    @media (max-width: 600px) { #grid-deportistas, #grid-planes, #grid-visorias, #grid-noticias { grid-template-columns: 1fr; } }\n    .card-deporte { display: flex; flex-direction: column; background: #fff; border: 1px solid rgba(0,0,0,.12); border-radius: 14px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,.06); }\n    .card-deporte .card-img { width: 100%; aspect-ratio: 16/9; object-fit: cover; }\n    .card-deporte.plan-card { align-items: flex-start; padding: 0; }\n    .card-deporte .card-body { padding: 16px 18px; display: flex; flex-direction: column; }\n    .card-deporte .card-body h3 { margin: 0 0 6px; font-size: 1.05rem; font-weight: 700; }\n    .card-deporte .card-meta { margin: 0; font-size: .82rem; color: #64748b; }\n    .card-deporte .card-body p { margin: 0 0 8px; font-size: .9rem; color: #334155; }\n    .card-deporte .precio { margin: 0 0 8px; font-size: 1.05rem; font-weight: 700; color: #0f172a; }\n</style>\n`;
+const SNIPPET_DEPORTES_CSS = `<style>\n    #grid-deportistas, #grid-planes, #grid-visorias, #grid-torneos, #grid-noticias, #grid-galeria { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 18px; margin-top: 22px; }\n    @media (max-width: 600px) { #grid-deportistas, #grid-planes, #grid-visorias, #grid-torneos, #grid-noticias, #grid-galeria { grid-template-columns: 1fr; } }\n    .card-deporte { display: flex; flex-direction: column; background: #fff; border: 1px solid rgba(0,0,0,.12); border-radius: 14px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,.06); }\n    .card-deporte .card-img { width: 100%; aspect-ratio: 16/9; object-fit: cover; }\n    .card-deporte.plan-card { align-items: flex-start; padding: 0; }\n    .card-deporte .card-body { padding: 16px 18px; display: flex; flex-direction: column; }\n    .card-deporte .card-body h3 { margin: 0 0 6px; font-size: 1.05rem; font-weight: 700; }\n    .card-deporte .card-meta { margin: 0; font-size: .82rem; color: #64748b; }\n    .card-deporte .card-body p { margin: 0 0 8px; font-size: .9rem; color: #334155; }\n    .card-deporte .precio { margin: 0 0 8px; font-size: 1.05rem; font-weight: 700; color: #0f172a; }\n    .modal { position: fixed; inset: 0; z-index: 110; display: flex; align-items: center; justify-content: center; padding: 20px; background: rgba(15, 23, 42, .45); }\n    .modal[hidden] { display: none; }\n    .modal-card { width: 100%; max-width: 520px; background: #fff; border-radius: 14px; overflow: auto; max-height: 90vh; box-shadow: 0 10px 30px rgba(0,0,0,.25); }\n    .modal-card form { padding: 20px; display: flex; flex-direction: column; gap: 12px; }\n    .modal-card label { display: flex; flex-direction: column; gap: 6px; font-size: .85rem; font-weight: 600; }\n    body.modal-open { overflow: hidden; }\n</style>\n`;
 
 const SNIPPET_DEPORTES_JS = `    <script>
     (function () {
@@ -234,11 +299,85 @@ const SNIPPET_DEPORTES_JS = `    <script>
         if (!slug) return;
         var fmtPesos = function (c) { return '$' + (Number(c) || 0).toLocaleString('es-CO').replace(/,/g, '.') + ''; };
         var esc = function (s) { return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); };
+        var qs = function (id) { return document.getElementById(id); };
         function mostrar(seccion) { var el = document.getElementById(seccion); if (el) el.hidden = false; }
-        function waLink(num, texto) {
-            var d = String(document.body.getAttribute('data-wa') || '').replace(/\\D/g, '');
-            return d ? '<a class="btn btn-wa" href="https://wa.me/' + d + '" target="_blank" rel="noopener">' + (texto || 'Inscribirme') + '</a>' : '';
+        function abrirInscripcion(tipo, ids, monto) {
+            qs('ins-tipo').value = tipo || 'club';
+            qs('ins-plan-id').value = (ids && ids.plan) || '';
+            qs('ins-visor-id').value = (ids && ids.visor) || '';
+            qs('ins-torneo-id').value = (ids && ids.torneo) || '';
+            if (monto && monto > 0) qs('ins-monto').textContent = '$' + Number(monto).toLocaleString('es-CO').replace(/,/g, '.');
+            else qs('ins-monto').textContent = 'A convenir';
+            qs('ins-msg').style.display = 'none';
+            qs('inscripcion-modal').hidden = false;
+            document.body.classList.add('modal-open');
         }
+        qs('inscripcion-close').addEventListener('click', function () { qs('inscripcion-modal').hidden = true; document.body.classList.remove('modal-open'); });
+        qs('inscripcion-modal').addEventListener('click', function (e) { if (e.target === qs('inscripcion-modal')) { qs('inscripcion-modal').hidden = true; document.body.classList.remove('modal-open'); } });
+        const leer = function (id) { var el = qs(id); return el ? el.value.trim() : ''; };
+        qs('inscripcion-form').addEventListener('submit', function (e) {
+            e.preventDefault();
+            var msg = qs('ins-msg');
+            msg.style.display = 'none';
+            var tratamiento = qs('ins-tratamiento').checked;
+            if (!leer('ins-nombre') || !leer('ins-responsable') || !leer('ins-telefono')) {
+                msg.textContent = 'Completa los campos obligatorios (nombre del deportista y responsable).';
+                msg.style.display = 'block';
+                return;
+            }
+            if (!tratamiento) {
+                msg.textContent = 'Debes aceptar el tratamiento de datos personales.';
+                msg.style.display = 'block';
+                return;
+            }
+            fetch('https://auvro.netlify.app/.netlify/functions/deportes', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'inscribir_publico',
+                    slug: slug,
+                    tipo: qs('ins-tipo').value,
+                    plan_id: qs('ins-plan-id').value || null,
+                    visoria_id: qs('ins-visor-id').value || null,
+                    deportista_nombre: leer('ins-nombre'),
+                    fecha_nacimiento: leer('ins-fecha') || null,
+                    deporte: leer('ins-deporte'),
+                    horario: leer('ins-horario'),
+                    responsable_nombre: leer('ins-responsable'),
+                    responsable_email: leer('ins-email'),
+                    responsable_telefono: leer('ins-telefono'),
+                    datos: {
+                        genero: qs('ins-genero').value,
+                        antiguo: qs('ins-antiguo').value,
+                        peso: leer('ins-peso'),
+                        talla: leer('ins-talla'),
+                        estatura: leer('ins-estatura'),
+                        sangre: leer('ins-sangre'),
+                        medicamentos: leer('ins-medicamentos'),
+                        alergias: leer('ins-alergias'),
+                        lesiones: leer('ins-lesiones'),
+                        parentesco: leer('ins-parentesco')
+                    },
+                    consentimiento: true,
+                    consentimiento_uso_imagen: qs('ins-uso-imagen').checked,
+                    consentimiento_tratamiento: tratamiento
+                })
+            }).then(function (r) { return r.json(); }).then(function (d) {
+                if (d && d.ok) {
+                    msg.style.color = '';
+                    msg.textContent = '¡Solicitud enviada! Te contactaremos para confirmar la inscripción.';
+                } else {
+                    msg.style.color = '#c00';
+                    msg.textContent = (d && d.error) ? 'Error: ' + d.error : 'No se pudo enviar. Intenta de nuevo.';
+                }
+                msg.style.display = 'block';
+            }).catch(function () {
+                msg.style.color = '#c00';
+                msg.textContent = 'Error de conexión. Intenta de nuevo.';
+                msg.style.display = 'block';
+            });
+        });
+        window.abrirInscripcion = abrirInscripcion;
         fetch('https://auvro.netlify.app/.netlify/functions/deportes', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -264,6 +403,7 @@ const SNIPPET_DEPORTES_JS = `    <script>
                         + (p.descripcion ? '<p>' + esc(p.descripcion) + '</p>' : '')
                         + '<p class="precio">' + fmtPesos(p.precio_cents) + ' <span style="font-size:.75rem">/ ' + esc(p.periodo || 'mes') + '</span></p>'
                         + waLink(null, 'Consultar por WhatsApp')
+                        + '<a class="btn btn-primary" href="#" onclick="window.abrirInscripcion && window.abrirInscripcion(\'club\', { plan: \'' + esc(p.id) + '\' }, ' + (Number(p.precio_cents) || 0) + '); return false;">Inscribirme</a>'
                         + '</div></div>';
                 }).join('');
                 mostrar('planes');
@@ -276,10 +416,23 @@ const SNIPPET_DEPORTES_JS = `    <script>
                         + '<p class="card-meta">' + fecha + (v.lugar ? ' · ' + esc(v.lugar) : '') + (v.cupo ? ' · Cupo ' + v.cupo : '') + '</p>'
                         + (v.descripcion ? '<p>' + esc(v.descripcion) + '</p>' : '')
                         + '<p class="precio">' + fmtPesos(v.costo_cents) + '</p>'
-                        + waLink(null, 'Inscribirme')
+                        + '<a class="btn btn-primary" href="#" onclick="window.abrirInscripcion && window.abrirInscripcion(\'visoria\', { visor: \'' + esc(v.id) + '\' }, ' + (Number(v.costo_cents) || 0) + '); return false;">Inscribirme</a>'
                         + '</div></div>';
                 }).join('');
                 mostrar('visorias');
+            }
+            if (d.torneos && d.torneos.length) {
+                document.getElementById('grid-torneos').innerHTML = d.torneos.map(function (t) {
+                    var f = t.fecha_inicio ? new Date(t.fecha_inicio).toLocaleDateString('es-CO') : '';
+                    return '<div class="card-deporte">'
+                        + '<div class="card-body"><h3>' + esc(t.titulo) + '</h3>'
+                        + '<p class="card-meta">' + [t.categoria, f, t.lugar].filter(Boolean).join(' · ') + '</p>'
+                        + (t.descripcion ? '<p>' + esc(t.descripcion) + '</p>' : '')
+                        + (t.fotos && t.fotos.length ? '<img class="card-img" src="' + esc(t.fotos[0]) + '" alt="' + esc(t.titulo) + '" loading="lazy">' : '')
+                        + '<a class="btn btn-primary" href="#" onclick="window.abrirInscripcion && window.abrirInscripcion(\'torneo\', { torneo: \'' + esc(t.id) + '\' }, 0); return false;">Inscribirme</a>'
+                        + '</div></div>';
+                }).join('');
+                mostrar('torneos');
             }
             if (d.noticias && d.noticias.length) {
                 document.getElementById('grid-noticias').innerHTML = d.noticias.slice(0, 6).map(function (n) {
@@ -292,6 +445,17 @@ const SNIPPET_DEPORTES_JS = `    <script>
                         + '</div></div>';
                 }).join('');
                 mostrar('noticias');
+            }
+            if (d.galeria && d.galeria.length) {
+                document.getElementById('grid-galeria').innerHTML = d.galeria.map(function (g) {
+                    return '<div class="card-deporte">'
+                        + (g.tipo === 'video'
+                            ? '<video class="card-img" src="' + esc(g.url) + '" controls preload="metadata"></video>'
+                            : '<img class="card-img" src="' + esc(g.url) + '" alt="' + esc(g.titulo || '') + '" loading="lazy">')
+                        + (g.titulo || g.categoria ? '<div class="card-body"><h3>' + esc(g.titulo || g.categoria) + '</h3></div>' : '')
+                        + '</div>';
+                }).join('');
+                mostrar('galeria');
             }
         }).catch(function () {});
     })();

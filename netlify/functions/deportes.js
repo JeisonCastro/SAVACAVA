@@ -103,6 +103,64 @@ function parseIds(body) {
     };
 }
 
+// ── Subida de imágenes/videos (patrón subir-imagen-deporte.js) ──
+const BUCKET_DEPORTES = 'deportes';
+const TAMANO_MAX_DEPORTES = 12 * 1024 * 1024;
+
+function parseDataUrl(dataUrl) {
+    const m = String(dataUrl || '').match(/^data:([^;]+);base64,(.+)$/);
+    if (!m) return null;
+    return { mime: m[1], buffer: Buffer.from(m[2], 'base64') };
+}
+
+function extDesdeMime(mime = '') {
+    const map = {
+        'image/jpeg': '.jpg',
+        'image/png': '.png',
+        'image/webp': '.webp',
+        'image/gif': '.gif',
+        'image/avif': '.avif',
+        'video/mp4': '.mp4',
+        'video/webm': '.webm',
+        'video/quicktime': '.mov'
+    };
+    return map[String(mime).toLowerCase().split(';')[0].trim()] || '.jpg';
+}
+
+async function subirImagenDeporte(proyectoId, dataUrl, filename) {
+    const parsed = parseDataUrl(dataUrl);
+    if (!parsed || !parsed.buffer.length || parsed.buffer.length > TAMANO_MAX_DEPORTES) return null;
+    const mime = parsed.mime;
+    await supabase.storage.createBucket(BUCKET_DEPORTES, {
+        public: true,
+        file_size_limit: TAMANO_MAX_DEPORTES
+    }).then(() => {}).catch((e) => {
+        if (!/already exists/i.test(e.message || '')) throw e;
+    });
+    const ext = extDesdeMime(mime);
+    const base = String(filename || 'deporte').replace(/\.[a-z0-9]+$/i, '').replace(/[^a-zA-Z0-9_.-]/g, '').slice(0, 120) || 'deporte';
+    const ruta = `${proyectoId}/${Date.now()}-${Math.floor(Math.random() * 1e6)}-${base}${ext}`;
+    const { error } = await supabase.storage
+        .from(BUCKET_DEPORTES)
+        .upload(ruta, new Blob([parsed.buffer], { type: mime }), {
+            contentType: mime,
+            upsert: false
+        });
+    if (error) return null;
+    const { data: urlData } = supabase.storage.from(BUCKET_DEPORTES).getPublicUrl(ruta);
+    return urlData?.publicUrl || '';
+}
+
+// Convierte data: local -> URL pública de storage; deja intactas las URLs ya persistentes.
+function normalizarMedia(proyectoId, valor, filename) {
+    const s = String(valor ?? '').trim();
+    if (!s) return s;
+    if (s.startsWith('data:')) {
+        try { return subirImagenDeporte(proyectoId, s, filename) || ''; } catch (e) { console.error('media no subida:', e.message); return ''; }
+    }
+    return s.replace(/["'<>]/g, '');
+}
+
 // ============================================================
 //  ACCIONES PÚBLICAS (sitio del cliente)
 // ============================================================
@@ -251,14 +309,28 @@ function sanearDeportista(body) {
 
 async function guardarDeportista(userId, body) {
     const id = body.id || null;
+    const pid = String(body.proyecto_id || '');
     const datos = sanearDeportista(body);
     if (!datos.nombre) return pagerror('Falta el nombre del deportista');
+    // Subida de medios (patrón tienda.js): los data: se suben al guardar.
+    datos.fotografia_url = await normalizarMedia(pid, datos.fotografia_url, 'portada');
+    const ficha = (datos.ficha && typeof datos.ficha === 'object') ? datos.ficha : {};
+    if (Array.isArray(ficha.galeria)) {
+        for (let i = 0; i < ficha.galeria.length; i++) ficha.galeria[i] = await normalizarMedia(pid, ficha.galeria[i], 'foto-' + i);
+    }
+    if (Array.isArray(ficha.videos)) {
+        for (let i = 0; i < ficha.videos.length; i++) ficha.videos[i] = await normalizarMedia(pid, ficha.videos[i], 'video-' + i);
+    }
+    datos.ficha = ficha;
+    if (Array.isArray(datos.videos)) {
+        for (let i = 0; i < datos.videos.length; i++) datos.videos[i] = await normalizarMedia(pid, datos.videos[i], 'video-' + i);
+    }
     if (id) {
         const { data, error } = await supabase
             .from('deportes_deportistas')
             .update({ ...datos, updated_at: new Date().toISOString() })
             .eq('id', id)
-            .eq('proyecto_id', datos.proyecto_id)
+            .eq('proyecto_id', pid)
             .select()
             .single();
         if (error) return pagerror(error.message, 500);
@@ -490,9 +562,10 @@ async function listarNoticias(userId, body) {
 async function guardarNoticia(userId, body) {
     const { id, proyecto_id, titulo, categoria, contenido, imagen_url, fecha_publicacion, activo } = body;
     if (!titulo) return pagerror('Falta el título de la noticia');
+    const pid = String(proyecto_id || '');
     const datos = {
         proyecto_id, titulo: s(titulo), categoria: s(categoria) || 'General',
-        contenido: s(contenido), imagen_url: s(imagen_url),
+        contenido: s(contenido), imagen_url: await normalizarMedia(pid, s(imagen_url), 'noticia'),
         fecha_publicacion: fecha_publicacion || new Date().toISOString(),
         activo: activo !== false
     };
@@ -525,9 +598,10 @@ async function listarGaleria(userId, body) {
 async function guardarItemGaleria(userId, body) {
     const { id, proyecto_id, categoria, titulo, url, tipo, orden, activo } = body;
     if (!url) return pagerror('Falta la URL del item');
+    const pid = String(proyecto_id || '');
     const datos = {
         proyecto_id, categoria: s(categoria) || 'General', titulo: s(titulo),
-        url: s(url), tipo: s(tipo) === 'video' ? 'video' : 'imagen',
+        url: await normalizarMedia(pid, s(url), 'galeria'), tipo: s(tipo) === 'video' ? 'video' : 'imagen',
         orden: Number(orden) || 0, activo: activo !== false
     };
     if (id) {

@@ -1111,23 +1111,17 @@
         }
     }
 
+    // Subida de medios SIN subir al servidor: solo convierte a data-URL local
+    // (preview inmediato). Las imágenes se suben todas juntas al guardar
+    // (mismo patrón que Productos / imgSubir + guardarProducto).
     function depSubir(input, cb) {
         const file = input.files && input.files[0];
         if (!file) return;
         if (file.size > 12 * 1024 * 1024) { toast('El archivo supera 12 MB', true); input.value = ''; return; }
         const reader = new FileReader();
-        reader.onload = async () => {
-            try {
-                const res = await fetch('/.netlify/functions/subir-imagen-deporte', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (session ? session.access_token : '') },
-                    body: JSON.stringify({ proyecto_id: ctx.proyecto_id, data_url: String(reader.result), filename: file.name })
-                });
-                const data = await res.json();
-                if (!data.ok) throw new Error(data.error || 'No se pudo subir');
-                toast('Archivo subido');
-                cb && cb(data.url);
-            } catch (err) { toast('Error: ' + err.message, true); }
+        reader.onload = () => {
+            const u = String(reader.result);
+            cb && cb(u);
         };
         reader.readAsDataURL(file);
     }
@@ -1137,19 +1131,10 @@
         if (!files.length) return;
         const reader = new FileReader();
         reader.readAsDataURL(files[start]);
-        reader.onload = async () => {
-            try {
-                const res = await fetch('/.netlify/functions/subir-imagen-deporte', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (session ? session.access_token : '') },
-                    body: JSON.stringify({ proyecto_id: ctx.proyecto_id, data_url: String(reader.result), filename: files[start].name })
-                });
-                const data = await res.json();
-                if (!data.ok) throw new Error(data.error || 'No se pudo subir');
-                window.__depGaleria = (window.__depGaleria || []).concat([data.url]);
-                if (start + 1 < files.length) depSubirVarias(input, start + 1);
-                else { input.value = ''; toast('Fotos subidas'); depFormDeportista($('dep-editing')?.value || null); }
-            } catch (err) { toast('Error: ' + err.message, true); }
+        reader.onload = () => {
+            window.__depGaleria = (window.__depGaleria || []).concat([String(reader.result)]);
+            if (start + 1 < files.length) depSubirVarias(input, start + 1);
+            else { input.value = ''; depFormDeportista($('dep-editing')?.value || null); }
         };
     }
 
@@ -1209,6 +1194,7 @@
                 d_fotos = Array.isArray(_fotos) ? _fotos : [];
                 d_vid = Array.isArray(_vid) ? _vid : [];
                 window.__depGaleria = d_fotos;
+                window.__depFoto = d.fotografia_url || '';
             } catch (err) {
                 main.innerHTML = '<div class="empty">Error: ' + esc(err.message) + '</div>';
                 return;
@@ -1236,11 +1222,15 @@
                 <div class="field" style="grid-column:1/-1"><label>Experiencia / Perfil</label><textarea id="dp-experiencia" rows="2">${esc(d.experiencia || '')}</textarea></div>
                 <div class="field" style="grid-column:1/-1"><label>Fotografía (portada)</label>
                     <div style="display:flex;gap:.5rem;align-items:center">
-                        <input id="dp-foto" value="${esc(d.fotografia_url || '')}" placeholder="Sube la foto o pega una URL">
-                        <input type="file" accept="image/*" style="display:none" id="dp-foto-file" onchange="depSubir(this,function(u){$('dp-foto').value=u})">
+                        <input id="dp-foto" value="${esc(window.__depFoto || d.fotografia_url || '')}" placeholder="Sube la foto o pega una URL">
+<input type="file" accept="image/*" style="display:none" id="dp-foto-file" onchange="depSubir(this,function(u){window.__depFoto=u;$('dp-foto').value=u;$('dp-foto-prev').src=u})">
                         <button class="btn-small" onclick="$('dp-foto-file').click()"><i class="fas fa-upload"></i> Subir</button>
                     </div>
-                    ${d_fotos.length ? `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">${d_fotos.map((f,i)=>`<div style="margin:0"><img src="${esc(f)}" alt="" style="width:56px;height:56px;border-radius:8px;object-fit:cover;border:1px solid var(--border)"> <button class="btn-small" onclick="depQuitarGaleria(${i})" title="Quitar">&times;</button></div>`).join('')}</div>` : ''}
+                    <div style="display:flex;gap:6px;align-items:center;margin-top:6px">
+                        <img id="dp-foto-prev" src="${esc(window.__depFoto || d.fotografia_url || '')}" alt="" style="width:72px;height:72px;border-radius:8px;object-fit:cover;border:1px solid var(--border)" onerror="this.style.display='none'" onload="if(!this.src||!this.src.trim())this.style.display='none'">
+                        <span style="font-size:.74rem;color:var(--muted)">La foto se sube al guardar el deportista.</span>
+                    </div>
+            ${d_fotos.length ? `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">${d_fotos.map((f,i)=>`<div style="margin:0"><img src="${esc(f)}" alt="" style="width:56px;height:56px;border-radius:8px;object-fit:cover;border:1px solid var(--border)"> <button class="btn-small" onclick="depQuitarGaleria(${i})" title="Quitar">&times;</button></div>`).join('')}</div>` : ''}
                     <div style="margin-top:8px">
                         <label style="font-size:.78rem;color:var(--muted)">Galería (varias fotos)</label>
                         <input type="file" accept="image/*" multiple style="display:none" id="dp-fotos-file" onchange="depSubirVarias(this,0)">
@@ -1288,6 +1278,7 @@
             ficha, estadisticas, publico: $('dp-publico').checked, activo: $('dp-activo').checked
         });
         window.__depGaleria = [];
+        window.__depFoto = '';
         if (!data.ok) return toast('Error: ' + data.error, true);
         toast('Deportista guardado');
         renderDeportes();
@@ -1586,7 +1577,11 @@
             { id: 'not-categoria', label: 'Categoría', value: n.categoria || 'General', type: 'select', options: ['Convocatorias','Resultados','Torneos','Visorías','Jugadores','Giras','Institucional'] },
             { id: 'not-contenido', label: 'Contenido', value: n.contenido, type: 'textarea', rows: 8 },
             { id: 'not-imagen', label: 'URL de imagen', value: n.imagen_url }
-        ], id ? 'Editar noticia' : 'Nueva noticia', 'depGuardarNoticia');
+        ], id ? 'Editar noticia' : 'Nueva noticia', 'depGuardarNoticia', `
+            <div><label>&nbsp;</label>
+                <input type="file" accept="image/*" style="display:none" id="not-img-file" onchange="depSubir(this,function(u){$('not-imagen').value=u})">
+                <button class="btn-small" onclick="$('not-img-file').click()"><i class="fas fa-upload"></i> Subir imagen</button>
+            </div>`);
         window._depNoticiaId = id || '';
     }
 
