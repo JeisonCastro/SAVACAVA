@@ -1111,71 +1111,31 @@
         }
     }
 
-    // Subida de medios a Storage de inmediato: convierte a data-URL y lo sube a
-    // /.netlify/functions/subir-imagen-deporte; el callback recibe la URL PÚBLICA
-    // final. Si la subida directa falla (MIME raro, red, etc.) se deja pasar el
-    // data-URL como FALLBACK para que el backend lo intente al guardar; así la
-    // imagen SIEMPRE queda persistida si el archivo es válido.
+    // Subida de medios EXACTAMENTE igual que Productos (imgSubir + guardarProducto):
+    // al elegir el archivo se convierte a data-URL local (preview) y se sube a
+    // Storage al GUARDAR, dentro del backend (mismo bucket público `productos`).
     function depSubir(input, cb) {
         const file = input.files && input.files[0];
         if (!file) return;
-        if (file.size > 12 * 1024 * 1024) { toast('El archivo supera 12 MB', true); input.value = ''; return; }
-        const reader = new FileReader();
-        reader.onload = async () => {
-            const dataUrl = String(reader.result);
-            try {
-                const url = await depSubirServidor(dataUrl, file.name);
-                cb && cb(url);
-            } catch (err) {
-                console.warn('Subida directa falló, se reintentará al guardar:', err.message);
-                toast('Aviso: la subida directa falló y se intentará al guardar (' + err.message + ')', true);
-                cb && cb(dataUrl);
-            }
+        if (file.size > 8 * 1024 * 1024) { toast('La imagen/video supera 8 MB', true); input.value = ''; return; }
+        const rd = new FileReader();
+        rd.onload = () => {
+            const u = String(rd.result);
+            cb && cb(u);
         };
-        reader.readAsDataURL(file);
-    }
-
-    async function depSubirServidor(dataUrl, filename) {
-        const res = await fetch('/.netlify/functions/subir-imagen-deporte', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (session ? session.access_token : '') },
-            body: JSON.stringify({ proyecto_id: ctx.proyecto_id, data_url: String(dataUrl), filename: filename || 'deporte' })
-        });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok || !data.ok) throw new Error(data.error || ('No se pudo subir (HTTP ' + res.status + ')'));
-        return data.url;
+        rd.readAsDataURL(file);
     }
 
     function depSubirVarias(input, start) {
         const files = Array.from(input.files || []);
         if (!files.length) return;
-        const subir = async (i) => {
-            if (i >= files.length) {
-                input.value = '';
-                depFormDeportista($('dep-editing')?.value || null);
-                return;
-            }
-            const f = files[i];
-            if (f.size > 12 * 1024 * 1024) {
-                toast('El archivo supera 12 MB', true);
-                return subir(i + 1);
-            }
-            const reader = new FileReader();
-            reader.onload = async () => {
-                const dataUrl = String(reader.result);
-                try {
-                    const url = await depSubirServidor(dataUrl, f.name);
-                    window.__depGaleria = (window.__depGaleria || []).concat([url]);
-                } catch (err) {
-                    console.warn('Subida directa falló, se usará el data-URL:', err.message);
-                    toast('Aviso: subida falló y se usará al guardar (' + err.message + ')', true);
-                    window.__depGaleria = (window.__depGaleria || []).concat([dataUrl]);
-                }
-                subir(i + 1);
-            };
-            reader.readAsDataURL(f);
+        const reader = new FileReader();
+        reader.readAsDataURL(files[start]);
+        reader.onload = () => {
+            window.__depGaleria = (window.__depGaleria || []).concat([String(reader.result)]);
+            if (start + 1 < files.length) depSubirVarias(input, start + 1);
+            else { input.value = ''; depFormDeportista($('dep-editing')?.value || null); }
         };
-        subir(start);
     }
 
     function depQuitarGaleria(i) {
@@ -1268,7 +1228,7 @@
                     </div>
                     <div style="display:flex;gap:6px;align-items:center;margin-top:6px">
                         <img id="dp-foto-prev" src="${esc(window.__depFoto || d.fotografia_url || '')}" alt="" style="width:72px;height:72px;border-radius:8px;object-fit:cover;border:1px solid var(--border)" onerror="this.style.display='none'" onload="if(!this.src||!this.src.trim())this.style.display='none'">
-                        <span style="font-size:.74rem;color:var(--muted)">La foto se sube al servidor en cuanto la eliges.</span>
+                        <span style="font-size:.74rem;color:var(--muted)">La foto se sube al guardar el deportista (igual que Productos).</span>
                     </div>
             ${d_fotos.length ? `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">${d_fotos.map((f,i)=>`<div style="margin:0"><img src="${esc(f)}" alt="" style="width:56px;height:56px;border-radius:8px;object-fit:cover;border:1px solid var(--border)"> <button class="btn-small" onclick="depQuitarGaleria(${i})" title="Quitar">&times;</button></div>`).join('')}</div>` : ''}
                     <div style="margin-top:8px">
@@ -1764,7 +1724,7 @@
         depFormTorneo, depGuardarTorneo, depEliminarTorneo,
         depFormNoticia, depGuardarNoticia, depEliminarNoticia,
         depFormGaleria, depGuardarGaleria, depEliminarItemGaleria,
-        depSubir, depSubirVarias, depQuitarGaleria, depSubirServidor,
+        depSubir, depSubirVarias, depQuitarGaleria,
         toggleTheme, actualizarBotonTema
     });
 

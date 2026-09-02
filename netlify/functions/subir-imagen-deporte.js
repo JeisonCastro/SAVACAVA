@@ -8,8 +8,9 @@ const { createClient } = require('@supabase/supabase-js');
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
 
-const BUCKET = 'deportes';
-const TAMANO_MAX = 12 * 1024 * 1024;
+const BUCKET = 'productos';
+const PREFIJO = 'deportes';
+const TAMANO_MAX = 8 * 1024 * 1024;
 
 const MIMES_PERMITIDOS = new Set([
   'image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif',
@@ -151,7 +152,7 @@ exports.handler = async (event) => {
     const mime = mimeDeclarado;
     const ext = extDesdeMime(mime);
     const base = (nombreOriginal || 'deporte').replace(/\.[a-z0-9]+$/i, '');
-    const ruta = `${proyectoId}/${Date.now()}-${Math.floor(Math.random() * 1e6)}-${base}${ext}`;
+    const ruta = `${PREFIJO}/${proyectoId}/${Date.now()}-${Math.floor(Math.random() * 1e6)}-${base}${ext}`;
 
     const { error: uploadError } = await supabase.storage
       .from(BUCKET)

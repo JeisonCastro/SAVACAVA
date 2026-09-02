@@ -103,9 +103,14 @@ function parseIds(body) {
     };
 }
 
-// ── Subida de imágenes/videos (patrón subir-imagen-deporte.js) ──
-const BUCKET_DEPORTES = 'deportes';
-const TAMANO_MAX_DEPORTES = 12 * 1024 * 1024;
+// ── Subida de imágenes/videos ──
+// IMPORTANTE: se reutiliza el bucket público `productos` (el mismo que usa el
+// módulo Tienda/Productos, probado en producción) con prefijo `deportes/` para
+// aislar por módulo. Así la subida de Deportes funciona EXACTAMENTE igual que
+// la de Productos (mismo bucket, misma API, mismos permisos de Storage).
+const BUCKET_DEPORTES = 'productos';
+const PREFIJO_DEPORTES = 'deportes';
+const TAMANO_MAX_DEPORTES = 8 * 1024 * 1024;
 
 function parseDataUrl(dataUrl) {
     const m = String(dataUrl || '').match(/^data:([^;]+);base64,(.+)$/);
@@ -144,7 +149,7 @@ async function subirImagenDeporte(proyectoId, dataUrl, filename) {
     });
     const ext = extDesdeMime(mime);
     const base = String(filename || 'deporte').replace(/\.[a-z0-9]+$/i, '').replace(/[^a-zA-Z0-9_.-]/g, '').slice(0, 120) || 'deporte';
-    const ruta = `${proyectoId}/${Date.now()}-${Math.floor(Math.random() * 1e6)}-${base}${ext}`;
+    const ruta = `${PREFIJO_DEPORTES}/${proyectoId}/${Date.now()}-${Math.floor(Math.random() * 1e6)}-${base}${ext}`;
     const { error } = await supabase.storage
         .from(BUCKET_DEPORTES)
         .upload(ruta, new Blob([parsed.buffer], { type: mime }), {
