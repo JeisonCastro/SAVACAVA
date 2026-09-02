@@ -1132,6 +1132,34 @@
         reader.readAsDataURL(file);
     }
 
+    function depSubirVarias(input, start) {
+        const files = Array.from(input.files || []);
+        if (!files.length) return;
+        const reader = new FileReader();
+        reader.readAsDataURL(files[start]);
+        reader.onload = async () => {
+            try {
+                const res = await fetch('/.netlify/functions/subir-imagen-deporte', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (session ? session.access_token : '') },
+                    body: JSON.stringify({ proyecto_id: ctx.proyecto_id, data_url: String(reader.result), filename: files[start].name })
+                });
+                const data = await res.json();
+                if (!data.ok) throw new Error(data.error || 'No se pudo subir');
+                window.__depGaleria = (window.__depGaleria || []).concat([data.url]);
+                if (start + 1 < files.length) depSubirVarias(input, start + 1);
+                else { input.value = ''; toast('Fotos subidas'); depFormDeportista($('dep-editing')?.value || null); }
+            } catch (err) { toast('Error: ' + err.message, true); }
+        };
+    }
+
+    function depQuitarGaleria(i) {
+        const g = window.__depGaleria || [];
+        g.splice(i, 1);
+        window.__depGaleria = g;
+        depFormDeportista($('dep-editing')?.value || null);
+    }
+
     // DEPORTISTAS
     async function depRenderDeportistas() {
         const panel = $('dep-panel');
@@ -1166,11 +1194,21 @@
     async function depFormDeportista(id) {
         const main = $('main');
         let d = {};
+        let d_ficha = '', d_stats = '', d_fotos = [], d_vid = [];
         if (id) {
             try {
                 const data = await deportesApi('get_deportista', { proyecto_id: ctx.proyecto_id, id });
                 if (!data.ok) throw new Error(data.error || 'Error');
                 d = data.deportista || {};
+                const _ficha = (d.ficha && (d.ficha.texto || d.ficha)) || '';
+                const _stats = (d.estadisticas && (d.estadisticas.texto || d.estadisticas)) || '';
+                const _fotos = (d.ficha && d.ficha.galeria) || [];
+                const _vid = (d.ficha && d.ficha.videos) || [];
+                d_ficha = typeof _ficha === 'string' ? _ficha : (typeof _ficha === 'object' ? JSON.stringify(_ficha) : '');
+                d_stats = typeof _stats === 'string' ? _stats : (typeof _stats === 'object' ? JSON.stringify(_stats) : '');
+                d_fotos = Array.isArray(_fotos) ? _fotos : [];
+                d_vid = Array.isArray(_vid) ? _vid : [];
+                window.__depGaleria = d_fotos;
             } catch (err) {
                 main.innerHTML = '<div class="empty">Error: ' + esc(err.message) + '</div>';
                 return;
@@ -1180,6 +1218,7 @@
             <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:12px">
                 <button class="btn-small" onclick="renderDeportes()"><i class="fas fa-arrow-left"></i> Volver</button>
                 <span style="font-weight:700;font-size:.95rem">${id ? 'Editar deportista' : 'Nuevo deportista'}</span>
+                <input type="hidden" id="dep-editing" value="${id || ''}">
             </div>
             <div class="card"><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:.7rem">
                 <div class="field"><label>Nombre *</label><input id="dp-nombre" value="${esc(d.nombre || '')}"></div>
@@ -1195,17 +1234,31 @@
                 <div class="field"><label>Ciudad</label><input id="dp-ciudad" value="${esc(d.ciudad || '')}"></div>
                 <div class="field"><label>Nivel</label><select id="dp-nivel">${['','Formativo','Competitivo','Élite'].map(p=>`<option value="${p}"${p===(d.nivel||'')?' selected':''}>${p||'—'}</option>`).join('')}</select></div>
                 <div class="field" style="grid-column:1/-1"><label>Experiencia / Perfil</label><textarea id="dp-experiencia" rows="2">${esc(d.experiencia || '')}</textarea></div>
-                <div class="field" style="grid-column:1/-1"><label>Fotografía</label>
+                <div class="field" style="grid-column:1/-1"><label>Fotografía (portada)</label>
                     <div style="display:flex;gap:.5rem;align-items:center">
-                        <input id="dp-foto" value="${esc(d.fotografia_url || '')}" placeholder="URL o sube una...">
+                        <input id="dp-foto" value="${esc(d.fotografia_url || '')}" placeholder="Sube la foto o pega una URL">
                         <input type="file" accept="image/*" style="display:none" id="dp-foto-file" onchange="depSubir(this,function(u){$('dp-foto').value=u})">
-                        <button class="btn-small" onclick="$('dp-foto-file').click()"><i class="fas fa-upload"></i></button>
+                        <button class="btn-small" onclick="$('dp-foto-file').click()"><i class="fas fa-upload"></i> Subir</button>
+                    </div>
+                    ${d_fotos.length ? `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">${d_fotos.map((f,i)=>`<div style="margin:0"><img src="${esc(f)}" alt="" style="width:56px;height:56px;border-radius:8px;object-fit:cover;border:1px solid var(--border)"> <button class="btn-small" onclick="depQuitarGaleria(${i})" title="Quitar">&times;</button></div>`).join('')}</div>` : ''}
+                    <div style="margin-top:8px">
+                        <label style="font-size:.78rem;color:var(--muted)">Galería (varias fotos)</label>
+                        <input type="file" accept="image/*" multiple style="display:none" id="dp-fotos-file" onchange="depSubirVarias(this,0)">
+                        <button class="btn-small" onclick="$('dp-fotos-file').click()"><i class="fas fa-images"></i> Añadir fotos</button>
                     </div>
                 </div>
-                <div class="field" style="grid-column:1/-1"><label>Logros <span style="font-weight:400;color:var(--muted)">(uno por línea)</span></label><textarea id="dp-logros" rows="3">${(d.logros||[]).join('\n')}</textarea></div>
-                <div class="field" style="grid-column:1/-1"><label>Videos <span style="font-weight:400;color:var(--muted)">(URLs, uno por línea)</span></label><textarea id="dp-videos" rows="2">${(d.videos||[]).join('\n')}</textarea></div>
-                <div class="field"><label>Ficha técnica (JSON)</label><textarea id="dp-ficha" rows="3" style="font-family:monospace">${esc(JSON.stringify(d.ficha||{},null,2))}</textarea></div>
-                <div class="field"><label>Estadísticas (JSON)</label><textarea id="dp-estadisticas" rows="3" style="font-family:monospace">${esc(JSON.stringify(d.estadisticas||{},null,2))}</textarea></div>
+                <div class="field" style="grid-column:1/-1"><label>Logros <span style="font-weight:400;color:var(--muted)">(uno por línea)</span></label><textarea id="dp-logros" rows="2">${(d.logros||[]).join('\n')}</textarea></div>
+                <div class="field" style="grid-column:1/-1"><label>Ficha / perfil detallado</label><textarea id="dp-ficha" rows="3" placeholder="Historial, posiciones por las que juega, características, etc. (texto libre)">${esc(d_ficha)}</textarea></div>
+                <div class="field" style="grid-column:1/-1"><label>Estadísticas <span style="font-weight:400;color:var(--muted)">(texto libre, p. ej. Goles: 12 · Asistencias: 8)</span></label><textarea id="dp-estadisticas" rows="2">${esc(d_stats)}</textarea></div>
+                <div class="field" style="grid-column:1/-1"><label>Videos <span style="font-weight:400;color:var(--muted)">(URL de YouTube/Instagram, uno por línea)</span></label>
+                    <div style="display:flex;gap:.5rem;align-items:center">
+                        <textarea id="dp-videos" rows="2" style="flex:1">${(d_vid||[]).join('\n')}</textarea>
+                    </div>
+                    <div style="margin-top:6px">
+                        <input type="file" accept="video/*" style="display:none" id="dp-video-file" onchange="depSubir(this,function(u){var t=$('dp-videos'); t.value=(t.value?t.value.trim()+'\\n':'')+u})">
+                        <button class="btn-small" onclick="$('dp-video-file').click()"><i class="fas fa-video"></i> Subir video</button>
+                    </div>
+                </div>
                 <div style="display:flex;gap:1rem;align-items:center">
                     <label style="font-size:.82rem"><input type="checkbox" id="dp-publico" ${d.publico !== false ? 'checked' : ''}> Perfil público</label>
                     <label style="font-size:.82rem"><input type="checkbox" id="dp-activo" ${d.activo !== false ? 'checked' : ''}> Activo</label>
@@ -1219,9 +1272,8 @@
     }
 
     async function depGuardarDeportista(id) {
-        let ficha = {}, estadisticas = {};
-        try { ficha = JSON.parse($('dp-ficha').value || '{}'); } catch (_) { toast('Ficha: JSON inválido', true); return; }
-        try { estadisticas = JSON.parse($('dp-estadisticas').value || '{}'); } catch (_) { toast('Estadísticas: JSON inválido', true); return; }
+        const ficha = { texto: $('dp-ficha').value.trim(), galeria: window.__depGaleria || [], videos: $('dp-videos').value.split('\n').map(s => s.trim()).filter(Boolean) };
+        const estadisticas = { texto: $('dp-estadisticas').value.trim() };
         const data = await deportesApi('guardar_deportista', {
             proyecto_id: ctx.proyecto_id, id: id || null,
             nombre: $('dp-nombre').value.trim(), fecha_nacimiento: $('dp-fecha').value || null,
@@ -1232,9 +1284,10 @@
             nivel: $('dp-nivel').value, experiencia: $('dp-experiencia').value.trim(),
             fotografia_url: $('dp-foto').value.trim(),
             logros: $('dp-logros').value.split('\n').map(s => s.trim()).filter(Boolean),
-            videos: $('dp-videos').value.split('\n').map(s => s.trim()).filter(Boolean),
+            videos: ficha.videos,
             ficha, estadisticas, publico: $('dp-publico').checked, activo: $('dp-activo').checked
         });
+        window.__depGaleria = [];
         if (!data.ok) return toast('Error: ' + data.error, true);
         toast('Deportista guardado');
         renderDeportes();

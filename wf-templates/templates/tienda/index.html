@@ -40,7 +40,22 @@
         </div>
     </section>
 
-    <section id="productos" class="section">
+    <!-- Barra de pestañas: permite "cambiar de sección" sin recargar.
+         Solo se muestran las pestañas con contenido. Tienda es la pestaña inicial. -->
+    <nav class="pestanas" id="pestanas" aria-label="Secciones">
+        <div class="container pestanas-inner">
+            <button type="button" class="pestana pestana-on" data-panel="productos">Tienda</button>
+            <button type="button" class="pestana" data-panel="deportistas" hidden>Deportistas</button>
+            <button type="button" class="pestana" data-panel="planes" hidden>Planes</button>
+            <button type="button" class="pestana" data-panel="visorias" hidden>Visorías</button>
+            <button type="button" class="pestana" data-panel="torneos" hidden>Torneos</button>
+            <button type="button" class="pestana" data-panel="noticias" hidden>Noticias</button>
+            <button type="button" class="pestana" data-panel="galeria" hidden>Galería</button>
+            <button type="button" class="pestana" data-panel="contacto">Contacto</button>
+        </div>
+    </nav>
+
+    <section id="productos" class="section panel" data-panel="productos">
         <div class="container">
             <h2 class="section-title">Nuestra tienda</h2>
             <p class="section-sub">Elige tus productos y paga de forma segura con PSE, tarjeta o Nequi.</p>
@@ -51,8 +66,8 @@
         </div>
     </section>
 
-    <!-- DEPORTISTAS (se muestra solo si el proyecto tiene deportistas públicos) -->
-    <section id="deportistas" class="section section-alt" hidden>
+    <!-- DEPORTISTAS (panel; solo visible si el proyecto tiene deportistas públicos) -->
+    <section id="deportistas" class="section section-alt panel" data-panel="deportistas" hidden>
         <div class="container">
             <h2 class="section-title">Nuestros deportistas</h2>
             <p class="section-sub">Talento que se forma y se proyecta.</p>
@@ -60,8 +75,8 @@
         </div>
     </section>
 
-    <!-- PLANES DEL CLUB (se muestra solo si hay planes) -->
-    <section id="planes" class="section" hidden>
+    <!-- PLANES DEL CLUB (panel; solo visible si hay planes) -->
+    <section id="planes" class="section panel" data-panel="planes" hidden>
         <div class="container">
             <h2 class="section-title">Planes del Club</h2>
             <p class="section-sub">Formación deportiva integral.</p>
@@ -69,8 +84,8 @@
         </div>
     </section>
 
-    <!-- VISORÍAS (se muestra solo si hay visorías) -->
-    <section id="visorias" class="section section-alt" hidden>
+    <!-- VISORÍAS (panel; solo visible si hay visorías) -->
+    <section id="visorias" class="section section-alt panel" data-panel="visorias" hidden>
         <div class="container">
             <h2 class="section-title">Visorías</h2>
             <p class="section-sub">Tu oportunidad de mostrar tu talento.</p>
@@ -78,15 +93,32 @@
         </div>
     </section>
 
-    <!-- NOTICIAS (se muestra solo si hay noticias) -->
-    <section id="noticias" class="section" hidden>
+    <!-- TORNEOS (panel; solo visible si hay torneos) -->
+    <section id="torneos" class="section section-alt panel" data-panel="torneos" hidden>
+        <div class="container">
+            <h2 class="section-title">Torneos y eventos</h2>
+            <p class="section-sub">Calendario competitivo del club.</p>
+            <div id="grid-torneos" class="grid"></div>
+        </div>
+    </section>
+
+    <!-- NOTICIAS (panel; solo visible si hay noticias) -->
+    <section id="noticias" class="section panel" data-panel="noticias" hidden>
         <div class="container">
             <h2 class="section-title">Noticias</h2>
             <div id="grid-noticias" class="grid"></div>
         </div>
     </section>
 
-    <section id="contacto" class="section section-alt">
+    <!-- GALERÍA (panel; solo visible si hay imágenes) -->
+    <section id="galeria" class="section panel" data-panel="galeria" hidden>
+        <div class="container">
+            <h2 class="section-title">Galería</h2>
+            <div id="grid-galeria" class="grid"></div>
+        </div>
+    </section>
+
+    <section id="contacto" class="section section-alt panel" data-panel="contacto">
         <div class="container">
             <h2 class="section-title">¿Necesitas ayuda?</h2>
             <p class="section-sub">Escríbenos por WhatsApp y te atendemos.</p>
@@ -668,13 +700,43 @@
 })();
     </script>
     <script>
+    // ── Navegación por pestañas: muestra una sección a la vez (sensación de cambio de pestaña).
+    function activarPanel(panel, desplazar) {
+        var targets = document.querySelectorAll('.panel');
+        for (var i = 0; i < targets.length; i++) {
+            var on = targets[i].getAttribute('data-panel') === panel;
+            targets[i].classList.toggle('panel-on', on);
+            targets[i].hidden = !on;
+        }
+        var tabs = document.querySelectorAll('.pestana');
+        for (var j = 0; j < tabs.length; j++) {
+            tabs[j].classList.toggle('pestana-on', tabs[j].getAttribute('data-panel') === panel);
+        }
+        document.querySelector('#pestanas').scrollLeft = 0;
+        if (desplazar !== false) {
+            var el = document.querySelector('[data-panel="' + panel + '"]');
+            if (el) window.scrollTo({ top: Math.max(0, el.getBoundingClientRect().top + window.scrollY - 80), behavior: 'smooth' });
+        }
+    }
+    document.querySelectorAll('.pestana').forEach(function (b) {
+        b.addEventListener('click', function () { activarPanel(b.getAttribute('data-panel'), false); });
+    });
+    activarPanel('productos', false);
+    window.activarPanel = activarPanel;
+    </script>
+    <script>
     (function () {
         var slug = document.body.getAttribute('data-slug') || '';
         if (!slug) return;
         var fmt = function (c) { return '$' + Math.round(Number(c) || 0 / 1) / 100; };
         var fmtPesos = function (c) { return '$' + (Number(c) || 0).toLocaleString('es-CO').replace(/,/g, '.') + ''; };
         var esc = function (s) { return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); };
-        function mostrar(seccion) { var el = document.getElementById(seccion); if (el) el.hidden = false; }
+        // Muestra la pestaña (si estaba oculta) y activa el panel con su contenido.
+        function mostrarPanel(panel) {
+            var tab = document.querySelector('.pestana[data-panel="' + panel + '"]');
+            if (tab) tab.hidden = false;
+            if (window.activarPanel) window.activarPanel(panel, false);
+        }
         function waLink(num, texto) {
             var d = String(document.body.getAttribute('data-wa') || '').replace(/\D/g, '');
             return d ? '<a class="btn btn-wa" href="https://wa.me/' + d + '" target="_blank" rel="noopener">' + (texto || 'Inscribirme') + '</a>' : '';
@@ -685,7 +747,6 @@
             body: JSON.stringify({ action: 'catalogo_publico', slug: slug })
         }).then(function (r) { return r.json(); }).then(function (d) {
             if (!d.ok) return;
-            // Deportistas
             if (d.deportistas && d.deportistas.length) {
                 document.getElementById('grid-deportistas').innerHTML = d.deportistas.map(function (p) {
                     return '<div class="card-deporte">'
@@ -696,9 +757,8 @@
                         + (p.logros && p.logros.length ? '<p class="card-meta">🏆 ' + esc(p.logros.join(' · ')) + '</p>' : '')
                         + '</div></div>';
                 }).join('');
-                mostrar('deportistas');
+                mostrarPanel('deportistas');
             }
-            // Planes
             if (d.planes && d.planes.length) {
                 document.getElementById('grid-planes').innerHTML = d.planes.map(function (p) {
                     return '<div class="card-deporte plan-card">'
@@ -708,9 +768,8 @@
                         + waLink(null, 'Consultar por WhatsApp')
                         + '</div></div>';
                 }).join('');
-                mostrar('planes');
+                mostrarPanel('planes');
             }
-            // Visorías
             if (d.visorias && d.visorias.length) {
                 document.getElementById('grid-visorias').innerHTML = d.visorias.map(function (v) {
                     var fecha = v.fecha ? new Date(v.fecha).toLocaleDateString('es-CO') : 'Por definir';
@@ -722,9 +781,20 @@
                         + waLink(null, 'Inscribirme')
                         + '</div></div>';
                 }).join('');
-                mostrar('visorias');
+                mostrarPanel('visorias');
             }
-            // Noticias
+            if (d.torneos && d.torneos.length) {
+                document.getElementById('grid-torneos').innerHTML = d.torneos.map(function (t) {
+                    var f = t.fecha_inicio ? new Date(t.fecha_inicio).toLocaleDateString('es-CO') : '';
+                    return '<div class="card-deporte">'
+                        + '<div class="card-body"><h3>' + esc(t.titulo) + '</h3>'
+                        + '<p class="card-meta">' + [t.categoria, f, t.lugar].filter(Boolean).join(' · ') + '</p>'
+                        + (t.descripcion ? '<p>' + esc(t.descripcion) + '</p>' : '')
+                        + (t.fotos && t.fotos.length ? '<img class="card-img" src="' + esc(t.fotos[0]) + '" alt="' + esc(t.titulo) + '" loading="lazy">' : '')
+                        + '</div></div>';
+                }).join('');
+                mostrarPanel('torneos');
+            }
             if (d.noticias && d.noticias.length) {
                 document.getElementById('grid-noticias').innerHTML = d.noticias.slice(0, 6).map(function (n) {
                     var fecha = n.fecha_publicacion ? new Date(n.fecha_publicacion).toLocaleDateString('es-CO') : '';
@@ -735,7 +805,18 @@
                         + (n.contenido ? '<p>' + esc(n.contenido.slice(0, 140)) + '…</p>' : '')
                         + '</div></div>';
                 }).join('');
-                mostrar('noticias');
+                mostrarPanel('noticias');
+            }
+            if (d.galeria && d.galeria.length) {
+                document.getElementById('grid-galeria').innerHTML = d.galeria.map(function (g) {
+                    return '<div class="card-deporte">'
+                        + (g.tipo === 'video'
+                            ? '<video class="card-img" src="' + esc(g.url) + '" controls preload="metadata"></video>'
+                            : '<img class="card-img" src="' + esc(g.url) + '" alt="' + esc(g.titulo || '') + '" loading="lazy">')
+                        + (g.titulo || g.categoria ? '<div class="card-body"><h3>' + esc(g.titulo || g.categoria) + '</h3></div>' : '')
+                        + '</div>';
+                }).join('');
+                mostrarPanel('galeria');
             }
         }).catch(function () {});
     })();
