@@ -95,3 +95,23 @@ Paso del operador para reflejarlo en la tienda FORMIES ya creada:
 1. Re-pulsar `Re-sincronizar plantilla` en dashboard → Web Factory → card FORMIES (la plantilla ya lo lleva; el HTML de la tienda existente se regenera al sincronizar).
 
 Validado: 4 scripts del storefront + 1 script del snippet parsean (`new Function`); `node --check` PASS en `deportes.js` y `web-factory.js`.
+
+## Commit 6baf8d7 + d723cca + pendiente — Migración, pago_id text y activar módulo
+
+- `deportes.js`: `pago_id` ya no guarda el id NO-UUID del link de pago Wompi en la columna `uuid` (rompía el UPDATE y el auto-pago del webhook); se persiste `orden_id` y `pago_id` solo si es un UUID real. Aislamiento por `proyecto_id` en `getDeportista`/`pagoInscripcion`/plan+visoría de inscripción pública. Consentimiento público se guarda en síncrono con fallback sin `inscripcion_id` y devuelve `consentimiento_id`.
+- `web-factory.js`: acción admin `set_modulo_deportes` (activa/desactiva `web_projects.modulos` y re-sincroniza el storefront) para tiendas existentes sin el módulo.
+- `dashboard.html`: se ELIMINÓ la vista "Deportes" del dashboard (nav + `view-deportes` + ~940 líneas JS). La gestión del módulo vive únicamente en `tienda-admin.html` (`renderDeportes`).
+- `subir-imagen-deporte.js` y subida al guardar (`deportes.js subirImagenDeporte`): validación de MIME + magic-bytes, y **los errores de subida ya no se tragan** (antes guardaban `''` en silencio); ahora el admin ve el motivo real.
+- Migración `20260901_deportes_modulos.sql`: `deportes_inscripciones.pago_id` → `text`; `deportes_consentimientos.inscripcion_id`.
+
+### Nuevo: acción `regenerar_storefront` (commit en curso)
+
+`resync_template` NO puede "subir de versión" un módulo ya presente en versión vieja: si el `index.html` del repo tiene `grid-deportistas`/`catalogo_publico`, el resync lo da por hecho y no añade las secciones nuevas (pestañas, torneos, galería, modal de inscripción). Por eso FORMIES quedó en un snapshot intermedio y la re-sincronización respondía "nada que re-sincronizar".
+
+Fix: **`regenerar_storefront`** reconstruye `index.html` (+ `styles.css`, `netlify.toml`, `robots.txt`) del store desde la **plantilla Tienda actual** con los tokens del proyecto (EMPRESA/DESCRIPCION/SLUG/SLOGAN/LOGO/WHATSAPP/ACCENT/fuente), conservando el widget del agente si el sitio lo tenía, y dispara el build de Netlify. Botón nuevo en Web Factory (icono `fa-file-code`) con confirmación de advertencia (reemplaza ediciones manuales del repo; el contenido se sirve desde la BD, así que no se pierde).
+
+Paso del operador para FORMIES:
+1. Desplegar AUVRO con esta acción y el botón.
+2. Dashboard → Web Factory → card FORMIES → botón **Regenerar storefront con la plantilla actual**.
+3. Esperar el build (~1-2 min) y re-verificar: `formies-1.netlify.app` debe pasar de ~40 KB a ~55 KB y contener `pestanas`/`inscripcion-modal`/`abrirInscripcion`/`grid-torneos`/`grid-galeria` (como `fuutbol-prueba`).
+4. En `tienda-admin` → Deportes, guardar de nuevo cualquier deportista con foto: si la subida falla, ahora verás el error exacto en vez de una imagen ausente.

@@ -1752,6 +1752,99 @@ exports.handler = async (event) => {
             return { statusCode: 200, body: JSON.stringify({ ok: true, modulos, activo }) };
         }
 
+        // ── REGENERAR_STOREFRONT: reconstruye el index.html (y el resto de archivos
+        // de la plantilla: styles.css, netlify.toml, robots.txt) de un store TIENDA
+        // a partir de la plantilla ACTUAL (pestañas/paneles/torneos/galería/inscripción),
+        // conservando los tokens del proyecto y el widget del agente si el sitio lo tenía.
+        // Es el paso que necesita un sitio creado ANTES de que la plantilla creciera
+        // (p. ej. FORMIES): `resync_template` no puede "subir de versión" un módulo
+        // que ya existe pero en versión vieja. ADVERTENCIA: sobrescribe ediciones
+        // manuales que hubiera en index.html/styles.css del repo.
+        if (action === 'regenerar_storefront') {
+            const { id } = body;
+            if (!id) return { statusCode: 400, body: JSON.stringify({ error: 'Falta id' }) };
+
+            const { data: proyecto, error } = await supabase
+                .from('web_projects').select('*').eq('id', id).single();
+            if (error) return { statusCode: 404, body: JSON.stringify({ error: error.message }) };
+            if (proyecto.plantilla !== 'tienda') {
+                return { statusCode: 400, body: JSON.stringify({ error: 'La regeneración con plantilla actual solo aplica a la plantilla Tienda' }) };
+            }
+
+            try {
+                const accent = validarAccent(proyecto.accent_color) || '#2563eb';
+                const fuenteInfo = fuenteElegida(proyecto.fuente) || null;
+                const fuenteKey = (proyecto.fuente || 'sistema').trim().toLowerCase();
+                const valores = {
+                    EMPRESA: proyecto.nombre || proyecto.slug || 'Mi negocio',
+                    DESCRIPCION: proyecto.descripcion || proyecto.nombre || '',
+                    SLUG: proyecto.slug || '',
+                    SLOGAN: sanearTexto(proyecto.slogan),
+                    LOGO: sanearUrlLogo(proyecto.logo),
+                    WHATSAPP: normalizarWhatsapp(proyecto.whatsapp),
+                    ACCENT: accent,
+                    ACCENT_DARK: oscurecerHex(accent),
+                    FONT_FAMILY: (fuenteInfo ? fuenteInfo.familia : FUENTE_SISTEMA),
+                    FONT_NAME: fuenteKey,
+                    FONT_LINK: (fuenteInfo && fuenteInfo.css ? fuenteInfo.css : '')
+                };
+
+                // Widget del agente actual del repo (si existe) para conservarlo tras regenerar.
+                let widgetPrevio = '';
+                if (proyecto.github_owner && proyecto.github_repo) {
+                    try {
+                        const owner = proyecto.github_owner;
+                        const repo = proyecto.github_repo;
+                        const branch = proyecto.default_branch || 'main';
+                        const base = `https://api.github.com/repos/${owner}/${repo}`;
+                        const headers = { Authorization: `Bearer ${process.env.GITHUB_TOKEN}`, Accept: 'application/vnd.github+json' };
+                        const fileRes = await fetchGitHub(`${base}/contents/index.html?ref=${branch}`, { headers });
+                        if (fileRes && fileRes.ok) {
+                            const fileData = await fileRes.json();
+                            const htmlActual = Buffer.from(fileData.content, 'base64').toString('utf8');
+                            const wm = /<script src="https:\/\/auvro\.netlify\.app\/widget\.js"[^>]*><\/script>/i.exec(htmlActual);
+                            if (wm) widgetPrevio = wm[0];
+                        }
+                    } catch (e) {
+                        console.error('regenerar_storefront: leer widget actual falló:', e.message);
+                    }
+                }
+
+                const archivos = leerArchivosPlantilla(proyecto.plantilla)
+                    .map(f => {
+                        let content = reemplazarTokens(f.content, valores);
+                        if (f.path === 'index.html') {
+                            const snippet = widgetPrevio
+                                ? widgetPrevio
+                                : (proyecto.agente_id ? crearSnippetAgente(proyecto.agente_id, null, proyecto.slug) : '');
+                            content = inyectarWidgetIndex(content, snippet);
+                        }
+                        if (/\.html$/i.test(f.path)) content = inyectarTema(content, accent, fuenteInfo);
+                        return { path: f.path, content };
+                    });
+
+                await commitArchivosEnRepo(
+                    proyecto,
+                    archivos,
+                    'feat: regenerar storefront con la plantilla actual (módulo Deportes completo)'
+                );
+
+                if (proyecto.netlify_site_id) await dispararBuild(proyecto.netlify_site_id);
+
+                return {
+                    statusCode: 200,
+                    body: JSON.stringify({
+                        ok: true,
+                        msg: 'Storefront regenerado con la plantilla actual. El sitio se está reconstruyendo en Netlify.',
+                        archivos: archivos.map(a => a.path)
+                    })
+                };
+            } catch (e) {
+                console.error('regenerar_storefront error:', e.message);
+                return { statusCode: 500, body: JSON.stringify({ error: e.message || 'Falló la regeneración del storefront' }) };
+            }
+        }
+
         // ── SET_ACTIVO: apagar (suspender) o reactivar un sitio ──
         // Apagar: publica un deploy directo con la pagina de "suspendido" (instantáneo, ~2s).
         // Reactivar: dispara un build desde el repo (el sitio real sigue en GitHub) y devuelve

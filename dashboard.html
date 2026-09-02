@@ -2193,6 +2193,7 @@ let _wfPropuestaIA = null;
                     if (esTienda) secBtns.push('<button class="icon-btn" onclick="abrirTiendaModal(\'' + p.id + '\',\'' + wfEscapeHtml(p.nombre) + '\',\'' + wfEscapeHtml(p.slug) + '\')" title="Gestionar tienda"><i class="fas fa-store"></i></button>');
                     if (esAdmin() && esTienda && p.github_url && wfTieneModulo(p, 'deportes')) secBtns.push('<button class="icon-btn" onclick="resincronizarPlantilla(\'' + p.id + '\',\'' + wfEscapeHtml(p.nombre) + '\')" title="Re-sincronizar plantilla (añade módulo Deportes al sitio publicado)"><i class="fas fa-sync"></i></button>');
                     if (esAdmin() && esTienda && p.github_url && !wfTieneModulo(p, 'deportes')) secBtns.push('<button class="icon-btn" onclick="activarModuloDeportes(\'' + p.id + '\',\'' + wfEscapeHtml(p.nombre) + '\')" title="Activar módulo Deportes (añade la sección deportes al sitio publicado)"><i class="fas fa-bolt"></i></button>');
+                    if (esAdmin() && esTienda && p.github_url) secBtns.push('<button class="icon-btn" onclick="regenerarStorefront(\'' + p.id + '\',\'' + wfEscapeHtml(p.nombre) + '\')" title="Regenerar storefront con la plantilla actual (actualiza pestañas/torneos/galería/inscripción)"><i class="fas fa-file-code"></i></button>');
                     if (p.netlify_url) secBtns.push('<button class="icon-btn" onclick="window.open(\'editor.html?id=' + p.id + '&nombre=' + encodeURIComponent(p.nombre) + '&slug=' + encodeURIComponent(p.slug) + '\',\'_blank\')" title="Editar contenido AI" style="color:var(--accent)"><i class="fas fa-wand-magic-sparkles"></i></button>');
 
                     // Danger / toggle actions (admin only)
@@ -2611,6 +2612,32 @@ let _wfPropuestaIA = null;
             }
             ocultarOverlayCarga();
             showToast('Módulo Deportes activado');
+            cargarWebFactory();
+        } catch (err) {
+            ocultarOverlayCarga();
+            showToast('Error: ' + err.message, 'error');
+        }
+    }
+
+    async function regenerarStorefront(id, nombre) {
+        if (!confirm(`Regenerar el storefront de "${nombre}" con la plantilla ACTUAL?\n\nSe reconstruye index.html, styles.css y demás archivos desde la plantilla Tienda vigente (pestañas, torneos, galería e inscripción pública). El contenido de la tienda se conserva porque se sirve desde la base de datos.\n\nADVERTENCIA: cualquier edición manual previa en index.html/styles.css del repositorio se reemplaza. Al terminar se reconstruye el sitio en Netlify (1-2 min).`)) return;
+        mostrarOverlayCarga('Regenerando storefront...');
+        try {
+            const res = await fetch('/.netlify/functions/web-factory', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${currentSession?.access_token || ''}`
+                },
+                body: JSON.stringify({ action: 'regenerar_storefront', id })
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok || data.ok === undefined || data.ok === false) {
+                ocultarOverlayCarga();
+                return showToast('Error: ' + (data.error || 'No se pudo regenerar el storefront'), 'error');
+            }
+            ocultarOverlayCarga();
+            showToast(data.msg || 'Storefront regenerado');
             cargarWebFactory();
         } catch (err) {
             ocultarOverlayCarga();

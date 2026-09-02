@@ -129,7 +129,12 @@ function extDesdeMime(mime = '') {
 
 async function subirImagenDeporte(proyectoId, dataUrl, filename) {
     const parsed = parseDataUrl(dataUrl);
-    if (!parsed || !parsed.buffer.length || parsed.buffer.length > TAMANO_MAX_DEPORTES) return null;
+    if (!parsed || !parsed.buffer || !parsed.buffer.length) {
+        throw new Error('El archivo adjunto no es un data URL válido');
+    }
+    if (parsed.buffer.length > TAMANO_MAX_DEPORTES) {
+        throw new Error('El archivo supera ' + Math.round(TAMANO_MAX_DEPORTES / 1024 / 1024) + ' MB');
+    }
     const mime = parsed.mime;
     await supabase.storage.createBucket(BUCKET_DEPORTES, {
         public: true,
@@ -146,17 +151,21 @@ async function subirImagenDeporte(proyectoId, dataUrl, filename) {
             contentType: mime,
             upsert: false
         });
-    if (error) return null;
+    if (error) {
+        // No ocultar el fallo: el admin debe ver por qué no se guardó la imagen.
+        throw new Error('No se pudo subir la imagen/video (' + (error.message || error) + ')');
+    }
     const { data: urlData } = supabase.storage.from(BUCKET_DEPORTES).getPublicUrl(ruta);
     return urlData?.publicUrl || '';
 }
 
 // Convierte data: local -> URL pública de storage; deja intactas las URLs ya persistentes.
+// Si la subida falla, propaga el error para que el admin vea la causa (no guarda '').
 function normalizarMedia(proyectoId, valor, filename) {
     const s = String(valor ?? '').trim();
     if (!s) return s;
     if (s.startsWith('data:')) {
-        try { return subirImagenDeporte(proyectoId, s, filename) || ''; } catch (e) { console.error('media no subida:', e.message); return ''; }
+        return subirImagenDeporte(proyectoId, s, filename);
     }
     return s.replace(/["'<>]/g, '');
 }
@@ -563,7 +572,10 @@ async function listarTorneos(userId, body) {
 async function guardarTorneo(userId, body) {
     const { id, proyecto_id, titulo, categoria, fecha_inicio, fecha_fin, lugar, descripcion, resultados, fotos, activo } = body;
     if (!titulo) return pagerror('Falta el título del torneo');
-    const fotosNorm = (Array.isArray(fotos) ? fotos : []).map((f) => normalizarMedia(proyecto_id, f, 'torneo')).filter(Boolean);
+    const fotosNorm = [];
+    if (Array.isArray(fotos)) {
+        for (const f of fotos) fotosNorm.push(await normalizarMedia(proyecto_id, f, 'torneo'));
+    }
     const datos = {
         proyecto_id, titulo: s(titulo), categoria: s(categoria),
         fecha_inicio: fecha_inicio || null, fecha_fin: fecha_fin || null,
