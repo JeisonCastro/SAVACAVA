@@ -1699,6 +1699,59 @@ exports.handler = async (event) => {
             }
         }
 
+        // ── SET_MODULO_DEPORTES: activar/desactivar el módulo Deportes en un
+        // store TIENDA existente. Actualiza web_projects.modulos y, al activarlo,
+        // ejecuta el mismo resync (inyecta el storefront de Deportes + rebuild).
+        // Resuelve el caso de tiendas creadas SIN marcar el módulo (p. ej. fuutbol-prueba)
+        // que ya tienen contenido/marcado Deportes pero no la sección admin.
+        if (action === 'set_modulo_deportes') {
+            const { id, activo } = body;
+            if (!id) return { statusCode: 400, body: JSON.stringify({ error: 'Falta id' }) };
+            if (typeof activo !== 'boolean') return { statusCode: 400, body: JSON.stringify({ error: 'activo debe ser true o false' }) };
+
+            const { data: proyecto, error } = await supabase
+                .from('web_projects').select('*').eq('id', id).single();
+            if (error) return { statusCode: 404, body: JSON.stringify({ error: error.message }) };
+            if (proyecto.plantilla !== 'tienda') {
+                return { statusCode: 400, body: JSON.stringify({ error: 'El módulo Deportes solo aplica a la plantilla Tienda' }) };
+            }
+
+            const modulos = Array.isArray(proyecto.modulos) ? [...proyecto.modulos] : [];
+            const idx = modulos.indexOf('deportes');
+            if (activo && idx === -1) modulos.push('deportes');
+            if (!activo && idx !== -1) modulos.splice(idx, 1);
+
+            await actualizarProyecto(id, { modulos }).catch(() => {});
+
+            if (activo && proyecto.github_owner && proyecto.github_repo) {
+                try {
+                    const owner = proyecto.github_owner;
+                    const repo = proyecto.github_repo;
+                    const branch = proyecto.default_branch || 'main';
+                    const base = `https://api.github.com/repos/${owner}/${repo}`;
+                    const headers = { Authorization: `Bearer ${process.env.GITHUB_TOKEN}`, Accept: 'application/vnd.github+json' };
+                    const fileRes = await fetchGitHub(`${base}/contents/index.html?ref=${branch}`, { headers });
+                    if (fileRes && fileRes.ok) {
+                        const fileData = await fileRes.json();
+                        const htmlActual = Buffer.from(fileData.content, 'base64').toString('utf8');
+                        const resulado = inyectarDeportesEnHtml(htmlActual);
+                        if (resulado !== htmlActual) {
+                            await commitArchivosEnRepo(
+                                proyecto,
+                                [{ path: 'index.html', content: resulado }],
+                                'feat: activar módulo Deportes'
+                            );
+                            if (proyecto.netlify_site_id) await dispararBuild(proyecto.netlify_site_id);
+                        }
+                    }
+                } catch (e) {
+                    console.error('set_modulo_deportes: inyectar storefront falló:', e.message);
+                }
+            }
+
+            return { statusCode: 200, body: JSON.stringify({ ok: true, modulos, activo }) };
+        }
+
         // ── SET_ACTIVO: apagar (suspender) o reactivar un sitio ──
         // Apagar: publica un deploy directo con la pagina de "suspendido" (instantáneo, ~2s).
         // Reactivar: dispara un build desde el repo (el sitio real sigue en GitHub) y devuelve

@@ -11,6 +11,21 @@ const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
 const BUCKET = 'deportes';
 const TAMANO_MAX = 12 * 1024 * 1024;
 
+const MIMES_PERMITIDOS = new Set([
+  'image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif',
+  'video/mp4', 'video/webm', 'video/quicktime'
+]);
+
+// Inspecta el encabezado (magic bytes) del buffer y devuelve el MIME real o ''.
+function mimeDesdeMagic(buffer) {
+  if (!buffer || buffer.length < 4) return '';
+  const h = String.fromCharCode(buffer[0], buffer[1], buffer[2], buffer[3]);
+  if (h.startsWith('\xFF\xD8\xFF')) return 'image/jpeg';
+  if (h.startsWith('\x89PNG')) return 'image/png';
+  if (h.startsWith('GIF8')) return 'image/gif';
+  return '';
+}
+
 function jsonResponse(statusCode, body) {
   return {
     statusCode,
@@ -97,11 +112,27 @@ exports.handler = async (event) => {
       return jsonResponse(400, { error: 'Formato inválido. Envía un data URL de imagen o video.' });
     }
 
-    const mime = match[1];
+    const mimeDeclarado = match[1].toLowerCase();
     const b64 = match[2];
     const buffer = Buffer.from(b64, 'base64');
     if (!buffer.length || buffer.length > TAMANO_MAX) {
       return jsonResponse(400, { error: `El archivo supera ${TAMANO_MAX / 1024 / 1024} MB.` });
+    }
+
+    // Cierre de inventario: solo MIME conocidos (rechaza image/svg+xml y otros
+    // formatos no permitidos; los .mp4/.webm/.mov se validan por extensión).
+    if (!MIMES_PERMITIDOS.has(mimeDeclarado) && !(mimeDeclarado.startsWith('video/') && mimeDeclarado.includes('mp4'))) {
+      return jsonResponse(400, { error: 'Tipo de archivo no permitido. Usa JPG, PNG, WebP, GIF, AVIF o MP4.' });
+    }
+    // Coherencia del contenido: rechaza archivos cuyo contenido no coincide con
+    // el MIME declarado para imágenes (evita SVG/HTML disfrazados de imagen).
+    if (mimeDeclarado.startsWith('image/')) {
+      if (!mimeDeclarado.startsWith('image/webp') && !mimeDeclarado.startsWith('image/avif')) {
+        const magicMime = mimeDesdeMagic(buffer);
+        if (!magicMime || magicMime !== mimeDeclarado) {
+          return jsonResponse(400, { error: 'El contenido del archivo no coincide con el tipo declarado.' });
+        }
+      }
     }
 
     try {
@@ -110,6 +141,7 @@ exports.handler = async (event) => {
       return jsonResponse(500, { error: 'No se pudo asegurar el bucket: ' + e.message });
     }
 
+    const mime = mimeDeclarado;
     const ext = extDesdeMime(mime);
     const base = (nombreOriginal || 'deporte').replace(/\.[a-z0-9]+$/i, '');
     const ruta = `${proyectoId}/${Date.now()}-${Math.floor(Math.random() * 1e6)}-${base}${ext}`;

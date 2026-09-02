@@ -113,7 +113,7 @@ create table if not exists public.deportes_inscripciones (
     estado text not null default 'solicitada', -- solicitada | programada | evaluada | pagada | cancelada
     evaluacion jsonb not null default '{}'::jsonb,
     orden_id uuid,
-    pago_id uuid,
+    pago_id text, -- id del link de pago Wompi (no es UUID); varchar en APIs viejas
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now()
 );
@@ -191,6 +191,10 @@ create table if not exists public.deportes_consentimientos (
     created_at timestamptz not null default now()
 );
 create index if not exists idx_deportes_consentimientos_proyecto on public.deportes_consentimientos(proyecto_id);
+
+-- Trazabilidad: consentimiento asociado a la inscripción que lo generó.
+alter table public.deportes_consentimientos
+    add column if not exists inscripcion_id uuid references public.deportes_inscripciones(id) on delete cascade;
 
 -- ============================================================
 -- RLS + POLICIES (mismo patrón que tienda_pipeline):

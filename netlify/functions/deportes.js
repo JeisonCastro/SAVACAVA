@@ -199,10 +199,21 @@ async function accionInscribirPublico(body) {
     if (!['club', 'visoria', 'torneo', 'gira'].includes(tipo)) return pagerror('Tipo de inscripción inválido');
     if (!responsable_nombre) return pagerror('Falta el nombre del responsable');
     if (!consentimiento) return pagerror('Debes aceptar el consentimiento de tratamiento de datos');
+    if (!consentimiento_tratamiento && !consentimiento_uso_imagen) return pagerror('Debes aceptar el consentimiento de tratamiento de datos');
 
     const proyecto = await resolverProyecto(proyecto_id, slug);
     if (!proyecto) return pagerror('Proyecto no encontrado', 404);
     const pid = proyecto.id;
+
+    // Validar que el plan/visoría pertenecen al proyecto (aislamiento por tenant)
+    if (plan_id) {
+        const { data: plan } = await supabase.from('deportes_club_planes').select('id').eq('id', plan_id).eq('proyecto_id', pid).maybeSingle();
+        if (!plan) return pagerror('El plan seleccionado no pertenece a este proyecto', 400);
+    }
+    if (visoria_id) {
+        const { data: vis } = await supabase.from('deportes_visorias').select('id').eq('id', visoria_id).eq('proyecto_id', pid).maybeSingle();
+        if (!vis) return pagerror('La visoría seleccionada no pertenece a este proyecto', 400);
+    }
 
     const { data, error } = await supabase.from('deportes_inscripciones').insert({
         proyecto_id: pid,
@@ -224,8 +235,13 @@ async function accionInscribirPublico(body) {
     }).select().single();
     if (error) return pagerror('Error al inscribir: ' + error.message, 500);
 
-    await supabase.from('deportes_consentimientos').insert({
+    // El consentimiento forma parte del flujo: se guarda de forma síncrona
+    // (trazabilidad asociada a proyecto + inscripción). Si falla, la inscripción
+    // ya se guardó; se devuelve el error para que el visitante pueda reintentar
+    // y el registro quede consistente (ambos flags son coherentes).
+    const consBase = {
         proyecto_id: pid,
+        inscripcion_id: data.id,
         sujeto_nombre: s(deportista_nombre) || s(responsable_nombre),
         sujeto_tipo: 'deportista',
         responsable: s(responsable_nombre),
@@ -233,9 +249,32 @@ async function accionInscribirPublico(body) {
         tratamiento_datos: !!consentimiento_tratamiento,
         estado: 'aceptado',
         notas: 'Consentimiento capturado en inscripción pública (' + tipo + ')'
-    }).then(() => {}).catch(() => {});
+    };
+    let consData = null;
+    let consErr = null;
+    const { data: c1, error: e1 } = await supabase.from('deportes_consentimientos').insert(consBase).select().single();
+    if (e1 && /inscripcion_id.*does not exist/i.test(e1.message || '')) {
+        // DB anterior sin la columna inscripcion_id: reintentar sin ella.
+        const { data: c2, error: e2 } = await supabase.from('deportes_consentimientos').insert({
+            proyecto_id: pid,
+            sujeto_nombre: s(deportista_nombre) || s(responsable_nombre),
+            sujeto_tipo: 'deportista',
+            responsable: s(responsable_nombre),
+            uso_imagen: !!consentimiento_uso_imagen,
+            tratamiento_datos: !!consentimiento_tratamiento,
+            estado: 'aceptado',
+            notas: 'Consentimiento capturado en inscripción pública (' + tipo + ')'
+        }).select().single();
+        c1 && (consData = c1);
+        c2 && (consData = c2);
+        consErr = e2;
+    } else {
+        consData = c1;
+        consErr = e1;
+    }
+    if (consErr) return pagerror('Error al guardar el consentimiento: ' + consErr.message, 500);
 
-    return ok({ ok: true, inscripcion_id: data.id, estado: 'solicitada' });
+    return ok({ ok: true, inscripcion_id: data.id, consentimiento_id: consData?.id, estado: 'solicitada' });
 }
 
 // ============================================================
@@ -273,8 +312,8 @@ async function buscarDeportistas(userId, body) {
 }
 
 async function getDeportista(userId, body) {
-    const { id } = body;
-    const { data, error } = await supabase.from('deportes_deportistas').select('*').eq('id', id).maybeSingle();
+    const { id, proyecto_id } = body;
+    const { data, error } = await supabase.from('deportes_deportistas').select('*').eq('id', id).eq('proyecto_id', proyecto_id).maybeSingle();
     if (error) return pagerror(error.message, 500);
     if (!data) return pagerror('Deportista no encontrado', 404);
     return ok({ ok: true, deportista: data });
@@ -524,12 +563,13 @@ async function listarTorneos(userId, body) {
 async function guardarTorneo(userId, body) {
     const { id, proyecto_id, titulo, categoria, fecha_inicio, fecha_fin, lugar, descripcion, resultados, fotos, activo } = body;
     if (!titulo) return pagerror('Falta el título del torneo');
+    const fotosNorm = (Array.isArray(fotos) ? fotos : []).map((f) => normalizarMedia(proyecto_id, f, 'torneo')).filter(Boolean);
     const datos = {
         proyecto_id, titulo: s(titulo), categoria: s(categoria),
         fecha_inicio: fecha_inicio || null, fecha_fin: fecha_fin || null,
         lugar: s(lugar), descripcion: s(descripcion),
         resultados: Array.isArray(resultados) ? resultados : [],
-        fotos: Array.isArray(fotos) ? fotos : [],
+        fotos: fotosNorm,
         activo: activo !== false
     };
     if (id) {
@@ -681,11 +721,11 @@ async function pagoInscripcion(userId, body) {
     let montoCents = 0;
     let concepto = 'Inscripción';
     if (insc.tipo === 'visoria' && insc.visoria_id) {
-        const { data: vis } = await supabase.from('deportes_visorias').select('titulo, costo_cents').eq('id', insc.visoria_id).maybeSingle();
+        const { data: vis } = await supabase.from('deportes_visorias').select('titulo, costo_cents').eq('id', insc.visoria_id).eq('proyecto_id', proyecto_id).maybeSingle();
         montoCents = vis?.costo_cents || 0;
         concepto = 'Visoría: ' + (vis?.titulo || '') || concepto;
     } else if (insc.plan_id) {
-        const { data: plan } = await supabase.from('deportes_club_planes').select('nombre, precio_cents').eq('id', insc.plan_id).maybeSingle();
+        const { data: plan } = await supabase.from('deportes_club_planes').select('nombre, precio_cents').eq('id', insc.plan_id).eq('proyecto_id', proyecto_id).maybeSingle();
         montoCents = plan?.precio_cents || 0;
         concepto = 'Plan Club: ' + (plan?.nombre || '') || concepto;
     } else {
@@ -775,9 +815,15 @@ async function pagoInscripcion(userId, body) {
     }
 
     // Vincular a la inscripción
+    // El id del link de pago Wompi no es un UUID: se guarda en
+    // tienda_ordenes.payment_link_id (text) y en pagos.payment_link_id.
+    // En deportes_inscripciones.pago_id (uuid) solo se persiste si el id del
+    // link es un UUID legítimo; si no, se deja nulo para no romper el UPDATE
+    // y el auto-marcado como pagada vía pago-webhook (orden_id).
+    const pagoIdValido = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(paymentLinkId));
     await supabase.from('deportes_inscripciones').update({
         orden_id: orden.id,
-        pago_id: paymentLinkId,
+        pago_id: pagoIdValido ? paymentLinkId : null,
         updated_at: new Date().toISOString()
     }).eq('id', insc.id).catch(() => {});
 

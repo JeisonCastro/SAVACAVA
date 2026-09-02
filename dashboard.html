@@ -2237,7 +2237,8 @@ let _wfPropuestaIA = null;
                     if (p.clone_url) secBtns.push('<button class="icon-btn" onclick="copiarClone(\'' + wfEscapeHtml(p.clone_url) + '\',\'' + wfEscapeHtml(p.slug) + '\')" title="Copiar clone URL"><i class="fas fa-copy"></i></button>');
                     secBtns.push('<button class="icon-btn" onclick="actualizarEstadoWeb(\'' + p.id + '\')" title="Actualizar estado"><i class="fas fa-rotate"></i></button>');
                     if (esTienda) secBtns.push('<button class="icon-btn" onclick="abrirTiendaModal(\'' + p.id + '\',\'' + wfEscapeHtml(p.nombre) + '\',\'' + wfEscapeHtml(p.slug) + '\')" title="Gestionar tienda"><i class="fas fa-store"></i></button>');
-                    if (esTienda && p.github_url && wfTieneModulo(p, 'deportes')) secBtns.push('<button class="icon-btn" onclick="resincronizarPlantilla(\'' + p.id + '\',\'' + wfEscapeHtml(p.nombre) + '\')" title="Re-sincronizar plantilla (añade módulo Deportes al sitio publicado)"><i class="fas fa-sync"></i></button>');
+                    if (esAdmin() && esTienda && p.github_url && wfTieneModulo(p, 'deportes')) secBtns.push('<button class="icon-btn" onclick="resincronizarPlantilla(\'' + p.id + '\',\'' + wfEscapeHtml(p.nombre) + '\')" title="Re-sincronizar plantilla (añade módulo Deportes al sitio publicado)"><i class="fas fa-sync"></i></button>');
+                    if (esAdmin() && esTienda && p.github_url && !wfTieneModulo(p, 'deportes')) secBtns.push('<button class="icon-btn" onclick="activarModuloDeportes(\'' + p.id + '\',\'' + wfEscapeHtml(p.nombre) + '\')" title="Activar módulo Deportes (añade la sección deportes al sitio publicado)"><i class="fas fa-bolt"></i></button>');
                     if (p.netlify_url) secBtns.push('<button class="icon-btn" onclick="window.open(\'editor.html?id=' + p.id + '&nombre=' + encodeURIComponent(p.nombre) + '&slug=' + encodeURIComponent(p.slug) + '\',\'_blank\')" title="Editar contenido AI" style="color:var(--accent)"><i class="fas fa-wand-magic-sparkles"></i></button>');
 
                     // Danger / toggle actions (admin only)
@@ -2630,6 +2631,32 @@ let _wfPropuestaIA = null;
             }
             ocultarOverlayCarga();
             showToast(data.msg || 'Plantilla re-sincronizada');
+            cargarWebFactory();
+        } catch (err) {
+            ocultarOverlayCarga();
+            showToast('Error: ' + err.message, 'error');
+        }
+    }
+
+    async function activarModuloDeportes(id, nombre) {
+        if (!confirm(`Activar el módulo Deportes en "${nombre}"?\n\nSe actualizará el módulo en AUVRO y se añadirá la sección deportes al sitio publicado (secciones + estilos + carga pública) sin tocar el contenido que ya hayas personalizado. Al terminar se reconstruye el sitio en Netlify y puede tardar 1-2 minutos.`)) return;
+        mostrarOverlayCarga('Activando módulo Deportes...');
+        try {
+            const res = await fetch('/.netlify/functions/web-factory', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${currentSession?.access_token || ''}`
+                },
+                body: JSON.stringify({ action: 'set_modulo_deportes', id, activo: true })
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok || data.ok === undefined || data.ok === false) {
+                ocultarOverlayCarga();
+                return showToast('Error: ' + (data.error || 'No se pudo activar el módulo Deportes'), 'error');
+            }
+            ocultarOverlayCarga();
+            showToast('Módulo Deportes activado');
             cargarWebFactory();
         } catch (err) {
             ocultarOverlayCarga();
