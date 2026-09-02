@@ -371,3 +371,22 @@ body.light-mode .mobile-bottom-item.active{background:rgba(37,99,235,.10)!import
 @media (prefers-reduced-motion: reduce){
     *,*::before,*::after{animation-duration:.001s!important;transition-duration:.001s!important;scroll-behavior:auto!important}
 }
+
+/* ── Sidebar móvil (drawer): el nav hace scroll propio para alcanzar TODOS
+      los ítems (p. ej. Deportes al final de la lista) ── */
+@media (max-width: 768px){
+    .sidebar{overflow-y:hidden!important}
+    .sidebar nav{
+        flex:1 1 auto!important;
+        min-height:0!important;
+        overflow-y:auto!important;
+        -webkit-overflow-scrolling:touch!important;
+        overscroll-behavior:contain!important;
+        scrollbar-width:none!important;
+        padding-right:4px;
+    }
+    .sidebar nav::-webkit-scrollbar{display:none!important}
+    .sidebar-logo,
+    .sidebar-bottom{flex:0 0 auto!important}
+}
+
