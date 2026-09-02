@@ -619,7 +619,7 @@ async function commitArchivosEnRepo(proyecto, archivos, mensaje) {
 
     const commitRes = await fetchGitHub(`${base}/git/commits`, {
         method: 'POST', headers,
-        body: JSON.stringify({ message, tree: treeData.sha, parents: [refData.object.sha] })
+        body: JSON.stringify({ message: mensaje, tree: treeData.sha, parents: [refData.object.sha] })
     });
     if (!commitRes || !commitRes.ok) throw new Error('GitHub: no se pudo crear el commit');
     const commitData = await commitRes.json();
