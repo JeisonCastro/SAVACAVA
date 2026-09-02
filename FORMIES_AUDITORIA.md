@@ -63,3 +63,22 @@ El helper `inyectarDeportesEnHtml` se probó contra un `index.html` simulado pre
 - Inserta `id="deportistas"/"planes"/"visorias"/"noticias"`, `grid-*`, JS `catalogo_publico`, CSS `.card-deporte` ✓
 - **Preserva** el contenido personalizado (marcador `CUSTOM`), el `<footer>` y el `data-slug` ✓
 - **Idempotente**: una segunda llamada no modifica nada (`out2 === out`) ✓
+## Commit eff8755 - Storefront por pestanas + formulario deportista sin JSON
+
+Con este commit la plantilla `tienda` se convierte en un storefront tipo-app con pestanas. Cada seccion (Tienda, Deportistas, Planes, Visorias, Torneos, Noticias, Galeria) es un panel que se muestra de a uno; las pestanas sin contenido permanecen ocultas hasta cargar datos.
+
+Cambios:
+- `wf-templates/templates/tienda/index.html`: barra `.pestanas` sticky con botones `data-panel`; secciones convertidas en `.panel` con `data-panel`; nuevas secciones `#torneos` y `#galeria` (render video/img); funcion `activarPanel(panel, desplazar)` expuesta en `window`; el JS del catalogo pasa de `mostrar(seccion)` a `mostrarPanel(panel)` (desoculta la pestana y activa el panel).
+- `wf-templates/templates/tienda/styles.css`: estilos `.pestanas`, `.pestana`, `.pestana-on`, `.panel`, `.panel.panel-on`, y grids `#grid-torneos`/`#grid-galeria`.
+- `tienda-admin.html`: `depFormDeportista` reemplaza las textareas JSON de Ficha/Estadisticas por texto libre (`ficha=texto+galeria+videos`, `estadisticas=texto`); fotografia con boton Subir y galeria multi-foto (`depSubirVarias`/`depQuitarGaleria`) + subida de video; `#dep-editing` para re-render tras subida; corrige variables `d_fotos`/`d_ficha`/`d_stats`/`d_vid` no declaradas y siembra `window.__depGaleria` al editar.
+
+Paso del operador para reflejarlo en la tienda FORMIES ya creada:
+1. Abrir el dashboard y re-pulsar `Re-sincronizar plantilla` (el storefront decorado queda en la plantilla, pero el HTML de la tienda ya existente se genera al sincronizar).
+
+Validado: los scripts inline de la plantilla y del admin parsean; logica de pestanas y render verificado.
+
+Guía para el diseñador / operador de FORMIES:
+
+1. Este commit despliega el **storefront tipo-pestañas** (Tienda / Deportistas / Planes / Visorías / Torneos / Noticias / Galería / Contacto) en la plantilla `tienda`. Cada sección es un `.panel` que se muestra de a uno; las pestañas sin contenido quedan ocultas hasta que hay datos. Es la plantilla de referencia para CUALQUIER store creado desde Web Factory con la plantilla `tienda`.
+2. Para ver la decoración en la tienda FORMIES ya creada, el operador debe **re-pulsar "Re-sincronizar plantilla"** en el dashboard → Web Factory → card FORMIES. El HTML de la tienda se genera al sincronizar; el commit no lo cambia retroactivamente.
+3. En `tienda-admin` → Deportes, el formulario de deportista ya NO pide JSON: Ficha y Estadísticas son texto libre, la portada tiene botón "Subir", y la galería/videos se suben como archivos (no solo URLs). El visitante ve los torneos y la galería como secciones propias.
