@@ -15,6 +15,12 @@
 - **Fix reutilizable (no FORMIES-específico):** acción `resync_template` en `web-factory.js` merge quirúrgico
   de `inyectarDeportesEnHtml` (secciones + CSS + JS) en el repo existente, + botón "Re-sincronizar plantilla"
   en el dashboard + rebuild en Netlify. Aplica a CUALQUIER store existente.
+- **Segunda causa raíz (descubierta en la verificación final):** el JS del catálogo se inyectaba con
+  `String.replace(regex, SNIPPET)`. El snippet contiene `return '$'` (signo de pesos) y, en un **string
+  replacement**, `$'` se interpreta como *"el resto de la cadena tras la coincidencia"* → al insertarse tras
+  `</body>` quedaba `return '\n</html>`, **rompiendo el parseo del `<script>`** → secciones ocultas pese a
+  tener el módulo. Fix: insertar vía **callback** (`() => SNIPPET`) en los 3 `.replace()` de
+  `inyectarDeportesEnHtml`, + `repararJsCatalogo` que **repara** el HTML ya sincronizado con ese daño.
 
 ## Matriz de verificación (evidencia de código)
 
@@ -42,10 +48,11 @@
 
 ## Pasos de operación (una sola vez) para publicar FORMIES
 
-1. Desplegar AUVRO con el fix (`resync_template` + `inyectarDeportesEnHtml` + botón).
+1. Desplegar AUVRO con el fix (`resync_template` + `inyectarDeportesEnHtml` con callback + `repararJsCatalogo` + botón).
 2. En el dashboard → Web Factory → card FORMIES → "Re-sincronizar plantilla".
+   - Este segundo re-sync es imprescindible: repara el JS del catálogo ya grabado en el repo con la corrupción `$'`.
 3. Esperar el build Netlify (~1-2 min) y re-verificar que `https://formies-1.netlify.app/` ahora contiene
-   `catalogo_publico` y `id="deportistas"`.
+   `catalogo_publico` y `id="deportistas"` **y que el `fmtPesos` del JS es sano** (`return '$'`).
 4. Crear contenido deportivo real en `tienda-admin` → Deportes (deportistas públicos `publico=true` activos,
    planes ELITE/FORMATIVO ya seedeados, visorías, noticias).
 5. Re-abrir el sitio → secciones Deportes visibles con el contenido.
