@@ -2118,6 +2118,15 @@ let _wfPropuestaIA = null;
         }
     }
 
+    function wfTieneModulo(proyecto, modulo) {
+        if (!proyecto || !modulo) return false;
+        var mods = proyecto.modulos;
+        if (!mods) return false;
+        if (Array.isArray(mods)) return mods.indexOf(modulo) !== -1;
+        if (typeof mods === 'string') { try { return JSON.parse(mods).indexOf(modulo) !== -1; } catch (e) { return mods.indexOf(modulo) !== -1; } }
+        return false;
+    }
+
     async function cargarWebFactory() {
         const activa = document.getElementById('view-webfactory').classList.contains('active');
         if (!activa) return;
@@ -2228,6 +2237,7 @@ let _wfPropuestaIA = null;
                     if (p.clone_url) secBtns.push('<button class="icon-btn" onclick="copiarClone(\'' + wfEscapeHtml(p.clone_url) + '\',\'' + wfEscapeHtml(p.slug) + '\')" title="Copiar clone URL"><i class="fas fa-copy"></i></button>');
                     secBtns.push('<button class="icon-btn" onclick="actualizarEstadoWeb(\'' + p.id + '\')" title="Actualizar estado"><i class="fas fa-rotate"></i></button>');
                     if (esTienda) secBtns.push('<button class="icon-btn" onclick="abrirTiendaModal(\'' + p.id + '\',\'' + wfEscapeHtml(p.nombre) + '\',\'' + wfEscapeHtml(p.slug) + '\')" title="Gestionar tienda"><i class="fas fa-store"></i></button>');
+                    if (esTienda && p.github_url && wfTieneModulo(p, 'deportes')) secBtns.push('<button class="icon-btn" onclick="resincronizarPlantilla(\'' + p.id + '\',\'' + wfEscapeHtml(p.nombre) + '\')" title="Re-sincronizar plantilla (añade módulo Deportes al sitio publicado)"><i class="fas fa-sync"></i></button>');
                     if (p.netlify_url) secBtns.push('<button class="icon-btn" onclick="window.open(\'editor.html?id=' + p.id + '&nombre=' + encodeURIComponent(p.nombre) + '&slug=' + encodeURIComponent(p.slug) + '\',\'_blank\')" title="Editar contenido AI" style="color:var(--accent)"><i class="fas fa-wand-magic-sparkles"></i></button>');
 
                     // Danger / toggle actions (admin only)
@@ -2594,6 +2604,32 @@ let _wfPropuestaIA = null;
             }
             ocultarOverlayCarga();
             showToast(apagar ? 'Sitio apagado' : 'Sitio reactivado (build en curso)');
+            cargarWebFactory();
+        } catch (err) {
+            ocultarOverlayCarga();
+            showToast('Error: ' + err.message, 'error');
+        }
+    }
+
+    async function resincronizarPlantilla(id, nombre) {
+        if (!confirm(`Re-sincronizar la plantilla de "${nombre}"?\n\nSe añadirá el módulo Deportes al sitio publicado (secciones + estilos + carga pública) sin tocar el contenido que ya hayas personalizado. Al terminar se reconstruye el sitio en Netlify y puede tardar 1-2 minutos.`)) return;
+        mostrarOverlayCarga('Re-sincronizando plantilla...');
+        try {
+            const res = await fetch('/.netlify/functions/web-factory', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${currentSession?.access_token || ''}`
+                },
+                body: JSON.stringify({ action: 'resync_template', id })
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok || data.ok === false) {
+                ocultarOverlayCarga();
+                return showToast('Error: ' + (data.error || 'No se pudo re-sincronizar la plantilla'), 'error');
+            }
+            ocultarOverlayCarga();
+            showToast(data.msg || 'Plantilla re-sincronizada');
             cargarWebFactory();
         } catch (err) {
             ocultarOverlayCarga();

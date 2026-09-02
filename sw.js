@@ -1,5 +1,5 @@
-/* ─── AUVRO Service Worker v3.1 (dark negro #000000, cache v32) ─────────── */
-const CACHE_NAME = 'auvro-v33';
+/* ─── AUVRO Service Worker v3.1 (dark negro #000000, cache v34) ─────────── */
+const CACHE_NAME = 'auvro-v34';
 const OFFLINE_URL = '/offline.html';
 const CACHE_MAX_ENTRIES = 100;
 

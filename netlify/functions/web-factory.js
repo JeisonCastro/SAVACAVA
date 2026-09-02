@@ -183,6 +183,149 @@ function inyectarTema(html, accent, fuenteInfo) {
     return html.replace(/<\/head>/i, bloque + '\n</head>');
 }
 
+// ── Re-sincronización de módulos en sitios existentes ──
+// Web Factory solo entrega la plantilla (con sus módulos) a sitios NUEVOS. Los sitios
+// existentes mantienen su index.html como snapshot: si se añade un módulo a la plantilla
+// tienda (p. ej. Deportes), los sitios creados antes no lo reciben.
+// Este inyector actualiza el index.html de un repo existente SIN reemplazar el contenido
+// personalizado (ediciones del site-editor / agente AI): solo inserta las secciones,
+// estilos y párrafo JS del módulo si aún no están presentes. Idempotente.
+const SNIPPET_DEPORTES_SECCIONES = `<!-- DEPORTISTAS (se muestra solo si el proyecto tiene deportistas publicos) -->
+    <section id="deportistas" class="section section-alt" hidden>
+        <div class="container">
+            <h2 class="section-title">Nuestros deportistas</h2>
+            <p class="section-sub">Talento que se forma y se proyecta.</p>
+            <div id="grid-deportistas" class="grid"></div>
+        </div>
+    </section>
+
+    <!-- PLANES DEL CLUB (se muestra solo si hay planes) -->
+    <section id="planes" class="section" hidden>
+        <div class="container">
+            <h2 class="section-title">Planes del Club</h2>
+            <p class="section-sub">Formación deportiva integral.</p>
+            <div id="grid-planes" class="grid"></div>
+        </div>
+    </section>
+
+    <!-- VISORIAS (se muestra solo si hay visorias) -->
+    <section id="visorias" class="section section-alt" hidden>
+        <div class="container">
+            <h2 class="section-title">Visorías</h2>
+            <p class="section-sub">Tu oportunidad de mostrar tu talento.</p>
+            <div id="grid-visorias" class="grid"></div>
+        </div>
+    </section>
+
+    <!-- NOTICIAS (se muestra solo si hay noticias) -->
+    <section id="noticias" class="section" hidden>
+        <div class="container">
+            <h2 class="section-title">Noticias</h2>
+            <div id="grid-noticias" class="grid"></div>
+        </div>
+    </section>
+`;
+
+const SNIPPET_DEPORTES_CSS = `<style>\n    #grid-deportistas, #grid-planes, #grid-visorias, #grid-noticias { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 18px; margin-top: 22px; }\n    @media (max-width: 600px) { #grid-deportistas, #grid-planes, #grid-visorias, #grid-noticias { grid-template-columns: 1fr; } }\n    .card-deporte { display: flex; flex-direction: column; background: #fff; border: 1px solid rgba(0,0,0,.12); border-radius: 14px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,.06); }\n    .card-deporte .card-img { width: 100%; aspect-ratio: 16/9; object-fit: cover; }\n    .card-deporte.plan-card { align-items: flex-start; padding: 0; }\n    .card-deporte .card-body { padding: 16px 18px; display: flex; flex-direction: column; }\n    .card-deporte .card-body h3 { margin: 0 0 6px; font-size: 1.05rem; font-weight: 700; }\n    .card-deporte .card-meta { margin: 0; font-size: .82rem; color: #64748b; }\n    .card-deporte .card-body p { margin: 0 0 8px; font-size: .9rem; color: #334155; }\n    .card-deporte .precio { margin: 0 0 8px; font-size: 1.05rem; font-weight: 700; color: #0f172a; }\n</style>\n`;
+
+const SNIPPET_DEPORTES_JS = `    <script>
+    (function () {
+        var slug = document.body.getAttribute('data-slug') || '';
+        if (!slug) return;
+        var fmtPesos = function (c) { return '$' + (Number(c) || 0).toLocaleString('es-CO').replace(/,/g, '.') + ''; };
+        var esc = function (s) { return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); };
+        function mostrar(seccion) { var el = document.getElementById(seccion); if (el) el.hidden = false; }
+        function waLink(num, texto) {
+            var d = String(document.body.getAttribute('data-wa') || '').replace(/\\D/g, '');
+            return d ? '<a class="btn btn-wa" href="https://wa.me/' + d + '" target="_blank" rel="noopener">' + (texto || 'Inscribirme') + '</a>' : '';
+        }
+        fetch('https://auvro.netlify.app/.netlify/functions/deportes', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'catalogo_publico', slug: slug })
+        }).then(function (r) { return r.json(); }).then(function (d) {
+            if (!d.ok) return;
+            if (d.deportistas && d.deportistas.length) {
+                document.getElementById('grid-deportistas').innerHTML = d.deportistas.map(function (p) {
+                    return '<div class="card-deporte">'
+                        + (p.fotografia_url ? '<img class="card-img" src="' + esc(p.fotografia_url) + '" alt="' + esc(p.nombre) + '" loading="lazy">' : '')
+                        + '<div class="card-body"><h3>' + esc(p.nombre) + '</h3>'
+                        + '<p class="card-meta">' + [p.posicion, p.categoria, p.edad ? p.edad + ' años' : null, p.pierna, p.club, p.ciudad].filter(Boolean).join(' · ') + '</p>'
+                        + (p.perfil ? '<p>' + esc(p.perfil) + '</p>' : '')
+                        + (p.logros && p.logros.length ? '<p class="card-meta">🏆 ' + esc(p.logros.join(' · ')) + '</p>' : '')
+                        + '</div></div>';
+                }).join('');
+                mostrar('deportistas');
+            }
+            if (d.planes && d.planes.length) {
+                document.getElementById('grid-planes').innerHTML = d.planes.map(function (p) {
+                    return '<div class="card-deporte plan-card">'
+                        + '<div class="card-body"><h3>' + esc(p.nombre) + '</h3>'
+                        + (p.descripcion ? '<p>' + esc(p.descripcion) + '</p>' : '')
+                        + '<p class="precio">' + fmtPesos(p.precio_cents) + ' <span style="font-size:.75rem">/ ' + esc(p.periodo || 'mes') + '</span></p>'
+                        + waLink(null, 'Consultar por WhatsApp')
+                        + '</div></div>';
+                }).join('');
+                mostrar('planes');
+            }
+            if (d.visorias && d.visorias.length) {
+                document.getElementById('grid-visorias').innerHTML = d.visorias.map(function (v) {
+                    var fecha = v.fecha ? new Date(v.fecha).toLocaleDateString('es-CO') : 'Por definir';
+                    return '<div class="card-deporte">'
+                        + '<div class="card-body"><h3>' + esc(v.titulo) + '</h3>'
+                        + '<p class="card-meta">' + fecha + (v.lugar ? ' · ' + esc(v.lugar) : '') + (v.cupo ? ' · Cupo ' + v.cupo : '') + '</p>'
+                        + (v.descripcion ? '<p>' + esc(v.descripcion) + '</p>' : '')
+                        + '<p class="precio">' + fmtPesos(v.costo_cents) + '</p>'
+                        + waLink(null, 'Inscribirme')
+                        + '</div></div>';
+                }).join('');
+                mostrar('visorias');
+            }
+            if (d.noticias && d.noticias.length) {
+                document.getElementById('grid-noticias').innerHTML = d.noticias.slice(0, 6).map(function (n) {
+                    var fecha = n.fecha_publicacion ? new Date(n.fecha_publicacion).toLocaleDateString('es-CO') : '';
+                    return '<div class="card-deporte">'
+                        + (n.imagen_url ? '<img class="card-img" src="' + esc(n.imagen_url) + '" alt="' + esc(n.titulo) + '" loading="lazy">' : '')
+                        + '<div class="card-body"><h3>' + esc(n.titulo) + '</h3>'
+                        + '<p class="card-meta">' + esc(n.categoria || 'General') + (fecha ? ' · ' + fecha : '') + '</p>'
+                        + (n.contenido ? '<p>' + esc(n.contenido.slice(0, 140)) + '…</p>' : '')
+                        + '</div></div>';
+                }).join('');
+                mostrar('noticias');
+            }
+        }).catch(function () {});
+    })();
+    </script>
+`;
+
+// Idempotente: si el HTML ya renderiza el módulo de Deportes, no cambia nada.
+function inyectarDeportesEnHtml(html) {
+    if (!html) return html;
+    if (/grid-deportistas/.test(html) || /catalogo_publico/.test(html) || /d\.deportistas/.test(html)) return html;
+
+    // 1) Secciones (antes del footer o de la página de suspensión si existe).
+    let conSecciones = html;
+    if (!/id="deportistas"/.test(html)) {
+        const loc = /<footer[^>]*>/i.exec(html) || /<\/body>/i.exec(html);
+        if (loc) conSecciones = html.slice(0, loc.index) + SNIPPET_DEPORTES_SECCIONES + '\n' + html.slice(loc.index);
+    }
+
+    // 2) CSS del módulo (idempotente para los selectores que lo requieren).
+    let conCss = conSecciones;
+    if (!/#grid-deportistas/.test(conCss)) {
+        if (/<\/head>/i.test(conCss)) conCss = conCss.replace(/<\/head>/i, SNIPPET_DEPORTES_CSS + '\n</head>');
+        else if (/<\/body>/i.test(conCss)) conCss = conCss.replace(/<\/body>/i, SNIPPET_DEPORTES_CSS + '\n</body>');
+    }
+
+    // 3) JS de carga pública.
+    let conJs = conCss;
+    if (!/catalogo_publico/.test(conJs)) {
+        if (/<\/body>/i.test(conJs)) conJs = conJs.replace(/<\/body>/i, SNIPPET_DEPORTES_JS + '\n</body>');
+        else conJs = conJs + '\n' + SNIPPET_DEPORTES_JS + '\n</body>';
+    }
+    return conJs;
+}
+
 // ── Seguridad por dominio del agente ──
 // chat.js valida que el Origin del sitio embebido esté en agente.dominios_permitidos.
 // Aquí garantizamos que los sitios generados queden autorizados automáticamente.
@@ -437,6 +580,56 @@ async function inyectarWidgetEnRepo(proyecto) {
     if (proyecto.netlify_site_id) {
         await dispararBuild(proyecto.netlify_site_id);
     }
+}
+
+// ── Commit de uno o varios archivos en un repo privado (rama default) ──
+// Sube blobs + construye un tree con los archivos dados y hace un commit+pull
+// en la rama default del repo. Reutilizado por la re-sincronización de plantilla.
+async function commitArchivosEnRepo(proyecto, archivos, mensaje) {
+    const token = process.env.GITHUB_TOKEN;
+    if (!token) throw new Error('Falta la variable GITHUB_TOKEN en Netlify');
+    if (!proyecto.github_owner || !proyecto.github_repo) throw new Error('El proyecto no tiene repo de GitHub asociado');
+
+    const owner = proyecto.github_owner;
+    const repo = proyecto.github_repo;
+    const branch = proyecto.default_branch || 'main';
+    const base = `https://api.github.com/repos/${owner}/${repo}`;
+    const headers = { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json', 'Content-Type': 'application/json' };
+
+    const tree = await Promise.all((Array.isArray(archivos) ? archivos : [archivos]).map(async f => {
+        const blobRes = await fetchGitHub(`${base}/git/blobs`, {
+            method: 'POST', headers,
+            body: JSON.stringify({ content: Buffer.from(f.content, 'utf8').toString('base64'), encoding: 'base64' })
+        });
+        if (!blobRes || !blobRes.ok) throw new Error('GitHub: no se pudo crear el blob para ' + f.path);
+        const blob = await blobRes.json();
+        return { path: f.path, mode: '100644', type: 'blob', sha: blob.sha };
+    }));
+
+    const refRes = await fetchGitHub(`${base}/git/ref/heads/${branch}`, { headers });
+    if (!refRes || !refRes.ok) throw new Error(`GitHub: no se pudo leer la rama ${branch}`);
+    const refData = await refRes.json();
+
+    const treeRes = await fetchGitHub(`${base}/git/trees`, {
+        method: 'POST', headers,
+        body: JSON.stringify({ tree, base_tree: refData.object.sha })
+    });
+    if (!treeRes || !treeRes.ok) throw new Error('GitHub: no se pudo construir el árbol');
+    const treeData = await treeRes.json();
+
+    const commitRes = await fetchGitHub(`${base}/git/commits`, {
+        method: 'POST', headers,
+        body: JSON.stringify({ message, tree: treeData.sha, parents: [refData.object.sha] })
+    });
+    if (!commitRes || !commitRes.ok) throw new Error('GitHub: no se pudo crear el commit');
+    const commitData = await commitRes.json();
+
+    const pushRes = await fetchGitHub(`${base}/git/refs/heads/${branch}`, {
+        method: 'PATCH', headers,
+        body: JSON.stringify({ sha: commitData.sha, force: true })
+    });
+    if (!pushRes || !pushRes.ok) throw new Error('GitHub: no se pudo empujar el commit a ' + branch);
+    return commitData.sha;
 }
 
 async function fetchGitHub(uri, opciones, reintentos = 3) {
@@ -1264,6 +1457,58 @@ exports.handler = async (event) => {
             return { statusCode: 200, body: JSON.stringify({ ok: true, proyecto: actualizado }) };
         }
 
+        // ── RESYNC_TEMPLATE: aplicar la plantilla/módulos actuales a un sitio existente ──
+        // Los sitios creados antes de añadir un módulo (p. ej. Deportes) mantienen su
+        // index.html como snapshot de creación y no reciben los módulos nuevos. Este action
+        // re-sincroniza el index.html del repo con la plantilla tienda ACTUAL sin reemplazar
+        // el contenido personalizado: inserta solo lo que falta (secciones/CSS/JS de Deportes).
+        // Admin-only (controlado por el guard genérico arriba). Reutilizable para cualquier store.
+        if (action === 'resync_template') {
+            const { id } = body;
+            if (!id) return { statusCode: 400, body: JSON.stringify({ error: 'Falta id' }) };
+
+            const { data: proyecto, error } = await supabase.from('web_projects').select('*').eq('id', id).single();
+            if (error) return { statusCode: 404, body: JSON.stringify({ error: error.message }) };
+            if (!proyecto.github_owner || !proyecto.github_repo) {
+                return { statusCode: 400, body: JSON.stringify({ error: 'El proyecto no tiene repo de GitHub asociado' }) };
+            }
+
+            try {
+                const owner = proyecto.github_owner;
+                const repo = proyecto.github_repo;
+                const branch = proyecto.default_branch || 'main';
+                const base = `https://api.github.com/repos/${owner}/${repo}`;
+                const headers = { Authorization: `Bearer ${process.env.GITHUB_TOKEN}`, Accept: 'application/vnd.github+json' };
+
+                // Leer index.html actual del repo (base para el merge quirúrgico).
+                const fileRes = await fetchGitHub(`${base}/contents/index.html?ref=${branch}`, { headers });
+                if (!fileRes || !fileRes.ok) {
+                    throw new Error(`No se pudo leer index.html del repo (HTTP ${fileRes ? fileRes.status : 'sin respuesta'})`);
+                }
+                const fileData = await fileRes.json();
+                const htmlActual = Buffer.from(fileData.content, 'base64').toString('utf8');
+
+                const resulado = inyectarDeportesEnHtml(htmlActual);
+
+                if (resulado === htmlActual) {
+                    // Ya tiene el módulo; no hay cambios que publicar.
+                    return { statusCode: 200, body: JSON.stringify({ ok: true, cambios: null, msg: 'El sitio ya tiene el módulo de Deportes (nada que re-sincronizar)' }) };
+                }
+
+                await commitArchivosEnRepo(
+                    proyecto,
+                    [{ path: 'index.html', content: resulado }],
+                    'feat: re-sincronizar plantilla (módulo Deportes)'
+                );
+
+                if (proyecto.netlify_site_id) await dispararBuild(proyecto.netlify_site_id);
+
+                return { statusCode: 200, body: JSON.stringify({ ok: true, cambios: 'deportes', msg: 'Plantilla re-sincronizada. La publicación se está reconstruyendo en Netlify.' }) };
+            } catch (e) {
+                return { statusCode: 500, body: JSON.stringify({ error: e.message || 'Falló la re-sincronización' }) };
+            }
+        }
+
         // ── SET_ACTIVO: apagar (suspender) o reactivar un sitio ──
         // Apagar: publica un deploy directo con la pagina de "suspendido" (instantáneo, ~2s).
         // Reactivar: dispara un build desde el repo (el sitio real sigue en GitHub) y devuelve
@@ -1351,6 +1596,8 @@ module.exports.helpers = Object.freeze({
     oscurecerHex,
     fuenteElegida,
     inyectarTema,
+    inyectarDeportesEnHtml,
+    commitArchivosEnRepo,
     hostnameDeUrl,
     hostnamesParaSitio,
     pipelineCrear,

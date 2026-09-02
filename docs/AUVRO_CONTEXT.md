@@ -771,6 +771,8 @@ Deploy.
 ✅ Widget: catálogo de productos y fix de respuestas duplicadas (14 Ago 2026).
 ✅ Landing hub (`index.html`) + `paginas-web.html` + `agentes.html` rediseñadas (14 Ago 2026).
 ✅ **E-commerce en Web Factory (16 Ago 2026)**: plantilla `tienda` (catálogo/carrito/checkout serverless), `tienda.js` (checkout con recálculo de total en servidor + payment links Wompi con la **pasarela del cliente** por proyecto, `tienda_pasarela`), `pago-webhook.js` tipo `tienda` (marca orden pagada, descuenta stock, notificaciones), gestión de tienda en el dashboard (botón 🏪 + modal Productos/Órdenes/**Pasarela**). Desplegado en producción. Falta aplicar la migración de `tienda_pasarela` y el PoC demo.
+✅ **Módulo Deportes GENÉRICO (1 Sep 2026)**: `deportes.js` (CRUD deportistas/club/visorías/torneos/noticias/galería/consentimientos + buscador + inscripciones + `catalogo_publico`), `subir-imagen-deporte.js` (bucket `deportes`), sección Deportes en `tienda-admin.html`, plantilla `tienda` con secciones deportivas condicionales, agente IA deportivo (`construirTextoDeportesTienda`), pagos inscripción (Wompi). Generado y particionado por `proyecto_id`; FORMIES es el primer tenant (`modulos=["deportes"]`).
+✅ **Publicación en sitios existentes (1 Sep 2026, v34)**: causa raíz "el contenido Deportes no se veía en el sitio público FORMIES" resuelta — el repo del sitio era snapshot pre-Deportes. Nuevo helper `inyectarDeportesEnHtml` + acción `resync_template` (merge quirúrgico idempotente que preserva la personalización) + botón "Re-sincronizar plantilla" en el dashboard. Reutilizable para cualquier store existente. Seguridad: `catalogo_publico` ya no expone `estadisticas`/`videos`/`ficha`.
 
 ### Pendientes del Proyecto
 
@@ -1008,6 +1010,18 @@ Multiusuario.
 ---
 
 # Changelog de Cambios Técnicos
+
+## 1 Sep 2026 — Causa raíz "Deportes no se ve en el sitio público": re-sincronización reutilizable de plantilla (v34)
+
+- **Causa raíz (auditoría FORMIES):** el backend, tienda-admin y la plantilla `tienda` son correctos; el contenido admin ya se publica de forma **dinámica** vía `deportes.js catalogo_publico` (filtra `publico=true AND activo=true`). El "no aparecer en público" se debía a que el **repo del sitio existente (FORMIES)** tenía un `index.html` snapshot **pre-Deportes** (sin `grid-deportistas`, `id="deportistas"`, ni JS `catalogo_publico`). Web Factory solo entrega la plantilla (y sus módulos) a sitios **nuevos**; los existentes no reciben módulos añadidos después (limitación documentada en AUVRO_CONTEXT:1442).
+- **Fix reutilizable (no FORMIES-específico) en `web-factory.js`:**
+  - Nuevo helper `inyectarDeportesEnHtml(html)` — **merge quirúrgico e idempotente**: si el `index.html` del repo ya renderiza Deportes, no cambia nada; si no, inserta las secciones deportivas (`deportistas`/`planes`/`visorias`/`noticias`), el CSS del módulo y el párrafo JS `catalogo_publico` antes de `</body>`, **preservando todo el contenido personalizado** (ediciones del site-editor/agente AI, footer, `data-slug`). Probado: inserta todos los marcadores, conserva lo custom y es idempotente (`out2 === out`).
+  - Nuevo helper genérico `commitArchivosEnRepo(proyecto, archivos, mensaje)` (blobs → tree → commit → push a rama default).
+  - Nueva acción `resync_template` (admin): lee el `index.html` actual del repo, aplica `inyectarDeportesEnHtml`, hace commit y dispara `dispararBuild(siteId)` (Netlify ~1-2 min).
+- **Panel (`dashboard.html`):** botón "Re-sincronizar plantilla" en la card de cada proyecto Tienda con módulo `deportes` y repo, + función `resincronizarPlantilla(id, nombre)` con confirmación y overlay. Aplica a CUALQUIER store existente que active Deportes.
+- **Seguridad ficha pública:** `deportes.js accionCatalogoPublico` ya NO expone `estadisticas`, `videos` ni `ficha` en el payload público de deportistas (solo datos editables autorizados), evitando filtrar datos privados de menores.
+- **PWA:** cache bump **v33 → v34** (`sw.js` → `auvro-v34`).
+- **Docs:** creado `FORMIES_AUDITORIA.md` (matriz con evidencias de código y test del merge); actualizados `FORMIES_AUVRO_MAP.md`, `FORMIES_IMPLEMENTACION.md`, `FORMIES_PENDIENTES.md`.
 
 ## 1 Sep 2026 — Fix módulo Deportes en tienda-admin: funciones expuestas + permisos de dueño (v33)
 

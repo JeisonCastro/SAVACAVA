@@ -113,7 +113,7 @@ async function accionCatalogoPublico(params) {
     const pid = proyecto.id;
 
     const [deportistas, planes, horarios, visorias, torneos, noticias, galeria] = await Promise.all([
-        supabase.from('deportes_deportistas').select('id,nombre,fotografia_url,edad,categoria,posicion,pierna,altura_cm,club,pais,ciudad,nivel,perfil,logros,estadisticas,videos,ficha,publico')
+        supabase.from('deportes_deportistas').select('id,nombre,fotografia_url,edad,categoria,posicion,pierna,altura_cm,club,pais,ciudad,nivel,perfil,logros')
             .eq('proyecto_id', pid).eq('publico', true).eq('activo', true).order('nombre'),
         supabase.from('deportes_club_planes').select('*').eq('proyecto_id', pid).eq('activo', true).order('precio_cents'),
         supabase.from('deportes_club_horarios').select('*').eq('proyecto_id', pid).eq('activo', true).order('dia'),

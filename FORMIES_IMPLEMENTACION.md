@@ -13,12 +13,13 @@ preguntar: ¿AUVRO ya lo tiene? ¿Se puede configurar/adaptar/extender?
 
 1. ✅ Auditoría + mapa de reutilización (`FORMIES_AUVRO_MAP.md`).
 2. ✅ Este documento + `FORMIES_PENDIENTES.md`.
-3. ⬜ Migración DB genérica (`deportes_*`) + seeds (planes ELITE/FORMATIVO).
-4. ⬜ Backend `deportes.js` (CRUD + buscador + inscripciones) + bucket `deportes` (uploads).
-5. ⬜ Frontend: sección "Deportes" en `dashboard.html` (deportistas, club, visorías, torneos, noticias, galería, consentimientos).
-6. ⬜ Sitio público: plantilla `tienda` con identidad deportiva + tokens + agente IA con fuentes deportivas.
-7. ⬜ Pagos visoría/club vía `tienda_productos`/Wompi + notificaciones.
-8. ⬜ Seguridad (fichas públicas sin datos privados de menores), responsive, SEO, auditoría.
+3. ✅ Migración DB genérica (`deportes_*`) + seeds (planes ELITE/FORMATIVO).
+4. ✅ Backend `deportes.js` (CRUD + buscador + inscripciones + `catalogo_publico`) + bucket `deportes` (uploads).
+5. ✅ Frontend: sección "Deportes" en `tienda-admin.html`/`dashboard.html` (deportistas, club, visorías, torneos, noticias, galería, consentimientos).
+6. ✅ Plantilla `tienda` con secciones deportivas condicionales (deportistas, planes, visorías, noticias) + `catalogo_publico`.
+7. ✅ Redespliegue en sitios EXISTENTES: acción `resync_template` en `web-factory.js` + botón "Re-sincronizar plantilla" en el dashboard (inyecta el módulo en repos pre-Deportes sin borrar personalización).
+8. ✅ Pagos visoría/club vía `pago_inscripcion` (orden tienda + Wompi) + botón en panel.
+9. ✅ Seguridad: `catalogo_publico` no expone `estadisticas`/`videos`/`ficha`; auth por `proyecto_id`. Responsive/SEO/auditoría = continúa en loop.
 
 ## Qué se reutiliza (sin tocar)
 

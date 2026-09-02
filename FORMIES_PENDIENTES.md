@@ -12,9 +12,11 @@
 - [x] Pagos visoría/club vía `pago_inscripcion` (orden tienda + Wompi) + botón en panel.
 - [x] Agente IA deportivo: `construirTextoDeportesTienda` inyectado en el prompt del agente con tienda.
 - [x] Plantilla `tienda` con secciones deportivas condicionales (deportistas, planes, visorías, noticias).
+- [x] **Publicación en sitios existentes (decisión clave)**: el sitio FORMIES vive en `https://formies-1.netlify.app/` y su `index.html` era un snapshot pre-Deportes, por lo que el contenido admin no se veía aunque el backend fuera correcto. Fix REUTILIZABLE: nueva acción `web-factory.js resync_template` + botón "Re-sincronizar plantilla" en el dashboard inyectan las secciones/CSS/JS del módulo Deportes en el `index.html` del repo existente SIN reemplazar el contenido personalizado, y disparan rebuild en Netlify. Sirve para cualquier tienda existente, no solo FORMIES.
+- [x] **Seguridad ficha pública**: `deportes.js accionCatalogoPublico` ya NO expone los campos privados `estadisticas`, `videos`, `ficha` en el payload público de deportistas (solo datos editarles autorizados). Acceso admin particionado por `proyecto_id` (`autenticarAdmin`: `is_admin` o `created_by` o rol de `tienda_permisos`).
 - [ ] **Catálogo FORMIES real**: crear en la tienda los productos/servicios (balones, uniformes, pantalonetas, medias, chaquetas, portero; Perfil Deportivo $350K; Gira Argentina tour US$1.300; Visoría $60K como `servicio` para pago directo). Requiere sesión de admin en el panel.
 - [ ] **Agente IA FORMIES**: crear/editar el agente del sitio con `tienda_id` = proyecto FORMIES + prompt deportivo.
-- [ ] Seguridad: verificar que las fichas públicas no exponen datos privados de menores sin consentimiento.
+- [ ] **Catálogo deportivo FORMIES**: crear deportistas/planes/visorías reales (los planes ELITE/FORMATIVO ya existen como seed) para que el sitio publique contenido visible tras la re-sincronización. Requiere sesión de admin.
 - [ ] Responsive + SEO + auditoría final.
 
 ## Decisiones tomadas

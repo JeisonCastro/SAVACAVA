@@ -40,8 +40,10 @@
 | Galería | Solo galería de producto | 🔴 | Crear (galería por proyecto, buckets) |
 | Consentimiento / privacidad | No existe (solo `politicas.html` estática) | 🔴 | Crear (consentimientos por proyecto) |
 | Administración autónoma | `dashboard.html` + `tienda-admin.html` | 🟢 | Adaptar (añadir sección Deportes) |
-| Roles/permisos | `tienda_permisos` (admin/editor sitio+tienda) | 🟢 | Reutilizar |
-| Almacenamiento imágenes/videos | Supabase Storage (buckets) + `subir-imagen-producto.js` | 🟡 | Extender (bucket `deportes`) |
+| Roles/permisos | `tienda_permisos` (admin/editor sitio+tienda) + `created_by` + `is_admin` en `deportes.js autenticarAdmin` y `subir-imagen-deporte.js` | 🟢 | Reutilizar |
+| Almacenamiento imágenes/videos | Supabase Storage (buckets) + `subir-imagen-deporte.js` (bucket `deportes`) | 🟢 | Reutilizar (admin → data URL → URL pública guardada en `fotografia_url`/`imagen_url`) |
+| Despliegue de módulos nuevos en sitios EXISTENTES | `web-factory.js` acción `resync_template` + `inyectarDeportesEnHtml` (merge quirúrgico, preserva personalización) + botón "Re-sincronizar plantilla" | 🟢 | NUEVO (reutilizable para todo store existente) |
+| Privacidad ficha pública | `deportes.js accionCatalogoPublico` expone solo campos editables públicos (sin `estadisticas`/`videos`/`ficha`/`peso_kg`) | 🟢 | Ajustado (seguridad menores) |
 
 ## Entidades nuevas (genéricas, particionadas por `proyecto_id`)
 
@@ -64,3 +66,10 @@
   proyecto que los active. FORMIES es el primer tenant que los usa (plantilla `tienda` + módulos).
 - El sitio público FORMIES usa la **plantilla `tienda` existente** (motor comercial + agente IA +
   WhatsApp + Wompi), con identidad/contenido FORMIES.
+
+## Cómo se publica el contenido de Deportes (cadena extremo a extremo)
+
+1. Admin crea/edita contenido en `tienda-admin.html` → `deportes.js` (acción `guardar_*`), particionado por `proyecto_id`, con `activo` y `publico` (deportista).
+2. Sube imágenes/videos directos vía `subir-imagen-deporte.js` → bucket público `deportes` → URL pública guardada en `fotografia_url`/`imagen_url`.
+3. El sitio público (plantilla `tienda`) ejecuta `deportes.js catalogo_publico` y RELLENA las secciones `grid-deportistas`/`grid-planes`/`grid-visorias`/`grid-noticias` con `publico=true AND activo=true` (deportistas) o `activo=true` (planes/visorías/noticias). Publicación **dinámica**: no requiere redeploy de AUVRO.
+4. **Para sitios creados ANTES del módulo** (el caso FORMIES): su `index.html` es un snapshot sin el JS/secciones de Deportes. El operador pulsa "Re-sincronizar plantilla" (acción `resync_template`) y `inyectarDeportesEnHtml` inserta las secciones + CSS + JS faltantes sin borrar el contenido personalizado, luego dispara build en Netlify (~1-2 min). A partir de ahí el contenido admin aparece público.
