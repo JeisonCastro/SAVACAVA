@@ -202,6 +202,24 @@ body {
     padding: 11px 12px; border: 1px solid var(--border); border-radius: 10px; font-size: .95rem; outline: none;
 }
 .modal-card input:focus { border-color: var(--accent); }
+
+/* Formulario de inscripción Deportes: más ancho y en dos columnas en desktop
+   (se mantiene 1 columna en móvil → PWA/tienda usable). */
+.modal-card.modal-insc { width: min(860px, 100%); }
+.modal-card.modal-insc form {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 14px 18px; align-items: start;
+}
+.modal-card.modal-insc form h4,
+.modal-card.modal-insc form > p,
+.modal-card.modal-insc .cart-total,
+.modal-card.modal-insc #ins-msg,
+.modal-card.modal-insc #btn-inscripcion,
+.modal-card.modal-insc .ins-full { grid-column: 1 / -1; }
+.modal-card.modal-insc textarea,
+.modal-card.modal-insc select { width: 100%; padding: 11px 12px; border: 1px solid var(--border); border-radius: 10px; font-size: .95rem; background: var(--surface); color: var(--text); }
+@media (max-width: 640px) {
+    .modal-card.modal-insc form { grid-template-columns: 1fr; }
+}
 .pay-note { font-size: .78rem; color: var(--muted); }
 .orden-body { padding: 20px; display: flex; flex-direction: column; gap: 12px; }
 .orden-items { color: var(--muted); font-size: .9rem; }

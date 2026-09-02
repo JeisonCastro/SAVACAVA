@@ -780,7 +780,7 @@ async function pagoInscripcion(userId, body) {
         cantidad: 1
     });
     if (itemsErr) {
-        await supabase.from('tienda_ordenes').delete().eq('id', orden.id).catch(() => {});
+        try { await supabase.from('tienda_ordenes').delete().eq('id', orden.id); } catch (_) {}
         return pagerror('No se pudo guardar la línea de la orden', 500);
     }
 
@@ -801,12 +801,12 @@ async function pagoInscripcion(userId, body) {
     });
     const wompi = await wompiRes.json();
     if (!wompiRes.ok || !wompi?.data?.id) {
-        await supabase.from('tienda_ordenes').delete().eq('id', orden.id).catch(() => {});
+        try { await supabase.from('tienda_ordenes').delete().eq('id', orden.id); } catch (_) {}
         return pagerror(wompi?.error?.message || 'Error creando el pago en Wompi.', 502);
     }
     const paymentLinkId = wompi.data.id;
 
-    await supabase.from('tienda_ordenes').update({ payment_link_id: paymentLinkId }).eq('id', orden.id).catch(() => {});
+    try { await supabase.from('tienda_ordenes').update({ payment_link_id: paymentLinkId }).eq('id', orden.id); } catch (_) {}
 
     const { error: pagosErr } = await supabase.from('pagos').insert({
         user_id: proyecto.created_by || null,
@@ -818,7 +818,7 @@ async function pagoInscripcion(userId, body) {
         estado: 'pendiente'
     });
     if (pagosErr) {
-        await supabase.from('tienda_ordenes').delete().eq('id', orden.id).catch(() => {});
+        try { await supabase.from('tienda_ordenes').delete().eq('id', orden.id); } catch (_) {}
         await fetch(`${WOMPI_BASE}/payment_links/${paymentLinkId}`, {
             method: 'DELETE',
             headers: { 'Authorization': `Bearer ${pasarela.wompi_private_key}` }
@@ -833,11 +833,15 @@ async function pagoInscripcion(userId, body) {
     // link es un UUID legítimo; si no, se deja nulo para no romper el UPDATE
     // y el auto-marcado como pagada vía pago-webhook (orden_id).
     const pagoIdValido = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(paymentLinkId));
-    await supabase.from('deportes_inscripciones').update({
-        orden_id: orden.id,
-        pago_id: pagoIdValido ? paymentLinkId : null,
-        updated_at: new Date().toISOString()
-    }).eq('id', insc.id).catch(() => {});
+    try {
+        await supabase.from('deportes_inscripciones').update({
+            orden_id: orden.id,
+            pago_id: pagoIdValido ? paymentLinkId : null,
+            updated_at: new Date().toISOString()
+        }).eq('id', insc.id);
+    } catch (e) {
+        console.error('pagoInscripcion: no se pudo vincular orden a la inscripción:', e.message);
+    }
 
     return ok({ ok: true, url: `https://checkout.wompi.co/l/${paymentLinkId}`, orden_id: orden.id, monto_cents: montoCents });
 }

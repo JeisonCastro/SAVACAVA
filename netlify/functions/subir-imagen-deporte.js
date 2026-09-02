@@ -122,16 +122,17 @@ exports.handler = async (event) => {
     // Cierre de inventario: solo MIME conocidos (rechaza image/svg+xml y otros
     // formatos no permitidos; los .mp4/.webm/.mov se validan por extensión).
     if (!MIMES_PERMITIDOS.has(mimeDeclarado) && !(mimeDeclarado.startsWith('video/') && mimeDeclarado.includes('mp4'))) {
-      return jsonResponse(400, { error: 'Tipo de archivo no permitido. Usa JPG, PNG, WebP, GIF, AVIF o MP4.' });
+      return jsonResponse(400, { error: 'Tipo de archivo no permitido. Usa JPG, PNG, WebP, GIF, AVIF, MP4, WebM o MOV.' });
     }
-    // Coherencia del contenido: rechaza archivos cuyo contenido no coincide con
-    // el MIME declarado para imágenes (evita SVG/HTML disfrazados de imagen).
+    // Seguridad de contenido: rechaza archivos que claramente NO son imagen/video
+    // (SVG/HTML u otros disfrazados con MIME de imagen). NO se exige coincidencia
+    // exacta de magic-bytes para evitar falsos rechazos de JPG/PNG mal etiquetados.
     if (mimeDeclarado.startsWith('image/')) {
-      if (!mimeDeclarado.startsWith('image/webp') && !mimeDeclarado.startsWith('image/avif')) {
-        const magicMime = mimeDesdeMagic(buffer);
-        if (!magicMime || magicMime !== mimeDeclarado) {
-          return jsonResponse(400, { error: 'El contenido del archivo no coincide con el tipo declarado.' });
-        }
+      const b0 = buffer[0];
+      const esTextoDisfrazado = b0 === 0x3c || // '<'
+        (buffer.length >= 5 && buffer[0] === 0x25 && buffer[1] === 0x50); // '%PDF'
+      if (esTextoDisfrazado) {
+        return jsonResponse(400, { error: 'El archivo no es una imagen válida (parece texto o SVG). Usa JPG, PNG, WebP, GIF o AVIF.' });
       }
     }
 

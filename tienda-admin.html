@@ -1111,31 +1111,65 @@
         }
     }
 
-    // Subida de medios SIN subir al servidor: solo convierte a data-URL local
-    // (preview inmediato). Las imágenes se suben todas juntas al guardar
-    // (mismo patrón que Productos / imgSubir + guardarProducto).
+    // Subida de medios a Storage de inmediato (patrón Productos): convierte a
+    // data-URL y lo sube a /.netlify/functions/subir-imagen-deporte; el callback
+    // recibe la URL PÚBLICA final (no un data-URL). Así "Guardar" envía solo URLs
+    // (cuerpo pequeño) y cualquier error de subida se ve al instante.
     function depSubir(input, cb) {
         const file = input.files && input.files[0];
         if (!file) return;
         if (file.size > 12 * 1024 * 1024) { toast('El archivo supera 12 MB', true); input.value = ''; return; }
         const reader = new FileReader();
-        reader.onload = () => {
-            const u = String(reader.result);
-            cb && cb(u);
+        reader.onload = async () => {
+            try {
+                const url = await depSubirServidor(String(reader.result), file.name);
+                cb && cb(url);
+            } catch (err) {
+                input.value = '';
+                toast('Error al subir: ' + err.message, true);
+            }
         };
         reader.readAsDataURL(file);
+    }
+
+    async function depSubirServidor(dataUrl, filename) {
+        const res = await fetch('/.netlify/functions/subir-imagen-deporte', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (session ? session.access_token : '') },
+            body: JSON.stringify({ proyecto_id: ctx.proyecto_id, data_url: String(dataUrl), filename: filename || 'deporte' })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.ok) throw new Error(data.error || ('No se pudo subir (HTTP ' + res.status + ')'));
+        return data.url;
     }
 
     function depSubirVarias(input, start) {
         const files = Array.from(input.files || []);
         if (!files.length) return;
-        const reader = new FileReader();
-        reader.readAsDataURL(files[start]);
-        reader.onload = () => {
-            window.__depGaleria = (window.__depGaleria || []).concat([String(reader.result)]);
-            if (start + 1 < files.length) depSubirVarias(input, start + 1);
-            else { input.value = ''; depFormDeportista($('dep-editing')?.value || null); }
+        const subir = async (i) => {
+            if (i >= files.length) {
+                input.value = '';
+                depFormDeportista($('dep-editing')?.value || null);
+                return;
+            }
+            const f = files[i];
+            if (f.size > 12 * 1024 * 1024) {
+                toast('El archivo supera 12 MB', true);
+                return subir(i + 1);
+            }
+            const reader = new FileReader();
+            reader.onload = async () => {
+                try {
+                    const url = await depSubirServidor(String(reader.result), f.name);
+                    window.__depGaleria = (window.__depGaleria || []).concat([url]);
+                } catch (err) {
+                    toast('Error al subir: ' + err.message, true);
+                }
+                subir(i + 1);
+            };
+            reader.readAsDataURL(f);
         };
+        subir(start);
     }
 
     function depQuitarGaleria(i) {
@@ -1228,7 +1262,7 @@
                     </div>
                     <div style="display:flex;gap:6px;align-items:center;margin-top:6px">
                         <img id="dp-foto-prev" src="${esc(window.__depFoto || d.fotografia_url || '')}" alt="" style="width:72px;height:72px;border-radius:8px;object-fit:cover;border:1px solid var(--border)" onerror="this.style.display='none'" onload="if(!this.src||!this.src.trim())this.style.display='none'">
-                        <span style="font-size:.74rem;color:var(--muted)">La foto se sube al guardar el deportista.</span>
+                        <span style="font-size:.74rem;color:var(--muted)">La foto se sube al servidor en cuanto la eliges.</span>
                     </div>
             ${d_fotos.length ? `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">${d_fotos.map((f,i)=>`<div style="margin:0"><img src="${esc(f)}" alt="" style="width:56px;height:56px;border-radius:8px;object-fit:cover;border:1px solid var(--border)"> <button class="btn-small" onclick="depQuitarGaleria(${i})" title="Quitar">&times;</button></div>`).join('')}</div>` : ''}
                     <div style="margin-top:8px">
