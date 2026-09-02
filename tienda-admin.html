@@ -1053,12 +1053,24 @@
     let depModalGuardarFn = null;
 
     async function deportesApi(action, body = {}) {
-        const res = await fetch('/.netlify/functions/deportes', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (session ? session.access_token : '') },
-            body: JSON.stringify({ action, ...body })
-        });
-        return res.json();
+        // Robusto: nunca lanza aunque el servidor responda HTML (413/errores de
+        // gateway); siempre devuelve {ok:false, error} para mostrarlo al admin.
+        try {
+            const res = await fetch('/.netlify/functions/deportes', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (session ? session.access_token : '') },
+                body: JSON.stringify({ action, ...body })
+            });
+            const txt = await res.text();
+            let data = {};
+            try { data = JSON.parse(txt); } catch (_) { data = {}; }
+            if (!res.ok && !data.error) {
+                data = { ok: false, error: 'HTTP ' + res.status + ': ' + String(txt).slice(0, 300) };
+            }
+            return data;
+        } catch (err) {
+            return { ok: false, error: 'Error de conexión: ' + (err.message || err) };
+        }
     }
 
     async function renderDeportes() {
@@ -1264,24 +1276,29 @@
     async function depGuardarDeportista(id) {
         const ficha = { texto: $('dp-ficha').value.trim(), galeria: window.__depGaleria || [], videos: $('dp-videos').value.split('\n').map(s => s.trim()).filter(Boolean) };
         const estadisticas = { texto: $('dp-estadisticas').value.trim() };
-        const data = await deportesApi('guardar_deportista', {
-            proyecto_id: ctx.proyecto_id, id: id || null,
-            nombre: $('dp-nombre').value.trim(), fecha_nacimiento: $('dp-fecha').value || null,
-            edad: $('dp-edad').value || null, categoria: $('dp-categoria').value.trim(),
-            posicion: $('dp-posicion').value, pierna: $('dp-pierna').value,
-            altura_cm: $('dp-altura').value || null, peso_kg: $('dp-peso').value || null,
-            club: $('dp-club').value.trim(), pais: $('dp-pais').value.trim(), ciudad: $('dp-ciudad').value.trim(),
-            nivel: $('dp-nivel').value, experiencia: $('dp-experiencia').value.trim(),
-            fotografia_url: $('dp-foto').value.trim(),
-            logros: $('dp-logros').value.split('\n').map(s => s.trim()).filter(Boolean),
-            videos: ficha.videos,
-            ficha, estadisticas, publico: $('dp-publico').checked, activo: $('dp-activo').checked
-        });
-        window.__depGaleria = [];
-        window.__depFoto = '';
-        if (!data.ok) return toast('Error: ' + data.error, true);
-        toast('Deportista guardado');
-        renderDeportes();
+        try {
+            const data = await deportesApi('guardar_deportista', {
+                proyecto_id: ctx.proyecto_id, id: id || null,
+                nombre: $('dp-nombre').value.trim(), fecha_nacimiento: $('dp-fecha').value || null,
+                edad: $('dp-edad').value || null, categoria: $('dp-categoria').value.trim(),
+                posicion: $('dp-posicion').value, pierna: $('dp-pierna').value,
+                altura_cm: $('dp-altura').value || null, peso_kg: $('dp-peso').value || null,
+                club: $('dp-club').value.trim(), pais: $('dp-pais').value.trim(), ciudad: $('dp-ciudad').value.trim(),
+                nivel: $('dp-nivel').value, experiencia: $('dp-experiencia').value.trim(),
+                fotografia_url: $('dp-foto').value.trim(),
+                logros: $('dp-logros').value.split('\n').map(s => s.trim()).filter(Boolean),
+                videos: ficha.videos,
+                ficha, estadisticas, publico: $('dp-publico').checked, activo: $('dp-activo').checked
+            });
+            if (!data.ok) throw new Error(data.error || 'No se pudo guardar');
+            window.__depGaleria = [];
+            window.__depFoto = '';
+            toast('Deportista guardado');
+            renderDeportes();
+        } catch (err) {
+            console.error('guardar deportista:', err);
+            toast('Error al guardar: ' + err.message, true);
+        }
     }
 
     async function depEliminarDeportista(id, nombre) {
