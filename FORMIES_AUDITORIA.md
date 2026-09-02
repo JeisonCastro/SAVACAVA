@@ -82,3 +82,16 @@ Guía para el diseñador / operador de FORMIES:
 1. Este commit despliega el **storefront tipo-pestañas** (Tienda / Deportistas / Planes / Visorías / Torneos / Noticias / Galería / Contacto) en la plantilla `tienda`. Cada sección es un `.panel` que se muestra de a uno; las pestañas sin contenido quedan ocultas hasta que hay datos. Es la plantilla de referencia para CUALQUIER store creado desde Web Factory con la plantilla `tienda`.
 2. Para ver la decoración en la tienda FORMIES ya creada, el operador debe **re-pulsar "Re-sincronizar plantilla"** en el dashboard → Web Factory → card FORMIES. El HTML de la tienda se genera al sincronizar; el commit no lo cambia retroactivamente.
 3. En `tienda-admin` → Deportes, el formulario de deportista ya NO pide JSON: Ficha y Estadísticas son texto libre, la portada tiene botón "Subir", y la galería/videos se suben como archivos (no solo URLs). El visitante ve los torneos y la galería como secciones propias.
+
+## Commit 602670b - Inscripción pública (formulario completo) + botones "Inscribirme"
+
+Con este commit el storefront (tienda y snippet de deportes) queda con inscripción pública de extremo a extremo:
+
+Cambios:
+- `wf-templates/templates/tienda/index.html`: script 4 con formulario de inscripción en modal `#inscripcion-modal` (exposición `window.abrirInscripcion`/`cerrarInscripcion`); botones **"Inscribirme"** en planes (`club` + WhatsApp), visorías (`visoria`) y torneos (`torneo`). El submit valida obligatorios (`ins-nombre`/`ins-responsable`/`ins-telefono`) y el check de tratamiento, y POSTea `inscribir_publico` al backend.
+- `netlify/functions/web-factory.js`: `SNIPPET_DEPORTES_JS`/`SNIPPET_DEPORTES_SECCIONES`/`SNIPPET_DEPORTES_CSS` incluyen el modal `#inscripcion-modal`, `abrirInscripcion` + render de torneos/galería + botones "Inscribirme", para que los store existentes (FORMIES) reciban el flujo al re-sincronizar.
+
+Paso del operador para reflejarlo en la tienda FORMIES ya creada:
+1. Re-pulsar `Re-sincronizar plantilla` en dashboard → Web Factory → card FORMIES (la plantilla ya lo lleva; el HTML de la tienda existente se regenera al sincronizar).
+
+Validado: 4 scripts del storefront + 1 script del snippet parsean (`new Function`); `node --check` PASS en `deportes.js` y `web-factory.js`.
