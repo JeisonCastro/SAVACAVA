@@ -1388,6 +1388,73 @@ async function verificarAccesoProyecto(userId, proyectoId, operacion) {
     return { ok: true, rol: permiso.rol, isAdmin: false, isOwner: false };
 }
 
+// ── Regeneración de storefront Tienda con la plantilla ACTUAL ──
+// Reconstruye index.html (+ styles.css, netlify.toml, robots.txt) a partir de la
+// plantilla vigente, con los tokens del proyecto y conservando el widget del agente.
+// Usado por `regenerar_storefront` y por `resync_template` cuando detecta un módulo
+// de Deportes en versión vieja (el inyector quirúrgico no puede "subir de versión").
+async function regenerarStorefrontDeProyecto(proyecto) {
+    const accent = validarAccent(proyecto.accent_color) || '#2563eb';
+    const fuenteInfo = fuenteElegida(proyecto.fuente) || null;
+    const fuenteKey = (proyecto.fuente || 'sistema').trim().toLowerCase();
+    const valores = {
+        EMPRESA: proyecto.nombre || proyecto.slug || 'Mi negocio',
+        DESCRIPCION: proyecto.descripcion || proyecto.nombre || '',
+        SLUG: proyecto.slug || '',
+        SLOGAN: sanearTexto(proyecto.slogan),
+        LOGO: sanearUrlLogo(proyecto.logo),
+        WHATSAPP: normalizarWhatsapp(proyecto.whatsapp),
+        ACCENT: accent,
+        ACCENT_DARK: oscurecerHex(accent),
+        FONT_FAMILY: (fuenteInfo ? fuenteInfo.familia : FUENTE_SISTEMA),
+        FONT_NAME: fuenteKey,
+        FONT_LINK: (fuenteInfo && fuenteInfo.css ? fuenteInfo.css : '')
+    };
+
+    // Widget del agente actual del repo (si existe) para conservarlo tras regenerar.
+    let widgetPrevio = '';
+    if (proyecto.github_owner && proyecto.github_repo) {
+        try {
+            const owner = proyecto.github_owner;
+            const repo = proyecto.github_repo;
+            const branch = proyecto.default_branch || 'main';
+            const base = `https://api.github.com/repos/${owner}/${repo}`;
+            const headers = { Authorization: `Bearer ${process.env.GITHUB_TOKEN}`, Accept: 'application/vnd.github+json' };
+            const fileRes = await fetchGitHub(`${base}/contents/index.html?ref=${branch}`, { headers });
+            if (fileRes && fileRes.ok) {
+                const fileData = await fileRes.json();
+                const htmlActual = Buffer.from(fileData.content, 'base64').toString('utf8');
+                const wm = /<script src="https:\/\/auvro\.netlify\.app\/widget\.js"[^>]*><\/script>/i.exec(htmlActual);
+                if (wm) widgetPrevio = wm[0];
+            }
+        } catch (e) {
+            console.error('regenerarStorefrontDeProyecto: leer widget actual falló:', e.message);
+        }
+    }
+
+    const archivos = leerArchivosPlantilla(proyecto.plantilla)
+        .map(f => {
+            let content = reemplazarTokens(f.content, valores);
+            if (f.path === 'index.html') {
+                const snippet = widgetPrevio
+                    ? widgetPrevio
+                    : (proyecto.agente_id ? crearSnippetAgente(proyecto.agente_id, null, proyecto.slug) : '');
+                content = inyectarWidgetIndex(content, snippet);
+            }
+            if (/\.html$/i.test(f.path)) content = inyectarTema(content, accent, fuenteInfo);
+            return { path: f.path, content };
+        });
+
+    await commitArchivosEnRepo(
+        proyecto,
+        archivos,
+        'feat: regenerar storefront con la plantilla actual (módulo Deportes completo)'
+    );
+
+    if (proyecto.netlify_site_id) await dispararBuild(proyecto.netlify_site_id);
+    return archivos;
+}
+
 // ── Handler ──
 exports.handler = async (event) => {
     try {
@@ -1678,6 +1745,25 @@ exports.handler = async (event) => {
                 const fileData = await fileRes.json();
                 const htmlActual = Buffer.from(fileData.content, 'base64').toString('utf8');
 
+                // Detectar versión vieja del módulo: ya tiene secciones/catálogo (de un
+                // resync antiguo) pero le faltan piezas del storefront ACTUAL (torneos,
+                // galería e inscripción). El inyector quirúrgico no puede subir de versión:
+                // regenerar desde la plantilla actual.
+                const TIENE_MODULO = /grid-deportistas/.test(htmlActual) || /catalogo_publico/.test(htmlActual) || /d\.deportistas/.test(htmlActual);
+                const MODULO_ACTUAL_COMPLETO = /inscripcion-modal/.test(htmlActual) && /grid-torneos/.test(htmlActual) && /grid-galeria/.test(htmlActual);
+                if (TIENE_MODULO && !MODULO_ACTUAL_COMPLETO && proyecto.plantilla === 'tienda') {
+                    const archivos = await regenerarStorefrontDeProyecto(proyecto);
+                    return {
+                        statusCode: 200,
+                        body: JSON.stringify({
+                            ok: true,
+                            cambios: 'deportes_upgrade',
+                            archivos: archivos.map(a => a.path),
+                            msg: 'El sitio tenía una versión vieja del módulo Deportes. Storefront regenerado con la plantilla actual (pestañas, torneos, galería e inscripción). Reconstruyendo en Netlify (1-2 min).'
+                        })
+                    };
+                }
+
                 const resulado = inyectarDeportesEnHtml(htmlActual);
 
                 if (resulado === htmlActual) {
@@ -1772,65 +1858,7 @@ exports.handler = async (event) => {
             }
 
             try {
-                const accent = validarAccent(proyecto.accent_color) || '#2563eb';
-                const fuenteInfo = fuenteElegida(proyecto.fuente) || null;
-                const fuenteKey = (proyecto.fuente || 'sistema').trim().toLowerCase();
-                const valores = {
-                    EMPRESA: proyecto.nombre || proyecto.slug || 'Mi negocio',
-                    DESCRIPCION: proyecto.descripcion || proyecto.nombre || '',
-                    SLUG: proyecto.slug || '',
-                    SLOGAN: sanearTexto(proyecto.slogan),
-                    LOGO: sanearUrlLogo(proyecto.logo),
-                    WHATSAPP: normalizarWhatsapp(proyecto.whatsapp),
-                    ACCENT: accent,
-                    ACCENT_DARK: oscurecerHex(accent),
-                    FONT_FAMILY: (fuenteInfo ? fuenteInfo.familia : FUENTE_SISTEMA),
-                    FONT_NAME: fuenteKey,
-                    FONT_LINK: (fuenteInfo && fuenteInfo.css ? fuenteInfo.css : '')
-                };
-
-                // Widget del agente actual del repo (si existe) para conservarlo tras regenerar.
-                let widgetPrevio = '';
-                if (proyecto.github_owner && proyecto.github_repo) {
-                    try {
-                        const owner = proyecto.github_owner;
-                        const repo = proyecto.github_repo;
-                        const branch = proyecto.default_branch || 'main';
-                        const base = `https://api.github.com/repos/${owner}/${repo}`;
-                        const headers = { Authorization: `Bearer ${process.env.GITHUB_TOKEN}`, Accept: 'application/vnd.github+json' };
-                        const fileRes = await fetchGitHub(`${base}/contents/index.html?ref=${branch}`, { headers });
-                        if (fileRes && fileRes.ok) {
-                            const fileData = await fileRes.json();
-                            const htmlActual = Buffer.from(fileData.content, 'base64').toString('utf8');
-                            const wm = /<script src="https:\/\/auvro\.netlify\.app\/widget\.js"[^>]*><\/script>/i.exec(htmlActual);
-                            if (wm) widgetPrevio = wm[0];
-                        }
-                    } catch (e) {
-                        console.error('regenerar_storefront: leer widget actual falló:', e.message);
-                    }
-                }
-
-                const archivos = leerArchivosPlantilla(proyecto.plantilla)
-                    .map(f => {
-                        let content = reemplazarTokens(f.content, valores);
-                        if (f.path === 'index.html') {
-                            const snippet = widgetPrevio
-                                ? widgetPrevio
-                                : (proyecto.agente_id ? crearSnippetAgente(proyecto.agente_id, null, proyecto.slug) : '');
-                            content = inyectarWidgetIndex(content, snippet);
-                        }
-                        if (/\.html$/i.test(f.path)) content = inyectarTema(content, accent, fuenteInfo);
-                        return { path: f.path, content };
-                    });
-
-                await commitArchivosEnRepo(
-                    proyecto,
-                    archivos,
-                    'feat: regenerar storefront con la plantilla actual (módulo Deportes completo)'
-                );
-
-                if (proyecto.netlify_site_id) await dispararBuild(proyecto.netlify_site_id);
-
+                const archivos = await regenerarStorefrontDeProyecto(proyecto);
                 return {
                     statusCode: 200,
                     body: JSON.stringify({
