@@ -80,6 +80,12 @@
     <!-- Mobile overlay -->
     <div class="mobile-menu-overlay" id="mobile-menu-overlay" onclick="toggleMobileMenu(false)"></div>
 
+    <!-- Overlay global de carga (anti doble clic en Guardar, igual que el dashboard) -->
+    <div id="carga-overlay" style="display:none;position:fixed;inset:0;z-index:9990;background:rgba(4,8,15,.55);backdrop-filter:blur(3px);align-items:center;justify-content:center;flex-direction:column;gap:14px;color:#fff">
+        <i class="fas fa-spinner fa-spin" style="font-size:2rem"></i>
+        <div id="carga-msg" style="font-size:.95rem;font-weight:600">Procesando…</div>
+    </div>
+
     <!-- Mobile hamburger -->
     <button class="mob-toggle" onclick="toggleMobileMenu()" aria-label="Abrir menu">
         <i class="fas fa-bars" style="font-size:.85rem"></i>
@@ -1726,7 +1732,7 @@
     }
 
     Object.assign(window, {
-        nav, $, toggleMobileMenu, formProducto, nuevoProducto, editarProducto, eliminarProducto, syncTipo, renderSelector, renderImgs,
+        nav, $, toggleMobileMenu, mostrarCarga, ocultarCarga, formProducto, nuevoProducto, editarProducto, eliminarProducto, syncTipo, renderSelector, renderImgs,
         addImg, quitImg, imgSubir, leerArchivo, guardarProducto, formVariaciones, guardarVariaciones,
         renderCategorias, guardarCategoria, eliminarCategoria,
         renderPipeline, guardarEstadoPipeline, eliminarEstadoPipeline,
@@ -1745,7 +1751,46 @@
         toggleTheme, actualizarBotonTema
     });
 
+    // Overlay global de carga (anti doble clic). Cada función de Guardar corre
+    // bajo esta guardia: overlay visible mientras dura y se oculta al terminar,
+    // en toda tienda-admin (productos, categorías, atributos, pasarela, deportes…).
+    function mostrarCarga(msg) {
+        const el = document.getElementById('carga-overlay');
+        if (!el) return;
+        el.style.display = 'flex';
+        const m = document.getElementById('carga-msg');
+        if (m) m.textContent = msg || 'Procesando…';
+    }
+    function ocultarCarga() {
+        const el = document.getElementById('carga-overlay');
+        if (el) el.style.display = 'none';
+    }
+    function instalarGuardiaGuardados() {
+        document.addEventListener('click', async function (e) {
+            const btn = e.target && e.target.closest ? e.target.closest('button') : null;
+            if (!btn) return;
+            const onclick = btn.getAttribute('onclick') || '';
+            // Solo botones de guardado (guardarProducto, guardarCategoria, depGuardarPlan, etc.).
+            if (!/guardar/i.test(onclick)) return;
+            const mm = onclick.match(/([A-Za-z_$][\w$]*)\s*\(/);
+            const fnName = mm ? mm[1] : '';
+            if (!fnName || typeof window[fnName] !== 'function') return;
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            mostrarCarga('Guardando…');
+            try {
+                await window[fnName]();
+            } catch (err) {
+                console.error('Error en ' + fnName, err);
+                try { toast('Error: ' + (err && err.message ? err.message : err), true); } catch (_) {}
+            } finally {
+                ocultarCarga();
+            }
+        }, true);
+    }
+
     actualizarBotonTema();
+    instalarGuardiaGuardados();
     init();
 })();
     </script>
