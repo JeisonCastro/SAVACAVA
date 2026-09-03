@@ -2407,7 +2407,7 @@ let _wfPropuestaIA = null;
                 '<div><strong style="font-size:.8rem">Propuesta generada</strong>' +
                 '<div style="font-size:.76rem;color:var(--muted);margin-top:.15rem">' + wfEscapeHtml(data.propuesta.resumen || '') + '</div></div></div>' +
                 (secciones ? secciones : '') +
-                '<div style="font-size:.7rem;color:var(--dim);margin-top:.55rem"><i class="fas fa-pen-to-square" style="margin-right:.25rem"></i>Los campos Descripción, Slogan, Color y Fuente ya se rellenaron arriba. Puedes ajustarlos antes de crear. El contexto se guardará en docs/CONTEXT.md del sitio.</div>';
+                '<div style="font-size:.7rem;color:var(--dim);margin-top:.55rem"><i class="fas fa-pen-to-square" style="margin-right:.25rem"></i>Los campos Descripción, Slogan, Color y Fuente ya se rellenaron arriba. Al pulsar "Crear sitio", la propuesta se APLICA: la IA rediseña el index.html real (hero, titulares, textos, CTAs y estilo) según tu contexto y la dirección visual, conservando las funcionalidades. Puedes ajustar los campos antes de crear.</div>';
             resultado.style.display = 'block';
             showToast('Propuesta de diseño lista', 'ok');
         } catch (err) {

@@ -611,27 +611,38 @@ async function llamarIAWebFactory(mensajes, maxTokens = 3000) {
 }
 
 // Prompt de sistema fijo (vive en el backend, no se escribe por sitio): condensa la
-// metodología UX/UI del producto. Se combina con el contexto del negocio para producir
-// una propuesta de contenido + dirección visual en JSON estricto.
-const PROMPT_DISENO_UXUI = `Eres un Senior UX/UI Designer + Product Designer + Art Director. Diseñas experiencias digitales personalizadas para cada negocio, NO plantillas reutilizadas.
+// metodología UX/UI del producto (brief v2 "MEJORA Y REDISEÑO UX/UI INTELIGENTE").
+// Se combina con el contexto del negocio para producir una propuesta de contenido +
+// dirección visual en JSON estricto que el pipeline APLICA de verdad al crear.
+const PROMPT_DISENO_UXUI = `Eres un Senior UX/UI Designer + Product Designer + Art Director. Tu trabajo es REDISEÑAR un sitio web EXISTENTE (o crear desde cero) para que se sienta diseñado específicamente para ESE negocio, NO como plantilla reutilizada.
 
-Metodología:
-1. PRIMERO entiende el negocio, su público y su objetivo comercial (usa SOLO el contexto proporcionado; NO inventes datos: ni precios, productos, testimonios, certificaciones, estadísticas ni ubicaciones).
-2. Define la dirección visual que encaje con ESE negocio específico (editorial, premium, minimalista, tecnológico, cálido, inmersivo...). No todas las marcas usan el mismo hero/colores/estilo.
-3. Propón contenido real por sección (hero, propuesta de valor, servicios/productos, prueba de confianza, CTA, contacto), jerarquía clara, CTA principal + secundarios que correspondan al negocio (no siempre "Comprar"/"Contactar").
-4. Elige paleta (accent en hex) y tipografía (fuente: inter|poppins|montserrat|roboto|lora|playfair|oswald) coherentes con la marca.
-5. Aplica: jerarquía visual, mobile-first, accesibilidad, estados de interfaz, escaneabilidad. Evita sobrecarga (demasiados gradientes, sombras o animaciones).
+METODOLOGÍA OBLIGATORIA:
+1. Primero entiende el negocio, su público, su objetivo comercial y su contenido (usa SOLO el contexto/propósito real proporcionado; PROHIBIDO inventar productos, precios, testimonios, certificaciones, estadísticas, ubicaciones o servicios).
+2. Define una dirección visual concreta que encaje con ESE negocio (editorial, minimalista, premium, tecnológico, cálido, inmersivo...). No repitas el mismo hero/layout/cards para todos.
+3. Diseña por jerarquía: mensaje principal → propuesta de valor → información → acción.
+4. Define CTAs que correspondan al negocio (NO siempre "Comprar"/"Contactar"): el principal, secundario y contextuales por sección.
+5. Propón contenido real por sección con un recorrido: Comprender → Explorar → Evaluar → Confiar → Convertir.
+6. Aplica: jerarquía visual, mobile-first, accesibilidad (contraste, focus, touch), escaneabilidad, estados de interfaz, feedback, rendimiento. Diseño premium sin sobrecarga (evita gradientes/sombras/animaciones innecesarios).
+7. Conserva el negocio y sus funcionalidades; evoluciona el diseño.
 
 Responde SOLO JSON estricto (sin markdown), con este esquema:
 {
   "resumen": "2-3 líneas: qué propone y por qué encaja con este negocio",
   "descripcion": "Descripción comercial corta (1-2 frases) del negocio",
   "slogan": "Slogan corto y memorable",
+  "estilo": "Dirección visual en 1 frase (ej: editorial premium, minimalista deportivo, tecnológico limpio...)",
   "accent_color": "#RRGGBB",
   "fuente": "inter|poppins|montserrat|roboto|lora|playfair|oswald",
+  "hero": {
+    "titulo": "Titular del hero (conciso, potente)",
+    "subtitulo": "1-2 frases de apoyo",
+    "cta_principal": "Texto del botón principal",
+    "cta_secundario": "Texto del botón secundario o null"
+  },
   "secciones": [
     {"titulo": "Título de la sección", "contenido": "Contenido breve (1-3 frases) que puede usarse en esa sección"}
-  ]
+  ],
+  "cta_final": "Texto del llamado a la acción final"
 }
 Siempre en español.`;
 
@@ -670,6 +681,7 @@ Analiza el negocio y responde el JSON:`;
 
     const accent = validarAccent(parsed.accent_color || null) || null;
     const fuente = fuenteElegida(parsed.fuente || '') ? String(parsed.fuente).trim() : null;
+    const hero = (parsed.hero && typeof parsed.hero === 'object') ? parsed.hero : {};
     const secciones = Array.isArray(parsed.secciones)
         ? parsed.secciones.slice(0, 12).map(s => ({
             titulo: sanearTexto(s && s.titulo),
@@ -681,10 +693,122 @@ Analiza el negocio y responde el JSON:`;
         resumen: sanearTexto(parsed.resumen) || 'Propuesta generada.',
         descripcion: sanearTexto(parsed.descripcion),
         slogan: sanearTexto(parsed.slogan),
+        estilo: sanearTexto(parsed.estilo),
         accent_color: accent,
         fuente,
-        secciones
+        hero: {
+            titulo: sanearTexto(hero.titulo),
+            subtitulo: sanearTexto(hero.subtitulo),
+            cta_principal: sanearTexto(hero.cta_principal),
+            cta_secundario: sanearTexto(hero.cta_secundario)
+        },
+        secciones,
+        cta_final: sanearTexto(parsed.cta_final)
     };
+}
+
+// ── Rediseño IA aplicado al crear (ruta A) ──
+// Después de generar el repo con la plantilla base, esta pasada hace que la IA
+// (OpenCode Zen, la misma del "Diseño asistido") personalice el index.html REAL:
+// hero, titulares, textos, CTAs y una capa de estilo de marca, vía SEARCH/REPLACE
+// guiados (solo reemplaza texto/marcado visual; conserva scripts, formularios,
+// carrito/pagos, agente, supabase y demás funcionalidades).
+const PROMPT_REDISENO_AI = `Eres un Senior UX/UI Designer + Product Designer + Art Director + Frontend Engineer. Se te entrega el HTML de un sitio web recién creado con una plantilla base y el CONTEXTO real del negocio. Tu tarea es REDISEÑAR la experiencia visual y de contenido para que se sienta diseñada específicamente para ESE negocio (prueba de personalización: con otro logo no debería servir igual).
+
+OBJETIVO:
+- Comprende el negocio, público y objetivo comercial (SOLO del contexto; PROHIBIDO inventar datos).
+- Personaliza: titular y subtítulo del hero, textos de apoyo, CTAs (principal/secundario/contextuales adecuados al negocio, no siempre "Comprar"/"Contactar"), títulos y párrafos de secciones, y aporta una dirección visual coherente (estilo, jerarquía, ritmo, escaneabilidad, mobile-first, accesibilidad).
+- El resultado debe sentirse único por negocio, sin sobrecarga de gradientes/sombras/animaciones.
+
+REGLAS TÉCNICAS ESTRICTAS:
+1. Responde SOLO JSON estricto (sin markdown) con este esquema:
+{
+  "resumen": "qué se rediseñó y por qué",
+  "cambios": [ { "search": "texto EXACTO tal como aparece en el HTML", "replace": "texto nuevo" } ]
+}
+2. "search" debe ser una cadena literal ÚNICA del HTML proporcionado (un titular, una frase, un bloque corto). No uses comodines ni HTML incompleto. Cada "search" se reemplaza exactamente una vez (aplica a TODAS las coincidencias).
+3. Máximo 16 cambios. "replace" mantiene cualquier atributo, id, enlace o elemento funcional que ya exista (no borres botones/enlaces/formularios/scripts; solo cambia su texto visible o marcado visual circundante si no rompe nada).
+4. NO toques: <script>, <form>, carrito/checkout/pago/supabase/agente/telefono/contenido dinámico. Si un bloque es funcional, cámbiale solo el texto visible.
+5. Si quieres añadir estilo de marca, añade un cambio que inserte un <style id="auvro-ai"> justo antes de </head> con variables/responsive ligeros (fuente, espaciados, secciones) coherentes con la dirección visual. Sin reglas que rompan el layout funcional.
+6. Todo en español, tono profesional y cercano al negocio.`;
+
+async function aplicarRedisenoIAEnRepo(proyecto, contexto, diseno) {
+    if (!proyecto || !proyecto.github_owner || !proyecto.github_repo) return 0;
+    if (!contexto || !String(contexto).trim()) return 0;
+    try {
+        const owner = proyecto.github_owner;
+        const repo = proyecto.github_repo;
+        const branch = proyecto.default_branch || 'main';
+        const base = `https://api.github.com/repos/${owner}/${repo}`;
+        const headers = { Authorization: `Bearer ${process.env.GITHUB_TOKEN}`, Accept: 'application/vnd.github+json' };
+
+        await esperarRepoListo(owner, repo, headers);
+        const fileRes = await fetchGitHub(`${base}/contents/index.html?ref=${branch}`, { headers });
+        if (!fileRes || !fileRes.ok) return 0;
+        const fileData = await fileRes.json();
+        const html = Buffer.from(fileData.content, 'base64').toString('utf8');
+        if (!html || html.length < 300) return 0;
+
+        // Copia aprobada (propuesta IA) para guiar el texto nuevo.
+        const d = diseno && typeof diseno === 'object' ? diseno : {};
+        const heroTxt = d.hero && typeof d.hero === 'object'
+            ? `HERO:\n- Titular: ${d.hero.titulo || ''}\n- Subtítulo: ${d.hero.subtitulo || ''}\n- CTA principal: ${d.hero.cta_principal || ''}\n- CTA secundario: ${d.hero.cta_secundario || ''}\n`
+            : '';
+        const seccTxt = (Array.isArray(d.secciones) && d.secciones.length)
+            ? 'SECCIONES PROPUESTAS:\n' + d.secciones.map((s, i) => `${i + 1}. ${s.titulo || ''} → ${s.contenido || ''}`).join('\n') + '\n'
+            : '';
+        const copyPropuesta = `${heroTxt}${seccTxt}${d.estilo ? 'DIRECCIÓN VISUAL: ' + d.estilo + '\n' : ''}${d.cta_final ? 'CTA FINAL: ' + d.cta_final + '\n' : ''}`;
+
+        // Enviamos el HTML real (acotado) para que los SEARCH sean literales.
+        const htmlContexto = html.length > 26000 ? html.slice(0, 26000) + '\n<!-- (el resto del documento continúa igual; no lo edites si no está visible aquí) -->' : html;
+
+        const userPrompt = `CONTEXTO DEL NEGOCIO (fuente de verdad, no inventes):
+${String(contexto).slice(0, 6000)}
+
+${copyPropuesta}
+
+HTML ACTUAL (para copiar SEARCH literales):
+${htmlContexto}
+
+Responde el JSON:`;
+
+        const raw = await llamarIAWebFactory([
+            { role: 'system', content: PROMPT_REDISENO_AI },
+            { role: 'user', content: userPrompt }
+        ], 4000);
+
+        const limpio = String(raw).replace(/^```json?\s*/i, '').replace(/\s*```$/i, '').trim();
+        let parsed;
+        try { parsed = JSON.parse(limpio); } catch (_) { return 0; }
+        const cambios = Array.isArray(parsed.cambios) ? parsed.cambios.slice(0, 16) : [];
+        if (!cambios.length) return 0;
+
+        let out = html;
+        let applied = 0;
+        for (const c of cambios) {
+            const search = c && typeof c.search === 'string' ? c.search : '';
+            const replace = c && typeof c.replace === 'string' ? c.replace : '';
+            if (!search || search.length < 3 || !out.includes(search)) continue;
+            out = out.split(search).join(replace);
+            applied++;
+        }
+        if (applied === 0) return 0;
+        if (!/<\/body>/i.test(out) || !/<\/html>/i.test(out)) {
+            console.error('aplicarRedisenoIA: HTML resultante inválido, se omite');
+            return 0;
+        }
+
+        await commitArchivosEnRepo(
+            { github_owner: owner, github_repo: repo, default_branch: branch },
+            [{ path: 'index.html', content: out }],
+            'feat: rediseño IA aplicado al crear (contenido y UX/UI según contexto)'
+        );
+        console.log(`aplicarRedisenoIA: ${applied} cambio(s) aplicados en ${repo}`);
+        return applied;
+    } catch (e) {
+        console.error('aplicarRedisenoIA error (se continúa con la plantilla base):', e.message);
+        return 0;
+    }
 }
 
 // ── Helpers GitHub ──
@@ -1290,6 +1414,28 @@ async function pipelineCrear(body, adminId) {
             clone_url: datosRepo.repo.clone_url || `https://github.com/${datosRepo.owner}/${slug}.git`,
             estado: 'configurando'
         });
+
+        // 2b) REDISEÑO IA (ruta A): si se creó con "Diseño asistido por IA"
+        // (propuesta_ia), aplicar una segunda pasada que personaliza el index.html
+        // REAL del repo (hero/titulares/textos/CTAs/estilo) según el contexto y el
+        // brief de rediseño UX/UI, conservando funcionalidades. Se hace SOLO para
+        // plantillas de contenido (no tienda: el motor de tienda/deportes se conserva).
+        // Si la IA falla, el sitio se crea igual con la plantilla base (no bloquea).
+        if (diseno && plantillaElegida.slug !== 'tienda') {
+            try {
+                const rediseñoProyecto = {
+                    github_owner: datosRepo.owner,
+                    github_repo: slug,
+                    default_branch: datosRepo.branch || 'main'
+                };
+                const aplicados = await aplicarRedisenoIAEnRepo(rediseñoProyecto, contexto, diseno);
+                if (aplicados > 0) {
+                    console.log(`web-factory: rediseño IA aplicado (${aplicados} cambios) en ${slug}`);
+                }
+            } catch (e) {
+                console.error('web-factory: rediseño IA falló (continúa con plantilla base):', e.message);
+            }
+        }
     } catch (err) {
         await actualizarProyecto(id, { estado: 'error', error: err.message });
         throw err;
