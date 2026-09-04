@@ -219,22 +219,30 @@ create index if not exists idx_tur_reservas_salida on public.tur_reservas(salida
 create table if not exists public.tur_reserva_pasajeros (
     id uuid primary key default gen_random_uuid(),
     reserva_id uuid not null references public.tur_reservas(id) on delete cascade,
+    proyecto_id uuid references public.web_projects(id) on delete cascade,
     tarifa_nombre text not null,
     edad integer,
     precio_cents integer not null default 0,
     cantidad integer not null default 1
 );
 create index if not exists idx_tur_respax_reserva on public.tur_reserva_pasajeros(reserva_id);
+create index if not exists idx_tur_respax_proyecto on public.tur_reserva_pasajeros(proyecto_id);
 
 create table if not exists public.tur_reserva_extras (
     id uuid primary key default gen_random_uuid(),
     reserva_id uuid not null references public.tur_reservas(id) on delete cascade,
+    proyecto_id uuid references public.web_projects(id) on delete cascade,
     extra_nombre text not null,
     tipo_precio text not null default 'por_persona',
     precio_cents integer not null default 0,
     cantidad integer not null default 1
 );
 create index if not exists idx_tur_resextras_reserva on public.tur_reserva_extras(reserva_id);
+create index if not exists idx_tur_resextras_proyecto on public.tur_reserva_extras(proyecto_id);
+
+-- Compatibilidad con instalaciones parciales (el bucle RLS usa proyecto_id):
+alter table public.tur_reserva_pasajeros add column if not exists proyecto_id uuid references public.web_projects(id) on delete cascade;
+alter table public.tur_reserva_extras add column if not exists proyecto_id uuid references public.web_projects(id) on delete cascade;
 
 -- ============================================================
 -- RLS + POLICIES (patrón Deportes): admin de plataforma o permiso sobre el proyecto.
