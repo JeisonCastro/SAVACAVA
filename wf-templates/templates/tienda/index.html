@@ -999,10 +999,11 @@ function turMoney(c) { return '$' + Math.round((Number(c) || 0) / 100).toLocaleS
 function turEsc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
 function turQ(id) { return document.getElementById(id); }
 function turCall(action, body) {
+    var slugStore = (document.body.getAttribute('data-slug') || '').trim();
     return fetch(TUR_API, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(Object.assign({ action: action, slug: (window.SLUG || '') }, body || {}))
+        body: JSON.stringify(Object.assign({ action: action, slug: slugStore }, body || {}))
     }).then(function (r) { return r.json(); }).catch(function () { return { ok: false, error: 'Sin conexión' }; });
 }
 function turSelFecha(fecha, hora) {
@@ -1060,9 +1061,17 @@ function turCalc() {
         });
 }
 function turAbrirReserva(id) {
-    var catalogo = window['catalogoTodos'] || [];
-    var prod = catalogo.find(function (p) { return p.id === id; });
-    if (!prod) return;
+    var slug2 = (document.body.getAttribute('data-slug') || '').trim();
+    fetch('https://auvro.netlify.app/.netlify/functions/tienda?action=catalogo&slug=' + encodeURIComponent(slug2))
+        .then(function (r) { return r.json(); })
+        .then(function (res) {
+            if (!res.ok) return;
+            var prod = (res.productos || []).find(function (p) { return p.id === id; });
+            if (prod) turPrepararReserva(prod);
+        })
+        .catch(function () {});
+}
+function turPrepararReserva(prod) {
     turState.producto = prod;
     turState.cats = (prod.atributos && Array.isArray(prod.atributos.categorias_pasajero)) ? prod.atributos.categorias_pasajero.filter(function (c) { return c.permitido !== false; }) : [];
     turState.cant = {}; turState.exOn = {}; turState.fecha = null; turState.hora = null; turState.salidas = [];

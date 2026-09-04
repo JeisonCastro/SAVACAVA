@@ -564,6 +564,9 @@
             toast('Producto guardado');
             if (data.producto && (data.producto.tipo === 'variable' || data.producto.tipo === 'catalogo') && Array.isArray(data.producto.variaciones)) {
                 formVariaciones(data.producto);
+            } else if (data.producto && data.producto.tipo === 'tour') {
+                toast('Producto guardado. Ahora configura la experiencia (sin JSON).');
+                turForm(data.producto.id);
             } else { renderProductos(); }
         } catch (err) { msg.textContent = 'Error: ' + err.message; msg.className = 'msg error'; }
     }
@@ -1726,6 +1729,21 @@
     function turPesoAcentos(input) { return Math.round((Number(String(input).replace(/[^0-9]/g, '')) || 0) * 100); }
     function turLineas(id) { return ($(id) ? String($(id).value || '') : '').split('\n').map(x => x.trim()).filter(Boolean); }
 
+    // Crea un producto tipo tour desde Experiencias y abre su configuración de inmediato.
+    async function nuevoProductoTour() {
+        try {
+            const [c, a] = await Promise.all([
+                api('listar_categorias', { proyecto_id: ctx.proyecto_id }),
+                api('listar_atributos', { proyecto_id: ctx.proyecto_id })
+            ]);
+            S.categorias = (c.ok && c.categorias) || [];
+            S.atributos = (a.ok && a.atributos) || [];
+            formProducto(null);
+            const t = $('p-tipo');
+            if (t) { t.value = 'tour'; syncTipo(); }
+        } catch (err) { toast('Error: ' + err.message, true); }
+    }
+
     async function renderTurismo() {
         const main = $('main');
         main.innerHTML = '<div class="empty">Cargando…</div>';
@@ -1736,8 +1754,9 @@
             main.innerHTML = `
                 <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
                     <h2 class="card-title" style="flex:1">Experiencias turísticas</h2>
+                    <button class="btn-main" onclick="nuevoProductoTour()"><i class="fas fa-plus"></i> Crear experiencia</button>
                     <button class="btn-small" onclick="turReservas()"><i class="fas fa-receipt"></i> Ver reservas</button>
-                    <span style="font-size:.76rem;color:var(--muted)">Configura aquí los productos tipo <strong>Tour / Actividad</strong>. El wizard guarda todo sin JSON.</span>
+                    <span style="font-size:.76rem;color:var(--muted)">Crea el tour y configúralo aquí (o en Productos, tipo Tour, y al guardar te lleva a esta configuración).</span>
                 </div>
                 ${lista.length ? lista.map(p => `
                     <div class="prod-item">
@@ -2237,7 +2256,7 @@
         depFormNoticia, depGuardarNoticia, depEliminarNoticia,
         depFormGaleria, depGuardarGaleria, depEliminarItemGaleria,
         depSubir, depSubirVarias, depQuitarGaleria,
-        renderTurismo, turForm, turAddTarifa, turAddEscala, turAddExtra, turAddPlantilla, turAddRecogida, turAddTraslado, turStep, turPrev, turNext, turGuardarConfig, turReservas, turCambiarEstadoReserva,
+        renderTurismo, turForm, nuevoProductoTour, turAddTarifa, turAddEscala, turAddExtra, turAddPlantilla, turAddRecogida, turAddTraslado, turStep, turPrev, turNext, turGuardarConfig, turReservas, turCambiarEstadoReserva,
         toggleTheme, actualizarBotonTema
     });
 
