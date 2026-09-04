@@ -1859,10 +1859,13 @@
                 </div>
                 <div id="tur-sec-6" style="display:none">
                     <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;margin-bottom:8px">
-                        <strong style="font-size:.86rem">Salidas (días, horarios y capacidad)</strong>
-                        <button class="btn-small" onclick="turAddPlantilla()"><i class="fas fa-plus"></i> Agregar salida</button>
+                        <strong style="font-size:.86rem">Disponibilidad (periodos desde–hasta)</strong>
+                        <button class="btn-small" onclick="turAddPlantilla()"><i class="fas fa-plus"></i> Agregar periodo</button>
                     </div>
-                    <div id="tur-plantillas">${filasPlantillas || '<div class="empty" style="padding:.6rem">Sin calendario: no habrá fechas disponibles para reservar.</div>'}</div>
+                    <div style="display:flex;gap:8px;font-size:.74rem;color:var(--dim);margin-bottom:6px;flex-wrap:wrap">
+                        <span>📅 Desde</span><span>📅 Hasta</span><span>🗓️ Días (vacío = todos)</span><span>🚌 Salida</span><span>🏁 Regreso</span><span>👥 Capacidad</span>
+                    </div>
+                    <div id="tur-plantillas">${filasPlantillas || '<div class="empty" style="padding:.6rem">Sin calendario: agrega un periodo (ej. todo el mes de octubre) para que el cliente vea fechas disponibles.</div>'}</div>
                     <div class="field" style="margin-top:8px"><label>Fechas bloqueadas (una por línea: 2026-10-05 | motivo)</label>
                         <textarea id="tur-bloqueadas" rows="3" placeholder="2026-12-24 | Navidad">${esc(fechasBloqueadasTxt)}</textarea></div>
                 </div>
@@ -1990,8 +1993,10 @@
     function turPlantillaRowHtml(p) {
         p = p || {};
         const diasVal = Array.isArray(p.dias) ? p.dias.join(',') : (p.dias || '');
-        return `<div class="tur-plantilla" style="display:grid;grid-template-columns:170px 110px 110px 90px auto;gap:6px;align-items:center;margin-bottom:6px">
-            <input class="pl-dias" value="${esc(diasVal)}" placeholder="lun,mar,mie,jue,vie,sab,dom">
+        return `<div class="tur-plantilla" style="display:grid;grid-template-columns:1fr 1fr 170px 100px 100px 84px auto;gap:6px;align-items:center;margin-bottom:6px">
+            <input class="pl-desde" type="date" value="${esc(p.desde || '')}" title="Desde">
+            <input class="pl-hasta" type="date" value="${esc(p.hasta || '')}" title="Hasta">
+            <input class="pl-dias" value="${esc(diasVal)}" placeholder="Días (vacío = todos) lun,mar...">
             <input class="pl-salida" type="time" value="${esc(p.hora_salida || '')}">
             <input class="pl-regreso" type="time" value="${esc(p.hora_regreso || '')}">
             <input class="pl-capacidad" type="number" min="1" value="${p.capacidad != null ? p.capacidad : 40}">
@@ -2044,6 +2049,8 @@
             const hora = q('.pl-salida');
             if (!hora) return;
             plantillas.push({
+                desde: q('.pl-desde') || null,
+                hasta: q('.pl-hasta') || null,
                 dias: q('.pl-dias').split(',').map(x => x.trim().toLowerCase()).filter(Boolean),
                 hora_salida: hora,
                 hora_regreso: q('.pl-regreso') || null,

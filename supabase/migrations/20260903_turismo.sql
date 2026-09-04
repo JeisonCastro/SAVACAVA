@@ -121,6 +121,8 @@ create table if not exists public.tur_salida_plantillas (
     id uuid primary key default gen_random_uuid(),
     proyecto_id uuid not null references public.web_projects(id) on delete cascade,
     producto_id uuid not null references public.tienda_productos(id) on delete cascade,
+    desde date,
+    hasta date,
     dias jsonb not null default '[]'::jsonb,     -- ['lun','mar',...] ([] = todos)
     hora_salida text,
     hora_regreso text,
@@ -128,6 +130,8 @@ create table if not exists public.tur_salida_plantillas (
     adelanto_cierre_hs integer not null default 0,
     activo boolean not null default true
 );
+alter table public.tur_salida_plantillas add column if not exists desde date;
+alter table public.tur_salida_plantillas add column if not exists hasta date;
 create index if not exists idx_tur_plantillas_producto on public.tur_salida_plantillas(producto_id);
 
 -- ============================================================

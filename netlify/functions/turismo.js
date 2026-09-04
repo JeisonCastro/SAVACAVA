@@ -222,6 +222,8 @@ async function guardarConfigTur(proyectoId, productoId, body) {
         .map(p => ({
             proyecto_id: proyectoId,
             producto_id: productoId,
+            desde: s(p.desde) || null,
+            hasta: s(p.hasta) || null,
             dias: Array.isArray(p.dias) ? p.dias.filter(Boolean).map(s) : [],
             hora_salida: s(p.hora_salida),
             hora_regreso: s(p.hora_regreso) || null,
@@ -322,6 +324,33 @@ function configMotorDesde(data) {
     };
 }
 
+// Avisa al dueño/tienda según el apartado "Notificaciones" (correos configurados).
+async function notificarReservaNueva(proyecto, prod, reserva, resumen, fecha, horaSalida) {
+    try {
+        const db = (require('./supabase-admin')).supabase;
+        const { data: cfg } = await db.from('tienda_pasarela').select('*').eq('proyecto_id', proyecto.id).maybeSingle();
+        if (!cfg || cfg.notify_on_new_order === false) return;
+        const { notificarTienda } = require('./notifications');
+        const monto = '$' + Math.round((Number(resumen.total_cents) || 0) / 100).toLocaleString('es-CO');
+        const cliente = (reserva.cliente && typeof reserva.cliente === 'object') ? reserva.cliente : {};
+        const pax = Array.isArray(reserva.pasajeros) ? reserva.pasajeros.reduce((a, p) => a + (Number(p.cantidad) || 0), 0) : 0;
+        await notificarTienda({
+            proyectoId: proyecto.id,
+            createdBy: proyecto.created_by,
+            config: cfg,
+            subject: 'Nueva reserva en ' + (proyecto.nombre || prod.nombre),
+            text: 'Nueva reserva ✅\nExperiencia: ' + prod.nombre +
+                '\nFecha: ' + (fecha || '') + (horaSalida ? ' · ' + horaSalida : '') +
+                '\nCliente: ' + (cliente.nombre || '') + (cliente.email ? ' · ' + cliente.email : '') +
+                '\nPasajeros: ' + pax + '\nTotal: ' + monto +
+                (reserva.wompi_url ? '\nLink de pago: ' + reserva.wompi_url : '') +
+                '\n\n(Reserva ' + reserva.id + ')'
+        });
+    } catch (e) {
+        console.error('notificarReservaNueva error:', e && e.message);
+    }
+}
+
 // GET salidas disponibles en un rango (fechas candidatas por plantillas).
 async function publicSalidasDisponibles(body) {
     const proyecto = await proyectoPorBody(body);
@@ -361,8 +390,16 @@ async function publicSalidasDisponibles(body) {
     for (const ex of existentes || []) porClave[ex.fecha + '|' + (ex.hora_salida || '')] = ex;
 
     for (const p of plantillas || []) {
+        // Ventana real del periodo: intersección del rango consultado con el
+        // rango definido en la disponibilidad (desde/hasta; si no hay rango, aplica
+        // a cualquier fecha consultada = disponibilidad recurrente).
+        let winDesde = desde;
+        let winHasta = hasta;
+        if (p.desde && String(p.desde) > winDesde) winDesde = String(p.desde);
+        if (p.hasta && String(p.hasta) < winHasta) winHasta = String(p.hasta);
+        if (winDesde > winHasta) continue;
         const dias = Array.isArray(p.dias) ? p.dias : [];
-        const fechas = motor.listarFechasCandidatas(desde, hasta, dias);
+        const fechas = motor.listarFechasCandidatas(winDesde, winHasta, dias);
         for (const fecha of fechas) {
             if (bloqueadasSet[fecha]) continue;
             const clave = fecha + '|' + (p.hora_salida || '');
@@ -497,6 +534,7 @@ async function publicReservar(body) {
     // Link de pago Wompi (pasarela del proyecto)
     const { data: pasarela } = await db.from('tienda_pasarela').select('*').eq('proyecto_id', proyecto.id).maybeSingle();
     if (!pasarela || !pasarela.wompi_private_key) {
+        await notificarReservaNueva(proyecto, prod, reserva, resultado, fecha, horaSalida);
         return ok({ ok: true, reserva_id: reserva.id, url: null, msg: 'Reserva registrada. El sitio aún no tiene pasarela de pago configurada.' });
     }
     const wompiSandbox = pasarela.wompi_sandbox === true;
@@ -531,6 +569,7 @@ async function publicReservar(body) {
         estado: 'pendiente'
     }).then(() => {}).catch((e) => console.error('pagos insert turismo:', e && e.message));
 
+    await notificarReservaNueva(proyecto, prod, reserva, resultado, fecha, horaSalida);
     return ok({ ok: true, reserva_id: reserva.id, url: 'https://checkout.wompi.co/l/' + paymentLinkId, total_cents: resultado.total_cents, desglose: resultado.desglose });
 }
 
