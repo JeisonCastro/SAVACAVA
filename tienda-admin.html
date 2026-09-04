@@ -1733,6 +1733,7 @@
             main.innerHTML = `
                 <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
                     <h2 class="card-title" style="flex:1">Experiencias turísticas</h2>
+                    <button class="btn-small" onclick="turReservas()"><i class="fas fa-receipt"></i> Ver reservas</button>
                     <span style="font-size:.76rem;color:var(--muted)">Configura aquí los productos tipo <strong>Tour / Actividad</strong>. El wizard guarda todo sin JSON.</span>
                 </div>
                 ${lista.length ? lista.map(p => `
@@ -1762,6 +1763,13 @@
             const filasTarifas = (data.tarifas || []).map(turTarifaRowHtml).join('');
             const filasEscalas = (data.escalas || []).map(turEscalaRowHtml).join('');
             const filasExtras = (data.extras || []).map(turExtraRowHtml).join('');
+            const cal = (data.calendario && typeof data.calendario === 'object') ? data.calendario : {};
+            const filasPlantillas = (cal.plantillas || []).map(turPlantillaRowHtml).join('');
+            const fechasBloqueadasTxt = (cal.fechas_bloqueadas || []).map(f => f.fecha + (f.motivo ? ' | ' + f.motivo : '')).join('\n');
+            const log = (data.logistica && typeof data.logistica === 'object') ? data.logistica : {};
+            const filasRecogidas = (log.recogidas || []).map(turRecogidaRowHtml).join('');
+            const filasTraslados = (log.traslados || []).map(turTrasladoRowHtml).join('');
+            const itinerarioTxt = (log.itinerario || []).map(it => [it.hora, it.titulo, it.descripcion].filter(Boolean).join(' | ')).join('\n');
             main.innerHTML = `
                 <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">
                     <button class="btn-small" onclick="renderTurismo()"><i class="fas fa-arrow-left"></i> Volver</button>
@@ -1773,6 +1781,8 @@
                     <button class="btn-small" id="tur-step-3" onclick="turStep(3)"><i class="fas fa-users"></i> 3 · Pasajeros</button>
                     <button class="btn-small" id="tur-step-4" onclick="turStep(4)"><i class="fas fa-percent"></i> 4 · Grupos</button>
                     <button class="btn-small" id="tur-step-5" onclick="turStep(5)"><i class="fas fa-gift"></i> 5 · Extras</button>
+                    <button class="btn-small" id="tur-step-6" onclick="turStep(6)"><i class="fas fa-calendar-days"></i> 6 · Calendario</button>
+                    <button class="btn-small" id="tur-step-7" onclick="turStep(7)"><i class="fas fa-route"></i> 7 · Logística</button>
                 </div>
                 <div class="card">
                 <div id="tur-sec-1">
@@ -1824,6 +1834,29 @@
                         <button class="btn-small" onclick="turAddExtra()"><i class="fas fa-plus"></i> Agregar extra</button>
                     </div>
                     <div id="tur-extras">${filasExtras || '<div class="empty" style="padding:.6rem">Sin extras.</div>'}</div>
+                </div>
+                <div id="tur-sec-6" style="display:none">
+                    <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;margin-bottom:8px">
+                        <strong style="font-size:.86rem">Salidas (días, horarios y capacidad)</strong>
+                        <button class="btn-small" onclick="turAddPlantilla()"><i class="fas fa-plus"></i> Agregar salida</button>
+                    </div>
+                    <div id="tur-plantillas">${filasPlantillas || '<div class="empty" style="padding:.6rem">Sin calendario: no habrá fechas disponibles para reservar.</div>'}</div>
+                    <div class="field" style="margin-top:8px"><label>Fechas bloqueadas (una por línea: 2026-10-05 | motivo)</label>
+                        <textarea id="tur-bloqueadas" rows="3" placeholder="2026-12-24 | Navidad">${esc(fechasBloqueadasTxt)}</textarea></div>
+                </div>
+                <div id="tur-sec-7" style="display:none">
+                    <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;margin-bottom:8px">
+                        <strong style="font-size:.86rem">Recogidas (puntos de encuentro)</strong>
+                        <button class="btn-small" onclick="turAddRecogida()"><i class="fas fa-plus"></i> Agregar recogida</button>
+                    </div>
+                    <div id="tur-recogidas">${filasRecogidas || '<div class="empty" style="padding:.6rem">Sin recogidas.</div>'}</div>
+                    <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;margin:10px 0 8px">
+                        <strong style="font-size:.86rem">Traslados / transporte</strong>
+                        <button class="btn-small" onclick="turAddTraslado()"><i class="fas fa-plus"></i> Agregar traslado</button>
+                    </div>
+                    <div id="tur-traslados">${filasTraslados || '<div class="empty" style="padding:.6rem">Sin traslados.</div>'}</div>
+                    <div class="field" style="margin-top:8px"><label>Itinerario (una línea por paso: hora | título | descripción)</label>
+                        <textarea id="tur-itinerario" rows="4" placeholder="07:00 | Recogida en el hotel&#10;09:00 | Inicio de la actividad">${esc(itinerarioTxt)}</textarea></div>
                 </div>
                 <div style="display:flex;gap:.5rem;align-items:center;margin-top:1rem;flex-wrap:wrap">
                     <button class="btn-small" id="tur-prev" onclick="turPrev()"><i class="fas fa-arrow-left"></i> Atrás</button>
@@ -1932,17 +1965,124 @@
         return out;
     }
 
+    function turPlantillaRowHtml(p) {
+        p = p || {};
+        const diasVal = Array.isArray(p.dias) ? p.dias.join(',') : (p.dias || '');
+        return `<div class="tur-plantilla" style="display:grid;grid-template-columns:170px 110px 110px 90px auto;gap:6px;align-items:center;margin-bottom:6px">
+            <input class="pl-dias" value="${esc(diasVal)}" placeholder="lun,mar,mie,jue,vie,sab,dom">
+            <input class="pl-salida" type="time" value="${esc(p.hora_salida || '')}">
+            <input class="pl-regreso" type="time" value="${esc(p.hora_regreso || '')}">
+            <input class="pl-capacidad" type="number" min="1" value="${p.capacidad != null ? p.capacidad : 40}">
+            <button type="button" class="btn-small danger" title="Quitar" onclick="this.closest('.tur-plantilla').remove()"><i class="fas fa-trash"></i></button>
+        </div>`;
+    }
+    function turAddPlantilla() {
+        const c = $('tur-plantillas'); if (!c) return;
+        if (!c.querySelector('.tur-plantilla')) c.innerHTML = '';
+        c.insertAdjacentHTML('beforeend', turPlantillaRowHtml(null));
+    }
+    function turRecogidaRowHtml(r) {
+        r = r || {};
+        return `<div class="tur-recogida" style="display:grid;grid-template-columns:1fr 130px 90px 110px auto;gap:6px;align-items:center;margin-bottom:6px">
+            <input class="rc-nombre" value="${esc(r.nombre || '')}" placeholder="Punto (Hotel X)">
+            <input class="rc-zona" value="${esc(r.zona || '')}" placeholder="Zona">
+            <input class="rc-hora" type="time" value="${esc(r.hora || '')}">
+            <input class="rc-costo" type="number" min="0" value="${r.costo_cents ? Math.round(r.costo_cents/100) : ''}" placeholder="Costo COP">
+            <button type="button" class="btn-small danger" onclick="this.closest('.tur-recogida').remove()"><i class="fas fa-trash"></i></button>
+        </div>`;
+    }
+    function turAddRecogida() {
+        const c = $('tur-recogidas'); if (!c) return;
+        if (!c.querySelector('.tur-recogida')) c.innerHTML = '';
+        c.insertAdjacentHTML('beforeend', turRecogidaRowHtml(null));
+    }
+    function turTrasladoRowHtml(t) {
+        t = t || {};
+        return `<div class="tur-traslado" style="display:grid;grid-template-columns:130px 70px 1fr 1fr 100px auto;gap:6px;align-items:center;margin-bottom:6px">
+            <input class="tr-tipo" value="${esc(t.tipo_vehiculo || '')}" placeholder="Vehículo (Bus/Van)">
+            <input class="tr-capacidad" type="number" min="1" value="${t.capacidad || ''}" placeholder="Cap.">
+            <input class="tr-origen" value="${esc(t.origen || '')}" placeholder="Origen">
+            <input class="tr-destino" value="${esc(t.destino || '')}" placeholder="Destino">
+            <input class="tr-precio" type="number" min="0" value="${t.precio_cents ? Math.round(t.precio_cents/100) : ''}" placeholder="Precio COP">
+            <label style="font-size:.74rem;display:flex;align-items:center;gap:4px"><input type="checkbox" class="tr-incluido" ${t.incluido?'checked':''}> Incl.</label>
+            <button type="button" class="btn-small danger" onclick="this.closest('.tur-traslado').remove()"><i class="fas fa-trash"></i></button>
+        </div>`;
+    }
+    function turAddTraslado() {
+        const c = $('tur-traslados'); if (!c) return;
+        if (!c.querySelector('.tur-traslado')) c.innerHTML = '';
+        c.insertAdjacentHTML('beforeend', turTrasladoRowHtml(null));
+    }
+
+    function turLeerCalendario() {
+        const plantillas = [];
+        const c = $('tur-plantillas');
+        if (c) c.querySelectorAll('.tur-plantilla').forEach(row => {
+            const q = (sel) => row.querySelector(sel) ? row.querySelector(sel).value.trim() : '';
+            const hora = q('.pl-salida');
+            if (!hora) return;
+            plantillas.push({
+                dias: q('.pl-dias').split(',').map(x => x.trim().toLowerCase()).filter(Boolean),
+                hora_salida: hora,
+                hora_regreso: q('.pl-regreso') || null,
+                capacidad: Number(q('.pl-capacidad')) || 40,
+                activo: true
+            });
+        });
+        const fechasBloqueadas = [];
+        const txt = $('tur-bloqueadas') ? String($('tur-bloqueadas').value || '') : '';
+        txt.split('\n').map(l => l.trim()).filter(Boolean).forEach(l => {
+            const partes = l.split('|');
+            const fecha = (partes[0] || '').trim();
+            if (/^\d{4}-\d{2}-\d{2}$/.test(fecha)) fechasBloqueadas.push({ fecha, motivo: (partes[1] || '').trim() || null });
+        });
+        return { plantillas, fechas_bloqueadas: fechasBloqueadas };
+    }
+
+    function turLeerLogistica() {
+        const recogidas = [];
+        const c = $('tur-recogidas');
+        if (c) c.querySelectorAll('.tur-recogida').forEach(row => {
+            const q = (sel) => row.querySelector(sel) ? row.querySelector(sel).value.trim() : '';
+            const nombre = q('.rc-nombre');
+            if (!nombre) return;
+            recogidas.push({ nombre, zona: q('.rc-zona') || null, hora: q('.rc-hora') || null, costo_cents: Math.round((Number(q('.rc-costo')) || 0) * 100), activo: true });
+        });
+        const traslados = [];
+        const t = $('tur-traslados');
+        if (t) t.querySelectorAll('.tur-traslado').forEach(row => {
+            const q = (sel) => row.querySelector(sel) ? row.querySelector(sel).value.trim() : '';
+            const tipo = q('.tr-tipo');
+            if (!tipo) return;
+            traslados.push({
+                tipo_vehiculo: tipo,
+                capacidad: q('.tr-capacidad') !== '' ? Number(q('.tr-capacidad')) : null,
+                origen: q('.tr-origen') || null,
+                destino: q('.tr-destino') || null,
+                precio_cents: Math.round((Number(q('.tr-precio')) || 0) * 100),
+                incluido: !!(row.querySelector('.tr-incluido') && row.querySelector('.tr-incluido').checked)
+            });
+        });
+        const itinerario = [];
+        const itTxt = $('tur-itinerario') ? String($('tur-itinerario').value || '') : '';
+        itTxt.split('\n').map(l => l.trim()).filter(Boolean).forEach((l, i) => {
+            const partes = l.split('|');
+            itinerario.push({ orden: i, hora: (partes[0] || '').trim() || null, titulo: (partes[1] || '').trim() || null, descripcion: (partes[2] || '').trim() || null });
+        });
+        return { recogidas, traslados, itinerario };
+    }
+
     function turStep(n) {
-        _turStep = Math.min(5, Math.max(1, Number(n) || 1));
-        for (let i = 1; i <= 5; i++) {
+        _turStep = Math.min(7, Math.max(1, Number(n) || 1));
+        for (let i = 1; i <= 7; i++) {
             const sec = $('tur-sec-' + i);
             if (sec) sec.style.display = (i === _turStep) ? '' : 'none';
             const chip = $('tur-step-' + i);
             if (chip) chip.classList.toggle('dep-active', i === _turStep);
         }
         const prev = $('tur-prev'); if (prev) prev.style.visibility = _turStep === 1 ? 'hidden' : 'visible';
-        const next = $('tur-next'); if (next) next.style.visibility = _turStep === 5 ? 'hidden' : 'visible';
-        const save = $('tur-save'); if (save) save.style.display = _turStep === 5 ? '' : 'none';
+        const next = $('tur-next'); if (next) next.style.visibility = _turStep === 7 ? 'hidden' : 'visible';
+        const save = $('tur-save'); if (save) save.style.display = _turStep === 7 ? '' : 'none';
     }
     function turPrev() { turStep(_turStep - 1); }
     function turNext() { turStep(_turStep + 1); }
@@ -1996,13 +2136,50 @@
             },
             tarifas,
             escalas: turLeerEscalas(),
-            extras: turLeerExtras()
+            extras: turLeerExtras(),
+            calendario: turLeerCalendario(),
+            logistica: turLeerLogistica()
         };
 
         const data = await turismoApi('guardar_config_tur', body);
         if (!data.ok) { toast('Error: ' + data.error, true); return; }
         toast('Configuración guardada');
         renderTurismo();
+    }
+
+    async function turReservas() {
+        const main = $('main');
+        main.innerHTML = '<div class="empty">Cargando reservas…</div>';
+        try {
+            const data = await turismoApi('listar_reservas', { proyecto_id: ctx.proyecto_id });
+            if (!data.ok) throw new Error(data.error || 'Error');
+            const lista = data.reservas || [];
+            main.innerHTML = `
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
+                    <button class="btn-small" onclick="renderTurismo()"><i class="fas fa-arrow-left"></i> Volver</button>
+                    <h2 class="card-title" style="flex:1">Reservas de experiencias</h2>
+                </div>
+                ${lista.length ? `<div class="table-wrap"><table>
+                    <thead><tr><th>Producto</th><th>Cliente</th><th>Fecha</th><th>Total</th><th>Estado</th></tr></thead>
+                    <tbody>${lista.map(r => `
+                        <tr>
+                            <td style="font-weight:600">${esc(r.producto_nombre || '—')}</td>
+                            <td>${esc((r.cliente && r.cliente.nombre) || '—')}<div style="font-size:.72rem;color:var(--dim)">${esc((r.cliente && (r.cliente.email || r.cliente.telefono)) || '')}</div></td>
+                            <td>${r.created_at ? new Date(r.created_at).toLocaleDateString('es-CO') : '—'}</td>
+                            <td>${fmtCOP(r.total_cents)}</td>
+                            <td><select onchange="turCambiarEstadoReserva('${r.id}', this.value)">
+                                ${['pendiente','pagada','cancelada','cotizada'].map(e => `<option value="${e}"${r.estado===e?' selected':''}>${e[0].toUpperCase()+e.slice(1)}</option>`).join('')}
+                            </select></td>
+                        </tr>`).join('')}</tbody>
+                </table></div>` : '<div class="card"><div class="empty">Aún no hay reservas.</div></div>'}
+            `;
+        } catch (err) { main.innerHTML = '<div class="empty">Error: ' + esc(err.message) + '</div>'; }
+    }
+
+    async function turCambiarEstadoReserva(id, estado) {
+        const data = await turismoApi('cambiar_estado_reserva', { proyecto_id: ctx.proyecto_id, reserva_id: id, estado });
+        if (!data.ok) { toast('Error: ' + data.error, true); return; }
+        toast('Estado actualizado');
     }
 
     // ── Mobile menu toggle ──
@@ -2057,7 +2234,7 @@
         depFormNoticia, depGuardarNoticia, depEliminarNoticia,
         depFormGaleria, depGuardarGaleria, depEliminarItemGaleria,
         depSubir, depSubirVarias, depQuitarGaleria,
-        renderTurismo, turForm, turAddTarifa, turAddEscala, turAddExtra, turStep, turPrev, turNext, turGuardarConfig,
+        renderTurismo, turForm, turAddTarifa, turAddEscala, turAddExtra, turAddPlantilla, turAddRecogida, turAddTraslado, turStep, turPrev, turNext, turGuardarConfig, turReservas, turCambiarEstadoReserva,
         toggleTheme, actualizarBotonTema
     });
 

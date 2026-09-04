@@ -172,6 +172,111 @@ async function guardarConfigTur(proyectoId, productoId, body) {
     const { error: eIns3 } = extras.length ? await db.from('tur_producto_extras').insert(extras) : {};
     if (eIns3) throw new Error('Error guardando extras: ' + eIns3.message);
 
+    // Compatibilidad bidireccional (D4): el agente/CRM y el storefront leen
+    // tienda_productos.atributos. Mantenemos ese JSON legado sincronizado.
+    const legadoAtributos = Object.assign({}, (prod.atributos && typeof prod.atributos === 'object') ? prod.atributos : {});
+    delete legadoAtributos.categorias_pasajero;
+    delete legadoAtributos.escalas_cantidad;
+    delete legadoAtributos.extras;
+    delete legadoAtributos.min_participantes;
+    delete legadoAtributos.max_participantes;
+    delete legadoAtributos.requiere_adulto;
+    legadoAtributos.categorias_pasajero = tarifas.map(t => ({
+        nombre: t.nombre,
+        edad_min: t.edad_min,
+        edad_max: t.edad_max,
+        precio_cents: t.precio_cents,
+        permitido: t.permitido
+    }));
+    legadoAtributos.escalas_cantidad = escalas.map(e => ({
+        desde: e.desde,
+        hasta: e.hasta,
+        descuento_pct: e.tipo === 'pct' ? e.valor : null,
+        tipo: e.tipo,
+        valor: e.valor,
+        aplica_a: e.aplica_a
+    }));
+    legadoAtributos.extras = extras.map(x => ({
+        nombre: x.nombre,
+        descripcion: x.descripcion,
+        tipo_precio: x.tipo_precio,
+        precio_cents: x.precio_cents,
+        obligatorio: x.obligatorio
+    }));
+    legadoAtributos.min_participantes = base.min_pax;
+    legadoAtributos.max_participantes = base.max_pax;
+    legadoAtributos.requiere_adulto = base.requiere_adulto;
+    const { error: eLeg } = await db.from('tienda_productos')
+        .update({ atributos: legadoAtributos, updated_at: new Date().toISOString() })
+        .eq('id', productoId)
+        .eq('proyecto_id', proyectoId);
+    if (eLeg) throw new Error('Error sincronizando legado: ' + eLeg.message);
+
+    // ── Calendario (plantillas + fechas bloqueadas) ──
+    const calendario = (body && body.calendario && typeof body.calendario === 'object') ? body.calendario : {};
+    const plantillasIn = Array.isArray(calendario.plantillas) ? calendario.plantillas : [];
+    const fechasIn = Array.isArray(calendario.fechas_bloqueadas) ? calendario.fechas_bloqueadas : [];
+
+    const plantillas = plantillasIn
+        .filter(p => p && s(p.hora_salida))
+        .map(p => ({
+            proyecto_id: proyectoId,
+            producto_id: productoId,
+            dias: Array.isArray(p.dias) ? p.dias.filter(Boolean).map(s) : [],
+            hora_salida: s(p.hora_salida),
+            hora_regreso: s(p.hora_regreso) || null,
+            capacidad: Math.max(1, Math.floor(Number(p.capacidad) || 40)),
+            adelanto_cierre_hs: Math.max(0, Math.floor(Number(p.adelanto_cierre_hs) || 0)),
+            activo: p.activo !== false
+        }));
+    const fechasBloqueadas = fechasIn
+        .filter(f => f && s(f.fecha))
+        .map(f => ({ proyecto_id: proyectoId, producto_id: productoId, fecha: s(f.fecha), motivo: s(f.motivo) || null }));
+
+    // ── Logística (recogidas / traslados / itinerario) ──
+    const logistica = (body && body.logistica && typeof body.logistica === 'object') ? body.logistica : {};
+    const recogidas = (Array.isArray(logistica.recogidas) ? logistica.recogidas : [])
+        .filter(r => r && s(r.nombre))
+        .map(r => ({
+            proyecto_id: proyectoId, producto_id: productoId,
+            nombre: s(r.nombre), zona: s(r.zona) || null, direccion: s(r.direccion) || null,
+            lat: r.lat != null && r.lat !== '' ? Number(r.lat) : null,
+            lng: r.lng != null && r.lng !== '' ? Number(r.lng) : null,
+            hora: s(r.hora) || null,
+            costo_cents: Math.max(0, Math.floor(Number(r.costo_cents) || 0)),
+            activo: r.activo !== false
+        }));
+    const traslados = (Array.isArray(logistica.traslados) ? logistica.traslados : [])
+        .filter(t => t && s(t.tipo_vehiculo))
+        .map(t => ({
+            proyecto_id: proyectoId, producto_id: productoId,
+            tipo_vehiculo: s(t.tipo_vehiculo), capacidad: t.capacidad != null ? Math.max(1, Math.floor(Number(t.capacidad))) : null,
+            origen: s(t.origen) || null, destino: s(t.destino) || null, horario: s(t.horario) || null,
+            precio_cents: Math.max(0, Math.floor(Number(t.precio_cents) || 0)),
+            incluido: t.incluido === true
+        }));
+    const itinerario = (Array.isArray(logistica.itinerario) ? logistica.itinerario : [])
+        .filter(it => it && (s(it.titulo) || s(it.hora)))
+        .map((it, i) => ({
+            proyecto_id: proyectoId, producto_id: productoId,
+            orden: Math.floor(Number(it.orden != null ? it.orden : i)),
+            hora: s(it.hora) || null, titulo: s(it.titulo) || null, descripcion: s(it.descripcion) || null
+        }));
+
+    const reemplazo = async (tabla, filas) => {
+        const { error: eDel } = await db.from(tabla).delete().eq('producto_id', productoId).eq('proyecto_id', proyectoId);
+        if (eDel) throw new Error('Error limpiando ' + tabla + ': ' + eDel.message);
+        if (filas.length) {
+            const { error: eIns } = await db.from(tabla).insert(filas);
+            if (eIns) throw new Error('Error guardando ' + tabla + ': ' + eIns.message);
+        }
+    };
+    await reemplazo('tur_salida_plantillas', plantillas);
+    await reemplazo('tur_producto_fechas_bloqueadas', fechasBloqueadas);
+    await reemplazo('tur_recogidas', recogidas);
+    await reemplazo('tur_traslados', traslados);
+    await reemplazo('tur_itinerario', itinerario);
+
     return { ok: true, migrado: true };
 }
 

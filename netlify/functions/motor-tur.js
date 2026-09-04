@@ -411,10 +411,15 @@ async function leerConfigTur(proyectoId, productoId) {
         .eq('producto_id', productoId)
         .maybeSingle();
 
-    const [tarifas, escalas, extras] = await Promise.all([
+    const [tarifas, escalas, extras, plantillas, fechasBloqueadas, recogidas, traslados, itinerario] = await Promise.all([
         db.from(TABLAS.tarifas).select('*').eq('producto_id', productoId).order('orden'),
         db.from(TABLAS.escalas).select('*').eq('producto_id', productoId).order('desde'),
-        db.from(TABLAS.extras).select('*').eq('producto_id', productoId).order('created_at')
+        db.from(TABLAS.extras).select('*').eq('producto_id', productoId).order('created_at'),
+        db.from('tur_salida_plantillas').select('*').eq('producto_id', productoId).order('hora_salida'),
+        db.from('tur_producto_fechas_bloqueadas').select('*').eq('producto_id', productoId).order('fecha'),
+        db.from('tur_recogidas').select('*').eq('producto_id', productoId).order('nombre'),
+        db.from('tur_traslados').select('*').eq('producto_id', productoId).order('tipo_vehiculo'),
+        db.from('tur_itinerario').select('*').eq('producto_id', productoId).order('orden')
     ]);
 
     return {
@@ -428,7 +433,16 @@ async function leerConfigTur(proyectoId, productoId) {
         migrado: (base && base.data) ? base.data.migrado === true : (!!resultadoMigracion),
         tarifas: (tarifas.data || []),
         escalas: (escalas.data || []),
-        extras: (extras.data || [])
+        extras: (extras.data || []),
+        calendario: {
+            plantillas: (plantillas.data || []),
+            fechas_bloqueadas: (fechasBloqueadas.data || [])
+        },
+        logistica: {
+            recogidas: (recogidas.data || []),
+            traslados: (traslados.data || []),
+            itinerario: (itinerario.data || [])
+        }
     };
 }
 
