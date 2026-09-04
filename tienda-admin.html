@@ -1760,6 +1760,8 @@
             _turPassthrough = { escalas: data.escalas || [], extras: data.extras || [] };
             const ed = data.editorial || {};
             const filasTarifas = (data.tarifas || []).map(turTarifaRowHtml).join('');
+            const filasEscalas = (data.escalas || []).map(turEscalaRowHtml).join('');
+            const filasExtras = (data.extras || []).map(turExtraRowHtml).join('');
             main.innerHTML = `
                 <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">
                     <button class="btn-small" onclick="renderTurismo()"><i class="fas fa-arrow-left"></i> Volver</button>
@@ -1768,7 +1770,9 @@
                 <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
                     <button class="btn-small tur-step-on" id="tur-step-1" onclick="turStep(1)"><i class="fas fa-circle-info"></i> 1 · Información</button>
                     <button class="btn-small" id="tur-step-2" onclick="turStep(2)"><i class="fas fa-compass"></i> 2 · Experiencia</button>
-                    <button class="btn-small" id="tur-step-3" onclick="turStep(3)"><i class="fas fa-users"></i> 3 · Pasajeros y tarifas</button>
+                    <button class="btn-small" id="tur-step-3" onclick="turStep(3)"><i class="fas fa-users"></i> 3 · Pasajeros</button>
+                    <button class="btn-small" id="tur-step-4" onclick="turStep(4)"><i class="fas fa-percent"></i> 4 · Grupos</button>
+                    <button class="btn-small" id="tur-step-5" onclick="turStep(5)"><i class="fas fa-gift"></i> 5 · Extras</button>
                 </div>
                 <div class="card">
                 <div id="tur-sec-1">
@@ -1805,7 +1809,21 @@
                         <button class="btn-small" onclick="turAddTarifa()"><i class="fas fa-plus"></i> Agregar tarifa</button>
                     </div>
                     <div id="tur-tarifas">${filasTarifas || '<div class="empty" style="padding:.6rem">Sin tarifas. Agrega la primera (ej. Adulto).</div>'}</div>
-                    <div style="font-size:.74rem;color:var(--dim);margin-top:8px">Los descuentos por grupo y los extras se sumarán en el siguiente hito. Lo que ya exista se conserva automáticamente al guardar.</div>
+                </div>
+                <div id="tur-sec-4" style="display:none">
+                    <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;margin-bottom:8px">
+                        <strong style="font-size:.86rem">Descuentos por tamaño de grupo</strong>
+                        <button class="btn-small" onclick="turAddEscala()"><i class="fas fa-plus"></i> Agregar tramo</button>
+                    </div>
+                    <div id="tur-escalas">${filasEscalas || '<div class="empty" style="padding:.6rem">Sin descuentos por grupo (precio normal para cualquier grupo).</div>'}</div>
+                    <div style="font-size:.74rem;color:var(--dim);margin-top:6px">Ej.: de 6 a 10 pasajeros → 5%. Se aplica el mejor tramo y va ANTES de los extras.</div>
+                </div>
+                <div id="tur-sec-5" style="display:none">
+                    <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;margin-bottom:8px">
+                        <strong style="font-size:.86rem">Extras / servicios adicionales (opcionales)</strong>
+                        <button class="btn-small" onclick="turAddExtra()"><i class="fas fa-plus"></i> Agregar extra</button>
+                    </div>
+                    <div id="tur-extras">${filasExtras || '<div class="empty" style="padding:.6rem">Sin extras.</div>'}</div>
                 </div>
                 <div style="display:flex;gap:.5rem;align-items:center;margin-top:1rem;flex-wrap:wrap">
                     <button class="btn-small" id="tur-prev" onclick="turPrev()"><i class="fas fa-arrow-left"></i> Atrás</button>
@@ -1836,17 +1854,95 @@
         c.insertAdjacentHTML('beforeend', turTarifaRowHtml(null));
     }
 
+    function turEscalaRowHtml(e) {
+        e = e || {};
+        return `<div class="tur-escala" style="display:grid;grid-template-columns:84px 84px 110px 110px 130px auto;gap:6px;align-items:center;margin-bottom:6px">
+            <input class="es-desde" type="number" min="1" value="${e.desde != null ? e.desde : ''}" placeholder="Desde">
+            <input class="es-hasta" type="number" min="1" value="${e.hasta != null ? e.hasta : ''}" placeholder="Hasta">
+            <select class="es-tipo"><option value="pct"${(e.tipo||'pct')==='pct'?' selected':''}>% descuento</option><option value="fijo"${e.tipo==='fijo'?' selected':''}>Valor fijo COP</option></select>
+            <select class="es-aplica"><option value="total"${(e.aplica_a||'total')==='total'?' selected':''}>A todos</option><option value="adultos"${e.aplica_a==='adultos'?' selected':''}>Solo adultos</option></select>
+            <input class="es-valor" type="number" min="0" value="${e.valor != null ? (e.tipo==='fijo' ? Math.round(e.valor/100) : e.valor) : ''}" placeholder="5 o 30000">
+            <button type="button" class="btn-small danger" title="Quitar tramo" onclick="this.closest('.tur-escala').remove()"><i class="fas fa-trash"></i></button>
+        </div>`;
+    }
+    function turAddEscala() {
+        const c = $('tur-escalas');
+        if (!c) return;
+        if (!c.querySelector('.tur-escala')) c.innerHTML = '';
+        c.insertAdjacentHTML('beforeend', turEscalaRowHtml(null));
+    }
+
+    function turExtraRowHtml(x) {
+        x = x || {};
+        return `<div class="tur-extra" style="display:grid;grid-template-columns:1fr 150px 130px 120px auto;gap:6px;align-items:center;margin-bottom:6px">
+            <input class="ex-nombre" value="${esc(x.nombre || '')}" placeholder="Nombre (Almuerzo)">
+            <select class="ex-tipo"><option value="por_persona"${(x.tipo_precio||'por_persona')==='por_persona'?' selected':''}>Por persona</option><option value="por_adulto"${x.tipo_precio==='por_adulto'?' selected':''}>Por adulto</option><option value="por_nino"${x.tipo_precio==='por_nino'?' selected':''}>Por niño</option><option value="por_reserva"${x.tipo_precio==='por_reserva'?' selected':''}>Por reserva</option><option value="por_unidad"${x.tipo_precio==='por_unidad'?' selected':''}>Por unidad</option></select>
+            <input class="ex-precio" type="number" min="0" value="${x.precio_cents != null ? Math.round(x.precio_cents/100) : ''}" placeholder="Precio COP">
+            <label style="font-size:.74rem;display:flex;align-items:center;gap:4px"><input type="checkbox" class="ex-obligatorio" ${x.obligatorio?'checked':''}> Oblig.</label>
+            <button type="button" class="btn-small danger" title="Quitar extra" onclick="this.closest('.tur-extra').remove()"><i class="fas fa-trash"></i></button>
+        </div>`;
+    }
+    function turAddExtra() {
+        const c = $('tur-extras');
+        if (!c) return;
+        if (!c.querySelector('.tur-extra')) c.innerHTML = '';
+        c.insertAdjacentHTML('beforeend', turExtraRowHtml(null));
+    }
+
+    function turLeerEscalas() {
+        const out = [];
+        const c = $('tur-escalas');
+        if (!c) return out;
+        c.querySelectorAll('.tur-escala').forEach(row => {
+            const q = (sel) => row.querySelector(sel) ? row.querySelector(sel).value.trim() : '';
+            const desde = Number(q('.es-desde'));
+            const hastaTxt = q('.es-hasta');
+            const tipo = q('.es-tipo') || 'pct';
+            const valorRaw = Number(q('.es-valor')) || 0;
+            if (!desde || desde < 1) return;
+            out.push({
+                desde,
+                hasta: hastaTxt !== '' ? Number(hastaTxt) : null,
+                tipo,
+                aplica_a: q('.es-aplica') || 'total',
+                valor: tipo === 'fijo' ? Math.round(valorRaw * 100) : valorRaw,
+                combina_con_promo: false,
+                antes_de_extras: true
+            });
+        });
+        return out;
+    }
+
+    function turLeerExtras() {
+        const out = [];
+        const c = $('tur-extras');
+        if (!c) return out;
+        c.querySelectorAll('.tur-extra').forEach(row => {
+            const q = (sel) => row.querySelector(sel) ? row.querySelector(sel).value.trim() : '';
+            const nombre = q('.ex-nombre');
+            if (!nombre) return;
+            out.push({
+                nombre,
+                tipo_precio: q('.ex-tipo') || 'por_persona',
+                precio_cents: Math.round((Number(q('.ex-precio')) || 0) * 100),
+                obligatorio: !!(row.querySelector('.ex-obligatorio') && row.querySelector('.ex-obligatorio').checked),
+                activo: true
+            });
+        });
+        return out;
+    }
+
     function turStep(n) {
-        _turStep = Math.min(3, Math.max(1, Number(n) || 1));
-        for (let i = 1; i <= 3; i++) {
+        _turStep = Math.min(5, Math.max(1, Number(n) || 1));
+        for (let i = 1; i <= 5; i++) {
             const sec = $('tur-sec-' + i);
             if (sec) sec.style.display = (i === _turStep) ? '' : 'none';
             const chip = $('tur-step-' + i);
             if (chip) chip.classList.toggle('dep-active', i === _turStep);
         }
         const prev = $('tur-prev'); if (prev) prev.style.visibility = _turStep === 1 ? 'hidden' : 'visible';
-        const next = $('tur-next'); if (next) next.style.visibility = _turStep === 3 ? 'hidden' : 'visible';
-        const save = $('tur-save'); if (save) save.style.display = _turStep === 3 ? '' : 'none';
+        const next = $('tur-next'); if (next) next.style.visibility = _turStep === 5 ? 'hidden' : 'visible';
+        const save = $('tur-save'); if (save) save.style.display = _turStep === 5 ? '' : 'none';
     }
     function turPrev() { turStep(_turStep - 1); }
     function turNext() { turStep(_turStep + 1); }
@@ -1899,8 +1995,8 @@
                 impuesto_pct: Number(leer('tur-impuesto')) || 0
             },
             tarifas,
-            escalas: _turPassthrough.escalas,
-            extras: _turPassthrough.extras
+            escalas: turLeerEscalas(),
+            extras: turLeerExtras()
         };
 
         const data = await turismoApi('guardar_config_tur', body);
@@ -1961,7 +2057,7 @@
         depFormNoticia, depGuardarNoticia, depEliminarNoticia,
         depFormGaleria, depGuardarGaleria, depEliminarItemGaleria,
         depSubir, depSubirVarias, depQuitarGaleria,
-        renderTurismo, turForm, turAddTarifa, turStep, turPrev, turNext, turGuardarConfig,
+        renderTurismo, turForm, turAddTarifa, turAddEscala, turAddExtra, turStep, turPrev, turNext, turGuardarConfig,
         toggleTheme, actualizarBotonTema
     });
 
