@@ -175,6 +175,260 @@ async function guardarConfigTur(proyectoId, productoId, body) {
     return { ok: true, migrado: true };
 }
 
+// ── Motor público: salidas, cotización y reserva (con Wompi) ──
+async function proyectoPorBody(body) {
+    const db = (require('./supabase-admin')).supabase;
+    const slug = s(body.slug);
+    const pid = s(body.proyecto_id);
+    if (slug) {
+        const { data } = await db.from('web_projects').select('*').eq('slug', slug).maybeSingle();
+        return data || null;
+    }
+    if (pid) {
+        const { data } = await db.from('web_projects').select('*').eq('id', pid).maybeSingle();
+        return data || null;
+    }
+    return null;
+}
+
+async function productoPublicoTur(proyecto, productoId) {
+    const db = (require('./supabase-admin')).supabase;
+    const { data } = await db
+        .from('tienda_productos')
+        .select('id, nombre, descripcion, precio_cents, activo, tipo, atributos')
+        .eq('id', productoId)
+        .eq('proyecto_id', proyecto.id)
+        .maybeSingle();
+    if (!data || !motor.esProductoTour(data)) return null;
+    return data;
+}
+
+function configMotorDesde(data) {
+    const ed = (data && data.editorial) || {};
+    return {
+        tarifas: (data && data.tarifas) || [],
+        escalas: (data && data.escalas) || [],
+        extras: (data && data.extras) || [],
+        reglas: {
+            requiere_adulto: ed.requiere_adulto === true,
+            min_pax: Number(ed.min_pax) || 1,
+            max_pax: ed.max_pax ? Number(ed.max_pax) : null
+        }
+    };
+}
+
+// GET salidas disponibles en un rango (fechas candidatas por plantillas).
+async function publicSalidasDisponibles(body) {
+    const proyecto = await proyectoPorBody(body);
+    if (!proyecto) return pagerror('Proyecto no encontrado', 404);
+    const productoId = s(body.producto_id);
+    const desde = s(body.desde) || new Date().toISOString().slice(0, 10);
+    const hasta = s(body.hasta) || new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
+    const prod = await productoPublicoTur(proyecto, productoId);
+    if (!prod) return pagerror('Producto no disponible', 404);
+
+    const db = (require('./supabase-admin')).supabase;
+    const { data: plantillas } = await db
+        .from('tur_salida_plantillas')
+        .select('*')
+        .eq('producto_id', productoId)
+        .eq('activo', true);
+    if ((plantillas || []).length === 0) return ok({ ok: true, salidas: [], msg: 'El producto aún no define calendario de salidas.' });
+
+    const { data: bloqueadas } = await db
+        .from('tur_producto_fechas_bloqueadas')
+        .select('fecha')
+        .eq('producto_id', productoId)
+        .gte('fecha', desde)
+        .lte('fecha', hasta);
+    const bloqueadasSet = {};
+    for (const b of bloqueadas || []) bloqueadasSet[b.fecha] = true;
+
+    const { data: existentes } = await db
+        .from('tur_salidas')
+        .select('fecha, hora_salida, capacidad, reservas_confirmadas, estado')
+        .eq('producto_id', productoId)
+        .gte('fecha', desde)
+        .lte('fecha', hasta);
+
+    const salidas = [];
+    const porClave = {};
+    for (const ex of existentes || []) porClave[ex.fecha + '|' + (ex.hora_salida || '')] = ex;
+
+    for (const p of plantillas || []) {
+        const dias = Array.isArray(p.dias) ? p.dias : [];
+        const fechas = motor.listarFechasCandidatas(desde, hasta, dias);
+        for (const fecha of fechas) {
+            if (bloqueadasSet[fecha]) continue;
+            const clave = fecha + '|' + (p.hora_salida || '');
+            const ex = porClave[clave];
+            const capacidad = ex ? ex.capacidad : (Number(p.capacidad) || 40);
+            const reservados = ex ? ex.reservas_confirmadas : 0;
+            const restantes = Math.max(0, capacidad - reservados);
+            if (ex && ex.estado === 'cancelada') continue;
+            if (restantes <= 0) {
+                salidas.push({ fecha, hora_salida: p.hora_salida, hora_regreso: p.hora_regreso, capacidad, restantes: 0, agotada: true });
+                continue;
+            }
+            salidas.push({ fecha, hora_salida: p.hora_salida, hora_regreso: p.hora_regreso, capacidad, restantes, agotada: false });
+        }
+    }
+    salidas.sort((a, b) => (a.fecha + a.hora_salida).localeCompare(b.fecha + b.hora_salida));
+    return ok({ ok: true, producto_id: productoId, salidas });
+}
+
+// Cotización server-side (nunca se confía en el cliente).
+async function publicPreviewPrecio(body) {
+    const proyecto = await proyectoPorBody(body);
+    if (!proyecto) return pagerror('Proyecto no encontrado', 404);
+    const prod = await productoPublicoTur(proyecto, s(body.producto_id));
+    if (!prod) return pagerror('Producto no disponible', 404);
+
+    const config = await motor.leerConfigTur(proyecto.id, prod.id);
+    if (!config) return pagerror('El producto no está configurado como experiencia', 400);
+
+    const resultado = motor.calcularPrecioTour(configMotorDesde(config), {
+        pasajeros: body.pasajeros,
+        extras: body.extras
+    });
+    if (!resultado.ok) return pagerror(resultado.errores.join(' · '), 400);
+    return ok({ ok: true, ...resultado });
+}
+
+// Reserva: valida → calcula precio → descuenta cupo (atómico optimista) → link Wompi.
+async function publicReservar(body) {
+    const proyecto = await proyectoPorBody(body);
+    if (!proyecto) return pagerror('Proyecto no encontrado', 404);
+    const prod = await productoPublicoTur(proyecto, s(body.producto_id));
+    if (!prod) return pagerror('Producto no disponible', 404);
+
+    const fecha = s(body.fecha);
+    const horaSalida = s(body.hora_salida);
+    if (!fecha || !horaSalida) return pagerror('Faltan fecha y hora de salida', 400);
+
+    const cliente = (body.cliente && typeof body.cliente === 'object') ? body.cliente : {};
+    if (!s(cliente.nombre) || !s(cliente.email)) return pagerror('Nombre y email del comprador son obligatorios', 400);
+
+    const config = await motor.leerConfigTur(proyecto.id, prod.id);
+    const resultado = motor.calcularPrecioTour(configMotorDesde(config), { pasajeros: body.pasajeros, extras: body.extras });
+    if (!resultado.ok) return pagerror(resultado.errores.join(' · '), 400);
+
+    // Bloqueado por fecha
+    const db = (require('./supabase-admin')).supabase;
+    const { data: bloqueo } = await db
+        .from('tur_producto_fechas_bloqueadas')
+        .select('id')
+        .eq('producto_id', prod.id)
+        .eq('fecha', fecha)
+        .maybeSingle();
+    if (bloqueo) return pagerror('Esa fecha está bloqueada', 400);
+
+    const n = resultado.total_pasajeros;
+    const { data: salida, error: salidaErr } = await db
+        .from('tur_salidas')
+        .select('*')
+        .eq('producto_id', prod.id)
+        .eq('fecha', fecha)
+        .eq('hora_salida', horaSalida)
+        .maybeSingle();
+
+    let salidaId = null;
+    if (salidaErr) return pagerror(salidaErr.message, 500);
+    if (!salida) {
+        const { data: plantilla } = await db
+            .from('tur_salida_plantillas')
+            .select('capacidad, hora_regreso')
+            .eq('producto_id', prod.id)
+            .eq('hora_salida', horaSalida)
+            .eq('activo', true)
+            .maybeSingle();
+        const capacidad = plantilla ? Number(plantilla.capacidad) || 40 : 40;
+        if (n > capacidad) return pagerror('No hay cupo suficiente para esa salida', 409);
+        const { data: nueva, error: eN } = await db.from('tur_salidas').insert({
+            proyecto_id: proyecto.id,
+            producto_id: prod.id,
+            fecha,
+            hora_salida: horaSalida,
+            hora_regreso: plantilla ? plantilla.hora_regreso : null,
+            capacidad,
+            reservas_confirmadas: n,
+            estado: 'abierta'
+        }).select().single();
+        if (eN) return pagerror('No se pudo reservar la salida: ' + eN.message, 500);
+        salidaId = nueva.id;
+    } else {
+        if (salida.estado === 'cancelada') return pagerror('Esa salida fue cancelada', 400);
+        if (salida.reservas_confirmadas + n > salida.capacidad) return pagerror('No hay cupo suficiente para esa salida', 409);
+        const nuevoValor = salida.reservas_confirmadas + n;
+        const { error: eU } = await db
+            .from('tur_salidas')
+            .update({ reservas_confirmadas: nuevoValor, updated_at: new Date().toISOString() })
+            .eq('id', salida.id)
+            .eq('reservas_confirmadas', salida.reservas_confirmadas);
+        if (eU) return pagerror('Error al reservar cupo: ' + eU.message, 500);
+        salidaId = salida.id;
+    }
+
+    // Registrar reserva
+    const { data: reserva, error: eR } = await db.from('tur_reservas').insert({
+        proyecto_id: proyecto.id,
+        producto_id: prod.id,
+        salida_id: salidaId,
+        estado: 'pendiente',
+        origen: 'online',
+        cliente: {
+            nombre: s(cliente.nombre),
+            documento: s(cliente.documento),
+            telefono: s(cliente.telefono),
+            email: s(cliente.email)
+        },
+        pasajeros: Array.isArray(body.pasajeros) ? body.pasajeros : [],
+        extras: Array.isArray(body.extras) ? body.extras : [],
+        desglose: resultado.desglose,
+        total_cents: resultado.total_cents
+    }).select().single();
+    if (eR) return pagerror('No se pudo registrar la reserva: ' + eR.message, 500);
+
+    // Link de pago Wompi (pasarela del proyecto)
+    const { data: pasarela } = await db.from('tienda_pasarela').select('*').eq('proyecto_id', proyecto.id).maybeSingle();
+    if (!pasarela || !pasarela.wompi_private_key) {
+        return ok({ ok: true, reserva_id: reserva.id, url: null, msg: 'Reserva registrada. El sitio aún no tiene pasarela de pago configurada.' });
+    }
+    const wompiSandbox = pasarela.wompi_sandbox === true;
+    const wompiBase = wompiSandbox ? 'https://sandbox.wompi.co/v1' : 'https://production.wompi.co/v1';
+    const redirect = (proyecto.netlify_url || process.env.URL || 'https://auvro.netlify.app').replace(/\/+$/, '') + '/?reserva=' + reserva.id;
+
+    const wompiRes = await fetch(wompiBase + '/payment_links', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + pasarela.wompi_private_key },
+        body: JSON.stringify({
+            name: 'Reserva · ' + prod.nombre,
+            description: 'Reserva ' + fecha + ' · ' + horaSalida,
+            single_use: true,
+            collect_shipping: false,
+            currency: 'COP',
+            amount_in_cents: resultado.total_cents,
+            redirect_url: redirect
+        })
+    });
+    const wompi = await wompiRes.json();
+    if (!wompiRes.ok || !wompi || !wompi.data || !wompi.data.id) {
+        return pagerror((wompi && wompi.error && wompi.error.message) || 'Error creando el pago en Wompi.', 502);
+    }
+    const paymentLinkId = String(wompi.data.id);
+    await db.from('tur_reservas').update({ wompi_link_id: paymentLinkId, wompi_url: 'https://checkout.wompi.co/l/' + paymentLinkId }).eq('id', reserva.id);
+    await db.from('pagos').insert({
+        user_id: proyecto.created_by || null,
+        tipo: 'turismo',
+        concepto: 'Reserva ' + prod.nombre,
+        monto_cents: resultado.total_cents,
+        payment_link_id: paymentLinkId,
+        estado: 'pendiente'
+    }).then(() => {}).catch((e) => console.error('pagos insert turismo:', e && e.message));
+
+    return ok({ ok: true, reserva_id: reserva.id, url: 'https://checkout.wompi.co/l/' + paymentLinkId, total_cents: resultado.total_cents, desglose: resultado.desglose });
+}
+
 exports.handler = async (event) => {
     if (event.httpMethod === 'OPTIONS') return ok({ ok: true });
     if (event.httpMethod !== 'POST') return pagerror('Method Not Allowed', 405);
@@ -182,6 +436,11 @@ exports.handler = async (event) => {
     try {
         const body = JSON.parse(event.body || '{}');
         const action = s(body.action);
+
+        // ── Acciones públicas (tienda/cliente, sin token) ──
+        if (action === 'salidas_disponibles') return await publicSalidasDisponibles(body);
+        if (action === 'preview_precio') return await publicPreviewPrecio(body);
+        if (action === 'reservar') return await publicReservar(body);
 
         // Acciones de admin (requieren proyecto)
         const proyectoId = body.proyecto_id || null;
@@ -254,6 +513,49 @@ exports.handler = async (event) => {
             if (!productoId) return pagerror('Falta producto_id');
             const resultado = await guardarConfigTur(proyectoId, productoId, body);
             return ok(resultado);
+        }
+
+        if (action === 'listar_reservas') {
+            const { data, error } = await db
+                .from('tur_reservas')
+                .select('*, tienda_productos(nombre)')
+                .eq('proyecto_id', proyectoId)
+                .order('created_at', { ascending: false })
+                .limit(200);
+            if (error) return pagerror(error.message, 500);
+            const lista = (data || []).map(r => ({
+                id: r.id,
+                producto_id: r.producto_id,
+                producto_nombre: (r.tienda_productos && r.tienda_productos.nombre) || null,
+                salida_id: r.salida_id,
+                fecha: null,
+                estado: r.estado,
+                origen: r.origen,
+                cliente: r.cliente || {},
+                pasajeros: Array.isArray(r.pasajeros) ? r.pasajeros : [],
+                total_cents: r.total_cents,
+                desglose: r.desglose || {},
+                wompi_url: r.wompi_url,
+                created_at: r.created_at
+            }));
+            return ok({ ok: true, reservas: lista });
+        }
+
+        if (action === 'cambiar_estado_reserva') {
+            const reservaId = s(body.reserva_id);
+            const estado = s(body.estado);
+            if (!reservaId || !['pendiente', 'pagada', 'cancelada', 'cotizada'].includes(estado)) {
+                return pagerror('Estado inválido', 400);
+            }
+            const { data, error } = await db
+                .from('tur_reservas')
+                .update({ estado, updated_at: new Date().toISOString() })
+                .eq('id', reservaId)
+                .eq('proyecto_id', proyectoId)
+                .select()
+                .single();
+            if (error) return pagerror(error.message, 500);
+            return ok({ ok: true, reserva: data });
         }
 
         return pagerror('Acción desconocida: ' + action, 404);

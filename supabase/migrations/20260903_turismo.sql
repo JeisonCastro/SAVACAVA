@@ -205,6 +205,8 @@ create table if not exists public.tur_reservas (
     estado text not null default 'pendiente' check (estado in ('cotizada','pendiente','pagada','cancelada')),
     origen text not null default 'online',  -- online | agente
     cliente jsonb not null default '{}'::jsonb,
+    pasajeros jsonb not null default '[]'::jsonb,
+    extras jsonb not null default '[]'::jsonb,
     total_cents integer not null default 0,
     desglose jsonb not null default '{}'::jsonb,
     wompi_link_id text,
@@ -213,6 +215,8 @@ create table if not exists public.tur_reservas (
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now()
 );
+alter table public.tur_reservas add column if not exists pasajeros jsonb not null default '[]'::jsonb;
+alter table public.tur_reservas add column if not exists extras jsonb not null default '[]'::jsonb;
 create index if not exists idx_tur_reservas_proyecto on public.tur_reservas(proyecto_id, created_at desc);
 create index if not exists idx_tur_reservas_salida on public.tur_reservas(salida_id);
 

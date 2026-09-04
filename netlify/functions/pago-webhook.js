@@ -103,6 +103,20 @@ exports.handler = async (event) => {
                     .maybeSingle();
                 if (pasarela?.wompi_events_secret) secret = pasarela.wompi_events_secret;
             }
+        } else if (pago.tipo === 'turismo') {
+            const { data: reserva } = await supabase
+                .from('tur_reservas')
+                .select('proyecto_id')
+                .eq('wompi_link_id', pago.payment_link_id)
+                .maybeSingle();
+            if (reserva?.proyecto_id) {
+                const { data: pasarela } = await supabase
+                    .from('tienda_pasarela')
+                    .select('wompi_events_secret')
+                    .eq('proyecto_id', reserva.proyecto_id)
+                    .maybeSingle();
+                if (pasarela?.wompi_events_secret) secret = pasarela.wompi_events_secret;
+            }
         }
 
         const firmoConSecret = verificarFirma(payload, headerChecksum, secret);
@@ -153,6 +167,17 @@ exports.handler = async (event) => {
                     p_valor_cents: pago.monto_cents
                 });
                 if (leadErr) throw new Error('Error cerrando lead: ' + leadErr.message);
+            }
+        } else if (pago.tipo === 'turismo') {
+            // Reserva de experiencia turística: marcarla pagada (el cupo se tomó al reservar).
+            try {
+                await supabase
+                    .from('tur_reservas')
+                    .update({ estado: 'pagada', updated_at: new Date().toISOString() })
+                    .eq('wompi_link_id', pago.payment_link_id)
+                    .eq('estado', 'pendiente');
+            } catch (e) {
+                console.error('webhook: error marcando reserva turismo pagada:', e.message);
             }
         } else if (pago.tipo === 'tienda') {
             // Compra en una tienda de Web Factory: marcar la orden como pagada,
