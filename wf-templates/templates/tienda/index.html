@@ -418,10 +418,14 @@
             var stockBadge = p.agotado ? '<span class="badge badge-agotado">Agotado</span>' : '';
 
             var attrs = '';
-            if (p.atributos && Object.keys(p.atributos).length) {
+            if (p.atributos && Object.keys(p.atributos).length && tipo !== 'tour') {
                 attrs = '<ul class="attr-list">' + Object.keys(p.atributos).map(function (k) {
                     return '<li><span>' + esc(k) + ':</span> ' + esc(p.atributos[k]) + '</li>';
                 }).join('') + '</ul>';
+            }
+            var tourPax = [];
+            if (tipo === 'tour' && p.atributos && Array.isArray(p.atributos.categorias_pasajero)) {
+                tourPax = p.atributos.categorias_pasajero.filter(function (c) { return c && c.permitido !== false; });
             }
 
             var varSel = tipo === 'variable' ? variacionElegida(p) : null;
@@ -479,6 +483,10 @@
                     : (varCompleta
                         ? '<button class="btn btn-outline btn-block" disabled>Agotado</button>'
                         : '<button class="btn btn-outline btn-block" disabled>Elige las opciones</button>');
+            } else if (tipo === 'tour') {
+                btn = tourPax.length
+                    ? '<button class="btn btn-primary btn-block" data-reserve="' + p.id + '">Reservar</button>'
+                    : '<a class="btn btn-wa btn-block js-wa-catalogo" data-p="' + p.id + '" href="#">Consultar por WhatsApp</a>';
             } else {
                 btn = (agotadoActual && tipo === 'simple')
                     ? '<button class="btn btn-outline btn-block" disabled>Agotado</button>'
@@ -983,5 +991,191 @@
         }).catch(function () {});
     })();
     </script>
+<script>
+/* ── Reservador de experiencias turísticas (motor Turismo) ── */
+var TUR_API = 'https://auvro.netlify.app/.netlify/functions/turismo';
+var turState = { producto: null, cats: [], salidas: [], fecha: null, hora: null, cant: {}, exOn: {} };
+function turMoney(c) { return '$' + Math.round((Number(c) || 0) / 100).toLocaleString('es-CO'); }
+function turEsc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+function turQ(id) { return document.getElementById(id); }
+function turCall(action, body) {
+    return fetch(TUR_API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(Object.assign({ action: action, slug: (window.SLUG || '') }, body || {}))
+    }).then(function (r) { return r.json(); }).catch(function () { return { ok: false, error: 'Sin conexión' }; });
+}
+function turSelFecha(fecha, hora) {
+    turState.fecha = fecha; turState.hora = hora;
+    document.querySelectorAll('#tur-fe .tur-chip').forEach(function (el) {
+        el.classList.toggle('tur-chip-on', el.getAttribute('data-f') === fecha && el.getAttribute('data-h') === hora);
+    });
+    turCalc();
+}
+function turPax(i, d) {
+    var c = turState.cats[i]; if (!c) return;
+    var v = (turState.cant[i] || 0) + d;
+    if (v < 0) v = 0; if (v > 30) v = 30;
+    turState.cant[i] = v;
+    var el = turQ('tur-cnt-' + i); if (el) el.textContent = v;
+    turCalc();
+}
+function turExTog(i) {
+    var el = turQ('tur-ex-' + i); if (!el) return;
+    if (el.dataset.ob === '1') return;
+    turState.exOn[i] = el.checked;
+    turCalc();
+}
+function turPasajerosPayload() {
+    var arr = [];
+    turState.cats.forEach(function (c, i) {
+        var n = turState.cant[i] || 0;
+        if (n > 0) arr.push({ nombre: c.nombre, cantidad: n });
+    });
+    return arr;
+}
+function turExtrasPayload() {
+    var arr = [];
+    var exts = (turState.producto && turState.producto.atributos && Array.isArray(turState.producto.atributos.extras)) ? turState.producto.atributos.extras : [];
+    exts.forEach(function (x, i) {
+        if (turState.exOn[i]) arr.push({ id: x.nombre, nombre: x.nombre, cantidad: 1 });
+    });
+    return arr;
+}
+function turCalc() {
+    if (!turState.fecha) return;
+    turCall('preview_precio', { producto_id: turState.producto.id, pasajeros: turPasajerosPayload(), extras: turExtrasPayload() })
+        .then(function (r) {
+            var res = turQ('tur-res'); var msg = turQ('tur-msg');
+            if (!res) return;
+            if (!r.ok) { res.textContent = '—'; if (msg) { msg.textContent = r.error || 'Error al cotizar'; msg.style.display = ''; } return; }
+            if (msg) msg.style.display = 'none';
+            var lineas = (r.desglose || []).map(function (d) {
+                return '<div style="display:flex;justify-content:space-between;gap:8px;font-size:.84rem;padding:2px 0">' +
+                    '<span>' + turEsc(d.nombre) + (d.cantidad > 1 ? ' x' + d.cantidad : '') + '</span>' +
+                    '<strong>' + turMoney(d.subtotal_cents) + '</strong></div>';
+            }).join('');
+            res.innerHTML = (lineas ? lineas : '') + '<div style="display:flex;justify-content:space-between;border-top:1px solid var(--border);margin-top:6px;padding-top:6px;font-weight:800">' +
+                '<span>Total</span><span>' + turMoney(r.total_cents) + '</span></div>';
+        });
+}
+function turAbrirReserva(id) {
+    var catalogo = window['catalogoTodos'] || [];
+    var prod = catalogo.find(function (p) { return p.id === id; });
+    if (!prod) return;
+    turState.producto = prod;
+    turState.cats = (prod.atributos && Array.isArray(prod.atributos.categorias_pasajero)) ? prod.atributos.categorias_pasajero.filter(function (c) { return c.permitido !== false; }) : [];
+    turState.cant = {}; turState.exOn = {}; turState.fecha = null; turState.hora = null; turState.salidas = [];
+
+    var shell = turQ('tur-shell');
+    if (!shell) {
+        shell = document.createElement('div');
+        shell.id = 'tur-shell';
+        shell.innerHTML = '<div class="modal" id="tur-modal" hidden>' +
+            '<div class="modal-card modal-insc">' +
+            '<div class="drawer-head"><h3 id="tur-title">Reservar</h3>' +
+            '<button class="drawer-close" id="tur-close" aria-label="Cerrar">&times;</button></div>' +
+            '<div style="padding:16px 20px;display:flex;flex-direction:column;gap:12px">' +
+            '<div><strong style="font-size:.86rem">Elige fecha y salida</strong><div id="tur-fe" style="margin-top:6px"></div></div>' +
+            '<div id="tur-pax-wrap" style="display:none"></div>' +
+            '<div id="tur-ex-wrap" style="display:none"></div>' +
+            '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">' +
+            '<label style="font-size:.8rem;display:flex;flex-direction:column;gap:4px">Nombre *<input id="tur-nombre" type="text" style="padding:9px 10px;border:1px solid var(--border);border-radius:8px"></label>' +
+            '<label style="font-size:.8rem;display:flex;flex-direction:column;gap:4px">Email *<input id="tur-email" type="email" style="padding:9px 10px;border:1px solid var(--border);border-radius:8px"></label>' +
+            '<label style="font-size:.8rem;display:flex;flex-direction:column;gap:4px">Teléfono<input id="tur-tel" type="tel" style="padding:9px 10px;border:1px solid var(--border);border-radius:8px"></label>' +
+            '</div>' +
+            '<div id="tur-res" style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 12px"></div>' +
+            '<p id="tur-msg" class="msg" style="display:none"></p>' +
+            '<button type="button" class="btn btn-primary btn-block" id="tur-btn">Reservar y pagar</button>' +
+            '</div></div></div>';
+        document.body.appendChild(shell);
+        turQ('tur-close').addEventListener('click', function () { turQ('tur-modal').hidden = true; document.body.classList.remove('modal-open'); });
+        turQ('tur-modal').addEventListener('click', function (e) { if (e.target === turQ('tur-modal')) { turQ('tur-modal').hidden = true; document.body.classList.remove('modal-open'); } });
+        turQ('tur-btn').addEventListener('click', turReservar);
+    }
+
+    turQ('tur-title').textContent = 'Reservar · ' + prod.nombre;
+    turQ('tur-nombre').value = ''; turQ('tur-email').value = ''; turQ('tur-tel').value = '';
+    turQ('tur-res').textContent = ''; turQ('tur-msg').style.display = 'none';
+
+    var hoy = new Date();
+    var desde = hoy.toISOString().slice(0, 10);
+    var hasta = new Date(hoy.getTime() + 45 * 86400000).toISOString().slice(0, 10);
+    turQ('tur-fe').innerHTML = '<span style="font-size:.8rem;color:var(--muted)">Cargando salidas…</span>';
+    turCall('salidas_disponibles', { producto_id: prod.id, desde: desde, hasta: hasta }).then(function (r) {
+        var fe = turQ('tur-fe'); if (!fe) return;
+        if (!r.ok || !r.salidas || !r.salidas.length) {
+            fe.innerHTML = '<span style="font-size:.82rem;color:var(--muted)">No hay fechas disponibles para reservar. Contáctanos por WhatsApp.</span>';
+            return;
+        }
+        turState.salidas = r.salidas;
+        fe.innerHTML = r.salidas.map(function (s) {
+            var d = s.fecha.split('-');
+            var etiqueta = d[2] + '/' + d[1] + '/' + d[0] + ' · ' + (s.hora_salida || '') + (s.agotada ? ' · Agotada' : ' · ' + s.restantes + ' cupos');
+            return '<button type="button" class="tur-chip" style="margin:3px;padding:7px 11px;border:1px solid var(--border);border-radius:999px;background:var(--surface);font-size:.78rem;cursor:pointer' + (s.agotada ? ';opacity:.5' : '') + '" data-f="' + s.fecha + '" data-h="' + turEsc(s.hora_salida || '') + '" onclick="turSelFecha(\'' + s.fecha + '\',\'' + turEsc(s.hora_salida || '') + '\')"' + (s.agotada ? ' disabled' : '') + '>' + etiqueta + '</button>';
+        }).join('') + '<style>.tur-chip-on{background:var(--accent)!important;color:#fff!important;border-color:var(--accent)!important}</style>';
+    });
+
+    var paxWrap = turQ('tur-pax-wrap'); var exWrap = turQ('tur-ex-wrap');
+    if (turState.cats.length) {
+        paxWrap.style.display = '';
+        paxWrap.innerHTML = '<div style="margin:6px 0 4px"><strong style="font-size:.86rem">Pasajeros</strong></div>' +
+            turState.cats.map(function (c, i) {
+                return '<div style="display:flex;align-items:center;gap:10px;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border)">' +
+                    '<div><div style="font-size:.86rem;font-weight:600">' + turEsc(c.nombre) + '</div>' +
+                    '<div style="font-size:.74rem;color:var(--muted)">' + turMoney(c.precio_cents) + '</div></div>' +
+                    '<div style="display:flex;align-items:center;gap:8px"><button type="button" style="width:30px;height:30px;border-radius:8px;border:1px solid var(--border);background:var(--surface);cursor:pointer" onclick="turPax(' + i + ',-1)">−</button>' +
+                    '<span id="tur-cnt-' + i + '" style="min-width:18px;text-align:center;font-weight:700">0</span>' +
+                    '<button type="button" style="width:30px;height:30px;border-radius:8px;border:1px solid var(--border);background:var(--surface);cursor:pointer" onclick="turPax(' + i + ',1)">+</button></div></div>';
+            }).join('');
+    } else { paxWrap.style.display = 'none'; }
+
+    var exts = (prod.atributos && Array.isArray(prod.atributos.extras)) ? prod.atributos.extras : [];
+    if (exts.length) {
+        exWrap.style.display = '';
+        exWrap.innerHTML = '<div style="margin:6px 0 4px"><strong style="font-size:.86rem">Extras opcionales</strong></div>' +
+            exts.map(function (x, i) {
+                var oblig = x.obligatorio === true;
+                turState.exOn[i] = !!oblig;
+                return '<label style="display:flex;gap:8px;align-items:center;padding:5px 0;font-size:.84rem;cursor:pointer">' +
+                    '<input type="checkbox" id="tur-ex-' + i + '" data-ob="' + (oblig ? 1 : 0) + '" ' + (oblig ? 'checked disabled' : '') + ' onchange="turExTog(' + i + ')">' +
+                    '<span style="flex:1">' + turEsc(x.nombre) + (x.descripcion ? '<span style="display:block;font-size:.74rem;color:var(--muted)">' + turEsc(x.descripcion) + '</span>' : '') + '</span>' +
+                    '<strong style="font-size:.8rem">' + turMoney(x.precio_cents) + '</strong></label>';
+            }).join('');
+    } else { exWrap.style.display = 'none'; }
+
+    turQ('tur-modal').hidden = false;
+    document.body.classList.add('modal-open');
+}
+function turReservar() {
+    var msg = turQ('tur-msg');
+    var nombre = (turQ('tur-nombre').value || '').trim();
+    var email = (turQ('tur-email').value || '').trim();
+    var pasajeros = turPasajerosPayload();
+    var totalPax = pasajeros.reduce(function (a, p) { return a + (Number(p.cantidad) || 0); }, 0);
+    if (!turState.fecha || !turState.hora) { msg.textContent = 'Elige una fecha y salida.'; msg.style.display = ''; return; }
+    if (!totalPax) { msg.textContent = 'Indica al menos un pasajero.'; msg.style.display = ''; return; }
+    if (!nombre || !email) { msg.textContent = 'Completa nombre y email.'; msg.style.display = ''; return; }
+    var btn = turQ('tur-btn');
+    btn.disabled = true; btn.textContent = 'Reservando…';
+    turCall('reservar', {
+        producto_id: turState.producto.id,
+        fecha: turState.fecha,
+        hora_salida: turState.hora,
+        pasajeros: pasajeros,
+        extras: turExtrasPayload(),
+        cliente: { nombre: nombre, email: email, telefono: (turQ('tur-tel').value || '').trim() }
+    }).then(function (r) {
+        btn.disabled = false; btn.textContent = 'Reservar y pagar';
+        if (!r.ok) { msg.textContent = r.error || 'No se pudo reservar.'; msg.style.display = ''; return; }
+        if (r.url) { window.location.href = r.url; }
+        else { msg.textContent = r.msg || 'Reserva registrada.'; msg.style.display = ''; }
+    });
+}
+document.addEventListener('click', function (e) {
+    var b = e.target.closest ? e.target.closest('[data-reserve]') : null;
+    if (b) { e.preventDefault(); turAbrirReserva(b.getAttribute('data-reserve')); }
+}, true);
+</script>
 </body>
 </html>

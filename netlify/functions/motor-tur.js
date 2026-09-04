@@ -195,7 +195,10 @@ function calcularPrecioTour(config, seleccion) {
     // Extras (después del descuento)
     for (const ex of extrasSel) {
         const qty = Math.max(1, Math.floor(Number(ex.cantidad)) || 1);
-        const extra = extrasCfg.find(e => String(e.id) === String(ex.id));
+        let extra = extrasCfg.find(e => String(e.id) === String(ex.id));
+        if (!extra && ex.nombre) {
+            extra = extrasCfg.find(e => String(e.nombre || '').toLowerCase() === String(ex.nombre).toLowerCase());
+        }
         if (!extra) {
             errores.push('El extra "' + (ex.id || ex.nombre || '?') + '" no existe en este producto.');
             continue;
