@@ -106,6 +106,8 @@
             <a href="#" data-sec="productos" onclick="return nav('productos')"><i class="fas fa-box"></i> Productos</a>
             <a href="#" data-sec="categorias" onclick="return nav('categorias')"><i class="fas fa-tags"></i> Categorías</a>
             <a href="#" data-sec="atributos" onclick="return nav('atributos')"><i class="fas fa-sliders-h"></i> Atributos</a>
+            <div class="nav-label">Turismo</div>
+            <a href="#" data-sec="turismo" onclick="return nav('turismo')"><i class="fas fa-compass"></i> Experiencias</a>
             <div class="nav-label">Configuración</div>
             <a href="#" data-sec="pasarela" onclick="return nav('pasarela')"><i class="fas fa-credit-card"></i> Pasarela</a>
             <a href="#" data-sec="notificaciones" onclick="return nav('notificaciones')"><i class="fas fa-bell"></i> Notificaciones</a>
@@ -278,7 +280,7 @@
         ({ dashboard: renderDashboard, productos: renderProductos, categorias: renderCategorias,
             atributos: renderAtributos, ordenes: renderOrdenes, clientes: renderClientes,
             pasarela: renderPasarela, notificaciones: renderNotificaciones, agentes: renderAgentesTienda,
-            pipeline: renderPipeline, deportes: renderDeportes })[sec]();
+            pipeline: renderPipeline, deportes: renderDeportes, turismo: renderTurismo })[sec]();
         return false;
     }
 
@@ -1696,6 +1698,217 @@
         </table></div>` : '<div class="empty">Sin consentimientos. Se registran automáticamente al inscribirse.</div>';
     }
 
+    // ── TURISMO (productos turísticos · wizard no técnico) ──
+    let _turProducto = null;
+    let _turPassthrough = { escalas: [], extras: [] };
+    let _turStep = 1;
+
+    async function turismoApi(action, body = {}) {
+        try {
+            const res = await fetch('/.netlify/functions/turismo', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (session ? session.access_token : '') },
+                body: JSON.stringify({ action, ...body })
+            });
+            const txt = await res.text();
+            let data = {};
+            try { data = JSON.parse(txt); } catch (_) { data = {}; }
+            if (!res.ok && !data.error) data = { ok: false, error: 'HTTP ' + res.status + ': ' + String(txt).slice(0, 300) };
+            return data;
+        } catch (err) {
+            return { ok: false, error: 'Error de conexión: ' + (err.message || err) };
+        }
+    }
+
+    function turPesoAcentos(input) { return Math.round((Number(String(input).replace(/[^0-9]/g, '')) || 0) * 100); }
+    function turLineas(id) { return ($(id) ? String($(id).value || '') : '').split('\n').map(x => x.trim()).filter(Boolean); }
+
+    async function renderTurismo() {
+        const main = $('main');
+        main.innerHTML = '<div class="empty">Cargando…</div>';
+        try {
+            const data = await turismoApi('listar_productos_tur', { proyecto_id: ctx.proyecto_id });
+            if (!data.ok) throw new Error(data.error || 'Error');
+            const lista = data.productos || [];
+            main.innerHTML = `
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
+                    <h2 class="card-title" style="flex:1">Experiencias turísticas</h2>
+                    <span style="font-size:.76rem;color:var(--muted)">Configura aquí los productos tipo <strong>Tour / Actividad</strong>. El wizard guarda todo sin JSON.</span>
+                </div>
+                ${lista.length ? lista.map(p => `
+                    <div class="prod-item">
+                        ${p.imagen ? `<img src="${esc(p.imagen)}" alt="">` : '<div style="width:46px;height:46px;border-radius:8px;background:var(--bg);border:1px solid var(--border2)"></div>'}
+                        <div class="info">
+                            <div style="font-weight:700">${esc(p.nombre)}</div>
+                            <div style="font-size:.74rem;color:var(--dim)">${esc(p.tipo_experiencia || 'Sin tipo de experiencia')} · desde ${fmtCOP(p.precio_desde_cents)} ${p.tiene_legado && !p.migrado ? ' · <span style="color:var(--amber, #f59e0b)">JSON legado sin migrar</span>' : ''}</div>
+                        </div>
+                        <button class="btn-small" onclick="turForm('${p.id}')"><i class="fas fa-sliders"></i> Configurar</button>
+                    </div>`).join('')
+                : `<div class="card"><div class="empty">No hay experiencias. Ve a <strong>Productos</strong> → Nuevo producto → tipo <strong>Tour / Actividad</strong> y créala; luego configúrala aquí.</div></div>`}
+            `;
+        } catch (err) { main.innerHTML = '<div class="empty">Error: ' + esc(err.message) + '</div>'; }
+    }
+
+    async function turForm(productoId) {
+        _turProducto = null; _turStep = 1;
+        const main = $('main');
+        main.innerHTML = '<div class="empty">Cargando configuración…</div>';
+        try {
+            const data = await turismoApi('get_config_tur', { proyecto_id: ctx.proyecto_id, producto_id: productoId });
+            if (!data.ok) throw new Error(data.error || 'Error');
+            _turProducto = data;
+            _turPassthrough = { escalas: data.escalas || [], extras: data.extras || [] };
+            const ed = data.editorial || {};
+            const filasTarifas = (data.tarifas || []).map(turTarifaRowHtml).join('');
+            main.innerHTML = `
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">
+                    <button class="btn-small" onclick="renderTurismo()"><i class="fas fa-arrow-left"></i> Volver</button>
+                    <h2 class="card-title" style="flex:1">Configurar · ${esc(data.nombre || '')}</h2>
+                </div>
+                <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
+                    <button class="btn-small tur-step-on" id="tur-step-1" onclick="turStep(1)"><i class="fas fa-circle-info"></i> 1 · Información</button>
+                    <button class="btn-small" id="tur-step-2" onclick="turStep(2)"><i class="fas fa-compass"></i> 2 · Experiencia</button>
+                    <button class="btn-small" id="tur-step-3" onclick="turStep(3)"><i class="fas fa-users"></i> 3 · Pasajeros y tarifas</button>
+                </div>
+                <div class="card">
+                <div id="tur-sec-1">
+                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:.7rem">
+                        <div class="field"><label>Nombre (definido en Productos)</label><input value="${esc(data.nombre || '')}" disabled></div>
+                        <div class="field"><label>Tipo de experiencia</label>
+                            <select id="tur-tipo"><option value="">Selecciona</option>${['tour','actividad','excursion','traslado','entrada','experiencia','paquete'].map(t=>`<option value="${t}"${ed.tipo_experiencia===t?' selected':''}>${t[0].toUpperCase()+t.slice(1)}</option>`).join('')}</select></div>
+                        <div class="field"><label>Destino</label><input id="tur-destino" value="${esc(ed.destino || '')}" placeholder="Ej. Playa Blanca, Santa Marta"></div>
+                        <div class="field"><label>Ubicación / punto de partida</label><input id="tur-ubicacion" value="${esc(ed.ubicacion || '')}"></div>
+                        <div class="field"><label>Duración</label><input id="tur-duracion" value="${esc(ed.duracion || '')}" placeholder="Ej. 8 horas"></div>
+                    </div>
+                </div>
+                <div id="tur-sec-2" style="display:none">
+                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:.7rem">
+                        <div class="field"><label>Idiomas (uno por línea)</label><textarea id="tur-idiomas" rows="3">${esc(Array.isArray(ed.idiomas)?ed.idiomas.join('\n'):'')}</textarea></div>
+                        <div class="field"><label>Qué incluye (uno por línea)</label><textarea id="tur-incluye" rows="3">${esc(Array.isArray(ed.incluye)?ed.incluye.join('\n'):'')}</textarea></div>
+                        <div class="field"><label>Qué no incluye (uno por línea)</label><textarea id="tur-noincluye" rows="3">${esc(Array.isArray(ed.no_incluye)?ed.no_incluye.join('\n'):'')}</textarea></div>
+                        <div class="field"><label>Punto de encuentro</label><input id="tur-encuentro" value="${esc(ed.punto_encuentro || '')}"></div>
+                        <div class="field"><label>Recomendaciones</label><textarea id="tur-recomendaciones" rows="2">${esc(ed.recomendaciones || '')}</textarea></div>
+                        <div class="field"><label>Restricciones</label><textarea id="tur-restricciones" rows="2">${esc(ed.restricciones || '')}</textarea></div>
+                        <div class="field" style="grid-column:1/-1"><label>Política de cancelación</label><textarea id="tur-politicas" rows="2">${esc(ed.politica_cancelacion || '')}</textarea></div>
+                        <div class="field"><label>Costo proveedor (COP, solo admin)</label><input id="tur-costo" type="number" min="0" value="${ed.costo_proveedor_cents ? Math.round(ed.costo_proveedor_cents/100) : ''}"></div>
+                        <div class="field"><label>Impuesto % (opcional, admin)</label><input id="tur-impuesto" type="number" min="0" step="0.01" value="${ed.impuesto_pct != null ? ed.impuesto_pct : ''}"></div>
+                        <div class="field"><label>Modelo de tarifa</label>
+                            <select id="tur-pricing"><option value="por_persona"${ed.pricing_modelo==='por_persona'?' selected':''}>Por persona</option><option value="por_reserva"${ed.pricing_modelo==='por_reserva'?' selected':''}>Por reserva</option><option value="por_vehiculo"${ed.pricing_modelo==='por_vehiculo'?' selected':''}>Por vehículo</option></select></div>
+                        <div class="field"><label>Mínimo de participantes</label><input id="tur-minpax" type="number" min="1" value="${ed.min_pax != null ? ed.min_pax : 1}"></div>
+                        <div class="field"><label>Máximo de participantes (vacío = sin límite)</label><input id="tur-maxpax" type="number" min="1" value="${ed.max_pax != null ? ed.max_pax : ''}"></div>
+                        <div class="field" style="display:flex;align-items:center"><label style="font-size:.84rem"><input type="checkbox" id="tur-adulto" ${ed.requiere_adulto?'checked':''}> Requiere al menos 1 adulto en el grupo</label></div>
+                    </div>
+                </div>
+                <div id="tur-sec-3" style="display:none">
+                    <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;margin-bottom:8px">
+                        <strong style="font-size:.86rem">Tarifas por pasajero (Adulto, Niño, Infante…)</strong>
+                        <button class="btn-small" onclick="turAddTarifa()"><i class="fas fa-plus"></i> Agregar tarifa</button>
+                    </div>
+                    <div id="tur-tarifas">${filasTarifas || '<div class="empty" style="padding:.6rem">Sin tarifas. Agrega la primera (ej. Adulto).</div>'}</div>
+                    <div style="font-size:.74rem;color:var(--dim);margin-top:8px">Los descuentos por grupo y los extras se sumarán en el siguiente hito. Lo que ya exista se conserva automáticamente al guardar.</div>
+                </div>
+                <div style="display:flex;gap:.5rem;align-items:center;margin-top:1rem;flex-wrap:wrap">
+                    <button class="btn-small" id="tur-prev" onclick="turPrev()"><i class="fas fa-arrow-left"></i> Atrás</button>
+                    <span style="flex:1"></span>
+                    <button class="btn-main btn-green" id="tur-save" onclick="turGuardarConfig()"><i class="fas fa-save"></i> Guardar configuración</button>
+                    <button class="btn-main" id="tur-next" onclick="turNext()">Siguiente <i class="fas fa-arrow-right"></i></button>
+                </div>
+                </div>
+            `;
+        } catch (err) { main.innerHTML = '<div class="empty">Error: ' + esc(err.message) + '</div>'; }
+    }
+
+    function turTarifaRowHtml(t) {
+        t = t || {};
+        return `<div class="tur-tarifa" style="display:grid;grid-template-columns:1fr 76px 76px 130px auto;gap:6px;align-items:center;margin-bottom:6px">
+            <input class="tt-nombre" value="${esc(t.nombre || '')}" placeholder="Nombre (Adulto)">
+            <input class="tt-min" type="number" min="0" value="${t.edad_min != null ? t.edad_min : ''}" placeholder="Edad mín">
+            <input class="tt-max" type="number" min="0" value="${t.edad_max != null ? t.edad_max : ''}" placeholder="Edad máx">
+            <input class="tt-precio" type="number" min="0" value="${t.precio_cents != null ? Math.round(t.precio_cents/100) : ''}" placeholder="Precio COP">
+            <button type="button" class="btn-small danger" title="Quitar tarifa" onclick="this.closest('.tur-tarifa').remove()"><i class="fas fa-trash"></i></button>
+        </div>`;
+    }
+
+    function turAddTarifa() {
+        const c = $('tur-tarifas');
+        if (!c) return;
+        if (!c.querySelector('.tur-tarifa')) c.innerHTML = '';
+        c.insertAdjacentHTML('beforeend', turTarifaRowHtml(null));
+    }
+
+    function turStep(n) {
+        _turStep = Math.min(3, Math.max(1, Number(n) || 1));
+        for (let i = 1; i <= 3; i++) {
+            const sec = $('tur-sec-' + i);
+            if (sec) sec.style.display = (i === _turStep) ? '' : 'none';
+            const chip = $('tur-step-' + i);
+            if (chip) chip.classList.toggle('dep-active', i === _turStep);
+        }
+        const prev = $('tur-prev'); if (prev) prev.style.visibility = _turStep === 1 ? 'hidden' : 'visible';
+        const next = $('tur-next'); if (next) next.style.visibility = _turStep === 3 ? 'hidden' : 'visible';
+        const save = $('tur-save'); if (save) save.style.display = _turStep === 3 ? '' : 'none';
+    }
+    function turPrev() { turStep(_turStep - 1); }
+    function turNext() { turStep(_turStep + 1); }
+
+    async function turGuardarConfig() {
+        if (!_turProducto || !_turProducto.producto_id) return;
+        const ed = {};
+        const leer = (id) => $(id) ? String($(id).value || '').trim() : '';
+        const leerArr = (id) => $(id) ? String($(id).value || '').split('\n').map(x => x.trim()).filter(Boolean) : [];
+
+        const tarifas = [];
+        const cont = $('tur-tarifas');
+        if (cont) {
+            cont.querySelectorAll('.tur-tarifa').forEach(row => {
+                const q = (sel) => row.querySelector(sel) ? row.querySelector(sel).value.trim() : '';
+                const nombre = q('.tt-nombre');
+                if (!nombre) return;
+                tarifas.push({
+                    nombre,
+                    edad_min: q('.tt-min') !== '' ? Number(q('.tt-min')) : null,
+                    edad_max: q('.tt-max') !== '' ? Number(q('.tt-max')) : null,
+                    precio_cents: Math.round((Number(q('.tt-precio')) || 0) * 100),
+                    permitido: true
+                });
+            });
+        }
+
+        const body = {
+            proyecto_id: ctx.proyecto_id,
+            producto_id: _turProducto.producto_id,
+            editorial: {
+                tipo_experiencia: leer('tur-tipo'),
+                destino: leer('tur-destino'),
+                ubicacion: leer('tur-ubicacion'),
+                duracion: leer('tur-duracion'),
+                idiomas: leerArr('tur-idiomas'),
+                incluye: leerArr('tur-incluye'),
+                no_incluye: leerArr('tur-noincluye'),
+                punto_encuentro: leer('tur-encuentro'),
+                recomendaciones: leer('tur-recomendaciones'),
+                restricciones: leer('tur-restricciones'),
+                politica_cancelacion: leer('tur-politicas')
+            },
+            reglas: {
+                pricing_modelo: leer('tur-pricing') || 'por_persona',
+                requiere_adulto: !!( $('tur-adulto') && $('tur-adulto').checked ),
+                min_pax: Number(leer('tur-minpax')) || 1,
+                max_pax: leer('tur-maxpax') !== '' ? Number(leer('tur-maxpax')) : null,
+                costo_proveedor_cents: Math.round((Number(leer('tur-costo')) || 0) * 100),
+                impuesto_pct: Number(leer('tur-impuesto')) || 0
+            },
+            tarifas,
+            escalas: _turPassthrough.escalas,
+            extras: _turPassthrough.extras
+        };
+
+        const data = await turismoApi('guardar_config_tur', body);
+        if (!data.ok) { toast('Error: ' + data.error, true); return; }
+        toast('Configuración guardada');
+        renderTurismo();
+    }
+
     // ── Mobile menu toggle ──
     function toggleMobileMenu(force) {
         const sidebar = document.querySelector('.sidebar');
@@ -1748,6 +1961,7 @@
         depFormNoticia, depGuardarNoticia, depEliminarNoticia,
         depFormGaleria, depGuardarGaleria, depEliminarItemGaleria,
         depSubir, depSubirVarias, depQuitarGaleria,
+        renderTurismo, turForm, turAddTarifa, turStep, turPrev, turNext, turGuardarConfig,
         toggleTheme, actualizarBotonTema
     });
 
