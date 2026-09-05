@@ -390,3 +390,14 @@ body.light-mode .mobile-bottom-item.active{background:rgba(37,99,235,.10)!import
     .sidebar-bottom{flex:0 0 auto!important}
 }
 
+/* ── Sidebar desktop/tablet: el nav hace scroll propio en cualquier tamaño
+      para que SIEMPRE se alcancen todos los ítems (p. ej. "Deportes"). ── */
+.sidebar nav{
+    flex:1 1 auto!important;
+    min-height:0!important;
+    overflow-y:auto!important;
+    overscroll-behavior:contain!important;
+    scrollbar-width:thin!important;
+    scrollbar-color:var(--border2) transparent!important;
+}
+

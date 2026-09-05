@@ -73,6 +73,31 @@
         .field select { width: 100%; padding: 9px 12px; background: var(--bg2); border: 1px solid var(--border2); border-radius: 8px; color: var(--text); font-size: .88rem; }
         .btn-small.dep-active, .btn-main.dep-active { background: var(--accent); color: #fff; border-color: var(--accent); }
         .card-title { font-size: 1.05rem; font-weight: 800; letter-spacing: -.01em; }
+
+        /* ── Sidebar tipo drawer para tablets y pantallas medianas (hasta 1024px) ── */
+        @media (max-width: 1024px) {
+            .sidebar {
+                width: min(86vw, 320px) !important;
+                z-index: 220 !important;
+                transform: translateX(calc(-100% - 18px)) !important;
+                transition: transform .3s ease !important;
+                border-radius: 0 26px 26px 0 !important;
+                box-shadow: 30px 0 80px rgba(0, 0, 0, .5) !important;
+            }
+            .sidebar.open { transform: translateX(0) !important; }
+            .main-content { margin-left: 0 !important; padding: 1rem 1rem 2rem; }
+            .bg-grid { left: 0; }
+            body.mobile-menu-open { overflow: hidden !important; }
+            body.mobile-menu-open .mobile-menu-overlay {
+                display: block !important;
+                position: fixed;
+                inset: 0;
+                z-index: 210 !important;
+                background: rgba(0, 0, 0, .58);
+                backdrop-filter: blur(7px);
+            }
+            .mob-toggle { display: flex !important; }
+        }
     </style>
 </head>
 <body class="light-mode">
@@ -2222,7 +2247,7 @@
     // Close sidebar on Escape or nav click (mobile)
     document.addEventListener('click', function(e) {
         const navItem = e.target.closest && e.target.closest('.sidebar nav a');
-        if (navItem && window.innerWidth <= 768) toggleMobileMenu(false);
+        if (navItem && window.innerWidth <= 1024) toggleMobileMenu(false);
     }, true);
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape') toggleMobileMenu(false);
